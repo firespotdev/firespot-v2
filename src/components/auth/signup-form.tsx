@@ -28,6 +28,8 @@ interface SignupFormProps {
   referralCode: string
   onReferralCodeChange: (value: string) => void
   onSubmit: (e: React.FormEvent) => void
+  isLoading?: boolean
+  error?: string
 }
 
 export function SignupForm({
@@ -41,11 +43,13 @@ export function SignupForm({
   referralCode,
   onReferralCodeChange,
   onSubmit,
+  isLoading = false,
+  error,
 }: SignupFormProps) {
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const resolveAccount = useResolveAccount()
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
-  const resolvedRef = useRef<string>('') // Track what we've already resolved
+  const resolvedRef = useRef<string>('')
 
   // Auto-resolve account when account number is 10 digits and bank is selected
   useEffect(() => {
@@ -62,10 +66,6 @@ export function SignupForm({
       resolvedRef.current = ''
     }
 
-    // Only resolve if:
-    // 1. Account number is exactly 10 digits
-    // 2. Bank is selected
-    // 3. We haven't already resolved this combination
     if (
       accountNumber.length === 10 &&
       selectedBankCode &&
@@ -193,7 +193,11 @@ export function SignupForm({
           />
         </div>
 
-        <Button type="submit">Continue</Button>
+        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Creating account...' : 'Continue'}
+        </Button>
       </form>
       <p className="text-sm text-[#00000080] mt-4 font-bold font-satoshi">
         Already have one?{' '}

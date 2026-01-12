@@ -1,13 +1,22 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApiClient } from '@/lib/utils/axios'
-import type { QRKit, QRKitListResponse, QRKitFilters } from './interface'
+import type {
+  QRKit,
+  QRKitListResponse,
+  QRKitFilters,
+  BulkCreateDto,
+  QRKitStats,
+} from './interface'
 
 // API functions
 export const qrKitsApi = {
   getQRKits: async (filters?: QRKitFilters): Promise<QRKitListResponse> => {
-    const response = await adminApiClient.get<QRKitListResponse>('/admin/qr-kits', {
-      params: filters,
-    })
+    const response = await adminApiClient.get<QRKitListResponse>(
+      '/admin/qr-kits',
+      {
+        params: filters,
+      },
+    )
     return response.data
   },
 
@@ -22,6 +31,54 @@ export const qrKitsApi = {
       throw new Error('Failed to fetch QR code SVG')
     }
     return response.text()
+  },
+
+  createQRKit: async (): Promise<QRKit> => {
+    const response = await adminApiClient.post<QRKit>('/admin/qr-kits', {})
+    return response.data
+  },
+
+  bulkCreateQRKits: async (dto: BulkCreateDto): Promise<QRKit[]> => {
+    const response = await adminApiClient.post<QRKit[]>(
+      '/admin/qr-kits/bulk',
+      dto,
+    )
+    return response.data
+  },
+
+  downloadQRCodePNG: async (id: string): Promise<Blob> => {
+    const response = await adminApiClient.get(`/admin/qr-kits/${id}/qr-code`, {
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  getStats: async (): Promise<QRKitStats> => {
+    // Get all QR kits to calculate stats (in a real app, this would be a dedicated endpoint)
+    const response = await adminApiClient.get<QRKitListResponse>(
+      '/admin/qr-kits',
+      {
+        params: { limit: 10000 },
+      },
+    )
+
+    const data = response.data.data
+    const stats: QRKitStats = {
+      total: response.data.pagination.total,
+      byActivationStatus: {
+        pending: data.filter((q) => q.activationStatus === 'pending').length,
+        activated: data.filter((q) => q.activationStatus === 'activated')
+          .length,
+        deactivated: data.filter((q) => q.activationStatus === 'deactivated')
+          .length,
+      },
+      byPaymentStatus: {
+        pending: data.filter((q) => q.paymentStatus === 'pending').length,
+        successful: data.filter((q) => q.paymentStatus === 'successful').length,
+        failed: data.filter((q) => q.paymentStatus === 'failed').length,
+      },
+    }
+    return stats
   },
 }
 
@@ -52,5 +109,60 @@ export const useQRCodeSVG = (url: string | null | undefined) => {
       return qrKitsApi.fetchQRCodeSVG(url)
     },
     enabled: !!url,
+  })
+}
+
+export const useQRKitStats = () => {
+  return useQuery({
+    queryKey: ['qr-kit-stats'],
+    queryFn: () => qrKitsApi.getStats(),
+  })
+}
+
+export const useCreateQRKit = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: () => qrKitsApi.createQRKit(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    },
+  })
+}
+
+export const useBulkCreateQRKits = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (dto: BulkCreateDto) => qrKitsApi.bulkCreateQRKits(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    },
+  })
+}
+
+export const useDownloadQRCodePNG = () => {
+  return useMutation({
+    mutationFn: async ({
+      id,
+      serialNumber,
+    }: {
+      id: string
+      serialNumber: string
+    }) => {
+      const blob = await qrKitsApi.downloadQRCodePNG(id)
+
+      // Create download link
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${serialNumber}.png`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
   })
 }

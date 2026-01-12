@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { ArrowLeft } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
+import { Input, Label, Button, Spinner } from '@/components/ui'
 
 interface OtpVerificationProps {
   phoneNumber: string
@@ -45,11 +43,11 @@ export function OtpVerification({
 
     const newValue = otp.split('')
     newValue[index] = digit
-    const newOtp = newValue.join('').slice(0, 4)
+    const newOtp = newValue.join('').slice(0, 6)
     setOtp(newOtp)
 
     // Auto-focus next input
-    if (digit && index < 3) {
+    if (digit && index < 5) {
       otpInputRefs.current[index + 1]?.focus()
     }
   }
@@ -65,18 +63,18 @@ export function OtpVerification({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
-    const pastedData = e.clipboardData.getData('text').slice(0, 4)
+    const pastedData = e.clipboardData.getData('text').slice(0, 6)
     if (/^\d+$/.test(pastedData)) {
       setOtp(pastedData)
       // Focus last input
-      const lastIndex = Math.min(pastedData.length - 1, 3)
+      const lastIndex = Math.min(pastedData.length - 1, 5)
       otpInputRefs.current[lastIndex]?.focus()
     }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (otp.length === 4) {
+    if (otp.length === 6) {
       onVerify(otp)
     }
   }
@@ -118,7 +116,7 @@ export function OtpVerification({
           <div>
             <Label>Enter OTP</Label>
             <div className="flex gap-3 justify-start">
-              {[0, 1, 2, 3].map((index) => (
+              {[0, 1, 2, 3, 4, 5].map((index) => (
                 <Input
                   key={index}
                   ref={(el) => {
@@ -132,7 +130,7 @@ export function OtpVerification({
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={handlePaste}
                   disabled={isLoading}
-                  className="w-14 h-14 border-[#D8E0E9] text-center text-lg font-semibold border focus-visible:border-black"
+                  className="w-14 h-14 border-[#D8E0E9] text-center text-lg font-semibold border"
                 />
               ))}
             </div>
@@ -141,12 +139,8 @@ export function OtpVerification({
             )}
           </div>
 
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={otp.length !== 4 || isLoading}
-          >
-            {isLoading ? 'Verifying...' : 'Continue'}
+          <Button type="submit" className="w-full">
+            {isLoading ? <Spinner /> : 'Continue'}
           </Button>
         </form>
 
@@ -157,9 +151,14 @@ export function OtpVerification({
         ) : (
           <p className="text-sm font-bold text-[#00000080] mt-6 text-center">
             Didn't receive an OTP?{' '}
-            <span className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text">
+            <button
+              type="button"
+              onClick={handleResend}
+              disabled={isLoading}
+              className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text cursor-pointer hover:opacity-80 disabled:opacity-50"
+            >
               Resend OTP
-            </span>
+            </button>
           </p>
         )}
       </div>

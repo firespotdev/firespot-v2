@@ -3,8 +3,8 @@ export interface QRKit {
   serialNumber: string
   qrCodeSvgUrl?: string
   qrCodeSvgPublicId?: string
-  activationStatus: string
-  paymentStatus: string
+  activationStatus: 'pending' | 'activated' | 'deactivated'
+  paymentStatus: 'pending' | 'successful' | 'failed'
   activationAmount: number
   merchantId?: string
   createdAt: string
@@ -27,4 +27,22 @@ export interface QRKitFilters {
   search?: string
   page?: number
   limit?: number
+}
+
+export interface BulkCreateDto {
+  quantity: number
+}
+
+export interface QRKitStats {
+  total: number
+  byActivationStatus: {
+    pending: number
+    activated: number
+    deactivated: number
+  }
+  byPaymentStatus: {
+    pending: number
+    successful: number
+    failed: number
+  }
 }

@@ -2,23 +2,19 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { LoginForm } from '@/components/auth/login-form'
 import { OtpVerification } from '@/components/auth/otp-verification'
-import { SignupForm } from '@/components/auth/signup-form'
-import { useSignup, useVerifyOtp, useAuthStore } from '@/services/auth'
+import { useLogin, useVerifyOtp, useAuthStore } from '@/services/auth'
 
-function SignupPageContent() {
+function LoginPageContent() {
   const router = useRouter()
   const [step, setStep] = useState<1 | 2>(1)
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [selectedBankCode, setSelectedBankCode] = useState<string>('')
-  const [selectedBankName, setSelectedBankName] = useState<string>('')
-  const [accountNumber, setAccountNumber] = useState('')
-  const [referralCode, setReferralCode] = useState('')
-  const [signupError, setSignupError] = useState<string | undefined>()
+  const [loginError, setLoginError] = useState<string | undefined>()
   const [otpError, setOtpError] = useState<string | undefined>()
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const signup = useSignup()
+  const login = useLogin()
   const verifyOtp = useVerifyOtp()
 
   // Redirect if already authenticated
@@ -28,23 +24,14 @@ function SignupPageContent() {
     }
   }, [isAuthenticated, router])
 
-  const handleBankChange = (code: string, name: string) => {
-    setSelectedBankCode(code)
-    setSelectedBankName(name)
-  }
-
-  const handleStep1Submit = (e: React.FormEvent) => {
+  const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setSignupError(undefined)
+    setLoginError(undefined)
 
-    signup.mutate(
+    login.mutate(
       {
         phoneNumber,
         phoneCountryCode: '+234',
-        bankName: selectedBankName,
-        bankCode: selectedBankCode,
-        accountNumber,
-        referralCode: referralCode || undefined,
       },
       {
         onSuccess: () => {
@@ -53,8 +40,8 @@ function SignupPageContent() {
         onError: (error: any) => {
           const message =
             error?.response?.data?.message ||
-            'Failed to create account. Please try again.'
-          setSignupError(message)
+            'Failed to send OTP. Please try again.'
+          setLoginError(message)
         },
       },
     )
@@ -82,14 +69,10 @@ function SignupPageContent() {
   }
 
   const handleOtpResend = () => {
-    signup.mutate(
+    login.mutate(
       {
         phoneNumber,
         phoneCountryCode: '+234',
-        bankName: selectedBankName,
-        bankCode: selectedBankCode,
-        accountNumber,
-        referralCode: referralCode || undefined,
       },
       {
         onError: (error: any) => {
@@ -125,29 +108,22 @@ function SignupPageContent() {
     )
   }
 
-  // Step 1: Signup Form
+  // Step 1: Login Form
   return (
-    <SignupForm
+    <LoginForm
       phoneNumber={phoneNumber}
       onPhoneNumberChange={setPhoneNumber}
-      selectedBankCode={selectedBankCode}
-      selectedBankName={selectedBankName}
-      onBankChange={handleBankChange}
-      accountNumber={accountNumber}
-      onAccountNumberChange={setAccountNumber}
-      referralCode={referralCode}
-      onReferralCodeChange={setReferralCode}
-      onSubmit={handleStep1Submit}
-      isLoading={signup.isPending}
-      error={signupError}
+      onSubmit={handleLoginSubmit}
+      isLoading={login.isPending}
+      error={loginError}
     />
   )
 }
 
-export default function SignupPage() {
+export default function LoginPage() {
   return (
     <Suspense fallback={<div className="h-screen bg-white" />}>
-      <SignupPageContent />
+      <LoginPageContent />
     </Suspense>
   )
 }
