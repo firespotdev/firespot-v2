@@ -133,3 +133,10 @@
     font-family: var(--font-sofia-pro), sans-serif;
   }
 }
+
+/* Override Sonner toast width to fit content */
+[data-sonner-toaster] [data-sonner-toast] {
+  width: fit-content !important;
+  max-width: fit-content !important;
+  margin: 0 auto !important;
+}

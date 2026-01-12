@@ -1,8 +1,12 @@
 'use client'
 
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/utils/axios'
-import type { UserProfile, QRKitActivationResponse } from './interface'
+import type {
+  UserProfile,
+  QRKitActivationResponse,
+  UpdateProfilePhotoResponse,
+} from './interface'
 
 // API functions
 export const userApi = {
@@ -19,6 +23,24 @@ export const userApi = {
     )
     return response.data
   },
+
+  updateProfilePhoto: async (
+    file: File,
+  ): Promise<UpdateProfilePhotoResponse> => {
+    const formData = new FormData()
+    formData.append('photo', file)
+
+    const response = await apiClient.patch<UpdateProfilePhotoResponse>(
+      '/users/photo',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    )
+    return response.data
+  },
 }
 
 // Hooks
@@ -32,5 +54,28 @@ export function useUserProfile() {
 export function useInitiateActivation() {
   return useMutation({
     mutationFn: userApi.initiateActivation,
+  })
+}
+
+export function useUpdateProfilePhoto() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.updateProfilePhoto,
+    onSuccess: (data) => {
+      // Update the profile cache with new photo URL
+      queryClient.setQueryData(
+        ['user', 'profile'],
+        (oldData: UserProfile | undefined) => {
+          if (!oldData) return oldData
+          return {
+            ...oldData,
+            profilePhotoUrl: data.profilePhotoUrl,
+          }
+        },
+      )
+      // Also invalidate to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
   })
 }

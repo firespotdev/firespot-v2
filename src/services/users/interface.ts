@@ -23,3 +23,8 @@ export interface QRKitActivationResponse {
   activationAmount: number
   qrKitId: string
 }
+
+export interface UpdateProfilePhotoResponse {
+  message: string
+  profilePhotoUrl: string
+}
