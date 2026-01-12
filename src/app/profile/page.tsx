@@ -1,20 +1,37 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Copy, ChevronRight, ExternalLink, Store } from 'lucide-react'
+import { Camera, Copy, ChevronRight, ArrowUpRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { useUserProfile, useInitiateActivation } from '@/services/users'
+import {
+  useUserProfile,
+  useInitiateActivation,
+  useUpdateProfilePhoto,
+} from '@/services/users'
 import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle } from '@/components/ui'
+import { LoaderCircle, showNotificationToast } from '@/components/ui'
+import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+]
 
 export default function ProfilePage() {
   const router = useRouter()
   const { data: profile, isLoading, error } = useUserProfile()
   const initiateActivation = useInitiateActivation()
+  const updateProfilePhoto = useUpdateProfilePhoto()
   const [copied, setCopied] = useState(false)
+  const [photoError, setPhotoError] = useState<string | null>(null)
+  const [photoSuccess, setPhotoSuccess] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const user = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -25,6 +42,14 @@ export default function ProfilePage() {
       router.push('/login')
     }
   }, [isAuthenticated, isLoading, router])
+
+  // Clear photo success message after 3 seconds
+  useEffect(() => {
+    if (photoSuccess) {
+      const timer = setTimeout(() => setPhotoSuccess(false), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [photoSuccess])
 
   if (!isAuthenticated) {
     return null
@@ -37,7 +62,7 @@ export default function ProfilePage() {
     if (bankAccount?.accountNumber) {
       navigator.clipboard.writeText(bankAccount.accountNumber)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      showNotificationToast({ message: 'Account number copied!' })
     }
   }
 
@@ -59,25 +84,70 @@ export default function ProfilePage() {
     }
   }
 
-  // Get bank icon/color (simplified - in production, you'd have a bank icon mapping)
-  const getBankIcon = (bankName?: string) => {
+  const handleCameraClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setPhotoError(null)
+
+    // Validate file type
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      setPhotoError('Please select a JPG, PNG, or WEBP image')
+      return
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      setPhotoError('Image must be less than 5MB')
+      return
+    }
+
+    // Upload the file
+    updateProfilePhoto.mutate(file, {
+      onSuccess: () => {
+        setPhotoSuccess(true)
+      },
+      onError: (error: any) => {
+        const message =
+          error?.response?.data?.message || 'Failed to upload photo'
+        setPhotoError(message)
+      },
+    })
+
+    // Reset the input so the same file can be selected again
+    e.target.value = ''
+  }
+
+  // Render bank logo with fallback to initial
+  const renderBankLogo = (bankName?: string) => {
     if (!bankName) return null
 
-    // Special handling for Moniepoint
-    if (bankName.toLowerCase().includes('moniepoint')) {
+    const logoPath = getBankLogoPath(bankName)
+    const isDefaultLogo = logoPath.includes('default-image.png')
+
+    if (isDefaultLogo) {
+      // Fallback to letter icon for banks without logos
       return (
         <div className="w-6 h-6 bg-[#0075FF] rounded-[6.67px] flex items-center justify-center">
-          <span className="text-white font-bold text-xs">M</span>
+          <span className="text-white font-bold text-xs">
+            {getBankInitial(bankName)}
+          </span>
         </div>
       )
     }
 
-    // Generic bank icon with first letter
-    const firstLetter = bankName.charAt(0).toUpperCase()
     return (
-      <div className="w-6 h-6 bg-[#0075FF] rounded-[6.67px] flex items-center justify-center">
-        <span className="text-white font-bold text-xs">{firstLetter}</span>
-      </div>
+      <Image
+        src={logoPath}
+        alt={`${bankName} logo`}
+        width={24}
+        height={24}
+        className="w-6 h-6 rounded-[6.67px] object-contain"
+      />
     )
   }
 
@@ -90,17 +160,26 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] pb-4 font-satoshi">
+    <div className="min-h-screen bg-[#F4F6F8] flex flex-col font-satoshi">
       <PageHeader
         title="Bank accounts"
         showDropdown
         onShareClick={() => console.log('Share clicked')}
       />
 
-      <div className="px-4 space-y-6">
+      <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly">
         {/* Profile Picture Section */}
-        <div className="flex flex-col items-center pt-2">
+        <div className="flex flex-col items-center">
           <div className="relative">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
             {profile?.profilePhotoUrl ? (
               <Image
                 src={profile.profilePhotoUrl}
@@ -119,13 +198,37 @@ export default function ProfilePage() {
                 />
               </div>
             )}
+
+            {/* Upload overlay when uploading */}
+            {updateProfilePhoto.isPending && (
+              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
             <button
               type="button"
-              className="absolute bottom-0 right-0 w-8 h-8 bg-[#E5E7EB] rounded-full flex items-center justify-center border-2 border-white"
+              onClick={handleCameraClick}
+              disabled={updateProfilePhoto.isPending}
+              className="absolute bottom-0 right-0 w-8 h-8 bg-[#E5E7EB] rounded-full flex items-center justify-center border-2 border-white disabled:opacity-50"
             >
               <Camera className="w-4 h-4 text-black" />
             </button>
           </div>
+
+          {/* Photo error message */}
+          {photoError && (
+            <p className="text-xs text-red-500 mt-2 text-center">
+              {photoError}
+            </p>
+          )}
+
+          {/* Success message */}
+          {photoSuccess && (
+            <p className="text-xs text-green-600 mt-2 text-center">
+              Photo updated successfully!
+            </p>
+          )}
 
           <h1 className="font-bold text-xl text-black mt-4 text-center leading-none">
             {profile?.businessName || 'Your Business Name'}
@@ -151,7 +254,7 @@ export default function ProfilePage() {
                 Receiving Bank
               </p>
               <div className="flex items-center gap-2 mt-1">
-                {getBankIcon(bankAccount.bankName)}
+                {renderBankLogo(bankAccount.bankName)}
                 <p className="text-base font-bold text-black">
                   {bankAccount.bankName}
                 </p>
@@ -173,9 +276,6 @@ export default function ProfilePage() {
                 >
                   <Copy className="w-4 h-4 text-[#878F98]" />
                 </button>
-                {copied && (
-                  <span className="text-xs text-green-600">Copied!</span>
-                )}
               </div>
             </div>
           </div>
@@ -205,7 +305,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Activate QR Kit Button */}
-        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white p-4 rounded-2xl">
+        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white p-4 rounded-2xl pb-6">
           {!profile?.merchantSlug && (
             <Button
               onClick={handleActivateQRKit}
@@ -218,10 +318,10 @@ export default function ProfilePage() {
           <button
             onClick={handleViewCustomerView}
             type="button"
-            className="w-full text-sm text-[#00000080] flex items-center justify-center gap-1 mt-2"
+            className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
           >
             What my customers would see when they scan
-            <ExternalLink className="w-4 h-4" />
+            <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
           </button>
         </div>
       </div>
