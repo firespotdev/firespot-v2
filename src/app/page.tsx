@@ -1,0 +1,210 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { BrowserMultiFormatReader } from "@zxing/library";
+import { ArrowUpRight, Zap } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+
+export default function ScannerPage() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasFlash, setHasFlash] = useState(false);
+  const [flashOn, setFlashOn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+
+  // Check browser capability before rendering
+  const isBrowserSupported =
+    typeof window !== "undefined" &&
+    navigator.mediaDevices?.getUserMedia !== undefined;
+
+  useEffect(() => {
+    // Don't start scanner if browser doesn't support camera
+    if (!isBrowserSupported) {
+      setError("Camera is not supported in this browser or environment.");
+      return;
+    }
+
+    let isMounted = true;
+    const codeReader = new BrowserMultiFormatReader();
+    codeReaderRef.current = codeReader;
+
+    const startScanner = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+
+        if (!isMounted) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+
+        // Check if flash is available
+        const tracks = stream.getVideoTracks();
+        if (tracks.length > 0) {
+          const track = tracks[0];
+          const capabilities =
+            track.getCapabilities?.() as MediaTrackCapabilities & {
+              torch?: boolean;
+            };
+          if (capabilities?.torch) {
+            setHasFlash(true);
+          }
+        }
+
+        // Start scanning for QR codes - only if still mounted and video element exists
+        if (isMounted && videoRef.current) {
+          codeReader.decodeFromVideoDevice(
+            null,
+            videoRef.current,
+            (result, err) => {
+              if (result) {
+                // QR code detected - for now just log it
+                console.log("Scanned:", result.getText());
+                // TODO: Navigate to merchant details page
+              }
+              if (err && err.name !== "NotFoundException") {
+                console.error("Scanner error:", err);
+              }
+            },
+          );
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          console.log("Camera error:", err);
+          setError(
+            "Camera access denied. Please allow camera access to scan QR codes.",
+          );
+        }
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      isMounted = false;
+      codeReaderRef.current?.reset();
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [isBrowserSupported]);
+
+  const toggleFlash = async () => {
+    if (!streamRef.current) return;
+
+    const tracks = streamRef.current.getVideoTracks();
+    if (tracks.length === 0) return;
+
+    const track = tracks[0];
+    try {
+      await track.applyConstraints({
+        // @ts-expect-error - torch is not in the standard MediaTrackConstraints type but is supported by browsers
+        advanced: [{ torch: !flashOn }],
+      });
+      setFlashOn(!flashOn);
+    } catch (err) {
+      console.error("Flash toggle failed:", err);
+    }
+  };
+
+  return (
+    <div className="relative min-h-screen bg-black overflow-hidden">
+      {/* Camera Video Feed */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <header className="flex items-center justify-between py-4 px-3">
+          <Image
+            src="/firespot_logo.svg"
+            alt="firespot logo"
+            width={36}
+            height={36}
+          />
+
+          <p className="text-[#FFFFFFCC] text-sm">
+            Scan a firespot QR code to pay
+          </p>
+
+          <button
+            onClick={toggleFlash}
+            disabled={!hasFlash}
+            className={`w-9 h-9 rounded-full flex items-center bg-[#FFFFFF66] justify-center shadow-[0_0_10px_0_rgba(255,255,255,0.3)] transition-colors`}
+          >
+            <Zap fill="#ffffff" stroke="#ffffff" className={`w-5 h-5`} />
+          </button>
+        </header>
+
+        {/* Scanner Frame */}
+        <div className="flex-1 flex items-center justify-center px-8">
+          <div className="flex-1 flex items-center justify-center">
+            {error ? (
+              <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
+                <p className="text-white text-sm mb-2">{error}</p>
+                <p className="text-gray-400 text-xs">
+                  Please ensure you're using a supported browser and have
+                  granted camera permissions.
+                </p>
+              </div>
+            ) : (
+              <div className="w-full max-w-[300px] aspect-square relative">
+                <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-3xl border-white"></div>
+                <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-3xl border-white"></div>
+                <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-3xl border-white"></div>
+                <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 rounded-br-3xl border-white"></div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom Section */}
+        <div className="p-4 space-y-4">
+          <div className="bg-[#FFFFFF66] backdrop-blur-sm rounded-[16px] p-3 flex items-center gap-3">
+            <Image
+              src="/firespot_logo.svg"
+              alt="firespot logo"
+              width={36}
+              height={36}
+            />
+            <div className="flex-1">
+              <p className="text-white font-bold text-[13px] font-satoshi">
+                Pay for your purchase superfast! 🚀
+              </p>
+              <p className="text-[#E1E1E1] text-xs font-satoshi flex items-center gap-1">
+                All Nigerian banks supported.{" "}
+                <Link
+                  href="/signup"
+                  className="underline underline-offset-3 flex items-end gap-[0.7px]"
+                >
+                  Learn more
+                  <ArrowUpRight size={13} />
+                </Link>{" "}
+              </p>
+            </div>
+          </div>
+
+          {/* Pagination Dots */}
+          <div className="flex justify-center gap-1">
+            <div className="w-1 h-1 rounded-full bg-white" />
+            <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
+            <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
