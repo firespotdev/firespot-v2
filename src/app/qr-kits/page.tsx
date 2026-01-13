@@ -65,14 +65,10 @@ export default function QRKitsPage() {
               const statusText = isActive ? 'Active' : 'Inactive'
 
               return (
-                <button
+                <Link
                   key={qrKit._id}
-                  onClick={() => {
-                    // TODO: Navigate to QR kit detail page
-                    console.log('Navigate to QR kit:', qrKit._id)
-                  }}
+                  href={`/qr-kits/${qrKit._id}`}
                   className="w-full flex items-center gap-3 p-3 border-b border-[#F1F1F1] last:border-b-0 hover:bg-[#F9FAFB] transition-colors"
-                  type="button"
                 >
                   <div
                     className={`w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 ${
@@ -103,7 +99,7 @@ export default function QRKitsPage() {
 
                   {/* Chevron */}
                   <ChevronRight className="w-5 h-5 text-[#9CA3AF] shrink-0" />
-                </button>
+                </Link>
               )
             })}
             <Link
