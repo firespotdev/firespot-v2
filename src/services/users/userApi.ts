@@ -8,7 +8,32 @@ import type {
   UpdateProfilePhotoResponse,
   SerialCheckResponse,
   PaymentVerificationResponse,
+  BankAccount,
 } from './interface'
+
+export interface AddBankAccountDto {
+  bankName: string
+  bankCode: string
+  accountNumber: string
+}
+
+export interface AddBankAccountResponse {
+  message: string
+  bankAccount: BankAccount
+}
+
+export interface BankAccountsResponse {
+  bankAccounts: BankAccount[]
+}
+
+export interface SetPrimaryResponse {
+  message: string
+  bankAccount: BankAccount
+}
+
+export interface DeleteBankAccountResponse {
+  message: string
+}
 
 // API functions
 export const userApi = {
@@ -58,6 +83,41 @@ export const userApi = {
           'Content-Type': 'multipart/form-data',
         },
       },
+    )
+    return response.data
+  },
+
+  // Bank account management
+  getBankAccounts: async (): Promise<BankAccountsResponse> => {
+    const response =
+      await apiClient.get<BankAccountsResponse>('/users/bank-accounts')
+    return response.data
+  },
+
+  addBankAccount: async (
+    dto: AddBankAccountDto,
+  ): Promise<AddBankAccountResponse> => {
+    const response = await apiClient.post<AddBankAccountResponse>(
+      '/users/bank-accounts',
+      dto,
+    )
+    return response.data
+  },
+
+  setPrimaryBankAccount: async (
+    accountNumber: string,
+  ): Promise<SetPrimaryResponse> => {
+    const response = await apiClient.patch<SetPrimaryResponse>(
+      `/users/bank-accounts/${accountNumber}/primary`,
+    )
+    return response.data
+  },
+
+  deleteBankAccount: async (
+    accountNumber: string,
+  ): Promise<DeleteBankAccountResponse> => {
+    const response = await apiClient.delete<DeleteBankAccountResponse>(
+      `/users/bank-accounts/${accountNumber}`,
     )
     return response.data
   },
@@ -113,6 +173,50 @@ export function useUpdateProfilePhoto() {
         },
       )
       // Also invalidate to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+// Bank account hooks
+export function useBankAccounts() {
+  return useQuery({
+    queryKey: ['user', 'bank-accounts'],
+    queryFn: userApi.getBankAccounts,
+  })
+}
+
+export function useAddBankAccount() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.addBankAccount,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useSetPrimaryBankAccount() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.setPrimaryBankAccount,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useDeleteBankAccount() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.deleteBankAccount,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
     },
   })

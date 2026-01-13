@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { LoaderCircle } from '@/components/ui'
 import { useUserQRKits } from '@/services/qr'
@@ -38,9 +39,9 @@ export default function QRKitsPage() {
     <div className="min-h-screen bg-[#F4F6F8] flex flex-col font-satoshi">
       {/* Header */}
       <header className="flex items-center py-4 px-4">
-        <button onClick={() => router.back()} type="button">
+        <Link href="/profile">
           <ArrowLeft className="w-6 h-6 text-black" />
-        </button>
+        </Link>
         <h1 className="flex-1 text-center text-base font-bold text-black">
           Manage QR kits
         </h1>
