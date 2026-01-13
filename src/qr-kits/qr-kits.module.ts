@@ -5,6 +5,7 @@ import { QRKitsService } from './qr-kits.service'
 import { QRKit, QRKitSchema } from '../schemas/qrkit.schema'
 import { User, UserSchema } from '../schemas/user.schema'
 import { UsersModule } from '../users/users.module'
+import { ScansModule } from '../scans/scans.module'
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { UsersModule } from '../users/users.module'
       { name: User.name, schema: UserSchema },
     ]),
     forwardRef(() => UsersModule),
+    ScansModule,
   ],
   controllers: [QRKitsController],
   providers: [QRKitsService],

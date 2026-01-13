@@ -6,6 +6,8 @@ import { nanoid } from 'nanoid'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { PaystackService } from '../users/services/paystack.service'
+import { ScansService } from '../scans/scans.service'
+import { detectDeviceType, detectBrowserType } from '../scans/utils/device-detector'
 
 @Injectable()
 export class QRKitsService {
@@ -14,6 +16,7 @@ export class QRKitsService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private paystackService: PaystackService,
     private configService: ConfigService,
+    private scansService: ScansService,
   ) {}
 
   async checkSerialNumber(serialNumber: string) {
@@ -36,7 +39,11 @@ export class QRKitsService {
     return { status: 'available' as const, serialNumber: qrKit.serialNumber }
   }
 
-  async getQRKitBySerial(serialNumber: string) {
+  async getQRKitBySerial(
+    serialNumber: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
     const qrKit = await this.qrKitModel
       .findOne({ serialNumber: serialNumber.toUpperCase() })
       .populate(
@@ -59,6 +66,23 @@ export class QRKitsService {
         'Merchant profile not found or incomplete',
         HttpStatus.BAD_REQUEST,
       )
+    }
+
+    // Create scan record (non-blocking)
+    if (ipAddress && userAgent && qrKit.merchantId) {
+      this.scansService
+        .createScan({
+          qrKitId: qrKit._id.toString(),
+          merchantId: qrKit.merchantId.toString(),
+          ipAddress,
+          userAgent,
+          deviceType: detectDeviceType(userAgent),
+          browserType: detectBrowserType(userAgent),
+        })
+        .catch((err) => {
+          // Log error but don't block the response
+          console.error('Failed to create scan record:', err)
+        })
     }
 
     const bankAccounts =

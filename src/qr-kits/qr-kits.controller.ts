@@ -90,8 +90,22 @@ export class QRKitsController {
     status: 404,
     description: 'QR kit not found',
   })
-  async getQRKitBySerial(@Param('serialNumber') serialNumber: string) {
-    return this.qrKitsService.getQRKitBySerial(serialNumber)
+  async getQRKitBySerial(
+    @Param('serialNumber') serialNumber: string,
+    @Request() req,
+  ) {
+    const ipAddress =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+      req.ip ||
+      req.socket.remoteAddress ||
+      'unknown'
+    const userAgent = req.headers['user-agent'] || 'unknown'
+
+    return this.qrKitsService.getQRKitBySerial(
+      serialNumber,
+      ipAddress,
+      userAgent,
+    )
   }
 
   @Post(':serialNumber/activate')
