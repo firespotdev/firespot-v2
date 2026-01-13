@@ -1,4 +1,8 @@
-export type DrawerContentType = 'bank-accounts' | 'profile-menu' | 'custom'
+export type DrawerContentType =
+  | 'bank-accounts'
+  | 'profile-menu'
+  | 'select-bank'
+  | 'custom'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 

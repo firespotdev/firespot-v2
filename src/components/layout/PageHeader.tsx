@@ -1,13 +1,15 @@
 'use client'
 
-import { ChevronDown, Settings, Share } from 'lucide-react'
+import { ChevronDown, Share } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { useAuthStore } from '@/services/auth'
+import { useDrawerStore } from '@/services/drawer'
 
 interface PageHeaderProps {
   title: string
   showDropdown?: boolean
   onTitleClick?: () => void
-  onSettingsClick?: () => void
   onShareClick?: () => void
   onLogoClick?: () => void
 }
@@ -16,19 +18,39 @@ export function PageHeader({
   title,
   showDropdown = false,
   onTitleClick,
-  onSettingsClick,
   onShareClick,
   onLogoClick,
 }: PageHeaderProps) {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+
+  const handleLeftButtonClick = () => {
+    if (onLogoClick) {
+      onLogoClick()
+      return
+    }
+
+    if (isAuthenticated) {
+      // Merchant: Open profile menu drawer
+      openDrawer({ type: 'profile-menu' })
+    }
+    // Customer: Link will handle navigation to "/"
+  }
+
   return (
     <header className="flex items-center justify-between py-4 px-3">
       <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
-        {onSettingsClick ? (
-          <button onClick={onSettingsClick} type="button">
-            <Settings className="w-5 h-5 text-[#868788]" />
+        {onLogoClick ? (
+          <button onClick={handleLeftButtonClick} type="button">
+            <Image
+              src="/firespot_alt.png"
+              alt="firespot logo"
+              width={20}
+              height={20}
+            />
           </button>
-        ) : onLogoClick ? (
-          <button onClick={onLogoClick} type="button">
+        ) : isAuthenticated ? (
+          <button onClick={handleLeftButtonClick} type="button">
             <Image
               src="/firespot_alt.png"
               alt="firespot logo"
@@ -37,12 +59,14 @@ export function PageHeader({
             />
           </button>
         ) : (
-          <Image
-            src="/firespot_alt.png"
-            alt="firespot logo"
-            width={20}
-            height={20}
-          />
+          <Link href="/">
+            <Image
+              src="/firespot_alt.png"
+              alt="firespot logo"
+              width={20}
+              height={20}
+            />
+          </Link>
         )}
       </div>
 

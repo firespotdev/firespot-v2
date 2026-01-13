@@ -15,6 +15,7 @@ import {
 } from '@/services/drawer'
 import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
 import { ProfileMenuDrawer } from './profile-menu-drawer'
+import { SelectBankDrawer } from './select-bank-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -38,6 +39,11 @@ const DRAWER_CONFIG: Record<
     fullScreen: true,
     Content: ProfileMenuDrawer,
   },
+  'select-bank': {
+    title: 'Transfer to',
+    direction: 'bottom',
+    Content: SelectBankDrawer,
+  },
   custom: {
     title: '',
     Content: () => null,
@@ -53,10 +59,13 @@ export function CustomDrawer() {
   if (!drawerConfig) return null
 
   const { title, HeaderLeft, Content, direction, fullScreen } = drawerConfig
-  const drawerDirection = config.direction || direction
+  const drawerDirection = config.direction || direction || 'bottom'
 
   // For full screen left/right drawers, render content directly without header
-  if (fullScreen && (drawerDirection === 'left' || drawerDirection === 'right')) {
+  if (
+    fullScreen &&
+    (drawerDirection === 'left' || drawerDirection === 'right')
+  ) {
     return (
       <DrawerPrimitive
         open={isOpen}
@@ -65,9 +74,7 @@ export function CustomDrawer() {
       >
         <DrawerContent className="h-full w-full max-w-full bg-white">
           {/* Hidden title for accessibility */}
-          <DrawerTitle className="sr-only">
-            {title || 'Menu'}
-          </DrawerTitle>
+          <DrawerTitle className="sr-only">{title || 'Menu'}</DrawerTitle>
           <Content {...(config.props || {})} closeDrawer={closeDrawer} />
         </DrawerContent>
       </DrawerPrimitive>
