@@ -82,7 +82,8 @@ export default function AddBankAccountPage() {
         clearTimeout(debounceTimerRef.current)
       }
     }
-  }, [accountNumber, selectedBankCode, resolveAccount])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountNumber, selectedBankCode])
 
   if (!isAuthenticated) {
     return null
@@ -126,8 +127,8 @@ export default function AddBankAccountPage() {
       },
       {
         onSuccess: () => {
-          showNotificationToast({ message: 'Bank account added successfully!' })
-          router.push('/bank-accounts')
+          showNotificationToast({ message: 'Bank account added!' })
+          router.push('/profile')
         },
         onError: (err: any) => {
           const message =
@@ -213,7 +214,7 @@ export default function AddBankAccountPage() {
                   fill="#24C166"
                 />
                 <p className="text-sm text-[#24C166] font-medium">
-                  {resolveAccount.data.data.account_name}
+                  {resolveAccount.data.accountName}
                 </p>
               </div>
             )}
