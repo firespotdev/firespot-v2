@@ -1,14 +1,36 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminApiClient } from '@/lib/utils/axios'
+import { adminApiClient, publicApiClient, apiClient } from '@/lib/utils/axios'
 import type {
   QRKit,
   QRKitListResponse,
   QRKitFilters,
   BulkCreateDto,
   QRKitStats,
+  MerchantProfile,
 } from './interface'
 
-// API functions
+// Public API functions (no auth required)
+export const publicQrApi = {
+  getMerchantBySerial: async (serialNumber: string): Promise<MerchantProfile> => {
+    const response = await publicApiClient.get<MerchantProfile>(
+      `/qr-kits/${serialNumber}`,
+    )
+    return response.data
+  },
+}
+
+// User API functions (authenticated user endpoints)
+export const userQrApi = {
+  getUserQRKits: async (): Promise<QRKitListResponse> => {
+    // TODO: This endpoint needs to be created on the backend
+    // Expected endpoint: GET /users/me/qr-kits
+    // For now, this will fail until the backend endpoint is implemented
+    const response = await apiClient.get<QRKitListResponse>('/users/me/qr-kits')
+    return response.data
+  },
+}
+
+// Admin API functions
 export const qrKitsApi = {
   getQRKits: async (filters?: QRKitFilters): Promise<QRKitListResponse> => {
     const response = await adminApiClient.get<QRKitListResponse>(
@@ -164,5 +186,27 @@ export const useDownloadQRCodePNG = () => {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
     },
+  })
+}
+
+// Public hooks (no auth required)
+export const useMerchantBySerial = (serialNumber: string | null) => {
+  return useQuery({
+    queryKey: ['merchant', serialNumber],
+    queryFn: () => {
+      if (!serialNumber) throw new Error('Serial number is required')
+      return publicQrApi.getMerchantBySerial(serialNumber)
+    },
+    enabled: !!serialNumber,
+    retry: false,
+  })
+}
+
+// User hooks (authenticated user endpoints)
+export const useUserQRKits = () => {
+  return useQuery({
+    queryKey: ['user', 'qr-kits'],
+    queryFn: () => userQrApi.getUserQRKits(),
+    retry: false,
   })
 }

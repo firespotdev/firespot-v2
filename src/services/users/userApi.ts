@@ -6,6 +6,8 @@ import type {
   UserProfile,
   QRKitActivationResponse,
   UpdateProfilePhotoResponse,
+  SerialCheckResponse,
+  PaymentVerificationResponse,
 } from './interface'
 
 // API functions
@@ -15,11 +17,29 @@ export const userApi = {
     return response.data
   },
 
+  checkSerialNumber: async (
+    serialNumber: string,
+  ): Promise<SerialCheckResponse> => {
+    const response = await apiClient.get<SerialCheckResponse>(
+      `/qr-kits/${serialNumber}/check`,
+    )
+    return response.data
+  },
+
   initiateActivation: async (
     serialNumber: string,
   ): Promise<QRKitActivationResponse> => {
     const response = await apiClient.post<QRKitActivationResponse>(
       `/qr-kits/${serialNumber}/activate`,
+    )
+    return response.data
+  },
+
+  verifyPayment: async (
+    reference: string,
+  ): Promise<PaymentVerificationResponse> => {
+    const response = await apiClient.get<PaymentVerificationResponse>(
+      `/qr-kits/verify-payment/${reference}`,
     )
     return response.data
   },
@@ -51,9 +71,27 @@ export function useUserProfile() {
   })
 }
 
+export function useCheckSerialNumber() {
+  return useMutation({
+    mutationFn: userApi.checkSerialNumber,
+  })
+}
+
 export function useInitiateActivation() {
   return useMutation({
     mutationFn: userApi.initiateActivation,
+  })
+}
+
+export function useVerifyPayment() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.verifyPayment,
+    onSuccess: () => {
+      // Invalidate user profile to refresh merchantSlug
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
   })
 }
 

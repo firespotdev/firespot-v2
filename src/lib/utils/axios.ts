@@ -72,6 +72,14 @@ adminApiClient.interceptors.response.use(
   },
 )
 
+// Public API client (no authentication required)
+export const publicApiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
+
 // Paystack API client
 export const paystackApiClient = axios.create({
   baseURL: 'https://api.paystack.co',

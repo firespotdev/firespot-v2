@@ -5,15 +5,12 @@ import { useRouter } from 'next/navigation'
 import { Camera, Copy, ChevronRight, ArrowUpRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
-import {
-  useUserProfile,
-  useInitiateActivation,
-  useUpdateProfilePhoto,
-} from '@/services/users'
+import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
+import Link from 'next/link'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -25,8 +22,7 @@ const ALLOWED_FILE_TYPES = [
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { data: profile, isLoading, error } = useUserProfile()
-  const initiateActivation = useInitiateActivation()
+  const { data: profile, isLoading } = useUserProfile()
   const updateProfilePhoto = useUpdateProfilePhoto()
   const [copied, setCopied] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -67,14 +63,11 @@ export default function ProfilePage() {
   }
 
   const handleActivateQRKit = () => {
-    // TODO: Implement QR kit activation flow
-    // This would typically open a modal or navigate to activation page
-    console.log('Activate QR kit clicked')
+    router.push('/activate')
   }
 
   const handleActivationStep = () => {
-    // TODO: Navigate to activation page or show activation modal
-    console.log('Activation step clicked')
+    router.push('/activate')
   }
 
   const handleViewCustomerView = () => {
@@ -234,7 +227,7 @@ export default function ProfilePage() {
             {profile?.businessName || 'Your Business Name'}
           </h1>
 
-          {!profile?.merchantSlug && (
+          {!profile?.merchantSlug ? (
             <button
               onClick={handleActivationStep}
               type="button"
@@ -242,6 +235,14 @@ export default function ProfilePage() {
             >
               1 more step: Activate your QR kit{' '}
               <ChevronRight className="w-4 h-4 text-[#747576]" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="mt-1 text-sm text-[#24C166] font-medium flex items-center gap-1"
+            >
+              Your QR kit is live and accepting payments
+              <ChevronRight className="w-4 h-4 text-[#24C166]" />
             </button>
           )}
         </div>
@@ -306,12 +307,19 @@ export default function ProfilePage() {
 
         {/* Activate QR Kit Button */}
         <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white p-4 rounded-2xl pb-6">
-          {!profile?.merchantSlug && (
+          {!profile?.merchantSlug ? (
             <Button
               onClick={handleActivateQRKit}
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
             >
               Activate your QR kit
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
+            >
+              <Link href="/qr-kits">Manage QR kit</Link>
             </Button>
           )}
 
