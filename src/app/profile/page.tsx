@@ -10,6 +10,7 @@ import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
+import { useDrawerStore } from '@/services/drawer'
 import Link from 'next/link'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -28,6 +29,7 @@ export default function ProfilePage() {
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const user = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -157,6 +159,12 @@ export default function ProfilePage() {
       <PageHeader
         title="Bank accounts"
         showDropdown
+        onTitleClick={() =>
+          openDrawer({
+            type: 'bank-accounts',
+            props: { bankAccounts: profile?.bankAccounts || [] },
+          })
+        }
         onShareClick={() => console.log('Share clicked')}
       />
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers'
+import { CustomDrawer } from '@/components/custom-drawer'
 import './globals.css'
 import { satoshi, sofiaPro } from '@/lib/fonts'
 
@@ -21,6 +22,7 @@ export default function RootLayout({
       >
         <Providers>
           {children}
+          <CustomDrawer />
           <Toaster position="top-center" />
         </Providers>
       </body>
