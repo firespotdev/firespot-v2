@@ -46,3 +46,18 @@ export interface QRKitStats {
     failed: number
   }
 }
+
+// Public merchant profile (returned when customer scans QR)
+export interface MerchantProfile {
+  id: string
+  merchantSlug: string
+  businessName: string
+  bankAccounts: {
+    bankName: string
+    bankCode: string
+    accountNumber: string
+    accountName: string
+    isPrimary: boolean
+  }[]
+  profilePhotoUrl?: string
+}

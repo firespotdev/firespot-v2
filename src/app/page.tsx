@@ -1,18 +1,50 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import { ArrowUpRight, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function ScannerPage() {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasFlash, setHasFlash] = useState(false);
   const [flashOn, setFlashOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasNavigated, setHasNavigated] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+
+  // Extract serial number from QR code content
+  const extractSerialNumber = useCallback((scannedText: string): string | null => {
+    // Expected format: https://firespot.co/qr/{serialNumber}
+    const urlMatch = scannedText.match(/\/qr\/([A-Z0-9-]+)/i);
+    if (urlMatch) {
+      return urlMatch[1].toUpperCase();
+    }
+    // Also accept raw serial numbers (alphanumeric, possibly with dashes)
+    if (/^[A-Z0-9-]{6,}$/i.test(scannedText)) {
+      return scannedText.toUpperCase();
+    }
+    return null;
+  }, []);
+
+  // Handle navigation to payment page
+  const handleScanResult = useCallback((serialNumber: string) => {
+    if (hasNavigated) return;
+    setHasNavigated(true);
+
+    // Stop the scanner and camera
+    codeReaderRef.current?.reset();
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
+
+    // Navigate to payment page
+    router.push(`/pay/${serialNumber}`);
+  }, [router, hasNavigated]);
 
   // Check browser capability before rendering
   const isBrowserSupported =
@@ -67,9 +99,11 @@ export default function ScannerPage() {
             videoRef.current,
             (result, err) => {
               if (result) {
-                // QR code detected - for now just log it
-                console.log("Scanned:", result.getText());
-                // TODO: Navigate to merchant details page
+                const scannedText = result.getText();
+                const serialNumber = extractSerialNumber(scannedText);
+                if (serialNumber) {
+                  handleScanResult(serialNumber);
+                }
               }
               if (err && err.name !== "NotFoundException") {
                 console.error("Scanner error:", err);
@@ -96,7 +130,7 @@ export default function ScannerPage() {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [isBrowserSupported]);
+  }, [isBrowserSupported, extractSerialNumber, handleScanResult]);
 
   const toggleFlash = async () => {
     if (!streamRef.current) return;

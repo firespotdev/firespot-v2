@@ -22,6 +22,20 @@ export interface QRKitActivationResponse {
   serialNumber: string
   activationAmount: number
   qrKitId: string
+  authorizationUrl: string
+  reference: string
+}
+
+export interface SerialCheckResponse {
+  status: 'available' | 'already_bound' | 'not_found'
+  serialNumber: string
+}
+
+export interface PaymentVerificationResponse {
+  message: string
+  serialNumber: string
+  merchantId: string
+  alreadyActivated: boolean
 }
 
 export interface UpdateProfilePhotoResponse {
