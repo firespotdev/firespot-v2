@@ -31,10 +31,12 @@ export const publicQrApi = {
 // User API functions (authenticated user endpoints)
 export const userQrApi = {
   getUserQRKits: async (): Promise<QRKitListResponse> => {
-    // TODO: This endpoint needs to be created on the backend
-    // Expected endpoint: GET /users/me/qr-kits
-    // For now, this will fail until the backend endpoint is implemented
     const response = await apiClient.get<QRKitListResponse>('/users/me/qr-kits')
+    return response.data
+  },
+
+  getUserQRKitById: async (id: string): Promise<QRKit> => {
+    const response = await apiClient.get<QRKit>(`/users/me/qr-kits/${id}`)
     return response.data
   },
 }
@@ -216,6 +218,18 @@ export const useUserQRKits = () => {
   return useQuery({
     queryKey: ['user', 'qr-kits'],
     queryFn: () => userQrApi.getUserQRKits(),
+    retry: false,
+  })
+}
+
+export const useUserQRKit = (id: string | null) => {
+  return useQuery({
+    queryKey: ['user', 'qr-kit', id],
+    queryFn: () => {
+      if (!id) throw new Error('QRKit ID is required')
+      return userQrApi.getUserQRKitById(id)
+    },
+    enabled: !!id,
     retry: false,
   })
 }
