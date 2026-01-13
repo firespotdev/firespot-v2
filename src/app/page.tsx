@@ -1,94 +1,100 @@
-"use client";
+'use client'
 
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { BrowserMultiFormatReader } from "@zxing/library";
-import { ArrowUpRight, Zap } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { BrowserMultiFormatReader } from '@zxing/library'
+import { ArrowUpRight, Zap } from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
 
 export default function ScannerPage() {
-  const router = useRouter();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [hasFlash, setHasFlash] = useState(false);
-  const [flashOn, setFlashOn] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasNavigated, setHasNavigated] = useState(false);
-  const streamRef = useRef<MediaStream | null>(null);
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const router = useRouter()
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [hasFlash, setHasFlash] = useState(false)
+  const [flashOn, setFlashOn] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [hasNavigated, setHasNavigated] = useState(false)
+  const streamRef = useRef<MediaStream | null>(null)
+  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
 
   // Extract serial number from QR code content
-  const extractSerialNumber = useCallback((scannedText: string): string | null => {
-    // Expected format: https://firespot.co/qr/{serialNumber}
-    const urlMatch = scannedText.match(/\/qr\/([A-Z0-9-]+)/i);
-    if (urlMatch) {
-      return urlMatch[1].toUpperCase();
-    }
-    // Also accept raw serial numbers (alphanumeric, possibly with dashes)
-    if (/^[A-Z0-9-]{6,}$/i.test(scannedText)) {
-      return scannedText.toUpperCase();
-    }
-    return null;
-  }, []);
+  const extractSerialNumber = useCallback(
+    (scannedText: string): string | null => {
+      // Expected format: {BASE_URL}/pay/{serialNumber} (new format)
+      const payUrlMatch = scannedText.match(/\/pay\/([A-Z0-9-]+)/i)
+      if (payUrlMatch) {
+        return payUrlMatch[1].toUpperCase()
+      }
+      // Also accept raw serial numbers (alphanumeric, possibly with dashes)
+      if (/^[A-Z0-9-]{6,}$/i.test(scannedText)) {
+        return scannedText.toUpperCase()
+      }
+      return null
+    },
+    [],
+  )
 
   // Handle navigation to payment page
-  const handleScanResult = useCallback((serialNumber: string) => {
-    if (hasNavigated) return;
-    setHasNavigated(true);
+  const handleScanResult = useCallback(
+    (serialNumber: string) => {
+      if (hasNavigated) return
+      setHasNavigated(true)
 
-    // Stop the scanner and camera
-    codeReaderRef.current?.reset();
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-    }
+      // Stop the scanner and camera
+      codeReaderRef.current?.reset()
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+      }
 
-    // Navigate to payment page
-    router.push(`/pay/${serialNumber}`);
-  }, [router, hasNavigated]);
-
-  // Check browser capability before rendering
-  const isBrowserSupported =
-    typeof window !== "undefined" &&
-    navigator.mediaDevices?.getUserMedia !== undefined;
+      // Navigate to payment page
+      router.push(`/pay/${serialNumber}`)
+    },
+    [router, hasNavigated],
+  )
 
   useEffect(() => {
+    // Check browser capability
+    const isBrowserSupported =
+      typeof window !== 'undefined' &&
+      navigator.mediaDevices?.getUserMedia !== undefined
+
     // Don't start scanner if browser doesn't support camera
     if (!isBrowserSupported) {
-      setError("Camera is not supported in this browser or environment.");
-      return;
+      setError('Camera is not supported in this browser or environment.')
+      return
     }
 
-    let isMounted = true;
-    const codeReader = new BrowserMultiFormatReader();
-    codeReaderRef.current = codeReader;
+    let isMounted = true
+    const codeReader = new BrowserMultiFormatReader()
+    codeReaderRef.current = codeReader
 
     const startScanner = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-        });
+          video: { facingMode: 'environment' },
+        })
 
         if (!isMounted) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
+          stream.getTracks().forEach((track) => track.stop())
+          return
         }
 
-        streamRef.current = stream;
+        streamRef.current = stream
 
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+          videoRef.current.srcObject = stream
         }
 
         // Check if flash is available
-        const tracks = stream.getVideoTracks();
+        const tracks = stream.getVideoTracks()
         if (tracks.length > 0) {
-          const track = tracks[0];
+          const track = tracks[0]
           const capabilities =
             track.getCapabilities?.() as MediaTrackCapabilities & {
-              torch?: boolean;
-            };
+              torch?: boolean
+            }
           if (capabilities?.torch) {
-            setHasFlash(true);
+            setHasFlash(true)
           }
         }
 
@@ -98,57 +104,73 @@ export default function ScannerPage() {
             null,
             videoRef.current,
             (result, err) => {
+              // Check if component is still mounted before processing result
+              if (!isMounted) return
+
               if (result) {
-                const scannedText = result.getText();
-                const serialNumber = extractSerialNumber(scannedText);
+                const scannedText = result.getText()
+                const serialNumber = extractSerialNumber(scannedText)
                 if (serialNumber) {
-                  handleScanResult(serialNumber);
+                  handleScanResult(serialNumber)
                 }
               }
-              if (err && err.name !== "NotFoundException") {
-                console.error("Scanner error:", err);
+              // NotFoundException is expected when no QR code is detected, so we ignore it
+              if (err && err.name !== 'NotFoundException') {
+                console.error('Scanner error:', err)
               }
             },
-          );
+          )
         }
       } catch (err: any) {
         if (isMounted) {
-          console.log("Camera error:", err);
+          console.error('Camera error:', err)
           setError(
-            "Camera access denied. Please allow camera access to scan QR codes.",
-          );
+            err.name === 'NotAllowedError' ||
+              err.name === 'PermissionDeniedError'
+              ? 'Camera access denied. Please allow camera access to scan QR codes.'
+              : 'Failed to access camera. Please check your device settings.',
+          )
         }
       }
-    };
+    }
 
-    startScanner();
+    startScanner()
 
     return () => {
-      isMounted = false;
-      codeReaderRef.current?.reset();
+      isMounted = false
+      // Stop scanning
+      codeReaderRef.current?.reset()
+      // Stop camera stream
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current.getTracks().forEach((track) => {
+          track.stop()
+        })
+        streamRef.current = null
       }
-    };
-  }, [isBrowserSupported, extractSerialNumber, handleScanResult]);
+      // Clear video source
+      if (videoRef.current) {
+        videoRef.current.srcObject = null
+      }
+    }
+  }, [extractSerialNumber, handleScanResult])
 
   const toggleFlash = async () => {
-    if (!streamRef.current) return;
+    if (!streamRef.current) return
 
-    const tracks = streamRef.current.getVideoTracks();
-    if (tracks.length === 0) return;
+    const tracks = streamRef.current.getVideoTracks()
+    if (tracks.length === 0) return
 
-    const track = tracks[0];
+    const track = tracks[0]
     try {
       await track.applyConstraints({
         // @ts-expect-error - torch is not in the standard MediaTrackConstraints type but is supported by browsers
         advanced: [{ torch: !flashOn }],
-      });
-      setFlashOn(!flashOn);
+      })
+      setFlashOn(!flashOn)
     } catch (err) {
-      console.error("Flash toggle failed:", err);
+      console.error('Flash toggle failed:', err)
     }
-  };
+  }
 
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
@@ -219,14 +241,14 @@ export default function ScannerPage() {
                 Pay for your purchase superfast! 🚀
               </p>
               <p className="text-[#E1E1E1] text-xs font-satoshi flex items-center gap-1">
-                All Nigerian banks supported.{" "}
+                All Nigerian banks supported.{' '}
                 <Link
                   href="/signup"
                   className="underline underline-offset-3 flex items-end gap-[0.7px]"
                 >
                   Learn more
                   <ArrowUpRight size={13} />
-                </Link>{" "}
+                </Link>{' '}
               </p>
             </div>
           </div>
@@ -240,5 +262,5 @@ export default function ScannerPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

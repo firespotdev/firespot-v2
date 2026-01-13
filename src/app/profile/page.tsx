@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
 import { useDrawerStore } from '@/services/drawer'
+import { useMerchantStats } from '@/services/scans'
 import Link from 'next/link'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -24,6 +25,7 @@ const ALLOWED_FILE_TYPES = [
 export default function ProfilePage() {
   const router = useRouter()
   const { data: profile, isLoading } = useUserProfile()
+  const { data: stats } = useMerchantStats()
   const updateProfilePhoto = useUpdateProfilePhoto()
   const [copied, setCopied] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -292,7 +294,9 @@ export default function ProfilePage() {
         {/* Stats Section */}
         <div className="grid grid-cols-2 gap-3">
           <div className="text-center">
-            <p className="text-xl font-bold text-black leading-none mb-1">28</p>
+            <p className="text-xl font-bold text-black leading-none mb-1">
+              {stats?.scansThisWeek ?? 0}
+            </p>
             <div className="flex items-center justify-center gap-0.5">
               <p className="text-[13px] text-[#00000080] font-medium">
                 Scans this week
@@ -302,7 +306,9 @@ export default function ProfilePage() {
           </div>
 
           <div className="text-center">
-            <p className="text-xl font-bold text-black leading-none mb-1">7</p>
+            <p className="text-xl font-bold text-black leading-none mb-1">
+              {stats?.returningCustomers ?? 0}
+            </p>
             <div className="flex items-center justify-center gap-0.5">
               <p className="text-[13px] text-[#00000080] font-medium">
                 Returning customers

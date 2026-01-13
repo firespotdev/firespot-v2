@@ -10,10 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label, LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
-import {
-  useCheckSerialNumber,
-  useInitiateActivation,
-} from '@/services/users'
+import { useCheckSerialNumber, useInitiateActivation } from '@/services/users'
 
 type ViewMode = 'scan' | 'serial' | 'confirm' | 'callback'
 
@@ -145,11 +142,13 @@ function ActivatePageContent() {
             if (result) {
               const scannedText = result.getText()
               // Extract serial number from QR code URL
-              // Expected format: https://firespot.co/qr/{serialNumber}
-              const match = scannedText.match(/\/qr\/([A-Z0-9-]+)/i)
-              const serial = match ? match[1] : scannedText
-              setSerialNumber(serial.toUpperCase())
-              handleSerialValidation(serial.toUpperCase())
+              // Expected format: {BASE_URL}/pay/{serialNumber} (new format)
+              const payMatch = scannedText.match(/\/pay\/([A-Z0-9-]+)/i)
+              if (payMatch) {
+                const serial = payMatch[1]
+                setSerialNumber(serial.toUpperCase())
+                handleSerialValidation(serial.toUpperCase())
+              }
             }
           })
         }

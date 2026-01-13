@@ -6,7 +6,15 @@ export interface QRKit {
   activationStatus: 'pending' | 'activated' | 'deactivated'
   paymentStatus: 'pending' | 'successful' | 'failed'
   activationAmount: number
-  merchantId?: string
+  merchantId?:
+    | string
+    | {
+        _id: string
+        phoneNumber?: string
+        businessName?: string
+        merchantSlug?: string
+        bankAccounts?: any[]
+      }
   createdAt: string
   updatedAt: string
 }

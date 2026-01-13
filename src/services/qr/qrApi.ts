@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApiClient, publicApiClient, apiClient } from '@/lib/utils/axios'
+import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import type {
   QRKit,
   QRKitListResponse,
@@ -11,9 +12,17 @@ import type {
 
 // Public API functions (no auth required)
 export const publicQrApi = {
-  getMerchantBySerial: async (serialNumber: string): Promise<MerchantProfile> => {
+  getMerchantBySerial: async (
+    serialNumber: string,
+  ): Promise<MerchantProfile> => {
+    const fingerprint = getCustomerFingerprint()
     const response = await publicApiClient.get<MerchantProfile>(
       `/qr-kits/${serialNumber}`,
+      {
+        headers: {
+          'x-customer-fingerprint': fingerprint,
+        },
+      },
     )
     return response.data
   },

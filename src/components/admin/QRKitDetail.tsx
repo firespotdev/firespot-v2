@@ -257,9 +257,32 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                   </div>
                   {qrKit.merchantId && (
                     <div>
-                      <dt className="text-xs text-gray-400">Merchant ID</dt>
-                      <dd className="font-mono text-sm text-gray-900">
-                        {qrKit.merchantId}
+                      <dt className="text-xs text-gray-400">Merchant</dt>
+                      <dd className="text-sm text-gray-900">
+                        {typeof qrKit.merchantId === 'string' ? (
+                          <span className="font-mono">{qrKit.merchantId}</span>
+                        ) : (
+                          <div className="space-y-1">
+                            {qrKit.merchantId.businessName && (
+                              <p className="font-medium">
+                                {qrKit.merchantId.businessName}
+                              </p>
+                            )}
+                            {qrKit.merchantId.merchantSlug && (
+                              <p className="font-mono text-xs text-gray-500">
+                                Slug: {qrKit.merchantId.merchantSlug}
+                              </p>
+                            )}
+                            {qrKit.merchantId.phoneNumber && (
+                              <p className="text-xs text-gray-500">
+                                {qrKit.merchantId.phoneNumber}
+                              </p>
+                            )}
+                            <p className="font-mono text-xs text-gray-400">
+                              ID: {qrKit.merchantId._id}
+                            </p>
+                          </div>
+                        )}
                       </dd>
                     </div>
                   )}
