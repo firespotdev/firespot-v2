@@ -103,7 +103,7 @@ export class QRCodeService {
    */
   async getQRCodeAsPNG(publicId: string): Promise<Buffer> {
     try {
-      // Get SVG URL from Cloudinary (auto-detects format)
+      // Get svg url from Cloudinary (auto-detects format)
       const svgUrl = cloudinary.url(publicId, {
         resource_type: 'image',
       })
