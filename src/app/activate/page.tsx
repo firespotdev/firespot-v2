@@ -293,7 +293,7 @@ function ActivatePageContent() {
             </button>
           </header>
 
-          <div className="flex-1 flex flex-col items-center justify-center px-8 bg-black">
+          <div className="flex-1 flex flex-col items-center justify-center px-8">
             <p className="text-white text-[15px] font-medium text-center mb-8 leading-[140%]">
               Scan an unassigned firespot QR kit
               <br />
