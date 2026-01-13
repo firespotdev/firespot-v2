@@ -29,6 +29,7 @@ import { UsersService } from './users.service'
 import { PaystackService } from './services/paystack.service'
 import { AddBankAccountDto } from './dto/add-bank-account.dto'
 import { UpdateMerchantSlugDto } from './dto/update-merchant-slug.dto'
+import { VerifyAccountDto } from './dto/verify-account.dto'
 
 @ApiTags('users')
 @Controller('users')
@@ -73,6 +74,28 @@ export class UsersController {
         slug: bank.slug,
       })),
     }
+  }
+
+  @Post('bank-accounts/resolve')
+  @ApiOperation({
+    summary: 'Resolve bank account',
+    description:
+      'Verifies a bank account number and returns the account name. Uses Paystack API.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Account resolved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        accountName: { type: 'string', example: 'JOHN DOE' },
+        accountNumber: { type: 'string', example: '0123456789' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Invalid account details' })
+  async resolveAccount(@Body() dto: VerifyAccountDto) {
+    return this.usersService.verifyBankAccount(dto)
   }
 
   @Post('bank-accounts')
