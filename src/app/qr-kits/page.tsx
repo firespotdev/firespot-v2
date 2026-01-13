@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight, CirclePlus, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { LoaderCircle } from '@/components/ui'
@@ -45,7 +45,9 @@ export default function QRKitsPage() {
         <h1 className="flex-1 text-center text-base font-bold text-black">
           Manage QR kits
         </h1>
-        <div className="w-10" /> {/* Spacer for centering */}
+        <Link href="/activate" className="w-10 flex justify-end">
+          <Plus className="w-6 h-6 text-black" />
+        </Link>
       </header>
 
       {/* QR Kits List */}
@@ -57,7 +59,7 @@ export default function QRKitsPage() {
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+          <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
             {qrKits.map((qrKit, index) => {
               const isActive = qrKit.activationStatus === 'activated'
               const statusText = isActive ? 'Active' : 'Inactive'
@@ -75,7 +77,7 @@ export default function QRKitsPage() {
                   <div
                     className={`w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 ${
                       isActive
-                        ? 'bg-linear-to-br from-[#FF6B35] to-[#8B2E8B]'
+                        ? 'bg-linear-to-br from-[#FB5012] to-[#D72483]'
                         : 'bg-[#F1F1F1]'
                     }`}
                   >
@@ -104,6 +106,20 @@ export default function QRKitsPage() {
                 </button>
               )
             })}
+            <Link
+              href="/activate"
+              className="flex items-center gap-3 px-4 py-3"
+            >
+              <CirclePlus
+                fill="#0075FF"
+                stroke="#FFFFFF"
+                strokeWidth={2}
+                size={24}
+              />
+              <span className="text-sm text-[#0075FF] font-bold">
+                Activate another QR kit
+              </span>
+            </Link>
           </div>
         )}
       </div>

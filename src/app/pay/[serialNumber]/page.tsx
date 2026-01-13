@@ -6,6 +6,7 @@ import { Copy, Check } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMerchantBySerial } from '@/services/qr'
+import { useRecordAccountCopy } from '@/services/scans'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
 
@@ -13,6 +14,7 @@ export default function PaymentPage() {
   const params = useParams()
   const serialNumber = params.serialNumber as string
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
+  const recordCopy = useRecordAccountCopy()
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
 
@@ -20,6 +22,15 @@ export default function PaymentPage() {
     navigator.clipboard.writeText(accountNumber)
     setCopiedAccount(accountNumber)
     showNotificationToast({ message: 'Account number copied!' })
+    
+    // Record copy event
+    recordCopy.mutate(serialNumber, {
+      onError: (err) => {
+        // Silently fail - don't interrupt user experience
+        console.error('Failed to record copy event:', err)
+      },
+    })
+    
     setTimeout(() => setCopiedAccount(null), 2000)
   }
 
