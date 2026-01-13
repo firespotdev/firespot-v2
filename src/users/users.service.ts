@@ -347,6 +347,24 @@ export class UsersService {
     }
   }
 
+  async getUserQRKitById(userId: string, qrKitId: string) {
+    const userObjectId = new Types.ObjectId(userId)
+    const qrKitObjectId = new Types.ObjectId(qrKitId)
+
+    const qrKit = await this.qrKitModel
+      .findOne({ _id: qrKitObjectId, merchantId: userObjectId })
+      .exec()
+
+    if (!qrKit) {
+      throw new HttpException(
+        'QR kit not found or does not belong to you',
+        HttpStatus.NOT_FOUND,
+      )
+    }
+
+    return qrKit
+  }
+
   private sanitizeUser(user: UserDocument) {
     return {
       id: user._id,
