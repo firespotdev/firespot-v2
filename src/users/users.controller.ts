@@ -340,6 +340,62 @@ export class UsersController {
     return this.usersService.getUserProfile(req.user.userId)
   }
 
+  @Get('me/qr-kits')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get user QR kits',
+    description:
+      "Retrieves all QR kits associated with the authenticated user's account.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'QR kits retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              _id: { type: 'string' },
+              serialNumber: { type: 'string' },
+              activationStatus: {
+                type: 'string',
+                enum: ['pending', 'activated', 'deactivated'],
+              },
+              paymentStatus: {
+                type: 'string',
+                enum: ['pending', 'successful', 'failed'],
+              },
+              activationAmount: { type: 'number' },
+              qrCodeSvgUrl: { type: 'string', nullable: true },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' },
+            },
+          },
+        },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            totalPages: { type: 'number' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Invalid or missing JWT token',
+  })
+  async getUserQRKits(@Request() req) {
+    return this.usersService.getUserQRKits(req.user.userId)
+  }
+
   @Patch('me/slug')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')

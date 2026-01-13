@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { MerchantsModule } from './merchants/merchants.module';
 import { QRKitsModule } from './qr-kits/qr-kits.module';
 import { AdminModule } from './admin/admin.module';
+import { PaymentsModule } from './payments/payments.module';
 import { getDatabaseConfig } from './config/database.config';
 
 @Module({
@@ -26,6 +27,7 @@ import { getDatabaseConfig } from './config/database.config';
     MerchantsModule,
     QRKitsModule,
     AdminModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

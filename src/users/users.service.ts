@@ -1,7 +1,8 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { User, UserDocument } from '../schemas/user.schema'
+import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { PaystackService } from './services/paystack.service'
 import { CloudinaryService } from './services/cloudinary.service'
 import { SetupProfileDto } from './dto/setup-profile.dto'
@@ -12,6 +13,7 @@ import { AddBankAccountDto } from './dto/add-bank-account.dto'
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
   ) {}
@@ -321,6 +323,27 @@ export class UsersService {
     return {
       message: 'Merchant slug updated successfully',
       merchantSlug: user.merchantSlug,
+    }
+  }
+
+  async getUserQRKits(userId: string) {
+    // Convert string userId to ObjectId for proper querying
+    // Mongoose should handle this automatically, but being explicit ensures it works
+    const userObjectId = new Types.ObjectId(userId)
+
+    const qrKits = await this.qrKitModel
+      .find({ merchantId: userObjectId })
+      .sort({ createdAt: -1 })
+      .exec()
+
+    return {
+      data: qrKits,
+      pagination: {
+        page: 1,
+        limit: qrKits.length,
+        total: qrKits.length,
+        totalPages: 1,
+      },
     }
   }
 

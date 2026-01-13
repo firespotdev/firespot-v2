@@ -5,11 +5,15 @@ import { UsersService } from './users.service';
 import { PaystackService } from './services/paystack.service';
 import { CloudinaryService } from './services/cloudinary.service';
 import { User, UserSchema } from '../schemas/user.schema';
+import { QRKit, QRKitSchema } from '../schemas/qrkit.schema';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: QRKit.name, schema: QRKitSchema },
+    ]),
     forwardRef(() => AuthModule),
   ],
   controllers: [UsersController],

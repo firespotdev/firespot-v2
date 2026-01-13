@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Request } from '@nestjs/common'
+import { Controller, Get, Post, Param, Body, UseGuards, Request, Query } from '@nestjs/common'
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiParam,
+  ApiQuery,
   ApiBearerAuth,
 } from '@nestjs/swagger'
 import { QRKitsService } from './qr-kits.service'
@@ -13,6 +14,36 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 @Controller('qr-kits')
 export class QRKitsController {
   constructor(private readonly qrKitsService: QRKitsService) {}
+
+  @Get(':serialNumber/check')
+  @ApiOperation({
+    summary: 'Check QR kit serial number availability',
+    description:
+      'Checks if a QR kit serial number exists and is available for activation.',
+  })
+  @ApiParam({
+    name: 'serialNumber',
+    description: 'QR kit serial number to check',
+    example: '23467GART677',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Serial number check result',
+    schema: {
+      type: 'object',
+      properties: {
+        status: {
+          type: 'string',
+          enum: ['available', 'already_bound', 'not_found'],
+          example: 'available',
+        },
+        serialNumber: { type: 'string', example: '23467GART677' },
+      },
+    },
+  })
+  async checkSerialNumber(@Param('serialNumber') serialNumber: string) {
+    return this.qrKitsService.checkSerialNumber(serialNumber)
+  }
 
   @Get(':serialNumber')
   @ApiOperation({
@@ -110,5 +141,43 @@ export class QRKitsController {
     @Request() req,
   ) {
     return this.qrKitsService.initiateActivation(serialNumber, req.user.userId)
+  }
+
+  @Get('verify-payment/:reference')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Verify QR kit activation payment',
+    description:
+      'Verifies a Paystack payment and completes QR kit activation if successful.',
+  })
+  @ApiParam({
+    name: 'reference',
+    description: 'Paystack payment reference',
+    example: 'qrkit_23467GART677_abc123',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Payment verified and QR kit activated',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'QR kit activated successfully' },
+        serialNumber: { type: 'string', example: '23467GART677' },
+        merchantId: { type: 'string' },
+        alreadyActivated: { type: 'boolean', example: false },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Payment verification failed',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'QR kit not found for this payment reference',
+  })
+  async verifyPayment(@Param('reference') reference: string) {
+    return this.qrKitsService.completeActivationByReference(reference)
   }
 }
