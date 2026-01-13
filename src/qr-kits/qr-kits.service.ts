@@ -1,6 +1,8 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { ConfigService } from '@nestjs/config'
 import { Model } from 'mongoose'
+import { nanoid } from 'nanoid'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { PaystackService } from '../users/services/paystack.service'
@@ -11,7 +13,28 @@ export class QRKitsService {
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private paystackService: PaystackService,
+    private configService: ConfigService,
   ) {}
+
+  async checkSerialNumber(serialNumber: string) {
+    const qrKit = await this.qrKitModel.findOne({
+      serialNumber: serialNumber.toUpperCase(),
+    })
+
+    if (!qrKit) {
+      return { status: 'not_found' as const, serialNumber: serialNumber.toUpperCase() }
+    }
+
+    if (qrKit.activationStatus === 'activated') {
+      return { status: 'already_bound' as const, serialNumber: qrKit.serialNumber }
+    }
+
+    if (qrKit.merchantId) {
+      return { status: 'already_bound' as const, serialNumber: qrKit.serialNumber }
+    }
+
+    return { status: 'available' as const, serialNumber: qrKit.serialNumber }
+  }
 
   async getQRKitBySerial(serialNumber: string) {
     const qrKit = await this.qrKitModel
@@ -95,14 +118,32 @@ export class QRKitsService {
       )
     }
 
-    // Initialize Paystack payment
-    // This would typically create a Paystack transaction
-    // For now, returning activation details
     const activationAmount = qrKit.activationAmount || 200000 // NGN 2,000 in kobo
+    const reference = `qrkit_${qrKit.serialNumber}_${nanoid(10)}`
+    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
+    const callbackUrl = `${frontendUrl}/activate?mode=callback&reference=${reference}`
+
+    // Use phone number as pseudo-email for Paystack
+    const email = `${user.phoneNumber}@firespot.co`
+
+    // Initialize Paystack payment
+    const paystackResponse = await this.paystackService.initializeTransaction({
+      email,
+      amount: activationAmount,
+      reference,
+      callbackUrl,
+      metadata: {
+        qrKitId: qrKit._id.toString(),
+        serialNumber: qrKit.serialNumber,
+        userId: userId,
+      },
+    })
 
     // Link QR kit to merchant (pending payment)
     qrKit.merchantId = user._id as any
     qrKit.activationStatus = 'pending'
+    qrKit.paystackReference = paystackResponse.reference
+    qrKit.paystackAccessCode = paystackResponse.accessCode
     await qrKit.save()
 
     return {
@@ -110,38 +151,88 @@ export class QRKitsService {
       serialNumber: qrKit.serialNumber,
       activationAmount: activationAmount / 100, // Convert to Naira
       qrKitId: qrKit._id,
+      authorizationUrl: paystackResponse.authorizationUrl,
+      reference: paystackResponse.reference,
     }
   }
 
-  async completeActivation(qrKitId: string, paystackReference: string) {
-    const qrKit = await this.qrKitModel.findById(qrKitId)
+  async completeActivationByReference(reference: string) {
+    const qrKit = await this.qrKitModel.findOne({ paystackReference: reference })
 
     if (!qrKit) {
-      throw new HttpException('QR kit not found', HttpStatus.NOT_FOUND)
+      throw new HttpException('QR kit not found for this payment reference', HttpStatus.NOT_FOUND)
     }
 
     if (qrKit.activationStatus === 'activated') {
+      return {
+        message: 'QR kit is already activated',
+        serialNumber: qrKit.serialNumber,
+        merchantId: qrKit.merchantId,
+        alreadyActivated: true,
+      }
+    }
+
+    // Verify payment with Paystack
+    const verification = await this.paystackService.verifyTransaction(reference)
+
+    if (verification.status !== 'success') {
+      qrKit.paymentStatus = 'failed'
+      await qrKit.save()
       throw new HttpException(
-        'QR kit is already activated',
+        'Payment verification failed',
         HttpStatus.BAD_REQUEST,
       )
     }
 
-    // Verify payment with Paystack
-    // TODO: Implement real payment verification
-    // For now, marking as activated
+    qrKit.paymentStatus = 'successful'
+    qrKit.activationStatus = 'activated'
+    qrKit.paidAt = new Date(verification.paidAt)
+    qrKit.activatedAt = new Date()
+    await qrKit.save()
 
-    qrKit.paystackReference = paystackReference
+    // Update user's merchantSlug if not set
+    if (qrKit.merchantId) {
+      const user = await this.userModel.findById(qrKit.merchantId)
+      if (user && !user.merchantSlug) {
+        user.merchantSlug = nanoid(6).toUpperCase()
+        await user.save()
+      }
+    }
+
+    return {
+      message: 'QR kit activated successfully',
+      serialNumber: qrKit.serialNumber,
+      merchantId: qrKit.merchantId,
+      alreadyActivated: false,
+    }
+  }
+
+  async completeActivationByWebhook(reference: string) {
+    const qrKit = await this.qrKitModel.findOne({ paystackReference: reference })
+
+    if (!qrKit) {
+      return { success: false, message: 'QR kit not found' }
+    }
+
+    if (qrKit.activationStatus === 'activated') {
+      return { success: true, message: 'Already activated' }
+    }
+
     qrKit.paymentStatus = 'successful'
     qrKit.activationStatus = 'activated'
     qrKit.paidAt = new Date()
     qrKit.activatedAt = new Date()
     await qrKit.save()
 
-    return {
-      message: 'QR kit activated successfully',
-      serialNumber: qrKit.serialNumber,
-      merchantId: qrKit.merchantId,
+    // Update user's merchantSlug if not set
+    if (qrKit.merchantId) {
+      const user = await this.userModel.findById(qrKit.merchantId)
+      if (user && !user.merchantSlug) {
+        user.merchantSlug = nanoid(6).toUpperCase()
+        await user.save()
+      }
     }
+
+    return { success: true, message: 'Activated via webhook' }
   }
 }
