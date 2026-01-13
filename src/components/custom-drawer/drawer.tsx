@@ -8,22 +8,35 @@ import {
   DrawerTitle,
   DrawerClose,
 } from '@/components/ui/drawer'
-import { useDrawerStore, type DrawerContentType } from '@/services/drawer'
+import {
+  useDrawerStore,
+  type DrawerContentType,
+  type DrawerDirection,
+} from '@/services/drawer'
 import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
+import { ProfileMenuDrawer } from './profile-menu-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
   DrawerContentType,
   {
     title: string
+    direction?: DrawerDirection
     HeaderLeft?: React.ComponentType
     Content: React.ComponentType<any>
+    fullScreen?: boolean
   }
 > = {
   'bank-accounts': {
     title: 'Bank accounts',
     HeaderLeft: BankDrawerHeaderLeft,
     Content: BankDrawer,
+  },
+  'profile-menu': {
+    title: '',
+    direction: 'left',
+    fullScreen: true,
+    Content: ProfileMenuDrawer,
   },
   custom: {
     title: '',
@@ -39,12 +52,33 @@ export function CustomDrawer() {
   const drawerConfig = DRAWER_CONFIG[config.type]
   if (!drawerConfig) return null
 
-  const { title, HeaderLeft, Content } = drawerConfig
+  const { title, HeaderLeft, Content, direction, fullScreen } = drawerConfig
+  const drawerDirection = config.direction || direction
+
+  // For full screen left/right drawers, render content directly without header
+  if (fullScreen && (drawerDirection === 'left' || drawerDirection === 'right')) {
+    return (
+      <DrawerPrimitive
+        open={isOpen}
+        onOpenChange={(open) => !open && closeDrawer()}
+        direction={drawerDirection}
+      >
+        <DrawerContent className="h-full w-full max-w-full bg-white">
+          {/* Hidden title for accessibility */}
+          <DrawerTitle className="sr-only">
+            {title || 'Menu'}
+          </DrawerTitle>
+          <Content {...(config.props || {})} closeDrawer={closeDrawer} />
+        </DrawerContent>
+      </DrawerPrimitive>
+    )
+  }
 
   return (
     <DrawerPrimitive
       open={isOpen}
       onOpenChange={(open) => !open && closeDrawer()}
+      direction={drawerDirection}
     >
       <DrawerContent className="max-h-[85vh] bg-[#F4F6F8]">
         {/* Header */}

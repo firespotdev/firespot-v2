@@ -151,6 +151,7 @@ export default function ProfilePage() {
       <PageHeader
         title="Bank accounts"
         showDropdown
+        onLogoClick={() => openDrawer({ type: 'profile-menu' })}
         onTitleClick={() =>
           openDrawer({
             type: 'bank-accounts',
@@ -240,8 +241,15 @@ export default function ProfilePage() {
               href="/qr-kits"
               className="mt-1 text-sm text-[#24C166] font-medium flex items-center gap-1"
             >
+              <Image
+                src="/icons/ping.svg"
+                alt="live ping"
+                width={16}
+                height={16}
+                className="animate-pulse"
+              />
               Your QR kit is live and accepting payments
-              <ChevronRight className="w-4 h-4 text-[#24C166]" />
+              <ChevronRight className="w-4 h-4 text-[#24C166] mt-[1%]" />
             </Link>
           )}
         </div>

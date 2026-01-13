@@ -9,6 +9,7 @@ interface PageHeaderProps {
   onTitleClick?: () => void
   onSettingsClick?: () => void
   onShareClick?: () => void
+  onLogoClick?: () => void
 }
 
 export function PageHeader({
@@ -17,6 +18,7 @@ export function PageHeader({
   onTitleClick,
   onSettingsClick,
   onShareClick,
+  onLogoClick,
 }: PageHeaderProps) {
   return (
     <header className="flex items-center justify-between py-4 px-3">
@@ -24,6 +26,15 @@ export function PageHeader({
         {onSettingsClick ? (
           <button onClick={onSettingsClick} type="button">
             <Settings className="w-5 h-5 text-[#868788]" />
+          </button>
+        ) : onLogoClick ? (
+          <button onClick={onLogoClick} type="button">
+            <Image
+              src="/firespot_alt.png"
+              alt="firespot logo"
+              width={20}
+              height={20}
+            />
           </button>
         ) : (
           <Image
