@@ -64,14 +64,6 @@ export default function ProfilePage() {
     }
   }
 
-  const handleActivateQRKit = () => {
-    router.push('/activate')
-  }
-
-  const handleActivationStep = () => {
-    router.push('/activate')
-  }
-
   const handleViewCustomerView = () => {
     // TODO: Navigate to customer view page or open in new tab
     if (profile?.merchantSlug) {
@@ -236,22 +228,21 @@ export default function ProfilePage() {
           </h1>
 
           {!profile?.merchantSlug ? (
-            <button
-              onClick={handleActivationStep}
-              type="button"
+            <Link
+              href="/activate"
               className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
             >
               1 more step: Activate your QR kit{' '}
               <ChevronRight className="w-4 h-4 text-[#747576]" />
-            </button>
+            </Link>
           ) : (
-            <button
-              type="button"
+            <Link
+              href="/qr-kits"
               className="mt-1 text-sm text-[#24C166] font-medium flex items-center gap-1"
             >
               Your QR kit is live and accepting payments
               <ChevronRight className="w-4 h-4 text-[#24C166]" />
-            </button>
+            </Link>
           )}
         </div>
 
@@ -315,21 +306,16 @@ export default function ProfilePage() {
 
         {/* Activate QR Kit Button */}
         <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white p-4 rounded-2xl pb-6">
-          {!profile?.merchantSlug ? (
-            <Button
-              onClick={handleActivateQRKit}
-              className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
-            >
-              Activate your QR kit
-            </Button>
-          ) : (
-            <Button
-              asChild
-              className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
-            >
+          <Button
+            asChild
+            className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
+          >
+            {!profile?.merchantSlug ? (
+              <Link href="/activate">Activate your QR kit</Link>
+            ) : (
               <Link href="/qr-kits">Manage QR kit</Link>
-            </Button>
-          )}
+            )}
+          </Button>
 
           <button
             onClick={handleViewCustomerView}

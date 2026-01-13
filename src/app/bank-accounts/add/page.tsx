@@ -12,7 +12,7 @@ import {
   SelectContent,
   SelectItem,
   Button,
-  LoaderCircle,
+  Spinner,
 } from '@/components/ui'
 import { useBanks, useResolveAccount } from '@/services/paystack'
 import { useAddBankAccount } from '@/services/users'
@@ -138,30 +138,22 @@ export default function AddBankAccountPage() {
     )
   }
 
-  const isFormValid =
-    selectedBankCode &&
-    accountNumber.length === 10 &&
-    resolveAccount.isSuccess
-
   return (
     <div className="min-h-screen bg-white flex flex-col font-satoshi">
       {/* Header */}
       <header className="flex items-center p-4">
-        <button
+        <ArrowLeft
+          className="w-6 h-6 text-black"
           onClick={() => router.back()}
-          type="button"
-          className="w-9 h-9 flex items-center justify-center"
-        >
-          <ArrowLeft className="w-6 h-6 text-black" />
-        </button>
+        />
       </header>
 
       {/* Content */}
-      <div className="flex-1 px-4 pb-32">
+      <div className="flex-1 px-4">
         <h1 className="font-bold text-xl text-black mb-1">
           Add another bank account
         </h1>
-        <p className="text-sm text-[#00000066] mb-6">
+        <p className="text-sm text-[#00000080] font-medium mb-6">
           Give your customers more ways to pay you
         </p>
 
@@ -201,9 +193,7 @@ export default function AddBankAccountPage() {
               className="w-full font-medium"
               value={accountNumber}
               onChange={(e) =>
-                setAccountNumber(
-                  e.target.value.replace(/\D/g, '').slice(0, 10),
-                )
+                setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
               }
             />
 
@@ -218,7 +208,10 @@ export default function AddBankAccountPage() {
 
             {resolveAccount.isSuccess && (
               <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
-                <CircleCheck className="w-5 h-5 text-[#ffffff]" fill="#24C166" />
+                <CircleCheck
+                  className="w-5 h-5 text-[#ffffff]"
+                  fill="#24C166"
+                />
                 <p className="text-sm text-[#24C166] font-medium">
                   {resolveAccount.data.data.account_name}
                 </p>
@@ -239,14 +232,13 @@ export default function AddBankAccountPage() {
       </div>
 
       {/* Fixed bottom button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white p-4 pb-6 border-t border-[#F1F1F1]">
+      <div className="fixed bottom-0 left-0 right-0 bg-white p-4 pb-6">
         <Button
           type="submit"
           onClick={handleSubmit}
-          disabled={!isFormValid || addBankAccount.isPending}
           className="w-full bg-black text-white rounded-[48px] h-12 font-bold disabled:opacity-50"
         >
-          {addBankAccount.isPending ? 'Saving...' : 'Save account details'}
+          {addBankAccount.isPending ? <Spinner /> : 'Save account details'}
         </Button>
       </div>
     </div>

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Plus, CirclePlus } from 'lucide-react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { useSetPrimaryBankAccount } from '@/services/users'
 import { showNotificationToast, TagFooter } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
@@ -15,7 +15,6 @@ interface BankDrawerProps {
 }
 
 export function BankDrawer({ bankAccounts }: BankDrawerProps) {
-  const router = useRouter()
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const setPrimaryBankAccount = useSetPrimaryBankAccount()
 
@@ -69,11 +68,6 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
       }
     }
     setDraggedIndex(null)
-  }
-
-  const handleAddBankAccount = () => {
-    closeDrawer()
-    router.push('/bank-accounts/add')
   }
 
   const renderBankLogo = (bankName: string) => {
@@ -147,9 +141,9 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="#CCCCCC"
-                  stroke-width="2.25"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  strokeWidth="2.25"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   className="lucide lucide-menu-icon lucide-menu"
                 >
                   <path d="M4 5h16" />
@@ -157,9 +151,9 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
                 </svg>
               </div>
             ))}
-            <button
-              type="button"
-              onClick={handleAddBankAccount}
+            <Link
+              href="/bank-accounts/add"
+              onClick={closeDrawer}
               className="flex items-center gap-3 px-4 py-3"
             >
               <CirclePlus
@@ -171,7 +165,7 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
               <span className="text-sm text-[#0075FF] font-bold">
                 Add a bank account
               </span>
-            </button>
+            </Link>
           </div>
         )}
       </div>
@@ -183,21 +177,15 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
 
 // Header actions for bank accounts drawer
 export function BankDrawerHeaderLeft() {
-  const router = useRouter()
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
 
-  const handleAddBankAccount = () => {
-    closeDrawer()
-    router.push('/bank-accounts/add')
-  }
-
   return (
-    <button
-      onClick={handleAddBankAccount}
-      type="button"
+    <Link
+      href="/bank-accounts/add"
+      onClick={closeDrawer}
       className="w-9 h-9 flex items-center justify-center"
     >
       <Plus className="w-6 h-6 text-black" />
-    </button>
+    </Link>
   )
 }

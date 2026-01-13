@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BrowserMultiFormatReader } from '@zxing/library'
 import { X, Zap, ArrowLeft, ChevronRight, Check } from 'lucide-react'
+import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -255,10 +256,6 @@ function ActivatePageContent() {
     })
   }
 
-  const handleClose = () => {
-    router.push('/profile')
-  }
-
   if (!isAuthenticated) {
     return null
   }
@@ -289,12 +286,12 @@ function ActivatePageContent() {
 
         <div className="relative z-10 flex flex-col min-h-screen">
           <header className="flex items-center justify-between py-4 px-4">
-            <button
-              onClick={handleClose}
+            <Link
+              href="/profile"
               className="w-9 h-9 rounded-full flex items-center justify-center bg-white/20"
             >
               <X className="w-5 h-5 text-black" />
-            </button>
+            </Link>
 
             <h1 className="text-black font-bold text-base">
               Activate a Firespot QRkit
