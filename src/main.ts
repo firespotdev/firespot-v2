@@ -1,18 +1,21 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { AppModule } from './app.module';
+import { NestFactory } from '@nestjs/core'
+import { ValidationPipe } from '@nestjs/common'
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger'
+import { AppModule } from './app.module'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true, // Enable raw body for webhook signature verification
-  });
+  })
 
+  const isDevelopment = process.env.NODE_ENV === 'development'
   // Enable CORS
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: isDevelopment
+      ? true
+      : [process.env.FRONTEND_URL || 'http://localhost:3000'],
     credentials: true,
-  });
+  })
 
   // Global validation pipe
   app.useGlobalPipes(
@@ -20,10 +23,10 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
     }),
-  );
+  )
 
   // API prefix
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1')
 
   // Swagger configuration
   const config = new DocumentBuilder()
@@ -58,18 +61,20 @@ async function bootstrap() {
       },
       'admin-jwt',
     )
-    .build();
+    .build()
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
     },
-  });
+  })
 
-  const port = process.env.PORT || 3001;
-  await app.listen(port);
-  console.log(`Backend running on http://localhost:${port}`);
-  console.log(`Swagger documentation available at http://localhost:${port}/api/docs`);
+  const port = process.env.PORT || 3001
+  await app.listen(port)
+  console.log(`Backend running on http://localhost:${port}`)
+  console.log(
+    `Swagger documentation available at http://localhost:${port}/api/docs`,
+  )
 }
-bootstrap();
+bootstrap()

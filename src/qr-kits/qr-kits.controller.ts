@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Request, Query } from '@nestjs/common'
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  Query,
+} from '@nestjs/common'
 import {
   ApiTags,
   ApiOperation,
@@ -90,8 +99,25 @@ export class QRKitsController {
     status: 404,
     description: 'QR kit not found',
   })
-  async getQRKitBySerial(@Param('serialNumber') serialNumber: string) {
-    return this.qrKitsService.getQRKitBySerial(serialNumber)
+  async getQRKitBySerial(
+    @Param('serialNumber') serialNumber: string,
+    @Request() req,
+  ) {
+    const ipAddress =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0] ||
+      req.ip ||
+      req.socket.remoteAddress ||
+      'unknown'
+    const userAgent = req.headers['user-agent'] || 'unknown'
+    const customerFingerprint =
+      (req.headers['x-customer-fingerprint'] as string) || undefined
+
+    return this.qrKitsService.getQRKitBySerial(
+      serialNumber,
+      ipAddress,
+      userAgent,
+      customerFingerprint,
+    )
   }
 
   @Post(':serialNumber/activate')
