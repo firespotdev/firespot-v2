@@ -10,11 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label, LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
-import {
-  useCheckSerialNumber,
-  useInitiateActivation,
-  useVerifyPayment,
-} from '@/services/users'
+import { useCheckSerialNumber, useInitiateActivation } from '@/services/users'
 
 type ViewMode = 'scan' | 'serial' | 'confirm' | 'callback'
 
@@ -62,7 +58,6 @@ function ActivatePageContent() {
   // API hooks
   const checkSerial = useCheckSerialNumber()
   const initiateActivation = useInitiateActivation()
-  const verifyPayment = useVerifyPayment()
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -71,27 +66,13 @@ function ActivatePageContent() {
     }
   }, [isAuthenticated, router])
 
-  // Handle callback from Paystack
+  // Handle callback from Paystack - redirect to payment-status page
   useEffect(() => {
     if (mode === 'callback' && callbackReference) {
-      verifyPayment.mutate(callbackReference, {
-        onSuccess: (data) => {
-          if (data.alreadyActivated) {
-            showNotificationToast({ message: 'QR kit was already activated!' })
-          } else {
-            showNotificationToast({ message: 'QR kit activated successfully!' })
-          }
-          router.push('/profile')
-        },
-        onError: (error: any) => {
-          const message =
-            error?.response?.data?.message || 'Payment verification failed'
-          showNotificationToast({ message })
-          setMode('serial')
-        },
-      })
+      // Redirect to payment-status page with the reference
+      router.replace(`/payment-status?reference=${callbackReference}`)
     }
-  }, [mode, callbackReference, verifyPayment, router])
+  }, [mode, callbackReference, router])
 
   // Update URL when mode changes
   const updateMode = useCallback(
@@ -161,11 +142,13 @@ function ActivatePageContent() {
             if (result) {
               const scannedText = result.getText()
               // Extract serial number from QR code URL
-              // Expected format: https://firespot.co/qr/{serialNumber}
-              const match = scannedText.match(/\/qr\/([A-Z0-9-]+)/i)
-              const serial = match ? match[1] : scannedText
-              setSerialNumber(serial.toUpperCase())
-              handleSerialValidation(serial.toUpperCase())
+              // Expected format: {BASE_URL}/pay/{serialNumber} (new format)
+              const payMatch = scannedText.match(/\/pay\/([A-Z0-9-]+)/i)
+              if (payMatch) {
+                const serial = payMatch[1]
+                setSerialNumber(serial.toUpperCase())
+                handleSerialValidation(serial.toUpperCase())
+              }
             }
           })
         }

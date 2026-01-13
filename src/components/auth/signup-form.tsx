@@ -97,7 +97,8 @@ export function SignupForm({
         clearTimeout(debounceTimerRef.current)
       }
     }
-  }, [accountNumber, selectedBankCode, resolveAccount])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountNumber, selectedBankCode])
 
   const handleBankSelectChange = (value: string) => {
     // Find the bank by code (value is the bank code)
@@ -177,7 +178,7 @@ export function SignupForm({
             <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
               <CircleCheck className="w-5 h-5 text-[#ffffff]" fill="#24C166" />
               <p className="text-sm text-[#24C166] font-medium">
-                {resolveAccount.data.data.account_name}
+                {resolveAccount.data.accountName}
               </p>
             </div>
           )}

@@ -1,8 +1,15 @@
-export type DrawerContentType = 'bank-accounts' | 'custom'
+export type DrawerContentType =
+  | 'bank-accounts'
+  | 'profile-menu'
+  | 'select-bank'
+  | 'custom'
+
+export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 
 export interface DrawerConfig {
   type: DrawerContentType
   props?: Record<string, unknown>
+  direction?: DrawerDirection
 }
 
 export interface DrawerState {

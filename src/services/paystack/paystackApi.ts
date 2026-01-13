@@ -1,27 +1,37 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { paystackApiClient } from '@/lib/utils/axios'
-import type { BankResponse, ValidateAccountNumberResponse } from './interface'
+import { apiClient } from '@/lib/utils/axios'
 
-// API functions
+// Response type from our backend
+interface ResolveAccountResponse {
+  accountName: string
+  accountNumber: string
+}
+
+// Backend response for banks endpoint
+interface BackendBanksResponse {
+  banks: Array<{
+    name: string
+    code: string
+    slug: string
+  }>
+}
+
+// API functions - now using our backend API
 export const paystackApi = {
-  getBanks: async (country?: string): Promise<BankResponse> => {
-    const response = await paystackApiClient.get<BankResponse>('/bank', {
-      params: country ? { country } : undefined,
-    })
+  getBanks: async (): Promise<BackendBanksResponse> => {
+    const response = await apiClient.get<BackendBanksResponse>('/users/banks')
     return response.data
   },
 
   resolveAccount: async (
     accountNumber: string,
     bankCode: string,
-  ): Promise<ValidateAccountNumberResponse> => {
-    const response = await paystackApiClient.get<ValidateAccountNumberResponse>(
-      '/bank/resolve',
+  ): Promise<ResolveAccountResponse> => {
+    const response = await apiClient.post<ResolveAccountResponse>(
+      '/users/bank-accounts/resolve',
       {
-        params: {
-          account_number: accountNumber,
-          bank_code: bankCode,
-        },
+        accountNumber,
+        bankCode,
       },
     )
     return response.data
@@ -33,10 +43,10 @@ export function useBanks() {
   return useQuery({
     queryKey: ['banks', 'nigeria'],
     queryFn: async () => {
-      const response = await paystackApi.getBanks('nigeria')
-      // Deduplicate banks by code (keep first occurrence)
+      const response = await paystackApi.getBanks()
+      // Backend already deduplicates, but let's ensure uniqueness by code
       const seenCodes = new Set<string>()
-      return response.data.filter((bank) => {
+      return response.banks.filter((bank) => {
         if (seenCodes.has(bank.code)) {
           return false
         }
@@ -56,11 +66,11 @@ export function useResolveAccount() {
     }: {
       accountNumber: string
       bankCode: string
-    }): Promise<ValidateAccountNumberResponse> => {
+    }): Promise<ResolveAccountResponse> => {
       return paystackApi.resolveAccount(accountNumber, bankCode)
     },
     onSuccess: (data) => {
-      console.log('Account resolved:', data.data.account_name)
+      console.log('Account resolved:', data.accountName)
     },
     onError: (error: any) => {
       const errorMessage =

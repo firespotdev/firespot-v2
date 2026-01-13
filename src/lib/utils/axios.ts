@@ -28,8 +28,12 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      window.location.href = '/login'
+      // Only redirect to login if there's no token in localStorage
+      // This prevents race conditions during hydration after page reload
+      const token = localStorage.getItem('token')
+      if (!token) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   },
