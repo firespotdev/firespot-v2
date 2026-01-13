@@ -7,7 +7,10 @@ import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { PaystackService } from '../users/services/paystack.service'
 import { ScansService } from '../scans/scans.service'
-import { detectDeviceType, detectBrowserType } from '../scans/utils/device-detector'
+import {
+  detectDeviceType,
+  detectBrowserType,
+} from '../scans/utils/device-detector'
 
 @Injectable()
 export class QRKitsService {
@@ -25,15 +28,24 @@ export class QRKitsService {
     })
 
     if (!qrKit) {
-      return { status: 'not_found' as const, serialNumber: serialNumber.toUpperCase() }
+      return {
+        status: 'not_found' as const,
+        serialNumber: serialNumber.toUpperCase(),
+      }
     }
 
     if (qrKit.activationStatus === 'activated') {
-      return { status: 'already_bound' as const, serialNumber: qrKit.serialNumber }
+      return {
+        status: 'already_bound' as const,
+        serialNumber: qrKit.serialNumber,
+      }
     }
 
     if (qrKit.merchantId) {
-      return { status: 'already_bound' as const, serialNumber: qrKit.serialNumber }
+      return {
+        status: 'already_bound' as const,
+        serialNumber: qrKit.serialNumber,
+      }
     }
 
     return { status: 'available' as const, serialNumber: qrKit.serialNumber }
@@ -43,6 +55,7 @@ export class QRKitsService {
     serialNumber: string,
     ipAddress?: string,
     userAgent?: string,
+    customerFingerprint?: string,
   ) {
     const qrKit = await this.qrKitModel
       .findOne({ serialNumber: serialNumber.toUpperCase() })
@@ -76,6 +89,7 @@ export class QRKitsService {
           merchantId: qrKit.merchantId.toString(),
           ipAddress,
           userAgent,
+          customerFingerprint,
           deviceType: detectDeviceType(userAgent),
           browserType: detectBrowserType(userAgent),
         })
@@ -144,7 +158,8 @@ export class QRKitsService {
 
     const activationAmount = qrKit.activationAmount || 200000 // NGN 2,000 in kobo
     const reference = `qrkit_${qrKit.serialNumber}_${nanoid(10)}`
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
     const callbackUrl = `${frontendUrl}/activate?mode=callback&reference=${reference}`
 
     // Use phone number as pseudo-email for Paystack
@@ -181,10 +196,15 @@ export class QRKitsService {
   }
 
   async completeActivationByReference(reference: string) {
-    const qrKit = await this.qrKitModel.findOne({ paystackReference: reference })
+    const qrKit = await this.qrKitModel.findOne({
+      paystackReference: reference,
+    })
 
     if (!qrKit) {
-      throw new HttpException('QR kit not found for this payment reference', HttpStatus.NOT_FOUND)
+      throw new HttpException(
+        'QR kit not found for this payment reference',
+        HttpStatus.NOT_FOUND,
+      )
     }
 
     if (qrKit.activationStatus === 'activated') {
@@ -232,7 +252,9 @@ export class QRKitsService {
   }
 
   async completeActivationByWebhook(reference: string) {
-    const qrKit = await this.qrKitModel.findOne({ paystackReference: reference })
+    const qrKit = await this.qrKitModel.findOne({
+      paystackReference: reference,
+    })
 
     if (!qrKit) {
       return { success: false, message: 'QR kit not found' }

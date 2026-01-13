@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Param, Body, UseGuards, Request, Query } from '@nestjs/common'
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+  Query,
+} from '@nestjs/common'
 import {
   ApiTags,
   ApiOperation,
@@ -100,11 +109,14 @@ export class QRKitsController {
       req.socket.remoteAddress ||
       'unknown'
     const userAgent = req.headers['user-agent'] || 'unknown'
+    const customerFingerprint =
+      (req.headers['x-customer-fingerprint'] as string) || undefined
 
     return this.qrKitsService.getQRKitBySerial(
       serialNumber,
       ipAddress,
       userAgent,
+      customerFingerprint,
     )
   }
 

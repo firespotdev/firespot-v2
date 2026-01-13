@@ -24,7 +24,7 @@ export class QRCodeService {
 
     this.qrCodeBaseUrl =
       this.configService.get<string>('QR_CODE_BASE_URL') ||
-      'https://firespot.co/qr'
+      'https://lite.firespot.co/pay'
   }
 
   /**
@@ -33,7 +33,8 @@ export class QRCodeService {
    * @returns SVG string
    */
   async generateQRCodeSVG(serialNumber: string): Promise<string> {
-    const url = `${this.qrCodeBaseUrl}/${serialNumber}`
+    // Generate URL pointing to the payment page: {BASE_URL}/pay/{serialNumber}
+    const url = `${this.qrCodeBaseUrl}/pay/${serialNumber}`
 
     try {
       const svg = await QRCode.toString(url, {

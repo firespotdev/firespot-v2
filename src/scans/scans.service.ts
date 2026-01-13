@@ -85,11 +85,7 @@ export class ScansService {
     return this.scanModel.countDocuments({ merchantId })
   }
 
-  async getScansByQRKit(
-    qrKitId: string,
-    limit: number = 50,
-    skip: number = 0,
-  ) {
+  async getScansByQRKit(qrKitId: string, limit: number = 50, skip: number = 0) {
     return this.scanModel
       .find({ qrKitId })
       .sort({ scannedAt: -1 })
@@ -110,5 +106,60 @@ export class ScansService {
       .limit(limit)
       .skip(skip)
       .exec()
+  }
+
+  async getScanCountThisWeek(merchantId: string): Promise<number> {
+    const startOfWeek = new Date()
+    startOfWeek.setDate(startOfWeek.getDate() - 7)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    return this.scanModel.countDocuments({
+      merchantId,
+      scannedAt: { $gte: startOfWeek },
+    })
+  }
+
+  async getReturningCustomersCount(merchantId: string): Promise<number> {
+    // Get all scans for this merchant with fingerprints
+    const scans = await this.scanModel
+      .find({
+        merchantId,
+        customerFingerprint: { $exists: true, $ne: null },
+      })
+      .select('customerFingerprint')
+      .exec()
+
+    // Count fingerprints that appear more than once
+    const fingerprintCounts = new Map<string, number>()
+    scans.forEach((scan) => {
+      const fp = scan.customerFingerprint
+      if (fp) {
+        fingerprintCounts.set(fp, (fingerprintCounts.get(fp) || 0) + 1)
+      }
+    })
+
+    // Count how many fingerprints have been used more than once (returning customers)
+    let returningCount = 0
+    fingerprintCounts.forEach((count) => {
+      if (count > 1) {
+        returningCount++
+      }
+    })
+
+    return returningCount
+  }
+
+  async getMerchantStats(merchantId: string) {
+    const [totalScans, scansThisWeek, returningCustomers] = await Promise.all([
+      this.getScanCountByMerchant(merchantId),
+      this.getScanCountThisWeek(merchantId),
+      this.getReturningCustomersCount(merchantId),
+    ])
+
+    return {
+      totalScans,
+      scansThisWeek,
+      returningCustomers,
+    }
   }
 }

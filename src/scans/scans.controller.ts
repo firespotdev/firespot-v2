@@ -53,4 +53,28 @@ export class ScansController {
     )
     return { count }
   }
+
+  @Get('merchant/stats')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get comprehensive stats for authenticated merchant',
+    description:
+      'Returns total scans, scans this week, and returning customers count',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Merchant stats retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        totalScans: { type: 'number', example: 150 },
+        scansThisWeek: { type: 'number', example: 28 },
+        returningCustomers: { type: 'number', example: 7 },
+      },
+    },
+  })
+  async getMerchantStats(@Request() req) {
+    return this.scansService.getMerchantStats(req.user.userId)
+  }
 }
