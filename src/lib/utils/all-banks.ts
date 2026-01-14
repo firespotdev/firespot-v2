@@ -4,7 +4,7 @@
  * Standardized names for display in the bank transfer drawer
  */
 export const ALL_BANKS = [
-  // Popular banks (will be sorted to top)
+  // Popular banks
   'GTBank',
   'Access Bank',
   'First Bank',
