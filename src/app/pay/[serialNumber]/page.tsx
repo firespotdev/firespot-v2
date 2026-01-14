@@ -141,6 +141,39 @@ export default function PaymentPage() {
     })
   }
 
+  const handleSendWithBankApp = () => {
+    const accountNumber =
+      selectedBankAccount?.accountNumber || bankAccount?.accountNumber
+    const bankName =
+      selectedBankAccount?.bankName || bankAccount?.bankName || ''
+    const accountName =
+      selectedBankAccount?.accountName || bankAccount?.accountName || ''
+
+    if (accountNumber) {
+      // Copy to clipboard
+      navigator.clipboard.writeText(accountNumber)
+      setCopiedAccount(accountNumber)
+
+      // Record copy event
+      recordCopy.mutate(serialNumber, {
+        onError: (err) => {
+          // Silently fail - don't interrupt user experience
+          console.error('Failed to record copy event:', err)
+        },
+      })
+
+      // Open drawer
+      openDrawer({
+        type: 'bank-transfer',
+        props: {
+          accountNumber,
+          bankName,
+          accountName,
+        },
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#F4F6F8]">
       <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
@@ -155,85 +188,85 @@ export default function PaymentPage() {
         />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly">
-        {/* Profile Picture Section */}
-        <div className="flex flex-col items-center">
-          {merchant.profilePhotoUrl ? (
-            <Image
-              src={merchant.profilePhotoUrl}
-              alt={merchant.businessName}
-              width={96}
-              height={96}
-              className="w-[96px] h-[96px] rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-[96px] h-[96px] rounded-full bg-[#FF6B35] flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">
-                {getInitials(merchant.businessName)}
-              </span>
-            </div>
-          )}
-
-          <h1 className="font-bold text-xl text-black mt-4 text-center leading-none">
-            {merchant.businessName}
-          </h1>
-
-          {merchant.merchantSlug && (
-            <Link
-              href={`/merchant/${merchant.merchantSlug}`}
-              className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
-            >
-              View full business profile{' '}
-              <ChevronRight className="w-4 h-4 text-[#747576]" />
-            </Link>
-          )}
-        </div>
-
-        {/* Bank Account Card */}
-        {bankAccount && (
-          <div className="bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
-            <div className="flex flex-col justify-center items-center mb-4 px-4">
-              <p className="text-sm text-[#00000066] font-medium">
-                Recipient Bank
-              </p>
-              <div className="flex items-center gap-2 mt-1">
-                {renderBankLogo(bankAccount.bankName)}
-                <p className="text-base font-bold text-black">
-                  {bankAccount.bankName}
-                </p>
+          {/* Profile Picture Section */}
+          <div className="flex flex-col items-center">
+            {merchant.profilePhotoUrl ? (
+              <Image
+                src={merchant.profilePhotoUrl}
+                alt={merchant.businessName}
+                width={96}
+                height={96}
+                className="w-[96px] h-[96px] rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-[96px] h-[96px] rounded-full bg-[#FF6B35] flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">
+                  {getInitials(merchant.businessName)}
+                </span>
               </div>
-            </div>
+            )}
 
-            <div className="flex flex-col justify-center items-center border-t border-[#F1F1F1] pt-4 px-4">
-              <p className="text-sm text-[#00000066] font-medium mb-1">
-                Account number
-              </p>
-              <div className="flex items-center gap-1">
-                <p className="text-lg font-bold text-black">
-                  {bankAccount.accountNumber}
-                </p>
-                <button
-                  onClick={() =>
-                    handleCopyAccountNumber(bankAccount.accountNumber)
-                  }
-                  type="button"
-                  className="p-1 rounded"
-                >
-                  {copiedAccount === bankAccount.accountNumber ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-[#878F98]" />
-                  )}
-                </button>
-              </div>
-            </div>
+            <h1 className="font-bold text-xl text-black mt-4 text-center leading-none">
+              {merchant.businessName}
+            </h1>
+
+            {merchant.merchantSlug && (
+              <Link
+                href={`/merchant/${merchant.merchantSlug}`}
+                className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
+              >
+                View full business profile{' '}
+                <ChevronRight className="w-4 h-4 text-[#747576]" />
+              </Link>
+            )}
           </div>
-        )}
 
-        {/* Disclaimer */}
-        <p className="text-xs text-[#00000066] text-center px-4">
-          Review the details carefully before proceeding. Please note that
-          successful transfers cannot be reversed.
-        </p>
+          {/* Bank Account Card */}
+          {bankAccount && (
+            <div className="bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
+              <div className="flex flex-col justify-center items-center mb-4 px-4">
+                <p className="text-sm text-[#00000066] font-medium">
+                  Recipient Bank
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  {renderBankLogo(bankAccount.bankName)}
+                  <p className="text-base font-bold text-black">
+                    {bankAccount.bankName}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col justify-center items-center border-t border-[#F1F1F1] pt-4 px-4">
+                <p className="text-sm text-[#00000066] font-medium mb-1">
+                  Account number
+                </p>
+                <div className="flex items-center gap-1">
+                  <p className="text-lg font-bold text-black">
+                    {bankAccount.accountNumber}
+                  </p>
+                  <button
+                    onClick={() =>
+                      handleCopyAccountNumber(bankAccount.accountNumber)
+                    }
+                    type="button"
+                    className="p-1 rounded"
+                  >
+                    {copiedAccount === bankAccount.accountNumber ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-[#878F98]" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Disclaimer */}
+          <p className="text-xs text-[#00000066] text-center px-4">
+            Review the details carefully before proceeding. Please note that
+            successful transfers cannot be reversed.
+          </p>
 
           {/* Pagination Dots */}
           <div className="flex items-center justify-center gap-1.5">
@@ -249,10 +282,7 @@ export default function PaymentPage() {
           <div className="max-w-[500px] mx-auto p-4 pb-6">
             <Button
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
-              onClick={() => {
-                // Handle send with bank app
-                console.log('Send with bank app clicked')
-              }}
+              onClick={handleSendWithBankApp}
             >
               Send with my bank app
             </Button>

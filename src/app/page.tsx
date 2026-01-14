@@ -186,24 +186,24 @@ export default function ScannerPage() {
       <div className="relative z-10 min-h-screen">
         <div className="max-w-[500px] mx-auto w-full flex flex-col min-h-screen">
           <header className="flex items-center justify-between py-4 px-3">
-          <Image
-            src="/firespot_logo.svg"
-            alt="firespot logo"
-            width={36}
-            height={36}
-          />
+            <Image
+              src="/icons/firespot_logo.svg"
+              alt="firespot logo"
+              width={36}
+              height={36}
+            />
 
-          <p className="text-[#FFFFFFCC] text-sm">
-            Scan a firespot QR code to pay
-          </p>
+            <p className="text-[#FFFFFFCC] text-sm">
+              Scan a firespot QR code to pay
+            </p>
 
-          <button
-            onClick={toggleFlash}
-            disabled={!hasFlash}
-            className={`w-9 h-9 rounded-full flex items-center bg-[#FFFFFF66] justify-center shadow-[0_0_10px_0_rgba(255,255,255,0.3)] transition-colors`}
-          >
-            <Zap fill="#ffffff" stroke="#ffffff" className={`w-5 h-5`} />
-          </button>
+            <button
+              onClick={toggleFlash}
+              disabled={!hasFlash}
+              className={`w-9 h-9 rounded-full flex items-center bg-[#FFFFFF66] justify-center shadow-[0_0_10px_0_rgba(255,255,255,0.3)] transition-colors`}
+            >
+              <Zap fill="#ffffff" stroke="#ffffff" className={`w-5 h-5`} />
+            </button>
           </header>
 
           {/* Scanner Frame */}
@@ -232,7 +232,7 @@ export default function ScannerPage() {
           <div className="p-4 space-y-4">
             <div className="bg-[#FFFFFF66] backdrop-blur-sm rounded-[16px] p-3 flex items-center gap-3">
               <Image
-                src="/firespot_logo.svg"
+                src="/icons/firespot_logo.svg"
                 alt="firespot logo"
                 width={36}
                 height={36}

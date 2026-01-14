@@ -188,7 +188,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="w-[96px] h-[96px] rounded-full bg-[#CED7E1] flex items-center justify-center">
                   <Image
-                    src="/store_solid.svg"
+                    src="/icons/store_solid.svg"
                     alt="store icon"
                     width={57}
                     height={57}

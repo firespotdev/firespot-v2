@@ -1,6 +1,6 @@
 'use client'
 
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import {
   Drawer as DrawerPrimitive,
   DrawerContent,
@@ -16,6 +16,7 @@ import {
 import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
 import { ProfileMenuDrawer } from './profile-menu-drawer'
 import { SelectBankDrawer } from './select-bank-drawer'
+import { BankTransferDrawer } from './bank-transfer-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -43,6 +44,12 @@ const DRAWER_CONFIG: Record<
     title: 'Transfer to',
     direction: 'bottom',
     Content: SelectBankDrawer,
+  },
+  'bank-transfer': {
+    title: 'Send with bank app',
+    direction: 'bottom',
+    Content: BankTransferDrawer,
+    fullScreen: true,
   },
   custom: {
     title: '',
@@ -75,6 +82,43 @@ export function CustomDrawer() {
         <DrawerContent className="h-full w-full max-w-full bg-white">
           {/* Hidden title for accessibility */}
           <DrawerTitle className="sr-only">{title || 'Menu'}</DrawerTitle>
+          <Content {...(config.props || {})} closeDrawer={closeDrawer} />
+        </DrawerContent>
+      </DrawerPrimitive>
+    )
+  }
+
+  // For full screen bottom drawers, use near-full-screen height
+  if (fullScreen && drawerDirection === 'bottom') {
+    return (
+      <DrawerPrimitive
+        open={isOpen}
+        onOpenChange={(open) => !open && closeDrawer()}
+        direction={drawerDirection}
+      >
+        <DrawerContent className="max-w-[500px] mx-auto bg-white rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[95vh]">
+          {/* Header */}
+          <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
+            <div className="w-9 h-9 flex items-center justify-center">
+              {HeaderLeft && <HeaderLeft />}
+            </div>
+
+            <DrawerTitle className="font-bold text-base text-black">
+              <p className="text-[#00000080] text-xs font-medium text-center leading-none flex items-center justify-center gap-0.5">
+                <Check size={16} color="#67CE67" />{' '}
+                <span>Account number already copied!</span>
+              </p>
+              <h2 className="text-base font-bold text-black leading-none mt-1">
+                Open your bank app and paste
+              </h2>
+            </DrawerTitle>
+
+            <DrawerClose className="w-9 h-9 flex items-center justify-center">
+              <X className="w-6 h-6 text-black" />
+            </DrawerClose>
+          </DrawerHeader>
+
+          {/* Content */}
           <Content {...(config.props || {})} closeDrawer={closeDrawer} />
         </DrawerContent>
       </DrawerPrimitive>

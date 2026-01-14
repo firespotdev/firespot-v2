@@ -143,7 +143,7 @@ export default function QRKitDetailPage() {
               <div className="flex justify-center mb-3">
                 <div className="flex items-center">
                   <Image
-                    src="/firespot_logo.svg"
+                    src="/icons/firespot_logo.svg"
                     alt="Firespot"
                     width={20}
                     height={20}
@@ -224,7 +224,7 @@ export default function QRKitDetailPage() {
                         />
                       ) : (
                         <Image
-                          src="/firespot_logo.svg"
+                          src="/icons/firespot_logo.svg"
                           alt="Firespot Logo"
                           width={64}
                           height={64}

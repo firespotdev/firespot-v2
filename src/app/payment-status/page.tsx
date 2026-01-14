@@ -93,134 +93,90 @@ function PaymentStatusContent() {
             </Link>
           </header>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <div className="w-16 h-16 border-4 border-white rounded-full flex items-center justify-center mb-6">
-            <svg
-              className="w-8 h-8"
-              fill="#24C166"
-              viewBox="0 0 24 24"
-              stroke="white"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </div>
-
-          <h1 className="text-white text-xl font-bold mb-1 leading-none">
-            Activated successfully
-          </h1>
-          <p className="text-[#FFFFFFE5] text-sm text-center font-medium max-w-[280px] mb-6">
-            You can now start using this Firespot QR kit to share your bank
-            account details.
-          </p>
-
-          <div className="bg-[#33A061] w-fit flex items-center justify-center gap-1 text-white hover:bg-[#33A061]/90 rounded-full px-3.5 py-2.5">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-            >
-              <path
-                d="M22 6v2.42C22 10 21 11 19.42 11H16V4.01C16 2.9 16.91 2 18.02 2c1.09.01 2.09.45 2.81 1.17C21.55 3.9 22 4.9 22 6Z"
-                stroke="#ffffff"
-                strokeWidth="1.5"
-                strokeMiterlimit="10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              ></path>
-              <path
-                d="M2 7v14c0 .83.94 1.3 1.6.8l1.71-1.28c.4-.3.96-.26 1.32.1l1.66 1.67c.39.39 1.03.39 1.42 0l1.68-1.68c.35-.35.91-.39 1.3-.09l1.71 1.28c.66.49 1.6.02 1.6-.8V4c0-1.1.9-2 2-2H6C3 2 2 3.79 2 6v1Z"
-                stroke="#ffffff"
-                strokeWidth="1.5"
-                strokeMiterlimit="10"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              ></path>
-              <path
-                d="M6 9h6M6.75 13h4.5"
-                stroke="#ffffff"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              ></path>
-            </svg>
-            <span className="text-[10px] tracking-[1px] font-bold">
-              RECEIPT
-            </span>
-          </div>
-        </div>
-
-        <div className="p-4 pb-8 space-y-3">
-          <button
-            type="button"
-            className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
-          >
-            <Image
-              src="/firespot_logo.svg"
-              alt="Firespot"
-              width={36}
-              height={36}
-              onError={(e) => {
-                e.currentTarget.style.display = 'none'
-              }}
-            />
-            <div className="flex-1 text-left">
-              <p className="text-sm font-bold text-black">
-                Upgrade to a business profile
-              </p>
-              <p className="text-[13px] text-[#00000080] font-medium">
-                Re-engage customers, get feedback, receive instant payment
-                notifications.
-              </p>
+          <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <div className="w-16 h-16 border-4 border-white rounded-full flex items-center justify-center mb-6">
+              <svg
+                className="w-8 h-8"
+                fill="#24C166"
+                viewBox="0 0 24 24"
+                stroke="white"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
             </div>
-            <ChevronRight strokeWidth={2} className="w-4 h-4 text-[#BDBDBD]" />
-          </button>
 
-          <div className="w-full bg-white rounded-[12px] py-3 shadow-[0px_4px_8px_0px_#0000000A]">
-            <Link
-              href="/activate"
-              className="w-full flex items-center gap-3 border-b border-[#F4F6F8] pb-3 px-3"
-            >
-              <div className="w-9 h-9 bg-[#0075FF] rounded-full flex items-center justify-center">
-                <LinkIcon size={20} strokeWidth={2} className="text-white" />
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-black">
-                  Link another QR kit
-                </p>
-                <p className="text-[13px] text-[#00000080] font-medium">
-                  By scanning the code or entering the kit&apos;s serial number.
-                </p>
-              </div>
-              <ChevronRight
-                strokeWidth={2}
-                className="w-4 h-4 text-[#BDBDBD]"
-              />
-            </Link>
+            <h1 className="text-white text-xl font-bold mb-1 leading-none">
+              Activated successfully
+            </h1>
+            <p className="text-[#FFFFFFE5] text-sm text-center font-medium max-w-[280px] mb-6">
+              You can now start using this Firespot QR kit to share your bank
+              account details.
+            </p>
 
+            <div className="bg-[#33A061] w-fit flex items-center justify-center gap-1 text-white hover:bg-[#33A061]/90 rounded-full px-3.5 py-2.5">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <path
+                  d="M22 6v2.42C22 10 21 11 19.42 11H16V4.01C16 2.9 16.91 2 18.02 2c1.09.01 2.09.45 2.81 1.17C21.55 3.9 22 4.9 22 6Z"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                  strokeMiterlimit="10"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                ></path>
+                <path
+                  d="M2 7v14c0 .83.94 1.3 1.6.8l1.71-1.28c.4-.3.96-.26 1.32.1l1.66 1.67c.39.39 1.03.39 1.42 0l1.68-1.68c.35-.35.91-.39 1.3-.09l1.71 1.28c.66.49 1.6.02 1.6-.8V4c0-1.1.9-2 2-2H6C3 2 2 3.79 2 6v1Z"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                  strokeMiterlimit="10"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                ></path>
+                <path
+                  d="M6 9h6M6.75 13h4.5"
+                  stroke="#ffffff"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                ></path>
+              </svg>
+              <span className="text-[10px] tracking-[1px] font-bold">
+                RECEIPT
+              </span>
+            </div>
+          </div>
+
+          <div className="p-4 pb-8 space-y-3">
             <button
               type="button"
-              className="w-full flex items-center gap-3 pt-3 px-3"
+              className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
             >
-              <div className="w-9 h-9 bg-[#26B2FF] rounded-full flex items-center justify-center">
-                <MessageCircleHeart
-                  size={20}
-                  strokeWidth={2}
-                  className="text-white"
-                />
-              </div>
+              <Image
+                src="/icons/firespot_logo.svg"
+                alt="Firespot"
+                width={36}
+                height={36}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
               <div className="flex-1 text-left">
                 <p className="text-sm font-bold text-black">
-                  We value your feedback
+                  Upgrade to a business profile
                 </p>
                 <p className="text-[13px] text-[#00000080] font-medium">
-                  Tell us at Firespot how we can improve our services.
+                  Re-engage customers, get feedback, receive instant payment
+                  notifications.
                 </p>
               </div>
               <ChevronRight
@@ -228,7 +184,55 @@ function PaymentStatusContent() {
                 className="w-4 h-4 text-[#BDBDBD]"
               />
             </button>
-          </div>
+
+            <div className="w-full bg-white rounded-[12px] py-3 shadow-[0px_4px_8px_0px_#0000000A]">
+              <Link
+                href="/activate"
+                className="w-full flex items-center gap-3 border-b border-[#F4F6F8] pb-3 px-3"
+              >
+                <div className="w-9 h-9 bg-[#0075FF] rounded-full flex items-center justify-center">
+                  <LinkIcon size={20} strokeWidth={2} className="text-white" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-bold text-black">
+                    Link another QR kit
+                  </p>
+                  <p className="text-[13px] text-[#00000080] font-medium">
+                    By scanning the code or entering the kit&apos;s serial
+                    number.
+                  </p>
+                </div>
+                <ChevronRight
+                  strokeWidth={2}
+                  className="w-4 h-4 text-[#BDBDBD]"
+                />
+              </Link>
+
+              <button
+                type="button"
+                className="w-full flex items-center gap-3 pt-3 px-3"
+              >
+                <div className="w-9 h-9 bg-[#26B2FF] rounded-full flex items-center justify-center">
+                  <MessageCircleHeart
+                    size={20}
+                    strokeWidth={2}
+                    className="text-white"
+                  />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-sm font-bold text-black">
+                    We value your feedback
+                  </p>
+                  <p className="text-[13px] text-[#00000080] font-medium">
+                    Tell us at Firespot how we can improve our services.
+                  </p>
+                </div>
+                <ChevronRight
+                  strokeWidth={2}
+                  className="w-4 h-4 text-[#BDBDBD]"
+                />
+              </button>
+            </div>
 
             <TagFooter icon="brand_white" color="#EBEBEB" />
           </div>

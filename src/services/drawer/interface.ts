@@ -2,6 +2,7 @@ export type DrawerContentType =
   | 'bank-accounts'
   | 'profile-menu'
   | 'select-bank'
+  | 'bank-transfer'
   | 'custom'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
