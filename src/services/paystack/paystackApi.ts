@@ -1,13 +1,11 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { apiClient } from '@/lib/utils/axios'
 
-// Response type from our backend
 interface ResolveAccountResponse {
   accountName: string
   accountNumber: string
 }
 
-// Backend response for banks endpoint
 interface BackendBanksResponse {
   banks: Array<{
     name: string
@@ -16,7 +14,6 @@ interface BackendBanksResponse {
   }>
 }
 
-// API functions - now using our backend API
 export const paystackApi = {
   getBanks: async (): Promise<BackendBanksResponse> => {
     const response = await apiClient.get<BackendBanksResponse>('/users/banks')
@@ -44,7 +41,6 @@ export function useBanks() {
     queryKey: ['banks', 'nigeria'],
     queryFn: async () => {
       const response = await paystackApi.getBanks()
-      // Backend already deduplicates, but let's ensure uniqueness by code
       const seenCodes = new Set<string>()
       return response.banks.filter((bank) => {
         if (seenCodes.has(bank.code)) {
@@ -54,7 +50,7 @@ export function useBanks() {
         return true
       })
     },
-    staleTime: 1000 * 60 * 60, // 1 hour - banks don't change often
+    staleTime: 1000 * 60 * 60, // 1 hour
   })
 }
 

@@ -6,7 +6,7 @@ import './globals.css'
 import { satoshi, sofiaPro } from '@/lib/fonts'
 
 export const metadata: Metadata = {
-  title: 'Flare - QR Payment for Nigerian Merchants',
+  title: 'Firespot Lite - QR Payment Merchants',
   description: 'Accept payments faster with QR codes',
 }
 
