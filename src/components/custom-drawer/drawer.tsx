@@ -87,7 +87,7 @@ export function CustomDrawer() {
       onOpenChange={(open) => !open && closeDrawer()}
       direction={drawerDirection}
     >
-      <DrawerContent className="max-h-[85vh] bg-[#F4F6F8]">
+      <DrawerContent className="max-h-[85vh] max-w-[500px] mx-auto bg-[#F4F6F8]">
         {/* Header */}
         <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
           <div className="w-9 h-9 flex items-center justify-center">

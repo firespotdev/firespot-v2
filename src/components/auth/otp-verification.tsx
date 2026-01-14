@@ -93,74 +93,76 @@ export function OtpVerification({
   }
 
   return (
-    <div className="h-screen bg-white pt-8 pb-4 px-4 flex flex-col font-satoshi">
-      <button
-        onClick={onBack}
-        className="self-start mb-6"
-        type="button"
-        disabled={isLoading}
-      >
-        <ArrowLeft className="w-6 h-6 text-black" />
-      </button>
+    <div className="h-screen bg-white">
+      <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
+        <button
+          onClick={onBack}
+          className="self-start mb-6"
+          type="button"
+          disabled={isLoading}
+        >
+          <ArrowLeft className="w-6 h-6 text-black" />
+        </button>
 
-      <div className="flex-1 flex flex-col w-full">
-        <h1 className="font-bold text-[20px] text-black mb-3">
-          Enter the OTP to continue
-        </h1>
-        <p className="text-sm font-medium text-[#00000080] mb-6 max-w-[345px]">
-          We have sent a one time password to the phone number you used to
-          register on firespot ({phoneNumber || '+2348179542786'}).
-        </p>
+        <div className="flex-1 flex flex-col w-full">
+          <h1 className="font-bold text-[20px] text-black mb-3">
+            Enter the OTP to continue
+          </h1>
+          <p className="text-sm font-medium text-[#00000080] mb-6 max-w-[345px]">
+            We have sent a one time password to the phone number you used to
+            register on firespot ({phoneNumber || '+2348179542786'}).
+          </p>
 
-        <form onSubmit={handleSubmit} className="w-full space-y-6">
-          <div>
-            <Label>Enter OTP</Label>
-            <div className="flex gap-3 justify-start">
-              {[0, 1, 2, 3, 4, 5].map((index) => (
-                <Input
-                  key={index}
-                  ref={(el) => {
-                    otpInputRefs.current[index] = el
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={otp[index] || ''}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={handlePaste}
-                  disabled={isLoading}
-                  className="w-14 h-14 border-[#D8E0E9] text-center text-lg font-semibold border"
-                />
-              ))}
+          <form onSubmit={handleSubmit} className="w-full space-y-6">
+            <div>
+              <Label>Enter OTP</Label>
+              <div className="flex gap-3 justify-start">
+                {[0, 1, 2, 3, 4, 5].map((index) => (
+                  <Input
+                    key={index}
+                    ref={(el) => {
+                      otpInputRefs.current[index] = el
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={otp[index] || ''}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={handlePaste}
+                    disabled={isLoading}
+                    className="w-14 h-14 border-[#D8E0E9] text-center text-lg font-semibold border"
+                  />
+                ))}
+              </div>
+              {error && (
+                <p className="text-sm text-red-500 text-center mt-2">{error}</p>
+              )}
             </div>
-            {error && (
-              <p className="text-sm text-red-500 text-center mt-2">{error}</p>
-            )}
-          </div>
 
-          <Button type="submit" className="w-full">
-            {isLoading ? <Spinner /> : 'Continue'}
-          </Button>
-        </form>
+            <Button type="submit" className="w-full">
+              {isLoading ? <Spinner /> : 'Continue'}
+            </Button>
+          </form>
 
-        {countdown > 0 ? (
-          <p className="text-sm font-bold text-[#00000080] mt-6 text-center">
-            Request a new code in {formatTime(countdown)}
-          </p>
-        ) : (
-          <p className="text-sm font-bold text-[#00000080] mt-6 text-center">
-            Didn't receive an OTP?{' '}
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={isLoading}
-              className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text cursor-pointer hover:opacity-80 disabled:opacity-50"
-            >
-              Resend OTP
-            </button>
-          </p>
-        )}
+          {countdown > 0 ? (
+            <p className="text-sm font-bold text-[#00000080] mt-6 text-center">
+              Request a new code in {formatTime(countdown)}
+            </p>
+          ) : (
+            <p className="text-sm font-bold text-[#00000080] mt-6 text-center">
+              Didn't receive an OTP?{' '}
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={isLoading}
+                className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text cursor-pointer hover:opacity-80 disabled:opacity-50"
+              >
+                Resend OTP
+              </button>
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )

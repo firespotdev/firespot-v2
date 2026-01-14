@@ -10,7 +10,6 @@ import type {
   MerchantProfile,
 } from './interface'
 
-// Public API functions (no auth required)
 export const publicQrApi = {
   getMerchantBySerial: async (
     serialNumber: string,
@@ -28,7 +27,6 @@ export const publicQrApi = {
   },
 }
 
-// User API functions (authenticated user endpoints)
 export const userQrApi = {
   getUserQRKits: async (): Promise<QRKitListResponse> => {
     const response = await apiClient.get<QRKitListResponse>('/users/me/qr-kits')
@@ -41,7 +39,6 @@ export const userQrApi = {
   },
 }
 
-// Admin API functions
 export const qrKitsApi = {
   getQRKits: async (filters?: QRKitFilters): Promise<QRKitListResponse> => {
     const response = await adminApiClient.get<QRKitListResponse>(
@@ -87,31 +84,10 @@ export const qrKitsApi = {
   },
 
   getStats: async (): Promise<QRKitStats> => {
-    // Get all QR kits to calculate stats (in a real app, this would be a dedicated endpoint)
-    const response = await adminApiClient.get<QRKitListResponse>(
-      '/admin/qr-kits',
-      {
-        params: { limit: 10000 },
-      },
+    const response = await adminApiClient.get<QRKitStats>(
+      '/admin/qr-kits/stats',
     )
-
-    const data = response.data.data
-    const stats: QRKitStats = {
-      total: response.data.pagination.total,
-      byActivationStatus: {
-        pending: data.filter((q) => q.activationStatus === 'pending').length,
-        activated: data.filter((q) => q.activationStatus === 'activated')
-          .length,
-        deactivated: data.filter((q) => q.activationStatus === 'deactivated')
-          .length,
-      },
-      byPaymentStatus: {
-        pending: data.filter((q) => q.paymentStatus === 'pending').length,
-        successful: data.filter((q) => q.paymentStatus === 'successful').length,
-        failed: data.filter((q) => q.paymentStatus === 'failed').length,
-      },
-    }
-    return stats
+    return response.data
   },
 }
 
@@ -200,7 +176,6 @@ export const useDownloadQRCodePNG = () => {
   })
 }
 
-// Public hooks (no auth required)
 export const useMerchantBySerial = (serialNumber: string | null) => {
   return useQuery({
     queryKey: ['merchant', serialNumber],
@@ -213,7 +188,6 @@ export const useMerchantBySerial = (serialNumber: string | null) => {
   })
 }
 
-// User hooks (authenticated user endpoints)
 export const useUserQRKits = () => {
   return useQuery({
     queryKey: ['user', 'qr-kits'],

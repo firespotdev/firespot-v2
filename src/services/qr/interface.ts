@@ -14,6 +14,7 @@ export interface QRKit {
         businessName?: string
         merchantSlug?: string
         bankAccounts?: any[]
+        profilePhotoUrl?: string
       }
   createdAt: string
   updatedAt: string
@@ -55,7 +56,6 @@ export interface QRKitStats {
   }
 }
 
-// Public merchant profile (returned when customer scans QR)
 export interface MerchantProfile {
   id: string
   merchantSlug: string

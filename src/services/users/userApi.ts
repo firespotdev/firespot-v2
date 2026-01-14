@@ -89,8 +89,9 @@ export const userApi = {
 
   // Bank account management
   getBankAccounts: async (): Promise<BankAccountsResponse> => {
-    const response =
-      await apiClient.get<BankAccountsResponse>('/users/bank-accounts')
+    const response = await apiClient.get<BankAccountsResponse>(
+      '/users/bank-accounts',
+    )
     return response.data
   },
 
@@ -149,7 +150,6 @@ export function useVerifyPayment() {
   return useMutation({
     mutationFn: userApi.verifyPayment,
     onSuccess: () => {
-      // Invalidate user profile to refresh merchantSlug
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
     },
   })
@@ -161,7 +161,6 @@ export function useUpdateProfilePhoto() {
   return useMutation({
     mutationFn: userApi.updateProfilePhoto,
     onSuccess: (data) => {
-      // Update the profile cache with new photo URL
       queryClient.setQueryData(
         ['user', 'profile'],
         (oldData: UserProfile | undefined) => {
@@ -172,7 +171,6 @@ export function useUpdateProfilePhoto() {
           }
         },
       )
-      // Also invalidate to refetch fresh data
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
     },
   })

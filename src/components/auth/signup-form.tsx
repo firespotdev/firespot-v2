@@ -111,104 +111,106 @@ export function SignupForm({
   }
 
   return (
-    <div className="h-screen bg-white pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
-      <Image
-        src="/firespot_logo.svg"
-        alt="firespot logo"
-        width={48}
-        height={48}
-        className="mb-6"
-      />
-      <h1 className="font-bold text-xl text-black -tracking-[0.4px]">
-        Get your own Firespot QRKit
-      </h1>
-      <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-6">
-        Customers send money faster. You look more professional.
-      </p>
+    <div className="h-screen bg-white">
+      <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
+        <Image
+          src="/firespot_logo.svg"
+          alt="firespot logo"
+          width={48}
+          height={48}
+          className="mb-6"
+        />
+        <h1 className="font-bold text-xl text-black -tracking-[0.4px]">
+          Get your own Firespot QRKit
+        </h1>
+        <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-6">
+          Customers send money faster. You look more professional.
+        </p>
 
-      <form onSubmit={onSubmit} className="w-full max-w-[400px] space-y-6">
-        <div>
-          <Label>Phone number</Label>
-          <PhoneInput
-            className="w-full"
-            value={phoneNumber}
-            onChange={onPhoneNumberChange}
-          />
-        </div>
-        <div>
-          <Label>Receiving bank</Label>
-          <Select
-            value={selectedBankCode}
-            onValueChange={handleBankSelectChange}
-            disabled={banksLoading}
+        <form onSubmit={onSubmit} className="w-full max-w-[400px] space-y-6">
+          <div>
+            <Label>Phone number</Label>
+            <PhoneInput
+              className="w-full"
+              value={phoneNumber}
+              onChange={onPhoneNumberChange}
+            />
+          </div>
+          <div>
+            <Label>Receiving bank</Label>
+            <Select
+              value={selectedBankCode}
+              onValueChange={handleBankSelectChange}
+              disabled={banksLoading}
+            >
+              <SelectTrigger className="font-medium">
+                <SelectValue
+                  placeholder={
+                    banksLoading ? 'Loading banks...' : 'Select a bank'
+                  }
+                >
+                  {selectedBankName || 'Select a bank'}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {banks.map((bank) => (
+                  <SelectItem key={bank.code} value={bank.code}>
+                    {bank.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Account number</Label>
+            <Input
+              type="number"
+              placeholder="Enter your account number"
+              className="w-full font-medium"
+              value={accountNumber}
+              onChange={(e) =>
+                onAccountNumberChange(
+                  e.target.value.replace(/\D/g, '').slice(0, 10),
+                )
+              }
+            />
+
+            {resolveAccount.isSuccess && (
+              <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+                <CircleCheck className="w-5 h-5 text-[#ffffff]" fill="#24C166" />
+                <p className="text-sm text-[#24C166] font-medium">
+                  {resolveAccount.data.accountName}
+                </p>
+              </div>
+            )}
+          </div>
+          <div>
+            <Label>Refferal code (optional)</Label>
+            <Input
+              type="text"
+              placeholder="FIRESPOT25"
+              className="w-full uppercase font-medium"
+              value={referralCode}
+              onChange={(e) => onReferralCodeChange(e.target.value.toUpperCase())}
+            />
+          </div>
+
+          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Creating account...' : 'Continue'}
+          </Button>
+        </form>
+        <p className="text-sm text-[#00000080] mt-4 font-bold font-satoshi">
+          Already have one?{' '}
+          <Link
+            href="/login"
+            className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text"
           >
-            <SelectTrigger className="font-medium">
-              <SelectValue
-                placeholder={
-                  banksLoading ? 'Loading banks...' : 'Select a bank'
-                }
-              >
-                {selectedBankName || 'Select a bank'}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {banks.map((bank) => (
-                <SelectItem key={bank.code} value={bank.code}>
-                  {bank.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label>Account number</Label>
-          <Input
-            type="number"
-            placeholder="Enter your account number"
-            className="w-full font-medium"
-            value={accountNumber}
-            onChange={(e) =>
-              onAccountNumberChange(
-                e.target.value.replace(/\D/g, '').slice(0, 10),
-              )
-            }
-          />
-
-          {resolveAccount.isSuccess && (
-            <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
-              <CircleCheck className="w-5 h-5 text-[#ffffff]" fill="#24C166" />
-              <p className="text-sm text-[#24C166] font-medium">
-                {resolveAccount.data.accountName}
-              </p>
-            </div>
-          )}
-        </div>
-        <div>
-          <Label>Refferal code (optional)</Label>
-          <Input
-            type="text"
-            placeholder="FIRESPOT25"
-            className="w-full uppercase font-medium"
-            value={referralCode}
-            onChange={(e) => onReferralCodeChange(e.target.value.toUpperCase())}
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Creating account...' : 'Continue'}
-        </Button>
-      </form>
-      <p className="text-sm text-[#00000080] mt-4 font-bold font-satoshi">
-        Already have one?{' '}
-        <Link
-          href="/login"
-          className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text"
-        >
-          Log in
-        </Link>
-      </p>
+            Log in
+          </Link>
+        </p>
+      </div>
     </div>
   )
 }

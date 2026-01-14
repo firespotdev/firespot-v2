@@ -83,14 +83,15 @@ function PaymentStatusContent() {
   // Success state
   if (status === 'success') {
     return (
-      <div className="min-h-screen bg-[#24C166] flex flex-col font-satoshi">
-        <header className="flex items-center justify-between py-4 px-4">
-          <div className="w-10" />
-          <div className="w-10" />
-          <Link href="/profile" className="text-white font-bold text-sm">
-            Done
-          </Link>
-        </header>
+      <div className="min-h-screen bg-[#24C166]">
+        <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+          <header className="flex items-center justify-between py-4 px-4">
+            <div className="w-10" />
+            <div className="w-10" />
+            <Link href="/profile" className="text-white font-bold text-sm">
+              Done
+            </Link>
+          </header>
 
         <div className="flex-1 flex flex-col items-center justify-center px-4">
           <div className="w-16 h-16 border-4 border-white rounded-full flex items-center justify-center mb-6">
@@ -229,7 +230,8 @@ function PaymentStatusContent() {
             </button>
           </div>
 
-          <TagFooter icon="brand_white" color="#EBEBEB" />
+            <TagFooter icon="brand_white" color="#EBEBEB" />
+          </div>
         </div>
       </div>
     )
@@ -237,45 +239,47 @@ function PaymentStatusContent() {
 
   // Failed state
   return (
-    <div className="min-h-screen bg-white flex flex-col font-satoshi">
-      <header className="flex items-center justify-between p-4">
-        <div className="w-8" />
-        <div className="w-8" />
-        <Link href="/profile">
-          <X className="w-6 h-6 text-black" />
-        </Link>
-      </header>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+        <header className="flex items-center justify-between p-4">
+          <div className="w-8" />
+          <div className="w-8" />
+          <Link href="/profile">
+            <X className="w-6 h-6 text-black" />
+          </Link>
+        </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="80"
-          height="80"
-          viewBox="0 0 24 24"
-          fill="white"
-        >
-          <path
-            d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10 10-4.49 10-10S17.51 2 12 2Zm-.75 6c0-.41.34-.75.75-.75s.75.34.75.75v5c0 .41-.34.75-.75.75s-.75-.34-.75-.75V8Zm1.67 8.38c-.05.13-.12.23-.21.33-.1.09-.21.16-.33.21-.12.05-.25.08-.38.08s-.26-.03-.38-.08-.23-.12-.33-.21c-.09-.1-.16-.2-.21-.33A.995.995 0 0 1 11 16c0-.13.03-.26.08-.38s.12-.23.21-.33c.1-.09.21-.16.33-.21a1 1 0 0 1 .76 0c.12.05.23.12.33.21.09.1.16.21.21.33.05.12.08.25.08.38s-.03.26-.08.38Z"
-            fill="#ff0000"
-          ></path>
-        </svg>
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="80"
+            height="80"
+            viewBox="0 0 24 24"
+            fill="white"
+          >
+            <path
+              d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10 10-4.49 10-10S17.51 2 12 2Zm-.75 6c0-.41.34-.75.75-.75s.75.34.75.75v5c0 .41-.34.75-.75.75s-.75-.34-.75-.75V8Zm1.67 8.38c-.05.13-.12.23-.21.33-.1.09-.21.16-.33.21-.12.05-.25.08-.38.08s-.26-.03-.38-.08-.23-.12-.33-.21c-.09-.1-.16-.2-.21-.33A.995.995 0 0 1 11 16c0-.13.03-.26.08-.38s.12-.23.21-.33c.1-.09.21-.16.33-.21a1 1 0 0 1 .76 0c.12.05.23.12.33.21.09.1.16.21.21.33.05.12.08.25.08.38s-.03.26-.08.38Z"
+              fill="#ff0000"
+            ></path>
+          </svg>
 
-        <h1 className="text-black text-xl font-bold leading-none -tracking-[0.4px] mb-2 mt-4">
-          Payment didn&apos;t go through
-        </h1>
-        <p className="text-[#00000066] text-sm font-medium text-center max-w-[300px]">
-          {errorMessage ||
-            "The card couldn't be charged due to insufficient balance."}
-        </p>
-      </div>
+          <h1 className="text-black text-xl font-bold leading-none -tracking-[0.4px] mb-2 mt-4">
+            Payment didn&apos;t go through
+          </h1>
+          <p className="text-[#00000066] text-sm font-medium text-center max-w-[300px]">
+            {errorMessage ||
+              "The card couldn't be charged due to insufficient balance."}
+          </p>
+        </div>
 
-      <div className="p-4 pb-8">
-        <Button
-          onClick={() => router.push('/activate')}
-          className="w-full bg-black text-white font-bold"
-        >
-          Try again
-        </Button>
+        <div className="p-4 pb-8">
+          <Button
+            onClick={() => router.push('/activate')}
+            className="w-full bg-black text-white font-bold"
+          >
+            Try again
+          </Button>
+        </div>
       </div>
     </div>
   )
