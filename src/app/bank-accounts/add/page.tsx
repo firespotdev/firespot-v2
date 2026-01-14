@@ -140,107 +140,111 @@ export default function AddBankAccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-satoshi">
-      {/* Header */}
-      <header className="flex items-center p-4">
-        <ArrowLeft
-          className="w-6 h-6 text-black"
-          onClick={() => router.back()}
-        />
-      </header>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+        {/* Header */}
+        <header className="flex items-center p-4">
+          <ArrowLeft
+            className="w-6 h-6 text-black"
+            onClick={() => router.back()}
+          />
+        </header>
 
-      {/* Content */}
-      <div className="flex-1 px-4">
-        <h1 className="font-bold text-xl text-black mb-1">
-          Add another bank account
-        </h1>
-        <p className="text-sm text-[#00000080] font-medium mb-6">
-          Give your customers more ways to pay you
-        </p>
+        {/* Content */}
+        <div className="flex-1 px-4">
+          <h1 className="font-bold text-xl text-black mb-1">
+            Add another bank account
+          </h1>
+          <p className="text-sm text-[#00000080] font-medium mb-6">
+            Give your customers more ways to pay you
+          </p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label>Receiving bank</Label>
-            <Select
-              value={selectedBankCode}
-              onValueChange={handleBankSelectChange}
-              disabled={banksLoading}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <Label>Receiving bank</Label>
+              <Select
+                value={selectedBankCode}
+                onValueChange={handleBankSelectChange}
+                disabled={banksLoading}
+              >
+                <SelectTrigger className="font-medium">
+                  <SelectValue
+                    placeholder={
+                      banksLoading ? 'Loading banks...' : 'Select bank'
+                    }
+                  >
+                    {selectedBankName || 'Select bank'}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {banks.map((bank) => (
+                    <SelectItem key={bank.code} value={bank.code}>
+                      {bank.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>Account number</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="Enter your account number"
+                className="w-full font-medium"
+                value={accountNumber}
+                onChange={(e) =>
+                  setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
+                }
+              />
+
+              {resolveAccount.isPending && (
+                <div className="h-11 bg-[#F4F6F8] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+                  <div className="w-5 h-5 border-2 border-[#878F98] border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm text-[#878F98] font-medium">
+                    Verifying account...
+                  </p>
+                </div>
+              )}
+
+              {resolveAccount.isSuccess && (
+                <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+                  <CircleCheck
+                    className="w-5 h-5 text-[#ffffff]"
+                    fill="#24C166"
+                  />
+                  <p className="text-sm text-[#24C166] font-medium">
+                    {resolveAccount.data.accountName}
+                  </p>
+                </div>
+              )}
+
+              {resolveAccount.isError && (
+                <div className="h-11 bg-[#FEE2E2] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+                  <p className="text-sm text-[#DC2626] font-medium">
+                    Could not verify account. Please check the details.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          </form>
+        </div>
+
+        {/* Fixed bottom button */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white">
+          <div className="max-w-[500px] mx-auto p-4 pb-6">
+            <Button
+              type="submit"
+              onClick={handleSubmit}
+              className="w-full bg-black text-white rounded-[48px] h-12 font-bold disabled:opacity-50"
             >
-              <SelectTrigger className="font-medium">
-                <SelectValue
-                  placeholder={
-                    banksLoading ? 'Loading banks...' : 'Select bank'
-                  }
-                >
-                  {selectedBankName || 'Select bank'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {banks.map((bank) => (
-                  <SelectItem key={bank.code} value={bank.code}>
-                    {bank.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {addBankAccount.isPending ? <Spinner /> : 'Save account details'}
+            </Button>
           </div>
-
-          <div>
-            <Label>Account number</Label>
-            <Input
-              type="text"
-              inputMode="numeric"
-              placeholder="Enter your account number"
-              className="w-full font-medium"
-              value={accountNumber}
-              onChange={(e) =>
-                setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
-              }
-            />
-
-            {resolveAccount.isPending && (
-              <div className="h-11 bg-[#F4F6F8] flex items-center gap-2 mt-2 rounded-[8px] px-4">
-                <div className="w-5 h-5 border-2 border-[#878F98] border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-[#878F98] font-medium">
-                  Verifying account...
-                </p>
-              </div>
-            )}
-
-            {resolveAccount.isSuccess && (
-              <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
-                <CircleCheck
-                  className="w-5 h-5 text-[#ffffff]"
-                  fill="#24C166"
-                />
-                <p className="text-sm text-[#24C166] font-medium">
-                  {resolveAccount.data.accountName}
-                </p>
-              </div>
-            )}
-
-            {resolveAccount.isError && (
-              <div className="h-11 bg-[#FEE2E2] flex items-center gap-2 mt-2 rounded-[8px] px-4">
-                <p className="text-sm text-[#DC2626] font-medium">
-                  Could not verify account. Please check the details.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-        </form>
-      </div>
-
-      {/* Fixed bottom button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white p-4 pb-6">
-        <Button
-          type="submit"
-          onClick={handleSubmit}
-          className="w-full bg-black text-white rounded-[48px] h-12 font-bold disabled:opacity-50"
-        >
-          {addBankAccount.isPending ? <Spinner /> : 'Save account details'}
-        </Button>
+        </div>
       </div>
     </div>
   )

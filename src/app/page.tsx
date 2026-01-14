@@ -183,8 +183,9 @@ export default function ScannerPage() {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        <header className="flex items-center justify-between py-4 px-3">
+      <div className="relative z-10 min-h-screen">
+        <div className="max-w-[500px] mx-auto w-full flex flex-col min-h-screen">
+          <header className="flex items-center justify-between py-4 px-3">
           <Image
             src="/firespot_logo.svg"
             alt="firespot logo"
@@ -203,61 +204,62 @@ export default function ScannerPage() {
           >
             <Zap fill="#ffffff" stroke="#ffffff" className={`w-5 h-5`} />
           </button>
-        </header>
+          </header>
 
-        {/* Scanner Frame */}
-        <div className="flex-1 flex items-center justify-center px-8">
-          <div className="flex-1 flex items-center justify-center">
-            {error ? (
-              <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
-                <p className="text-white text-sm mb-2">{error}</p>
-                <p className="text-gray-400 text-xs">
-                  Please ensure you're using a supported browser and have
-                  granted camera permissions.
-                </p>
-              </div>
-            ) : (
-              <div className="w-full max-w-[300px] aspect-square relative">
-                <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-3xl border-white"></div>
-                <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-3xl border-white"></div>
-                <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-3xl border-white"></div>
-                <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 rounded-br-3xl border-white"></div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom Section */}
-        <div className="p-4 space-y-4">
-          <div className="bg-[#FFFFFF66] backdrop-blur-sm rounded-[16px] p-3 flex items-center gap-3">
-            <Image
-              src="/firespot_logo.svg"
-              alt="firespot logo"
-              width={36}
-              height={36}
-            />
-            <div className="flex-1">
-              <p className="text-white font-bold text-[13px] font-satoshi">
-                Pay for your purchase superfast! 🚀
-              </p>
-              <p className="text-[#E1E1E1] text-xs font-satoshi flex items-center gap-1">
-                All Nigerian banks supported.{' '}
-                <Link
-                  href="/signup"
-                  className="underline underline-offset-3 flex items-end gap-[0.7px]"
-                >
-                  Learn more
-                  <ArrowUpRight size={13} />
-                </Link>{' '}
-              </p>
+          {/* Scanner Frame */}
+          <div className="flex-1 flex items-center justify-center px-8">
+            <div className="flex-1 flex items-center justify-center">
+              {error ? (
+                <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
+                  <p className="text-white text-sm mb-2">{error}</p>
+                  <p className="text-gray-400 text-xs">
+                    Please ensure you're using a supported browser and have
+                    granted camera permissions.
+                  </p>
+                </div>
+              ) : (
+                <div className="w-full max-w-[300px] aspect-square relative">
+                  <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-3xl border-white"></div>
+                  <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-3xl border-white"></div>
+                  <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-3xl border-white"></div>
+                  <div className="absolute bottom-0 right-0 w-10 h-10 border-b-4 border-r-4 rounded-br-3xl border-white"></div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Pagination Dots */}
-          <div className="flex justify-center gap-1">
-            <div className="w-1 h-1 rounded-full bg-white" />
-            <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
-            <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
+          {/* Bottom Section */}
+          <div className="p-4 space-y-4">
+            <div className="bg-[#FFFFFF66] backdrop-blur-sm rounded-[16px] p-3 flex items-center gap-3">
+              <Image
+                src="/firespot_logo.svg"
+                alt="firespot logo"
+                width={36}
+                height={36}
+              />
+              <div className="flex-1">
+                <p className="text-white font-bold text-[13px] font-satoshi">
+                  Pay for your purchase superfast! 🚀
+                </p>
+                <p className="text-[#E1E1E1] text-xs font-satoshi flex items-center gap-1">
+                  All Nigerian banks supported.{' '}
+                  <Link
+                    href="/signup"
+                    className="underline underline-offset-3 flex items-end gap-[0.7px]"
+                  >
+                    Learn more
+                    <ArrowUpRight size={13} />
+                  </Link>{' '}
+                </p>
+              </div>
+            </div>
+
+            {/* Pagination Dots */}
+            <div className="flex justify-center gap-1">
+              <div className="w-1 h-1 rounded-full bg-white" />
+              <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
+              <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
+            </div>
           </div>
         </div>
       </div>

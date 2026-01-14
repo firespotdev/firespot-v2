@@ -142,18 +142,19 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] flex flex-col font-satoshi">
-      <PageHeader
-        title="Transfer to"
-        showDropdown
-        onTitleClick={handleOpenBankDrawer}
-        onShareClick={() => {
-          // Share functionality
-          console.log('Share clicked')
-        }}
-      />
+    <div className="min-h-screen bg-[#F4F6F8]">
+      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+        <PageHeader
+          title="Transfer to"
+          showDropdown
+          onTitleClick={handleOpenBankDrawer}
+          onShareClick={() => {
+            // Share functionality
+            console.log('Share clicked')
+          }}
+        />
 
-      <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly">
+        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly">
         {/* Profile Picture Section */}
         <div className="flex flex-col items-center">
           {merchant.profilePhotoUrl ? (
@@ -234,34 +235,37 @@ export default function PaymentPage() {
           successful transfers cannot be reversed.
         </p>
 
-        {/* Pagination Dots */}
-        <div className="flex items-center justify-center gap-1.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#00000066]" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
-          <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
+          {/* Pagination Dots */}
+          <div className="flex items-center justify-center gap-1.5">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#00000066]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
+          </div>
         </div>
-      </div>
 
-      {/* Footer */}
-      <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white p-4 rounded-2xl pb-6">
-        <Button
-          className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
-          onClick={() => {
-            // Handle send with bank app
-            console.log('Send with bank app clicked')
-          }}
-        >
-          Send with my bank app
-        </Button>
+        {/* Footer */}
+        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
+          <div className="max-w-[500px] mx-auto p-4 pb-6">
+            <Button
+              className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
+              onClick={() => {
+                // Handle send with bank app
+                console.log('Send with bank app clicked')
+              }}
+            >
+              Send with my bank app
+            </Button>
 
-        <Link
-          href="/login"
-          className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
-        >
-          I want something like this for my business
-          <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
-        </Link>
+            <Link
+              href="/login"
+              className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
+            >
+              I want something like this for my business
+              <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   )
