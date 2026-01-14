@@ -431,7 +431,7 @@ function ActivatePageContent() {
             <div className="flex items-center justify-center">
               <div className="w-fit">
                 <Image
-                  src="/qr_stand.png"
+                  src="/images/qr_stand.svg"
                   alt="QR Kit Stand"
                   width={247}
                   height={247}

@@ -23,7 +23,7 @@ export function LoginForm({
     <div className="h-screen bg-white">
       <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
         <Image
-          src="/firespot_logo.svg"
+          src="/icons/firespot_logo.svg"
           alt="firespot logo"
           width={48}
           height={48}

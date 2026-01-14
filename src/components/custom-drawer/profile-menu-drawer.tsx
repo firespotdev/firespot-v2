@@ -58,7 +58,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       <header className="flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-2">
           <Image
-            src="/firespot_logo.svg"
+            src="/icons/firespot_logo.svg"
             alt="Firespot"
             width={24}
             height={24}
@@ -218,7 +218,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             className="w-full flex items-center gap-3 py-3.5 px-4"
           >
             <Image
-              src="/firespot_logo.svg"
+              src="/icons/firespot_logo.svg"
               alt="Firespot"
               width={20}
               height={20}

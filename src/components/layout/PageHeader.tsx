@@ -43,7 +43,7 @@ export function PageHeader({
         {onLogoClick ? (
           <button onClick={handleLeftButtonClick} type="button">
             <Image
-              src="/firespot_alt.png"
+              src="/images/firespot_alt.png"
               alt="firespot logo"
               width={20}
               height={20}
@@ -52,7 +52,7 @@ export function PageHeader({
         ) : isAuthenticated ? (
           <button onClick={handleLeftButtonClick} type="button">
             <Image
-              src="/firespot_alt.png"
+              src="/images/firespot_alt.png"
               alt="firespot logo"
               width={20}
               height={20}
@@ -61,7 +61,7 @@ export function PageHeader({
         ) : (
           <Link href="/">
             <Image
-              src="/firespot_alt.png"
+              src="/images/firespot_alt.png"
               alt="firespot logo"
               width={20}
               height={20}

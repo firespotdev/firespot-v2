@@ -114,7 +114,7 @@ export function SignupForm({
     <div className="h-screen bg-white">
       <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
         <Image
-          src="/firespot_logo.svg"
+          src="/icons/firespot_logo.svg"
           alt="firespot logo"
           width={48}
           height={48}
@@ -177,7 +177,10 @@ export function SignupForm({
 
             {resolveAccount.isSuccess && (
               <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
-                <CircleCheck className="w-5 h-5 text-[#ffffff]" fill="#24C166" />
+                <CircleCheck
+                  className="w-5 h-5 text-[#ffffff]"
+                  fill="#24C166"
+                />
                 <p className="text-sm text-[#24C166] font-medium">
                   {resolveAccount.data.accountName}
                 </p>
@@ -191,7 +194,9 @@ export function SignupForm({
               placeholder="FIRESPOT25"
               className="w-full uppercase font-medium"
               value={referralCode}
-              onChange={(e) => onReferralCodeChange(e.target.value.toUpperCase())}
+              onChange={(e) =>
+                onReferralCodeChange(e.target.value.toUpperCase())
+              }
             />
           </div>
 
