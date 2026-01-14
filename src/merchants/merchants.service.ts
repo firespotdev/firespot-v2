@@ -5,9 +5,7 @@ import { User, UserDocument } from '../schemas/user.schema'
 
 @Injectable()
 export class MerchantsService {
-  constructor(
-    @InjectModel(User.name) private userModel: Model<UserDocument>,
-  ) {}
+  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
 
   async getMerchantBySlug(slug: string) {
     const user = await this.userModel

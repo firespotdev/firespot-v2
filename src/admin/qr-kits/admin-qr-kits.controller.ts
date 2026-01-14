@@ -98,6 +98,39 @@ export class AdminQRKitsController {
     )
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Get QRKit statistics' })
+  @ApiResponse({
+    status: 200,
+    description: 'QRKit statistics retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        total: { type: 'number', example: 150 },
+        byActivationStatus: {
+          type: 'object',
+          properties: {
+            pending: { type: 'number', example: 50 },
+            activated: { type: 'number', example: 80 },
+            deactivated: { type: 'number', example: 20 },
+          },
+        },
+        byPaymentStatus: {
+          type: 'object',
+          properties: {
+            pending: { type: 'number', example: 30 },
+            successful: { type: 'number', example: 100 },
+            failed: { type: 'number', example: 20 },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getStats() {
+    return this.adminQRKitsService.getStats()
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get QRKit details by ID' })
   @ApiParam({ name: 'id', description: 'QRKit ID' })
