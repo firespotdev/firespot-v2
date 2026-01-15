@@ -8,6 +8,7 @@ interface PhoneInputProps {
   value?: string
   onChange?: (value: string) => void
   className?: string
+  error?: boolean
 }
 
 function formatPhoneNumber(input: string) {
@@ -41,7 +42,12 @@ function formatPhoneNumber(input: string) {
   }
 }
 
-export function PhoneInput({ value, onChange, className }: PhoneInputProps) {
+export function PhoneInput({
+  value,
+  onChange,
+  className,
+  error,
+}: PhoneInputProps) {
   const [phoneValue, setPhoneValue] = useState(() => {
     if (value) {
       const digits = value.replace(/\D/g, '')
@@ -84,7 +90,11 @@ export function PhoneInput({ value, onChange, className }: PhoneInputProps) {
         onChange={handleChange}
         placeholder="000 000 0000"
         maxLength={15}
-        className="pl-28 font-medium"
+        className={cn(
+          'pl-28 font-medium',
+          error &&
+            'border-[#FF002E] focus-visible:border-[#FF002E] focus-visible:ring-[#FF002E]/20 focus-visible:ring-[3px]',
+        )}
       />
     </div>
   )

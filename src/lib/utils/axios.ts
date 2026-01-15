@@ -28,11 +28,16 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Only redirect to login if there's no token in localStorage
-      // This prevents race conditions during hydration after page reload
-      const token = localStorage.getItem('token')
-      if (!token) {
-        window.location.href = '/login'
+      const isAuthEndpoint =
+        error.config?.url?.includes('/auth/login') ||
+        error.config?.url?.includes('/auth/signup') ||
+        error.config?.url?.includes('/auth/verify-otp')
+
+      if (!isAuthEndpoint) {
+        const token = localStorage.getItem('token')
+        if (!token) {
+          window.location.href = '/login'
+        }
       }
     }
     return Promise.reject(error)

@@ -67,6 +67,6 @@ export const useMerchantStats = () => {
   return useQuery({
     queryKey: ['merchant-stats'],
     queryFn: () => scansApi.getMerchantStats(),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 1800000, // Refetch every 30 minutes
   })
 }

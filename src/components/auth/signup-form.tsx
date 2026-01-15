@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { CircleCheck } from 'lucide-react'
@@ -30,6 +30,10 @@ interface SignupFormProps {
   onSubmit: (e: React.FormEvent) => void
   isLoading?: boolean
   error?: string
+  accountError?: string
+  referralError?: string
+  onAccountErrorChange?: (error: string | undefined) => void
+  onReferralErrorChange?: (error: string | undefined) => void
 }
 
 export function SignupForm({
@@ -45,11 +49,22 @@ export function SignupForm({
   onSubmit,
   isLoading = false,
   error,
+  accountError: propAccountError,
+  referralError: propReferralError,
+  onAccountErrorChange,
+  onReferralErrorChange,
 }: SignupFormProps) {
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const resolveAccount = useResolveAccount()
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const resolvedRef = useRef<string>('')
+  const [localAccountError, setLocalAccountError] = useState<
+    string | undefined
+  >()
+
+  // Use prop errors if provided, otherwise use local state
+  const accountError = propAccountError ?? localAccountError
+  const referralError = propReferralError
 
   // Auto-resolve account when account number is 10 digits and bank is selected
   useEffect(() => {
@@ -82,10 +97,23 @@ export function SignupForm({
             onSuccess: () => {
               // Mark this combination as resolved
               resolvedRef.current = resolveKey
+              // Clear any previous error
+              if (onAccountErrorChange) {
+                onAccountErrorChange(undefined)
+              } else {
+                setLocalAccountError(undefined)
+              }
             },
-            onError: () => {
+            onError: (error: any) => {
               // Clear on error so user can retry
               resolvedRef.current = ''
+              // Display error message
+              const message = 'Unable to verify account number'
+              if (onAccountErrorChange) {
+                onAccountErrorChange(message)
+              } else {
+                setLocalAccountError(message)
+              }
             },
           },
         )
@@ -166,13 +194,24 @@ export function SignupForm({
             <Input
               type="number"
               placeholder="Enter your account number"
-              className="w-full font-medium"
+              className={`w-full font-medium ${
+                accountError
+                  ? 'border-[#FF002E] focus-visible:border-[#FF002E] focus-visible:ring-[#FF002E]/20 focus-visible:ring-[3px]'
+                  : ''
+              }`}
               value={accountNumber}
-              onChange={(e) =>
-                onAccountNumberChange(
-                  e.target.value.replace(/\D/g, '').slice(0, 10),
-                )
-              }
+              onChange={(e) => {
+                const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                onAccountNumberChange(value)
+                // Clear error when user starts typing
+                if (accountError) {
+                  if (onAccountErrorChange) {
+                    onAccountErrorChange(undefined)
+                  } else {
+                    setLocalAccountError(undefined)
+                  }
+                }
+              }}
             />
 
             {resolveAccount.isSuccess && (
@@ -186,21 +225,48 @@ export function SignupForm({
                 </p>
               </div>
             )}
+
+            {accountError && (
+              <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
+                <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
+                  !
+                </span>
+                {accountError}
+              </p>
+            )}
           </div>
           <div>
             <Label>Refferal code (optional)</Label>
             <Input
               type="text"
               placeholder="FIRESPOT25"
-              className="w-full uppercase font-medium"
+              className={`w-full uppercase font-medium ${
+                referralError
+                  ? 'border-[#FF002E] focus-visible:border-[#FF002E] focus-visible:ring-[#FF002E]/20 focus-visible:ring-[3px]'
+                  : ''
+              }`}
               value={referralCode}
-              onChange={(e) =>
+              onChange={(e) => {
                 onReferralCodeChange(e.target.value.toUpperCase())
-              }
+                // Clear error when user starts typing
+                if (referralError && onReferralErrorChange) {
+                  onReferralErrorChange(undefined)
+                }
+              }}
             />
+            {referralError && (
+              <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
+                <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
+                  !
+                </span>
+                {referralError}
+              </p>
+            )}
           </div>
 
-          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+          {error && !accountError && !referralError && (
+            <p className="text-sm text-red-500 text-center">{error}</p>
+          )}
 
           <Button type="submit" disabled={isLoading}>
             {isLoading ? 'Creating account...' : 'Continue'}

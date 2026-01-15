@@ -16,6 +16,8 @@ function SignupPageContent() {
   const [referralCode, setReferralCode] = useState('')
   const [signupError, setSignupError] = useState<string | undefined>()
   const [otpError, setOtpError] = useState<string | undefined>()
+  const [accountError, setAccountError] = useState<string | undefined>()
+  const [referralError, setReferralError] = useState<string | undefined>()
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const signup = useSignup()
@@ -36,6 +38,8 @@ function SignupPageContent() {
   const handleStep1Submit = (e: React.FormEvent) => {
     e.preventDefault()
     setSignupError(undefined)
+    setAccountError(undefined)
+    setReferralError(undefined)
 
     signup.mutate(
       {
@@ -54,7 +58,24 @@ function SignupPageContent() {
           const message =
             error?.response?.data?.message ||
             'Failed to create account. Please try again.'
-          setSignupError(message)
+
+          // Parse error message to determine which field it belongs to
+          const lowerMessage = message.toLowerCase()
+          if (
+            lowerMessage.includes('referral') ||
+            lowerMessage.includes('referrer')
+          ) {
+            setReferralError(message)
+          } else if (
+            lowerMessage.includes('account') ||
+            lowerMessage.includes('bank') ||
+            lowerMessage.includes('verify') ||
+            lowerMessage.includes('resolve')
+          ) {
+            setAccountError(message)
+          } else {
+            setSignupError(message)
+          }
         },
       },
     )
@@ -140,6 +161,10 @@ function SignupPageContent() {
       onSubmit={handleStep1Submit}
       isLoading={signup.isPending}
       error={signupError}
+      accountError={accountError}
+      referralError={referralError}
+      onAccountErrorChange={setAccountError}
+      onReferralErrorChange={setReferralError}
     />
   )
 }

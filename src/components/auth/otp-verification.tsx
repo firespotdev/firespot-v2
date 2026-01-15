@@ -38,6 +38,17 @@ export function OtpVerification({
     setCountdown(59)
   }, [])
 
+  // Clear OTP inputs when there's an error
+  useEffect(() => {
+    if (error) {
+      setOtp('')
+      // Focus the first input after clearing
+      setTimeout(() => {
+        otpInputRefs.current[0]?.focus()
+      }, 0)
+    }
+  }, [error])
+
   const handleChange = (index: number, digit: string) => {
     if (!/^\d*$/.test(digit)) return
 

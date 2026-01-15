@@ -24,6 +24,14 @@ function LoginPageContent() {
     }
   }, [isAuthenticated, router])
 
+  const handlePhoneNumberChange = (value: string) => {
+    setPhoneNumber(value)
+    // Clear error when user starts typing
+    if (loginError) {
+      setLoginError(undefined)
+    }
+  }
+
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setLoginError(undefined)
@@ -112,7 +120,7 @@ function LoginPageContent() {
   return (
     <LoginForm
       phoneNumber={phoneNumber}
-      onPhoneNumberChange={setPhoneNumber}
+      onPhoneNumberChange={handlePhoneNumberChange}
       onSubmit={handleLoginSubmit}
       isLoading={login.isPending}
       error={loginError}
