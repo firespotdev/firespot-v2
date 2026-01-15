@@ -26,7 +26,6 @@ function LoginPageContent() {
 
   const handlePhoneNumberChange = (value: string) => {
     setPhoneNumber(value)
-    // Clear error when user starts typing
     if (loginError) {
       setLoginError(undefined)
     }
