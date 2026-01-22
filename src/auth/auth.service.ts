@@ -10,7 +10,9 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { JwtService } from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
-import { nanoid } from 'nanoid'
+import { customAlphabet } from 'nanoid'
+
+const nanoidAlphanumeric = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
 import axios from 'axios'
 import { User } from '../schemas/user.schema'
 import { RequestOtpDto } from './dto/request-otp.dto'
@@ -156,7 +158,7 @@ export class AuthService {
     let merchantSlug: string
     let isUnique = false
     while (!isUnique) {
-      merchantSlug = nanoid(6).toUpperCase()
+      merchantSlug = nanoidAlphanumeric(6)
       const existingSlug = await this.userModel.findOne({ merchantSlug })
       if (!existingSlug) {
         isUnique = true
@@ -182,7 +184,7 @@ export class AuthService {
       ],
       otpPinId: pinId,
       otpExpiresAt,
-      referralCode: nanoid(8).toUpperCase(),
+      referralCode: nanoidAlphanumeric(8),
       otpRequestCount: 1,
       otpRequestWindowStart: now,
       lastOtpRequestAt: now,
