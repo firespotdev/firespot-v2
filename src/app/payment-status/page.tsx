@@ -96,7 +96,7 @@ function PaymentStatusContent() {
     )
   }
 
-  // Success state
+  // Success
   if (status === 'success') {
     return (
       <div className="min-h-screen">
