@@ -3,6 +3,7 @@ export type DrawerContentType =
   | 'profile-menu'
   | 'select-bank'
   | 'bank-transfer'
+  | 'receipt'
   | 'custom'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'

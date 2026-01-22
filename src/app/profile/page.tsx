@@ -12,6 +12,7 @@ import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantStats } from '@/services/scans'
+import { useUserQRKits } from '@/services/qr'
 import Link from 'next/link'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -26,7 +27,9 @@ export default function ProfilePage() {
   const router = useRouter()
   const { data: profile, isLoading } = useUserProfile()
   const { data: stats } = useMerchantStats()
+  const { data: qrKitsData } = useUserQRKits()
   const updateProfilePhoto = useUpdateProfilePhoto()
+  const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [copied, setCopied] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
@@ -231,7 +234,7 @@ export default function ProfilePage() {
               {profile?.businessName || 'Your Business Name'}
             </h1>
 
-            {!profile?.merchantSlug ? (
+            {!hasQRKits ? (
               <Link
                 href="/activate"
                 className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
@@ -327,7 +330,7 @@ export default function ProfilePage() {
               asChild
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
             >
-              {!profile?.merchantSlug ? (
+              {!hasQRKits ? (
                 <Link href="/activate">Activate your QR kit</Link>
               ) : (
                 <Link href="/qr-kits">Manage QR kit</Link>

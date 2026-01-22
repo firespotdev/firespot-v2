@@ -17,6 +17,7 @@ import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
 import { ProfileMenuDrawer } from './profile-menu-drawer'
 import { SelectBankDrawer } from './select-bank-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
+import { ReceiptDrawer } from './receipt-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -50,6 +51,12 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     Content: BankTransferDrawer,
     fullScreen: true,
+  },
+  receipt: {
+    title: 'Receipt',
+    direction: 'right',
+    fullScreen: true,
+    Content: ReceiptDrawer,
   },
   custom: {
     title: '',

@@ -8,7 +8,8 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, TagFooter } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
-import { useVerifyPayment } from '@/services/users'
+import { useVerifyPayment, useUserProfile } from '@/services/users'
+import { useDrawerStore } from '@/services/drawer'
 
 type PaymentStatus = 'loading' | 'success' | 'failed'
 
@@ -37,6 +38,21 @@ function PaymentStatusContent() {
   const [hasVerified, setHasVerified] = useState(false)
 
   const verifyPayment = useVerifyPayment()
+  const { data: profile } = useUserProfile()
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+
+  const handleOpenReceipt = () => {
+    openDrawer({
+      type: 'receipt',
+      props: {
+        amount: 500,
+        paidBy: profile?.businessName || 'Customer',
+        paidTo: profile?.businessName || 'Merchant',
+        referenceNumber: reference,
+        description: 'QR Kit Activation',
+      },
+    })
+  }
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -83,8 +99,8 @@ function PaymentStatusContent() {
   // Success state
   if (status === 'success') {
     return (
-      <div className="min-h-screen bg-[#24C166]">
-        <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+      <div className="min-h-screen">
+        <div className="max-w-[500px] bg-[#24C166] mx-auto min-h-screen flex flex-col font-satoshi">
           <header className="flex items-center justify-between py-4 px-4">
             <div className="w-10" />
             <div className="w-10" />
@@ -118,7 +134,11 @@ function PaymentStatusContent() {
               account details.
             </p>
 
-            <div className="bg-[#33A061] w-fit flex items-center justify-center gap-1 text-white hover:bg-[#33A061]/90 rounded-full px-3.5 py-2.5">
+            <button
+              type="button"
+              onClick={handleOpenReceipt}
+              className="bg-[#33A061] w-fit flex items-center justify-center gap-1 text-white hover:bg-[#33A061]/90 rounded-full px-3.5 py-2.5"
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -153,7 +173,7 @@ function PaymentStatusContent() {
               <span className="text-[10px] tracking-[1px] font-bold">
                 RECEIPT
               </span>
-            </div>
+            </button>
           </div>
 
           <div className="p-4 pb-8 space-y-3">
