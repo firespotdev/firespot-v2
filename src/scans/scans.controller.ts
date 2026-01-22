@@ -4,6 +4,7 @@ import {
   Get,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common'
@@ -14,9 +15,11 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger'
 import { ScansService } from './scans.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
+import { InsightsQueryDto, DateRangePreset } from './dto/insights-query.dto'
 
 @ApiTags('scans')
 @Controller('scans')
@@ -76,5 +79,40 @@ export class ScansController {
   })
   async getMerchantStats(@Request() req) {
     return this.scansService.getMerchantStats(req.user.userId)
+  }
+
+  @Get('merchant/insights')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Get comprehensive insights for authenticated merchant',
+    description:
+      'Returns traffic, QR kit scans, account copies, transfer attempts with date range filtering',
+  })
+  @ApiQuery({
+    name: 'preset',
+    enum: DateRangePreset,
+    required: false,
+    description: 'Predefined date range preset',
+  })
+  @ApiQuery({
+    name: 'startDate',
+    required: false,
+    description: 'Start date for custom range (ISO 8601)',
+  })
+  @ApiQuery({
+    name: 'endDate',
+    required: false,
+    description: 'End date for custom range (ISO 8601)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Merchant insights retrieved successfully',
+  })
+  async getMerchantInsights(
+    @Request() req,
+    @Query() query: InsightsQueryDto,
+  ) {
+    return this.scansService.getMerchantInsights(req.user.userId, query)
   }
 }
