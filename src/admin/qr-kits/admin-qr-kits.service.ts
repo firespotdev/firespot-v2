@@ -3,15 +3,22 @@ import {
   HttpException,
   HttpStatus,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
+import { Model, Types } from 'mongoose'
 import { customAlphabet } from 'nanoid'
 import { QRKit, QRKitDocument } from '../../schemas/qrkit.schema'
 import { User, UserDocument } from '../../schemas/user.schema'
+import { Agent, AgentDocument } from '../schemas/agent.schema'
 import { QRCodeService } from '../../services/qr-code.service'
 import { CreateQRKitDto } from './dto/create-qrkit.dto'
 import { BulkCreateQRKitDto } from './dto/bulk-create-qrkit.dto'
+import {
+  AssignQRKitsDto,
+  ReassignQRKitsDto,
+  UnassignQRKitsDto,
+} from './dto/assign-qrkits.dto'
 
 @Injectable()
 export class AdminQRKitsService {
@@ -23,6 +30,7 @@ export class AdminQRKitsService {
   constructor(
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private qrCodeService: QRCodeService,
   ) {}
 
@@ -55,7 +63,13 @@ export class AdminQRKitsService {
   /**
    * Create a single QRKit
    */
-  async createQRKit(): Promise<QRKitDocument> {
+  async createQRKit(agentId: string): Promise<QRKitDocument> {
+    // Verify agent exists
+    const agent = await this.agentModel.findById(agentId)
+    if (!agent) {
+      throw new NotFoundException('Agent not found')
+    }
+
     const serialNumber = await this.generateUniqueSerialNumber()
 
     const svgString = await this.qrCodeService.generateQRCodeSVG(serialNumber)
@@ -66,14 +80,18 @@ export class AdminQRKitsService {
     )
 
     // Create QRKit record
-    const qrKit = new this.qrKitModel({
+    const qrKitData: any = {
       serialNumber,
       qrCodeSvgUrl: url,
       qrCodeSvgPublicId: publicId,
       activationStatus: 'pending',
       paymentStatus: 'pending',
       activationAmount: 200000, // NGN 2,000 in kobo
-    })
+      agentId: new Types.ObjectId(agentId),
+      assignedToAgentAt: new Date(),
+    }
+
+    const qrKit = new this.qrKitModel(qrKitData)
 
     await qrKit.save()
 
@@ -86,20 +104,25 @@ export class AdminQRKitsService {
   async createBulkQRKits(
     bulkCreateDto: BulkCreateQRKitDto,
   ): Promise<QRKitDocument[]> {
-    const { quantity } = bulkCreateDto
+    const { quantity, agentId } = bulkCreateDto
 
     if (quantity < 1 || quantity > 200) {
       throw new BadRequestException('Quantity must be between 1 and 200')
+    }
+
+    // Verify agent exists
+    const agent = await this.agentModel.findById(agentId)
+    if (!agent) {
+      throw new NotFoundException('Agent not found')
     }
 
     const qrKits: QRKitDocument[] = []
 
     for (let i = 0; i < quantity; i++) {
       try {
-        const qrKit = await this.createQRKit()
+        const qrKit = await this.createQRKit(agentId)
         qrKits.push(qrKit)
       } catch (error) {
-        console.error(`Failed to create QRKit ${i + 1}:`, error.message)
         throw new HttpException(
           `Failed to create QRKit ${i + 1} of ${quantity}: ${error.message}`,
           HttpStatus.INTERNAL_SERVER_ERROR,
@@ -118,10 +141,13 @@ export class AdminQRKitsService {
       activationStatus?: string
       paymentStatus?: string
       search?: string
+      agentId?: string
+      unassigned?: boolean
     } = {},
     pagination: { page?: number; limit?: number } = {},
   ) {
-    const { activationStatus, paymentStatus, search } = filters
+    const { activationStatus, paymentStatus, search, agentId, unassigned } =
+      filters
     const page = pagination.page || 1
     const limit = pagination.limit || 50
     const skip = (page - 1) * limit
@@ -140,11 +166,20 @@ export class AdminQRKitsService {
       query.serialNumber = { $regex: search.toUpperCase(), $options: 'i' }
     }
 
+    if (agentId) {
+      query.agentId = new Types.ObjectId(agentId)
+    }
+
+    if (unassigned) {
+      query.agentId = null
+    }
+
     // Execute query with pagination
     const [qrKits, total] = await Promise.all([
       this.qrKitModel
         .find(query)
         .populate('merchantId', 'businessName merchantSlug phoneNumber')
+        .populate('agentId', 'agentId name phoneNumber state lga bustop')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit)
@@ -279,6 +314,95 @@ export class AdminQRKitsService {
       total: result.total[0]?.count || 0,
       byActivationStatus,
       byPaymentStatus,
+    }
+  }
+
+  /**
+   * Assign QRKits to an agent
+   */
+  async assignToAgent(dto: AssignQRKitsDto) {
+    const agent = await this.agentModel.findById(dto.agentId)
+    if (!agent) {
+      throw new NotFoundException('Agent not found')
+    }
+
+    const result = await this.qrKitModel.updateMany(
+      {
+        _id: { $in: dto.qrKitIds.map((id) => new Types.ObjectId(id)) },
+        agentId: null, // Only assign unassigned kits
+      },
+      {
+        $set: {
+          agentId: new Types.ObjectId(dto.agentId),
+          assignedToAgentAt: new Date(),
+        },
+      },
+    )
+
+    return {
+      assigned: result.modifiedCount,
+      requested: dto.qrKitIds.length,
+      message: `${result.modifiedCount} of ${dto.qrKitIds.length} QRKits assigned to agent ${agent.agentId}`,
+    }
+  }
+
+  /**
+   * Reassign QRKits between agents
+   */
+  async reassignAgent(dto: ReassignQRKitsDto) {
+    const [fromAgent, toAgent] = await Promise.all([
+      this.agentModel.findById(dto.fromAgentId),
+      this.agentModel.findById(dto.toAgentId),
+    ])
+
+    if (!fromAgent) {
+      throw new NotFoundException('Source agent not found')
+    }
+    if (!toAgent) {
+      throw new NotFoundException('Target agent not found')
+    }
+
+    const result = await this.qrKitModel.updateMany(
+      {
+        _id: { $in: dto.qrKitIds.map((id) => new Types.ObjectId(id)) },
+        agentId: new Types.ObjectId(dto.fromAgentId),
+      },
+      {
+        $set: {
+          agentId: new Types.ObjectId(dto.toAgentId),
+          assignedToAgentAt: new Date(),
+        },
+      },
+    )
+
+    return {
+      reassigned: result.modifiedCount,
+      requested: dto.qrKitIds.length,
+      message: `${result.modifiedCount} of ${dto.qrKitIds.length} QRKits transferred from ${fromAgent.agentId} to ${toAgent.agentId}`,
+    }
+  }
+
+  /**
+   * Unassign QRKits from agents
+   */
+  async unassignFromAgent(dto: UnassignQRKitsDto) {
+    const result = await this.qrKitModel.updateMany(
+      {
+        _id: { $in: dto.qrKitIds.map((id) => new Types.ObjectId(id)) },
+        agentId: { $ne: null },
+      },
+      {
+        $set: {
+          agentId: null,
+          assignedToAgentAt: null,
+        },
+      },
+    )
+
+    return {
+      unassigned: result.modifiedCount,
+      requested: dto.qrKitIds.length,
+      message: `${result.modifiedCount} of ${dto.qrKitIds.length} QRKits unassigned`,
     }
   }
 }

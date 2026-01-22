@@ -22,6 +22,11 @@ import { AdminQRKitsService } from './admin-qr-kits.service'
 import { AdminJwtAuthGuard } from '../admin-auth/guards/admin-jwt-auth.guard'
 import { CreateQRKitDto } from './dto/create-qrkit.dto'
 import { BulkCreateQRKitDto } from './dto/bulk-create-qrkit.dto'
+import {
+  AssignQRKitsDto,
+  ReassignQRKitsDto,
+  UnassignQRKitsDto,
+} from './dto/assign-qrkits.dto'
 
 @ApiTags('admin-qr-kits')
 @Controller('admin/qr-kits')
@@ -36,9 +41,11 @@ export class AdminQRKitsController {
     status: 201,
     description: 'QRKit created successfully',
   })
+  @ApiResponse({ status: 400, description: 'Invalid agent ID' })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async createQRKit(@Body() createDto: CreateQRKitDto) {
-    return this.adminQRKitsService.createQRKit()
+    return this.adminQRKitsService.createQRKit(createDto.agentId)
   }
 
   @Post('bulk')
@@ -73,6 +80,17 @@ export class AdminQRKitsController {
   })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 50 })
+  @ApiQuery({
+    name: 'agentId',
+    required: false,
+    description: 'Filter by agent ID (MongoDB ObjectId)',
+  })
+  @ApiQuery({
+    name: 'unassigned',
+    required: false,
+    type: Boolean,
+    description: 'Filter only unassigned QRKits',
+  })
   @ApiResponse({
     status: 200,
     description: 'QRKits retrieved successfully',
@@ -84,12 +102,16 @@ export class AdminQRKitsController {
     @Query('search') search?: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('agentId') agentId?: string,
+    @Query('unassigned') unassigned?: string,
   ) {
     return this.adminQRKitsService.listQRKits(
       {
         activationStatus: status,
         paymentStatus,
         search,
+        agentId,
+        unassigned: unassigned === 'true',
       },
       {
         page: page ? Number(page) : undefined,
@@ -173,5 +195,64 @@ export class AdminQRKitsController {
     })
 
     res.status(HttpStatus.OK).send(pngBuffer)
+  }
+
+  @Post('assign')
+  @ApiOperation({ summary: 'Assign unassigned QRKits to an agent' })
+  @ApiResponse({
+    status: 200,
+    description: 'QRKits assigned successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        assigned: { type: 'number', example: 10 },
+        requested: { type: 'number', example: 10 },
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async assignToAgent(@Body() dto: AssignQRKitsDto) {
+    return this.adminQRKitsService.assignToAgent(dto)
+  }
+
+  @Post('reassign')
+  @ApiOperation({ summary: 'Transfer QRKits from one agent to another' })
+  @ApiResponse({
+    status: 200,
+    description: 'QRKits reassigned successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        reassigned: { type: 'number', example: 10 },
+        requested: { type: 'number', example: 10 },
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async reassignAgent(@Body() dto: ReassignQRKitsDto) {
+    return this.adminQRKitsService.reassignAgent(dto)
+  }
+
+  @Post('unassign')
+  @ApiOperation({ summary: 'Remove agent assignment from QRKits' })
+  @ApiResponse({
+    status: 200,
+    description: 'QRKits unassigned successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        unassigned: { type: 'number', example: 10 },
+        requested: { type: 'number', example: 10 },
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async unassignFromAgent(@Body() dto: UnassignQRKitsDto) {
+    return this.adminQRKitsService.unassignFromAgent(dto)
   }
 }
