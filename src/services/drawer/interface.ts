@@ -4,6 +4,7 @@ export type DrawerContentType =
   | 'select-bank'
   | 'bank-transfer'
   | 'receipt'
+  | 'date-range-filter'
   | 'custom'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'

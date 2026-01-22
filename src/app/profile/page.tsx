@@ -295,8 +295,8 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Stats Section */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Stats Section - Link to Insights */}
+          <Link href="/insights" className="grid grid-cols-2 gap-3">
             <div className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
                 {stats?.scansThisWeek ?? 0}
@@ -320,7 +320,7 @@ export default function ProfilePage() {
                 <ChevronRight className="w-3 h-3 text-[#00000080] mt-[1%]" />
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* QR Kit Button */}

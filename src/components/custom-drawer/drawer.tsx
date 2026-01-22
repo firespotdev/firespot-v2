@@ -18,6 +18,7 @@ import { ProfileMenuDrawer } from './profile-menu-drawer'
 import { SelectBankDrawer } from './select-bank-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
 import { ReceiptDrawer } from './receipt-drawer'
+import { DateRangeFilterDrawer } from './date-range-filter-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -57,6 +58,11 @@ const DRAWER_CONFIG: Record<
     direction: 'right',
     fullScreen: true,
     Content: ReceiptDrawer,
+  },
+  'date-range-filter': {
+    title: 'Filter',
+    direction: 'bottom',
+    Content: DateRangeFilterDrawer,
   },
   custom: {
     title: '',
