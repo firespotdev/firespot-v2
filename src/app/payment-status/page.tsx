@@ -45,9 +45,9 @@ function PaymentStatusContent() {
     openDrawer({
       type: 'receipt',
       props: {
-        amount: 500,
+        amount: 2000,
         paidBy: profile?.businessName || 'Customer',
-        paidTo: profile?.businessName || 'Merchant',
+        paidTo: 'Firespot',
         referenceNumber: reference,
         description: 'QR Kit Activation',
       },

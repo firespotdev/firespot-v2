@@ -8,6 +8,7 @@ import {
 } from '@/services/qr'
 import type { QRKit } from '@/services/qr'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
+import AgentSelect from './AgentSelect'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -68,26 +69,37 @@ function QRPreview({ qrKit }: QRPreviewProps) {
 
 export default function CreateQRCodes() {
   const [quantity, setQuantity] = useState(10)
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null)
+  const [singleAgentId, setSingleAgentId] = useState<string | null>(null)
   const [createdQRKits, setCreatedQRKits] = useState<QRKit[]>([])
 
   const createSingle = useCreateQRKit()
   const createBulk = useBulkCreateQRKits()
 
   const handleCreateSingle = async () => {
+    if (!singleAgentId) {
+      return
+    }
     try {
-      const qrKit = await createSingle.mutateAsync()
+      const qrKit = await createSingle.mutateAsync({ agentId: singleAgentId })
       setCreatedQRKits((prev) => [qrKit, ...prev])
     } catch (error) {
-      console.error('Failed to create QR Kit:', error)
+      // Error handled by mutation
     }
   }
 
   const handleCreateBulk = async () => {
+    if (!selectedAgentId) {
+      return
+    }
     try {
-      const qrKits = await createBulk.mutateAsync({ quantity })
+      const qrKits = await createBulk.mutateAsync({
+        quantity,
+        agentId: selectedAgentId,
+      })
       setCreatedQRKits((prev) => [...qrKits, ...prev])
     } catch (error) {
-      console.error('Failed to create QR Kits:', error)
+      // Error handled by mutation
     }
   }
 
@@ -131,9 +143,27 @@ export default function CreateQRCodes() {
             </div>
           </div>
 
+          <div className="mb-4">
+            <label
+              htmlFor="single-agent"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Assign to Agent <span className="text-red-500">*</span>
+            </label>
+            <AgentSelect
+              value={singleAgentId}
+              onChange={setSingleAgentId}
+              placeholder="Select an agent"
+              className="rounded-xl py-3"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Agent assignment is required
+            </p>
+          </div>
+
           <button
             onClick={handleCreateSingle}
-            disabled={isCreating}
+            disabled={isCreating || !singleAgentId}
             className="w-full rounded-xl bg-black px-4 py-3 font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {createSingle.isPending ? (
@@ -185,6 +215,24 @@ export default function CreateQRCodes() {
 
           <div className="mb-4">
             <label
+              htmlFor="agent"
+              className="mb-2 block text-sm font-medium text-gray-700"
+            >
+              Assign to Agent <span className="text-red-500">*</span>
+            </label>
+            <AgentSelect
+              value={selectedAgentId}
+              onChange={setSelectedAgentId}
+              placeholder="Select an agent"
+              className="rounded-xl py-3"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Agent assignment is required
+            </p>
+          </div>
+
+          <div className="mb-4">
+            <label
               htmlFor="quantity"
               className="mb-2 block text-sm font-medium text-gray-700"
             >
@@ -210,7 +258,9 @@ export default function CreateQRCodes() {
 
           <button
             onClick={handleCreateBulk}
-            disabled={isCreating || quantity < 1 || quantity > 200}
+            disabled={
+              isCreating || quantity < 1 || quantity > 200 || !selectedAgentId
+            }
             className="w-full rounded-xl bg-black px-4 py-3 font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {createBulk.isPending ? (

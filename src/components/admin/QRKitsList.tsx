@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useQRKits, useQRCodeSVG, useDownloadQRCodePNG } from '@/services/qr'
 import type { QRKit, QRKitFilters } from '@/services/qr'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
+import AgentSelect from './AgentSelect'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -110,6 +111,8 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
     limit: 20,
   })
   const [searchInput, setSearchInput] = useState('')
+  const [agentFilter, setAgentFilter] = useState<string | null>(null)
+  const [unassignedOnly, setUnassignedOnly] = useState(false)
 
   const { data, isLoading, error, refetch } = useQRKits(filters)
   const downloadPNG = useDownloadQRCodePNG()
@@ -125,9 +128,32 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
 
   const handleFilterChange = (
     key: keyof QRKitFilters,
-    value: string | undefined,
+    value: string | boolean | undefined,
   ) => {
     setFilters((prev) => ({ ...prev, [key]: value || undefined, page: 1 }))
+  }
+
+  const handleAgentFilterChange = (agentId: string | null) => {
+    setAgentFilter(agentId)
+    setUnassignedOnly(false)
+    setFilters((prev) => ({
+      ...prev,
+      agentId: agentId || undefined,
+      unassigned: undefined,
+      page: 1,
+    }))
+  }
+
+  const handleUnassignedToggle = () => {
+    const newValue = !unassignedOnly
+    setUnassignedOnly(newValue)
+    setAgentFilter(null)
+    setFilters((prev) => ({
+      ...prev,
+      agentId: undefined,
+      unassigned: newValue || undefined,
+      page: 1,
+    }))
   }
 
   const handlePageChange = (newPage: number) => {
@@ -229,12 +255,40 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
             </select>
           </div>
 
+          {/* Agent Filter */}
+          <div className="w-full lg:w-48">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Agent
+            </label>
+            <AgentSelect
+              value={agentFilter}
+              onChange={handleAgentFilterChange}
+              placeholder="All agents"
+              disabled={unassignedOnly}
+            />
+          </div>
+
+          {/* Unassigned Toggle */}
+          <div className="flex items-end">
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={unassignedOnly}
+                onChange={handleUnassignedToggle}
+                className="h-4 w-4 rounded border-gray-300 text-[#FB5012] focus:ring-[#FB5012]"
+              />
+              <span className="text-sm text-gray-700">Unassigned only</span>
+            </label>
+          </div>
+
           {/* Clear Filters */}
-          {(filters.status || filters.paymentStatus || filters.search) && (
+          {(filters.status || filters.paymentStatus || filters.search || filters.agentId || filters.unassigned) && (
             <button
               onClick={() => {
                 setFilters({ page: 1, limit: 20 })
                 setSearchInput('')
+                setAgentFilter(null)
+                setUnassignedOnly(false)
               }}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
@@ -303,6 +357,9 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                   Payment
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Agent
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Created
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -335,6 +392,26 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={qrKit.paymentStatus} type="payment" />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm">
+                    {qrKit.agentId ? (
+                      typeof qrKit.agentId === 'string' ? (
+                        <span className="text-gray-500 font-mono text-xs">
+                          {qrKit.agentId}
+                        </span>
+                      ) : (
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {qrKit.agentId.name}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            {qrKit.agentId.agentId}
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                     {new Date(qrKit.createdAt).toLocaleDateString()}

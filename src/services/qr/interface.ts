@@ -16,6 +16,18 @@ export interface QRKit {
         bankAccounts?: any[]
         profilePhotoUrl?: string
       }
+  agentId?:
+    | string
+    | {
+        _id: string
+        agentId: string
+        name: string
+        phoneNumber: string
+        state?: string
+        lga?: string
+        bustop?: string
+      }
+  assignedToAgentAt?: string
   createdAt: string
   updatedAt: string
 }
@@ -34,12 +46,19 @@ export interface QRKitFilters {
   status?: string
   paymentStatus?: string
   search?: string
+  agentId?: string
+  unassigned?: boolean
   page?: number
   limit?: number
 }
 
+export interface CreateQRKitDto {
+  agentId: string
+}
+
 export interface BulkCreateDto {
   quantity: number
+  agentId: string
 }
 
 export interface QRKitStats {
