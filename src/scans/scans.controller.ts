@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
   Request,
+  HttpCode,
 } from '@nestjs/common'
 import {
   ApiTags,
@@ -28,10 +29,15 @@ export class ScansController {
   constructor(private readonly scansService: ScansService) {}
 
   @Post('copy/:serialNumber')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Record account number copy event' })
   @ApiParam({ name: 'serialNumber', description: 'QR Kit serial number' })
   @ApiBody({ type: RecordCopyDto, required: false })
   @ApiResponse({ status: 200, description: 'Copy event recorded' })
+  @ApiResponse({
+    status: 404,
+    description: 'QR kit not found or no scan found for this QR kit',
+  })
   async recordAccountCopy(
     @Param('serialNumber') serialNumber: string,
     @Body() body: RecordCopyDto,

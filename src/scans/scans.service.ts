@@ -29,9 +29,13 @@ export class ScansService {
   ) {}
 
   async createScan(dto: CreateScanDto) {
+    // Convert string IDs to ObjectIds for proper type matching
+    const qrKitId = new Types.ObjectId(dto.qrKitId)
+    const merchantId = new Types.ObjectId(dto.merchantId)
+
     const scan = await this.scanModel.create({
-      qrKitId: dto.qrKitId,
-      merchantId: dto.merchantId,
+      qrKitId,
+      merchantId,
       ipAddress: dto.ipAddress,
       userAgent: dto.userAgent,
       customerFingerprint: dto.customerFingerprint,
@@ -41,7 +45,7 @@ export class ScansService {
     })
 
     // Check and set firstScannedAt for QR kit
-    const qrKit = await this.qrKitModel.findById(dto.qrKitId)
+    const qrKit = await this.qrKitModel.findById(qrKitId)
     if (qrKit && !qrKit.firstScannedAt) {
       qrKit.firstScannedAt = new Date()
       await qrKit.save()
@@ -72,11 +76,37 @@ export class ScansService {
       throw new HttpException('QR kit not found', HttpStatus.NOT_FOUND)
     }
 
-    // Find the most recent scan for this QR kit and update it
-    const scan = await this.scanModel
-      .findOne({ qrKitId: qrKit._id })
+    // Find the most recent scan for this QR kit within the last 10 minutes
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000)
+
+    // First, try to find a scan that hasn't been marked as copied yet
+    let scan = await this.scanModel
+      .findOne({
+        qrKitId: qrKit._id,
+        scannedAt: { $gte: tenMinutesAgo },
+        accountCopied: { $ne: true },
+      })
       .sort({ scannedAt: -1 })
       .exec()
+
+    // If not found, get the most recent scan regardless of copied status
+    if (!scan) {
+      scan = await this.scanModel
+        .findOne({
+          qrKitId: qrKit._id,
+          scannedAt: { $gte: tenMinutesAgo },
+        })
+        .sort({ scannedAt: -1 })
+        .exec()
+    }
+
+    // If still not found, try without time restriction (fallback)
+    if (!scan) {
+      scan = await this.scanModel
+        .findOne({ qrKitId: qrKit._id })
+        .sort({ scannedAt: -1 })
+        .exec()
+    }
 
     if (scan) {
       scan.accountCopied = true
@@ -90,8 +120,22 @@ export class ScansService {
       return { success: true, message: 'Copy event recorded' }
     }
 
-    // If no scan found, still return success (scan might not have been created yet)
-    return { success: true, message: 'Copy event recorded (no scan found)' }
+    // If no scan found at all, throw exception
+    const scanCount = await this.scanModel.countDocuments({
+      qrKitId: qrKit._id,
+    })
+
+    console.error(
+      `No scan found for QR kit ${qrKit.serialNumber}. Total scans: ${scanCount}`,
+    )
+
+    throw new HttpException(
+      {
+        success: false,
+        message: `Copy event not recorded: no scan found (total scans: ${scanCount})`,
+      },
+      HttpStatus.NOT_FOUND,
+    )
   }
 
   async getScanCountByQRKit(qrKitId: string): Promise<number> {

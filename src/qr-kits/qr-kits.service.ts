@@ -96,7 +96,10 @@ export class QRKitsService {
           browserType: detectBrowserType(userAgent),
         })
       } catch (err) {
-        console.error('Failed to create scan record:', err)
+        console.error(
+          `Failed to create scan record for QR kit ${qrKit.serialNumber}:`,
+          err,
+        )
       }
     }
 
