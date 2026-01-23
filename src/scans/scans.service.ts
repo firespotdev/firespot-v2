@@ -58,7 +58,11 @@ export class ScansService {
     )
   }
 
-  async recordAccountCopyBySerial(serialNumber: string) {
+  async recordAccountCopyBySerial(
+    serialNumber: string,
+    accountNumber?: string,
+    bankName?: string,
+  ) {
     // Find the QR kit by serial number
     const qrKit = await this.qrKitModel.findOne({
       serialNumber: serialNumber.toUpperCase(),
@@ -76,6 +80,12 @@ export class ScansService {
 
     if (scan) {
       scan.accountCopied = true
+      if (accountNumber) {
+        scan.copiedAccountNumber = accountNumber
+      }
+      if (bankName) {
+        scan.copiedBankName = bankName
+      }
       await scan.save()
       return { success: true, message: 'Copy event recorded' }
     }
@@ -280,31 +290,13 @@ export class ScansService {
             { $match: { accountCopied: true } },
             {
               $group: {
-                _id: '$bankSelected',
+                _id: '$copiedBankName',
                 count: { $sum: 1 },
               },
             },
             {
               $project: {
                 bankName: { $ifNull: ['$_id', 'Unknown'] },
-                count: 1,
-                _id: 0,
-              },
-            },
-            { $sort: { count: -1 } },
-          ],
-          // Transfer attempts (bankSelected count)
-          transferAttempts: [
-            { $match: { bankSelected: { $exists: true, $ne: null } } },
-            {
-              $group: {
-                _id: '$bankSelected',
-                count: { $sum: 1 },
-              },
-            },
-            {
-              $project: {
-                bankName: '$_id',
                 count: 1,
                 _id: 0,
               },
@@ -352,10 +344,6 @@ export class ScansService {
       (sum: number, bank: { count: number }) => sum + bank.count,
       0,
     )
-    const totalAttempts = result.transferAttempts.reduce(
-      (sum: number, bank: { count: number }) => sum + bank.count,
-      0,
-    )
 
     return {
       traffic: {
@@ -373,10 +361,6 @@ export class ScansService {
       accountCopies: {
         totalCopies,
         bankBreakdown: result.accountCopies,
-      },
-      transferAttempts: {
-        totalAttempts,
-        bankBreakdown: result.transferAttempts,
       },
       linkedCounts: {
         bankAccounts: user?.bankAccounts?.length || 0,

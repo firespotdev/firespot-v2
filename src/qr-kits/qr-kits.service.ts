@@ -82,11 +82,12 @@ export class QRKitsService {
     }
 
     // Create scan record (non-blocking)
-    if (ipAddress && userAgent && qrKit.merchantId) {
+    // Note: qrKit.merchantId is populated, so we need to access merchant._id
+    if (ipAddress && userAgent && merchant._id) {
       this.scansService
         .createScan({
           qrKitId: qrKit._id.toString(),
-          merchantId: qrKit.merchantId.toString(),
+          merchantId: merchant._id.toString(),
           ipAddress,
           userAgent,
           customerFingerprint,
@@ -94,7 +95,6 @@ export class QRKitsService {
           browserType: detectBrowserType(userAgent),
         })
         .catch((err) => {
-          // Log error but don't block the response
           console.error('Failed to create scan record:', err)
         })
     }

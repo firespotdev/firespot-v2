@@ -20,6 +20,7 @@ import {
 import { ScansService } from './scans.service'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { InsightsQueryDto, DateRangePreset } from './dto/insights-query.dto'
+import { RecordCopyDto } from './dto/record-copy.dto'
 
 @ApiTags('scans')
 @Controller('scans')
@@ -29,9 +30,17 @@ export class ScansController {
   @Post('copy/:serialNumber')
   @ApiOperation({ summary: 'Record account number copy event' })
   @ApiParam({ name: 'serialNumber', description: 'QR Kit serial number' })
+  @ApiBody({ type: RecordCopyDto, required: false })
   @ApiResponse({ status: 200, description: 'Copy event recorded' })
-  async recordAccountCopy(@Param('serialNumber') serialNumber: string) {
-    return this.scansService.recordAccountCopyBySerial(serialNumber)
+  async recordAccountCopy(
+    @Param('serialNumber') serialNumber: string,
+    @Body() body: RecordCopyDto,
+  ) {
+    return this.scansService.recordAccountCopyBySerial(
+      serialNumber,
+      body?.accountNumber,
+      body?.bankName,
+    )
   }
 
   @Get('qr-kit/:qrKitId/count')

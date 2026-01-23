@@ -71,10 +71,6 @@ export interface MerchantInsightsResponse {
     totalCopies: number
     bankBreakdown: BankBreakdown[]
   }
-  transferAttempts: {
-    totalAttempts: number
-    bankBreakdown: BankBreakdown[]
-  }
   linkedCounts: {
     bankAccounts: number
     qrKits: number
