@@ -212,7 +212,7 @@ export default function QRKitDetailPage() {
                       </div>
                     )}
 
-                    {/* Business Logo Overlay */}
+                    {/* Business Logo Overlay*/}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-13 h-13 rounded-full overflow-hidden border-[3px] shadow-lg border-white z-10 bg-white">
                       {profile?.profilePhotoUrl ? (
                         <Image
