@@ -81,11 +81,12 @@ export class QRKitsService {
       )
     }
 
-    // Create scan record (non-blocking)
+    // Create scan record for this visit so that subsequent events
+    // (like copying the account number) can be reliably linked to it.
     // Note: qrKit.merchantId is populated, so we need to access merchant._id
     if (ipAddress && userAgent && merchant._id) {
-      this.scansService
-        .createScan({
+      try {
+        await this.scansService.createScan({
           qrKitId: qrKit._id.toString(),
           merchantId: merchant._id.toString(),
           ipAddress,
@@ -94,9 +95,9 @@ export class QRKitsService {
           deviceType: detectDeviceType(userAgent),
           browserType: detectBrowserType(userAgent),
         })
-        .catch((err) => {
-          console.error('Failed to create scan record:', err)
-        })
+      } catch (err) {
+        console.error('Failed to create scan record:', err)
+      }
     }
 
     const bankAccounts =
