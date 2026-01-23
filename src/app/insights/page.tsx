@@ -202,24 +202,6 @@ export default function InsightsPage() {
                   ))}
                 </StatCard>
 
-                {/* Transfer Attempts */}
-                <StatCard
-                  title="Transfer attempts"
-                  description="How many times a customer selected a bank app to transfer from."
-                  value={insights.transferAttempts.totalAttempts}
-                  expandable={insights.transferAttempts.bankBreakdown.length > 0}
-                >
-                  {insights.transferAttempts.bankBreakdown.map((bank) => (
-                    <BreakdownItem
-                      key={bank.bankName}
-                      label={bank.bankName}
-                      count={bank.count}
-                      total={insights.transferAttempts.totalAttempts}
-                      showBankLogo
-                    />
-                  ))}
-                </StatCard>
-
                 {/* Linked Bank Accounts */}
                 <StatCard
                   title="Linked bank accounts"
@@ -244,7 +226,7 @@ export default function InsightsPage() {
         <div className="py-6 flex items-center justify-center gap-2">
           <span className="text-xs text-[#00000066]">Powered by</span>
           <Image
-            src="/icons/firespot-logo.svg"
+            src="/icons/firespot_logo.svg"
             alt="Firespot"
             width={80}
             height={20}

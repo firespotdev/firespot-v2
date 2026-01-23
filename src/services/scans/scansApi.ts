@@ -6,12 +6,22 @@ import type {
   MerchantStatsResponse,
 } from './interface'
 
+export interface RecordCopyParams {
+  serialNumber: string
+  accountNumber?: string
+  bankName?: string
+}
+
 export const scansApi = {
   recordAccountCopy: async (
-    serialNumber: string,
+    params: RecordCopyParams,
   ): Promise<RecordCopyResponse> => {
     const response = await publicApiClient.post<RecordCopyResponse>(
-      `/scans/copy/${serialNumber}`,
+      `/scans/copy/${params.serialNumber}`,
+      {
+        accountNumber: params.accountNumber,
+        bankName: params.bankName,
+      },
     )
     return response.data
   },
@@ -40,8 +50,7 @@ export const scansApi = {
 
 export const useRecordAccountCopy = () => {
   return useMutation({
-    mutationFn: (serialNumber: string) =>
-      scansApi.recordAccountCopy(serialNumber),
+    mutationFn: (params: RecordCopyParams) => scansApi.recordAccountCopy(params),
   })
 }
 

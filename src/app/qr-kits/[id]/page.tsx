@@ -213,22 +213,22 @@ export default function QRKitDetailPage() {
                     )}
 
                     {/* Business Logo Overlay */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full overflow-hidden border-[3px] shadow-lg border-white z-10 bg-white">
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-13 h-13 rounded-full overflow-hidden border-[3px] shadow-lg border-white z-10 bg-white">
                       {profile?.profilePhotoUrl ? (
                         <Image
                           src={profile.profilePhotoUrl}
                           alt="Business Logo"
-                          width={64}
-                          height={64}
+                          width={52}
+                          height={52}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <Image
                           src="/icons/firespot_logo.svg"
                           alt="Firespot Logo"
-                          width={64}
-                          height={64}
-                          className="w-full h-full object-contain p-2"
+                          width={52}
+                          height={52}
+                          className="w-full h-full object-cover"
                         />
                       )}
                     </div>

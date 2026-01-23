@@ -22,24 +22,31 @@ export default function PaymentPage() {
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
   const [selectedBankAccount, setSelectedBankAccount] =
     useState<BankAccount | null>(null)
+  const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
 
-  const handleCopyAccountNumber = (accountNumber: string) => {
+  const trackCopyEvent = (accountNumber: string, bankName: string) => {
+    if (hasCopyBeenRecorded) return
+
+    setHasCopyBeenRecorded(true)
+    recordCopy.mutate(
+      { serialNumber, accountNumber, bankName },
+      {
+        onError: (err) => {
+          console.error('Failed to record copy event:', err)
+        },
+      },
+    )
+  }
+
+  const handleCopyAccountNumber = (accountNumber: string, bankName: string) => {
     navigator.clipboard.writeText(accountNumber)
     setCopiedAccount(accountNumber)
     showNotificationToast({ message: 'Account number copied!' })
-
-    // Record copy event
-    recordCopy.mutate(serialNumber, {
-      onError: (err) => {
-        // Silently fail - don't interrupt user experience
-        console.error('Failed to record copy event:', err)
-      },
-    })
-
+    trackCopyEvent(accountNumber, bankName)
     setTimeout(() => setCopiedAccount(null), 2000)
   }
 
@@ -150,25 +157,17 @@ export default function PaymentPage() {
       selectedBankAccount?.accountName || bankAccount?.accountName || ''
 
     if (accountNumber) {
-      // Copy to clipboard
       navigator.clipboard.writeText(accountNumber)
       setCopiedAccount(accountNumber)
+      trackCopyEvent(accountNumber, bankName)
 
-      // Record copy event
-      recordCopy.mutate(serialNumber, {
-        onError: (err) => {
-          // Silently fail - don't interrupt user experience
-          console.error('Failed to record copy event:', err)
-        },
-      })
-
-      // Open drawer
       openDrawer({
         type: 'bank-transfer',
         props: {
           accountNumber,
           bankName,
           accountName,
+          onCopy: () => trackCopyEvent(accountNumber, bankName),
         },
       })
     }
@@ -246,7 +245,10 @@ export default function PaymentPage() {
                   </p>
                   <button
                     onClick={() =>
-                      handleCopyAccountNumber(bankAccount.accountNumber)
+                      handleCopyAccountNumber(
+                        bankAccount.accountNumber,
+                        bankAccount.bankName,
+                      )
                     }
                     type="button"
                     className="p-1 rounded"
