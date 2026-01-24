@@ -27,8 +27,8 @@ export function BreakdownItem({
 
       if (isDefaultLogo) {
         return (
-          <div className="w-6 h-6 bg-[#0075FF] rounded-md flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-xs">
+          <div className="w-4 h-4 bg-[#0075FF] rounded-[4.4px] flex items-center justify-center shrink-0">
+            <span className="text-white font-bold text-[10px]">
               {getBankInitial(label)}
             </span>
           </div>
@@ -41,7 +41,7 @@ export function BreakdownItem({
           alt={`${label} logo`}
           width={24}
           height={24}
-          className="w-6 h-6 rounded-md object-contain flex-shrink-0"
+          className="w-4 h-4 rounded-[4.4px] object-contain shrink-0"
         />
       )
     }
@@ -49,7 +49,7 @@ export function BreakdownItem({
     if (color) {
       return (
         <div
-          className="w-6 h-6 rounded-md flex-shrink-0"
+          className="w-4 h-4 rounded-[4.4px] shrink-0"
           style={{ backgroundColor: color }}
         />
       )
@@ -59,12 +59,14 @@ export function BreakdownItem({
   }
 
   return (
-    <div className="flex items-center justify-between py-2">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
         {renderIcon()}
-        <span className="text-sm text-black font-medium">{label}</span>
+        <span className="text-[13px] text-[#4C5563] font-medium">{label}</span>
       </div>
-      <span className="text-sm text-[#00000066] font-medium">{percentage}%</span>
+      <span className="text-[13px] text-[#4C5563] font-medium">
+        {percentage}%
+      </span>
     </div>
   )
 }

@@ -63,7 +63,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             width={24}
             height={24}
           />
-          <span className="text-base font-bold text-black">firespot_lite</span>
+          <span className="text-base font-bold text-black">firespot lite</span>
         </div>
         <button
           type="button"
@@ -167,8 +167,9 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
           </Link>
 
-          <button
-            type="button"
+          <Link
+            href="/insights"
+            onClick={closeDrawer}
             className="w-full flex items-center gap-3 py-3.5 px-4"
           >
             <svg
@@ -197,7 +198,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
               Insights
             </span>
             <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
-          </button>
+          </Link>
         </div>
 
         {/* Section 2: Support */}

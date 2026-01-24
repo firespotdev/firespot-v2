@@ -161,7 +161,7 @@ export function CustomDrawer() {
         </DrawerHeader>
 
         {/* Content */}
-        <Content {...(config.props || {})} />
+        <Content {...(config.props || {})} closeDrawer={closeDrawer} />
       </DrawerContent>
     </DrawerPrimitive>
   )

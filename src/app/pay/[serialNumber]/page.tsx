@@ -44,8 +44,8 @@ export default function PaymentPage() {
 
   const handleCopyAccountNumber = (accountNumber: string, bankName: string) => {
     navigator.clipboard.writeText(accountNumber)
-    setCopiedAccount(accountNumber)
     showNotificationToast({ message: 'Account number copied!' })
+    setCopiedAccount(accountNumber)
     trackCopyEvent(accountNumber, bankName)
     setTimeout(() => setCopiedAccount(null), 2000)
   }

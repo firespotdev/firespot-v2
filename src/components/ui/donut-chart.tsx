@@ -32,7 +32,8 @@ export function DonutChart({
   const segmentData = segments.map((segment) => {
     const percentage = total > 0 ? segment.value / total : 0
     const dashArray = circumference * percentage
-    const dashOffset = circumference * (1 - cumulativePercentage) + circumference * 0.25
+    const dashOffset =
+      circumference * (1 - cumulativePercentage) + circumference * 0.25
     cumulativePercentage += percentage
     return {
       ...segment,
@@ -75,12 +76,14 @@ export function DonutChart({
       {(centerLabel || centerValue !== undefined) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           {centerLabel && (
-            <span className="text-xs text-[#00000066] font-medium">
+            <span className="text-xs text-[#00000099] font-medium">
               {centerLabel}
             </span>
           )}
           {centerValue !== undefined && (
-            <span className="text-3xl font-bold text-black">{centerValue}</span>
+            <span className="text-[32px] font-bold text-black -tracking-[0.4px] mt-2">
+              {centerValue}
+            </span>
           )}
         </div>
       )}
@@ -96,9 +99,10 @@ export function DonutChartLegend({ segments }: DonutChartLegendProps) {
   const total = segments.reduce((sum, segment) => sum + segment.value, 0)
 
   return (
-    <div className="flex flex-col gap-2 mt-4">
+    <div className="flex flex-col gap-2 mt-4 w-full">
       {segments.map((segment, index) => {
-        const percentage = total > 0 ? Math.round((segment.value / total) * 100) : 0
+        const percentage =
+          total > 0 ? Math.round((segment.value / total) * 100) : 0
         return (
           <div key={index} className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -106,11 +110,11 @@ export function DonutChartLegend({ segments }: DonutChartLegendProps) {
                 className="w-2.5 h-2.5 rounded-full"
                 style={{ backgroundColor: segment.color }}
               />
-              <span className="text-sm text-black font-medium">
+              <span className="text-[13px] text-[#4C5563] font-medium">
                 {segment.label}
               </span>
             </div>
-            <span className="text-sm text-[#00000066] font-medium">
+            <span className="text-[13px] text-[#4C5563] font-medium">
               {percentage}%
             </span>
           </div>

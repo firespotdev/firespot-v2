@@ -37,6 +37,9 @@ export function DateRangeFilterDrawer({
     if (preset !== 'custom') {
       setStartDate('')
       setEndDate('')
+      // Apply filter immediately for presets
+      onApply?.({ preset })
+      closeDrawer?.()
     }
   }
 
@@ -45,6 +48,17 @@ export function DateRangeFilterDrawer({
       setStartDate(value)
     } else {
       setEndDate(value)
+      // Apply filter when end date is selected and both dates are set
+      if (value && startDate) {
+        setSelectedPreset('custom')
+        const filter: InsightsQuery = {
+          preset: 'custom',
+          startDate,
+          endDate: value,
+        }
+        onApply?.(filter)
+        closeDrawer?.()
+      }
     }
     // When setting custom dates, switch to custom preset
     if (value) {
@@ -52,19 +66,6 @@ export function DateRangeFilterDrawer({
     }
   }
 
-  const handleApply = () => {
-    const filter: InsightsQuery = {
-      preset: selectedPreset,
-    }
-
-    if (selectedPreset === 'custom') {
-      if (startDate) filter.startDate = startDate
-      if (endDate) filter.endDate = endDate
-    }
-
-    onApply?.(filter)
-    closeDrawer?.()
-  }
 
   return (
     <div className="px-4 pb-6 pt-2">
@@ -78,6 +79,7 @@ export function DateRangeFilterDrawer({
             <label
               key={preset}
               className="flex items-center gap-3 py-2 cursor-pointer"
+              onClick={() => handlePresetSelect(preset)}
             >
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
@@ -130,15 +132,6 @@ export function DateRangeFilterDrawer({
           </div>
         </div>
       </div>
-
-      {/* Apply Button */}
-      <button
-        type="button"
-        onClick={handleApply}
-        className="w-full bg-black text-white rounded-[48px] h-12 font-bold text-sm"
-      >
-        Apply Filter
-      </button>
     </div>
   )
 }
