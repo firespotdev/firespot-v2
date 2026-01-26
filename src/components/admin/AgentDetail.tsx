@@ -222,6 +222,32 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
               </div>
             </div>
 
+            {/* Referral Code Section */}
+            {currentAgent.referralCode && (
+              <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+                  Referral Code
+                </h3>
+                <div className="flex items-center gap-3">
+                  <code className="flex-1 rounded-lg bg-white px-4 py-3 font-mono text-lg font-bold text-gray-900 border border-gray-200">
+                    {currentAgent.referralCode}
+                  </code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(currentAgent.referralCode || '')
+                      adminToast.success('Referral code copied!')
+                    }}
+                    className="rounded-lg bg-black px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Merchants can use this code during signup to be linked to this agent.
+                </p>
+              </div>
+            )}
+
             {/* QRKit Stats */}
             {isLoading ? (
               <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -237,7 +263,7 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
                   QR Kit Statistics
                 </h3>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                   <StatCard title="Total Assigned" value={stats.total} />
                   <StatCard
                     title="Activated"
@@ -254,6 +280,7 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                     value={stats.byActivationStatus.deactivated}
                     color="gray"
                   />
+                  <StatCard title="Total Referrals" value={stats.referralCount} />
                 </div>
               </div>
             ) : (
@@ -261,11 +288,12 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                 <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
                   QR Kit Statistics
                 </h3>
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                   <StatCard title="Total Assigned" value={0} />
                   <StatCard title="Activated" value={0} color="emerald" />
                   <StatCard title="Pending" value={0} color="amber" />
                   <StatCard title="Deactivated" value={0} color="gray" />
+                  <StatCard title="Total Referrals" value={0} />
                 </div>
               </div>
             )}

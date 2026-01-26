@@ -9,6 +9,7 @@ export interface Agent {
   bustop?: string
   status: 'active' | 'inactive' | 'suspended'
   notes?: string
+  referralCode?: string // Agent's referral code for merchants
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +27,7 @@ export interface AgentWithStats extends Agent {
       successful: number
       failed: number
     }
+    referralCount: number
   }
 }
 
