@@ -15,6 +15,7 @@ import { customAlphabet } from 'nanoid'
 const nanoidAlphanumeric = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
 import axios from 'axios'
 import { User } from '../schemas/user.schema'
+import { Agent } from '../admin/schemas/agent.schema'
 import { RequestOtpDto } from './dto/request-otp.dto'
 import { VerifyOtpDto } from './dto/verify-otp.dto'
 import { SignupDto } from './dto/signup.dto'
@@ -29,6 +30,7 @@ const OTP_COOLDOWN_SECONDS = 60 // 60 seconds between OTP requests
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(Agent.name) private agentModel: Model<Agent>,
     private jwtService: JwtService,
     private configService: ConfigService,
     private paystackService: PaystackService,
@@ -123,13 +125,14 @@ export class AuthService {
 
     const businessName = verification.accountName
 
-    let referrer: User | null = null
+    // Look up agent by referral code (agents have referral codes, not users)
+    let referringAgent: Agent | null = null
     if (referralCode) {
-      referrer = await this.userModel.findOne({
+      referringAgent = await this.agentModel.findOne({
         referralCode: referralCode.toUpperCase(),
       })
 
-      if (!referrer) {
+      if (!referringAgent) {
         throw new BadRequestException('Invalid referral code')
       }
     }
@@ -184,11 +187,10 @@ export class AuthService {
       ],
       otpPinId: pinId,
       otpExpiresAt,
-      referralCode: nanoidAlphanumeric(8),
       otpRequestCount: 1,
       otpRequestWindowStart: now,
       lastOtpRequestAt: now,
-      referredBy: referrer?._id,
+      referredByAgent: referringAgent?._id,
     })
 
     return {

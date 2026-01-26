@@ -63,11 +63,13 @@ export class AdminQRKitsService {
   /**
    * Create a single QRKit
    */
-  async createQRKit(agentId: string): Promise<QRKitDocument> {
-    // Verify agent exists
-    const agent = await this.agentModel.findById(agentId)
-    if (!agent) {
-      throw new NotFoundException('Agent not found')
+  async createQRKit(agentId?: string): Promise<QRKitDocument> {
+    // Verify agent exists if provided
+    if (agentId) {
+      const agent = await this.agentModel.findById(agentId)
+      if (!agent) {
+        throw new NotFoundException('Agent not found')
+      }
     }
 
     const serialNumber = await this.generateUniqueSerialNumber()
@@ -87,8 +89,10 @@ export class AdminQRKitsService {
       activationStatus: 'pending',
       paymentStatus: 'pending',
       activationAmount: 200000, // NGN 2,000 in kobo
-      agentId: new Types.ObjectId(agentId),
-      assignedToAgentAt: new Date(),
+      ...(agentId && {
+        agentId: new Types.ObjectId(agentId),
+        assignedToAgentAt: new Date(),
+      }),
     }
 
     const qrKit = new this.qrKitModel(qrKitData)
@@ -110,10 +114,12 @@ export class AdminQRKitsService {
       throw new BadRequestException('Quantity must be between 1 and 200')
     }
 
-    // Verify agent exists
-    const agent = await this.agentModel.findById(agentId)
-    if (!agent) {
-      throw new NotFoundException('Agent not found')
+    // Verify agent exists if provided
+    if (agentId) {
+      const agent = await this.agentModel.findById(agentId)
+      if (!agent) {
+        throw new NotFoundException('Agent not found')
+      }
     }
 
     const qrKits: QRKitDocument[] = []

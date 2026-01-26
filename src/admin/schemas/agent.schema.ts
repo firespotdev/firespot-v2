@@ -30,6 +30,9 @@ export class Agent extends Document {
   @Prop()
   notes?: string // Admin notes about the agent
 
+  @Prop({ unique: true, sparse: true, index: true })
+  referralCode?: string // 8-char alphanumeric referral code for merchants
+
   createdAt?: Date
   updatedAt?: Date
 }
@@ -43,3 +46,4 @@ AgentSchema.index({ phoneNumber: 1 })
 AgentSchema.index({ status: 1 })
 AgentSchema.index({ state: 1 })
 AgentSchema.index({ lga: 1 })
+AgentSchema.index({ referralCode: 1 }, { sparse: true })

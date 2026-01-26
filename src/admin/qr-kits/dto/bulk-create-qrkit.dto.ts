@@ -1,5 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger'
-import { IsInt, Min, Max, IsMongoId, IsNotEmpty } from 'class-validator'
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { IsInt, Min, Max, IsMongoId, IsOptional } from 'class-validator'
 import { Type } from 'class-transformer'
 
 export class BulkCreateQRKitDto {
@@ -15,11 +15,11 @@ export class BulkCreateQRKitDto {
   @Max(200)
   quantity: number
 
-  @ApiProperty({
-    description: 'Agent ID to assign QRKits to (required)',
+  @ApiPropertyOptional({
+    description: 'Agent ID to assign QRKits to (optional)',
     example: '507f1f77bcf86cd799439011',
   })
   @IsMongoId()
-  @IsNotEmpty()
-  agentId: string
+  @IsOptional()
+  agentId?: string
 }

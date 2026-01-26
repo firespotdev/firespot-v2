@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { User, UserDocument } from '../schemas/user.schema'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
+import { Agent, AgentDocument } from '../admin/schemas/agent.schema'
 import { PaystackService } from './services/paystack.service'
 import { CloudinaryService } from './services/cloudinary.service'
 import { SetupProfileDto } from './dto/setup-profile.dto'
@@ -14,6 +15,7 @@ export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
+    @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
   ) {}
@@ -54,14 +56,14 @@ export class UsersService {
       dto.bankCode,
     )
 
-    // Handle referral code if provided
-    let referrer: UserDocument | null = null
+    // Handle referral code if provided (referral codes belong to agents)
+    let referringAgent: AgentDocument | null = null
     if (dto.referralCode) {
-      referrer = await this.userModel.findOne({
+      referringAgent = await this.agentModel.findOne({
         referralCode: dto.referralCode.toUpperCase(),
       })
 
-      if (!referrer) {
+      if (!referringAgent) {
         throw new HttpException('Invalid referral code', HttpStatus.BAD_REQUEST)
       }
     }
@@ -79,8 +81,8 @@ export class UsersService {
       isPrimary: true,
     } as any)
 
-    if (referrer) {
-      user.referredBy = referrer._id
+    if (referringAgent) {
+      user.referredByAgent = referringAgent._id
     }
 
     await user.save()
@@ -375,7 +377,6 @@ export class UsersService {
       merchantSlug: user.merchantSlug,
       bankAccounts: user.bankAccounts || [],
       profilePhotoUrl: user.profilePhotoUrl,
-      referralCode: user.referralCode,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     }

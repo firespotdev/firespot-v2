@@ -52,12 +52,9 @@ export class User extends Document {
   @Prop()
   profilePhotoPublicId?: string
 
-  // Referral
-  @Prop({ unique: true, sparse: true, index: true })
-  referralCode?: string
-
-  @Prop({ type: Types.ObjectId, ref: 'User' })
-  referredBy?: Types.ObjectId
+  // Referral - now links to Agent who referred this merchant
+  @Prop({ type: Types.ObjectId, ref: 'Agent' })
+  referredByAgent?: Types.ObjectId
 
   @Prop()
   lastLoginAt?: Date
@@ -72,6 +69,5 @@ export type UserDocument = User & Document
 
 // Indexes
 UserSchema.index({ phoneNumber: 1 })
-UserSchema.index({ referralCode: 1 }, { sparse: true })
 UserSchema.index({ fullPhoneNumber: 1 })
 UserSchema.index({ merchantSlug: 1 }, { sparse: true })

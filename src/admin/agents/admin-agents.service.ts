@@ -6,17 +6,22 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
+import { customAlphabet } from 'nanoid'
 import { Agent, AgentDocument } from '../schemas/agent.schema'
 import { QRKit, QRKitDocument } from '../../schemas/qrkit.schema'
+import { User, UserDocument } from '../../schemas/user.schema'
 import { CreateAgentDto } from './dto/create-agent.dto'
 import { UpdateAgentDto } from './dto/update-agent.dto'
 import { AgentQueryDto } from './dto/agent-query.dto'
+
+const nanoidAlphanumeric = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
 
 @Injectable()
 export class AdminAgentsService {
   constructor(
     @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
   ) {}
 
   /**
@@ -42,10 +47,12 @@ export class AdminAgentsService {
    */
   async create(createAgentDto: CreateAgentDto): Promise<AgentDocument> {
     const agentId = await this.generateAgentId()
+    const referralCode = nanoidAlphanumeric(8)
 
     const agent = new this.agentModel({
       ...createAgentDto,
       agentId,
+      referralCode,
       status: 'active',
     })
 
@@ -126,29 +133,34 @@ export class AdminAgentsService {
    * Get QRKit statistics for a specific agent
    */
   private async getAgentQRKitStats(agentId: string) {
-    const stats = await this.qrKitModel.aggregate([
-      { $match: { agentId: new Types.ObjectId(agentId) } },
-      {
-        $facet: {
-          total: [{ $count: 'count' }],
-          byActivationStatus: [
-            {
-              $group: {
-                _id: '$activationStatus',
-                count: { $sum: 1 },
+    const [stats, referralCount] = await Promise.all([
+      this.qrKitModel.aggregate([
+        { $match: { agentId: new Types.ObjectId(agentId) } },
+        {
+          $facet: {
+            total: [{ $count: 'count' }],
+            byActivationStatus: [
+              {
+                $group: {
+                  _id: '$activationStatus',
+                  count: { $sum: 1 },
+                },
               },
-            },
-          ],
-          byPaymentStatus: [
-            {
-              $group: {
-                _id: '$paymentStatus',
-                count: { $sum: 1 },
+            ],
+            byPaymentStatus: [
+              {
+                $group: {
+                  _id: '$paymentStatus',
+                  count: { $sum: 1 },
+                },
               },
-            },
-          ],
+            ],
+          },
         },
-      },
+      ]),
+      this.userModel.countDocuments({
+        referredByAgent: new Types.ObjectId(agentId),
+      }),
     ])
 
     const result = stats[0]
@@ -191,6 +203,7 @@ export class AdminAgentsService {
       total: result.total[0]?.count || 0,
       byActivationStatus,
       byPaymentStatus,
+      referralCount,
     }
   }
 
