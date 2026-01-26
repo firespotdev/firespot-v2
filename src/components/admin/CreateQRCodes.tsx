@@ -77,11 +77,10 @@ export default function CreateQRCodes() {
   const createBulk = useBulkCreateQRKits()
 
   const handleCreateSingle = async () => {
-    if (!singleAgentId) {
-      return
-    }
     try {
-      const qrKit = await createSingle.mutateAsync({ agentId: singleAgentId })
+      const qrKit = await createSingle.mutateAsync({ 
+        agentId: singleAgentId || undefined 
+      })
       setCreatedQRKits((prev) => [qrKit, ...prev])
     } catch (error) {
       // Error handled by mutation
@@ -89,13 +88,10 @@ export default function CreateQRCodes() {
   }
 
   const handleCreateBulk = async () => {
-    if (!selectedAgentId) {
-      return
-    }
     try {
       const qrKits = await createBulk.mutateAsync({
         quantity,
-        agentId: selectedAgentId,
+        agentId: selectedAgentId || undefined,
       })
       setCreatedQRKits((prev) => [...qrKits, ...prev])
     } catch (error) {
@@ -148,7 +144,7 @@ export default function CreateQRCodes() {
               htmlFor="single-agent"
               className="mb-2 block text-sm font-medium text-gray-700"
             >
-              Assign to Agent <span className="text-red-500">*</span>
+              Assign to Agent <span className="text-gray-400 font-normal">(Optional)</span>
             </label>
             <AgentSelect
               value={singleAgentId}
@@ -157,13 +153,13 @@ export default function CreateQRCodes() {
               className="rounded-xl py-3"
             />
             <p className="mt-1 text-xs text-gray-400">
-              Agent assignment is required
+              Agent assignment is optional
             </p>
           </div>
 
           <button
             onClick={handleCreateSingle}
-            disabled={isCreating || !singleAgentId}
+            disabled={isCreating}
             className="w-full rounded-xl bg-black px-4 py-3 font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {createSingle.isPending ? (
@@ -218,7 +214,7 @@ export default function CreateQRCodes() {
               htmlFor="agent"
               className="mb-2 block text-sm font-medium text-gray-700"
             >
-              Assign to Agent <span className="text-red-500">*</span>
+              Assign to Agent <span className="text-gray-400 font-normal">(Optional)</span>
             </label>
             <AgentSelect
               value={selectedAgentId}
@@ -227,7 +223,7 @@ export default function CreateQRCodes() {
               className="rounded-xl py-3"
             />
             <p className="mt-1 text-xs text-gray-400">
-              Agent assignment is required
+              Agent assignment is optional
             </p>
           </div>
 
@@ -259,7 +255,7 @@ export default function CreateQRCodes() {
           <button
             onClick={handleCreateBulk}
             disabled={
-              isCreating || quantity < 1 || quantity > 200 || !selectedAgentId
+              isCreating || quantity < 1 || quantity > 200
             }
             className="w-full rounded-xl bg-black px-4 py-3 font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >

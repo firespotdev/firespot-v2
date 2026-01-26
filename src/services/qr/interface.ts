@@ -53,12 +53,12 @@ export interface QRKitFilters {
 }
 
 export interface CreateQRKitDto {
-  agentId: string
+  agentId?: string
 }
 
 export interface BulkCreateDto {
   quantity: number
-  agentId: string
+  agentId?: string
 }
 
 export interface QRKitStats {
