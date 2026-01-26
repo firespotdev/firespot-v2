@@ -5,8 +5,10 @@ import { Model } from 'mongoose'
 import { nanoid } from 'nanoid'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { User, UserDocument } from '../schemas/user.schema'
+import { Agent, AgentDocument } from '../admin/schemas/agent.schema'
 import { PaystackService } from '../users/services/paystack.service'
 import { ScansService } from '../scans/scans.service'
+import { SmsService } from '../services/sms/sms.service'
 import {
   detectDeviceType,
   detectBrowserType,
@@ -17,9 +19,11 @@ export class QRKitsService {
   constructor(
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private paystackService: PaystackService,
     private configService: ConfigService,
     private scansService: ScansService,
+    private smsService: SmsService,
   ) {}
 
   async checkSerialNumber(serialNumber: string) {
@@ -238,6 +242,11 @@ export class QRKitsService {
     qrKit.activatedAt = new Date()
     await qrKit.save()
 
+    // Notify agent if assigned
+    if (qrKit.agentId) {
+      await this.notifyAgentOnActivation(qrKit)
+    }
+
     // Update user's merchantSlug if not set
     if (qrKit.merchantId) {
       const user = await this.userModel.findById(qrKit.merchantId)
@@ -274,6 +283,11 @@ export class QRKitsService {
     qrKit.activatedAt = new Date()
     await qrKit.save()
 
+    // Notify agent if assigned
+    if (qrKit.agentId) {
+      await this.notifyAgentOnActivation(qrKit)
+    }
+
     // Update user's merchantSlug if not set
     if (qrKit.merchantId) {
       const user = await this.userModel.findById(qrKit.merchantId)
@@ -284,5 +298,28 @@ export class QRKitsService {
     }
 
     return { success: true, message: 'Activated via webhook' }
+  }
+
+  private async notifyAgentOnActivation(qrKit: QRKitDocument) {
+    try {
+      if (!qrKit.agentId) return
+
+      const agent = await this.agentModel.findById(qrKit.agentId)
+      if (!agent || !agent.phoneNumber) return
+
+      const user = await this.userModel.findById(qrKit.merchantId)
+      const businessName = user?.businessName || 'a merchant'
+
+      const message = `Hello ${agent.name}, the QR Kit (${qrKit.serialNumber}) assigned to you has been activated by ${businessName}.`
+
+      await this.smsService.sendSms(agent.phoneNumber, message)
+
+      console.log(`Notification sent to agent ${agent.name} for QR kit ${qrKit.serialNumber}`)
+    } catch (error) {
+      console.error(
+        `Failed to notify agent for QR kit ${qrKit.serialNumber}:`,
+        error,
+      )
+    }
   }
 }

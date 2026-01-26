@@ -13,13 +13,13 @@ import { ConfigService } from '@nestjs/config'
 import { customAlphabet } from 'nanoid'
 
 const nanoidAlphanumeric = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-import axios from 'axios'
 import { User } from '../schemas/user.schema'
 import { Agent } from '../admin/schemas/agent.schema'
 import { RequestOtpDto } from './dto/request-otp.dto'
 import { VerifyOtpDto } from './dto/verify-otp.dto'
 import { SignupDto } from './dto/signup.dto'
 import { PaystackService } from '../users/services/paystack.service'
+import { SmsService } from '../services/sms/sms.service'
 
 // Rate limiting constants
 const OTP_RATE_LIMIT_WINDOW_MINUTES = 60 // 1 hour window
@@ -34,6 +34,7 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private paystackService: PaystackService,
+    private smsService: SmsService,
   ) {}
 
   async login(loginDto: RequestOtpDto) {
@@ -57,11 +58,12 @@ export class AuthService {
     )
     const otpLength = this.configService.get<number>('OTP_LENGTH', 6)
 
-    // Send OTP via Termii and get pin_id
-    const pinId = await this.sendOtpSms(
+    // Send OTP via SmsService and get pin_id
+    const pinId = await this.smsService.sendOtp(
       termiiPhoneNumber,
       otpExpiryMinutes,
       otpLength,
+      `Your Firespot OTP is {{pin}}. Valid for ${otpExpiryMinutes} minutes. Do not share this code with anyone.`,
     )
 
     // Calculate expiry time
@@ -146,11 +148,12 @@ export class AuthService {
     )
     const otpLength = this.configService.get<number>('OTP_LENGTH', 6)
 
-    // Send OTP via Termii and get pin_id
-    const pinId = await this.sendOtpSms(
+    // Send OTP via SmsService and get pin_id
+    const pinId = await this.smsService.sendOtp(
       termiiPhoneNumber,
       otpExpiryMinutes,
       otpLength,
+      `Your Firespot OTP is {{pin}}. Valid for ${otpExpiryMinutes} minutes. Do not share this code with anyone.`,
     )
 
     // Calculate expiry time
@@ -263,11 +266,10 @@ export class AuthService {
     // Get OTP length from config for mock mode validation
     const otpLength = this.configService.get<number>('OTP_LENGTH', 6)
 
-    // Verify OTP with Termii
-    const isValid = await this.verifyOtpWithTermii(
+    // Verify OTP via SmsService
+    const isValid = await this.smsService.verifyOtp(
       user.otpPinId,
       otpCode,
-      otpLength,
     )
 
     if (!isValid) {
@@ -292,198 +294,6 @@ export class AuthService {
         fullPhoneNumber: user.fullPhoneNumber,
         businessName: user.businessName,
       },
-    }
-  }
-
-  private async sendOtpSms(
-    phoneNumber: string,
-    otpExpiryMinutes: number,
-    otpLength: number,
-  ): Promise<string> {
-    // Check if mock mode is enabled
-    const mockOtp =
-      this.configService.get<string>('MOCK_OTP', 'false').toLowerCase() ===
-      'true'
-
-    if (mockOtp) {
-      // Generate a fake pinId for mock mode
-      const mockPinId = `mock-${Date.now()}-${Math.random().toString(36).substring(7)}`
-      console.log('🔧 MOCK MODE: OTP request (any 6-digit code will work):', {
-        phoneNumber,
-        pinId: mockPinId,
-        message: `In mock mode, you can use any ${otpLength}-digit code to verify`,
-      })
-      return mockPinId
-    }
-
-    const termiiApiKey = this.configService.get<string>('TERMII_API_KEY')
-    const termiiSenderId = this.configService.get<string>(
-      'TERMII_SENDER_ID',
-      'Firespot',
-    )
-
-    if (!termiiApiKey) {
-      console.error('TERMII_API_KEY is not configured')
-      throw new InternalServerErrorException(
-        'SMS service is not configured. Please contact support.',
-      )
-    }
-
-    // Generate placeholder based on OTP length (e.g., "< 123456 >" for 6 digits)
-    const pinPlaceholder = `< ${'1'.repeat(otpLength)} >`
-
-    try {
-      const response = await axios.post(
-        'https://api.ng.termii.com/api/sms/otp/send',
-        {
-          api_key: termiiApiKey,
-          pin_type: 'NUMERIC',
-          to: phoneNumber,
-          //from: termiiSenderId,
-          from: 'N-Alert',
-          //channel: 'generic',
-          channel: 'dnd',
-          pin_attempts: 1,
-          pin_time_to_live: otpExpiryMinutes,
-          pin_length: otpLength,
-          pin_placeholder: pinPlaceholder,
-          message_text: `Your Firespot OTP is ${pinPlaceholder}. Valid for ${otpExpiryMinutes} minutes. Do not share this code with anyone.`,
-        },
-      )
-
-      const pinId = response.data.pinId || response.data.pin_id
-
-      if (!pinId) {
-        console.error('Termii did not return a pin_id:', response.data)
-        throw new InternalServerErrorException(
-          'Failed to generate OTP. Please try again.',
-        )
-      }
-
-      console.log('OTP sent successfully via Termii:', {
-        phoneNumber,
-        pinId,
-      })
-
-      return pinId
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Termii API error:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          message: error.message,
-        })
-
-        // Handle specific Termii errors
-        if (error.response?.status === 401) {
-          throw new InternalServerErrorException(
-            'SMS service authentication failed. Please contact support.',
-          )
-        }
-
-        if (error.response?.status === 400) {
-          throw new BadRequestException(
-            'Invalid phone number format. Please check and try again.',
-          )
-        }
-
-        throw new InternalServerErrorException(
-          'Failed to send OTP. Please try again later.',
-        )
-      }
-
-      throw error
-    }
-  }
-
-  private async verifyOtpWithTermii(
-    pinId: string,
-    pin: string,
-    otpLength: number = 6,
-  ): Promise<boolean> {
-    // Check if mock mode is enabled
-    const mockOtp =
-      this.configService.get<string>('MOCK_OTP', 'false').toLowerCase() ===
-      'true'
-
-    if (mockOtp) {
-      // In mock mode, accept any code with the configured OTP length
-      const otpRegex = new RegExp(`^\\d{${otpLength}}$`)
-      const isValid = otpRegex.test(pin)
-      if (isValid) {
-        console.log(`🔧 MOCK MODE: OTP verified successfully:`, {
-          pinId,
-          pin,
-          message: `Mock mode - any ${otpLength}-digit code is accepted`,
-        })
-        return true
-      } else {
-        console.log(
-          `🔧 MOCK MODE: Invalid OTP format (must be ${otpLength} digits):`,
-          {
-            pinId,
-            pin,
-          },
-        )
-        return false
-      }
-    }
-
-    const termiiApiKey = this.configService.get<string>('TERMII_API_KEY')
-
-    if (!termiiApiKey) {
-      console.error('TERMII_API_KEY is not configured')
-      throw new InternalServerErrorException(
-        'SMS service is not configured. Please contact support.',
-      )
-    }
-
-    try {
-      const response = await axios.post(
-        'https://api.ng.termii.com/api/sms/otp/verify',
-        {
-          api_key: termiiApiKey,
-          pin_id: pinId,
-          pin: pin,
-        },
-      )
-
-      const isVerified =
-        response.data.verified === 'True' || response.data.verified === true
-
-      console.log('OTP verification result:', {
-        pinId,
-        verified: isVerified,
-        phoneNumber: response.data.msisdn,
-      })
-
-      return isVerified
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Termii OTP verification error:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          message: error.message,
-        })
-
-        // Handle specific verification errors
-        if (error.response?.status === 400) {
-          // Invalid pin_id or expired OTP
-          return false
-        }
-
-        if (error.response?.status === 401) {
-          throw new InternalServerErrorException(
-            'SMS service authentication failed. Please contact support.',
-          )
-        }
-
-        throw new InternalServerErrorException(
-          'Failed to verify OTP. Please try again later.',
-        )
-      }
-
-      throw error
     }
   }
 
