@@ -71,7 +71,11 @@ export function useResolveAccount() {
     onError: (error: any) => {
       const errorMessage =
         error?.response?.data?.message || 'Failed to resolve account'
-      console.error('Account resolution error:', errorMessage)
+      if (errorMessage.includes('limit')) {
+        console.warn('Paystack Resolution Limit:', errorMessage)
+      } else {
+        console.error('Account resolution error:', errorMessage)
+      }
     },
   })
 }

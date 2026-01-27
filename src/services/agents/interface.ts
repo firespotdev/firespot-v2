@@ -10,6 +10,11 @@ export interface Agent {
   status: 'active' | 'inactive' | 'suspended'
   notes?: string
   referralCode?: string // Agent's referral code for merchants
+  bankCode?: string
+  bankName?: string
+  accountNumber?: string
+  accountName?: string
+  subaccountCode?: string
   createdAt: string
   updatedAt: string
 }
@@ -58,6 +63,10 @@ export interface CreateAgentDto {
   lga?: string
   bustop?: string
   notes?: string
+  bankCode?: string
+  accountNumber?: string
+  bankName?: string
+  accountName?: string
 }
 
 export interface UpdateAgentDto {
@@ -69,6 +78,10 @@ export interface UpdateAgentDto {
   bustop?: string
   status?: 'active' | 'inactive' | 'suspended'
   notes?: string
+  bankCode?: string
+  accountNumber?: string
+  bankName?: string
+  accountName?: string
 }
 
 export interface AgentStats {

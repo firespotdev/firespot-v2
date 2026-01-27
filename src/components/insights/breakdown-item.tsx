@@ -59,7 +59,7 @@ export function BreakdownItem({
   }
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between mb-1.5 last:mb-0">
       <div className="flex items-center gap-2">
         {renderIcon()}
         <span className="text-[13px] text-[#4C5563] font-medium">{label}</span>

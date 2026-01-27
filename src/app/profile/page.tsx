@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
 import { useDrawerStore } from '@/services/drawer'
-import { useMerchantStats } from '@/services/scans'
+import { useMerchantInsights } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import Link from 'next/link'
 
@@ -26,7 +26,7 @@ const ALLOWED_FILE_TYPES = [
 export default function ProfilePage() {
   const router = useRouter()
   const { data: profile, isLoading } = useUserProfile()
-  const { data: stats } = useMerchantStats()
+  const { data: insights } = useMerchantInsights({ preset: 'last_7_days' })
   const { data: qrKitsData } = useUserQRKits()
   const updateProfilePhoto = useUpdateProfilePhoto()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
@@ -299,7 +299,7 @@ export default function ProfilePage() {
           <Link href="/insights" className="grid grid-cols-2 gap-3">
             <div className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
-                {stats?.scansThisWeek ?? 0}
+                {insights?.qrKitScans?.totalScans ?? 0}
               </p>
               <div className="flex items-center justify-center gap-0.5">
                 <p className="text-[13px] text-[#00000080] font-medium">
@@ -311,7 +311,7 @@ export default function ProfilePage() {
 
             <div className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
-                {stats?.returningCustomers ?? 0}
+                {insights?.traffic?.customerBreakdown?.returningCustomers ?? 0}
               </p>
               <div className="flex items-center justify-center gap-0.5">
                 <p className="text-[13px] text-[#00000080] font-medium">

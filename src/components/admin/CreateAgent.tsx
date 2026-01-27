@@ -2,120 +2,33 @@
 
 import { useState } from 'react'
 import { useCreateAgent } from '@/services/agents'
-import type { Agent, CreateAgentDto } from '@/services/agents'
-import {
-  NIGERIAN_STATES,
-  STATE_LGA_MAP,
-} from '@/lib/utils/nigerian-states-lgas'
+import type { Agent } from '@/services/agents'
 import { adminToast } from './AdminToast'
+import AgentForm from './AgentForm'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
-
-interface FormErrors {
-  name?: string
-  phoneNumber?: string
-  email?: string
-}
 
 interface CreateAgentProps {
   onSuccess?: (agent: Agent) => void
 }
 
 export default function CreateAgent({ onSuccess }: CreateAgentProps) {
-  const [formData, setFormData] = useState<CreateAgentDto>({
-    name: '',
-    phoneNumber: '',
-    email: '',
-    state: '',
-    lga: '',
-    bustop: '',
-    notes: '',
-  })
-  const [errors, setErrors] = useState<FormErrors>({})
   const [createdAgents, setCreatedAgents] = useState<Agent[]>([])
-
-  // Get LGAs for selected state
-  const availableLGAs = formData.state
-    ? STATE_LGA_MAP[formData.state] || []
-    : []
 
   const createAgent = useCreateAgent()
 
-  const validateForm = (): boolean => {
-    const newErrors: FormErrors = {}
-
-    if (!formData.name || formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters'
-    }
-
-    // Nigerian phone number validation
-    const phoneRegex = /^0[789][01]\d{8}$|^[789][01]\d{8}$/
-    if (!formData.phoneNumber || !phoneRegex.test(formData.phoneNumber)) {
-      newErrors.phoneNumber = 'Please enter a valid Nigerian phone number'
-    }
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validateForm()) return
-
+  const handleSubmit = async (data: any) => {
     try {
-      const agent = await createAgent.mutateAsync({
-        name: formData.name.trim(),
-        phoneNumber: formData.phoneNumber.trim(),
-        email: formData.email?.trim() || undefined,
-        state: formData.state || undefined,
-        lga: formData.lga || undefined,
-        bustop: formData.bustop?.trim() || undefined,
-        notes: formData.notes?.trim() || undefined,
-      })
+      const agent = await createAgent.mutateAsync(data)
 
       setCreatedAgents((prev) => [agent, ...prev])
-      setFormData({
-        name: '',
-        phoneNumber: '',
-        email: '',
-        state: '',
-        lga: '',
-        bustop: '',
-        notes: '',
-      })
-      setErrors({})
       adminToast.success(`Agent ${agent.name} created successfully`)
       onSuccess?.(agent)
     } catch (error) {
       adminToast.error(
         error instanceof Error ? error.message : 'Failed to create agent',
       )
-    }
-  }
-
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
-  ) => {
-    const { name, value } = e.target
-    setFormData((prev) => {
-      const newData = { ...prev, [name]: value }
-      // Clear LGA when state changes
-      if (name === 'state') {
-        newData.lga = ''
-      }
-      return newData
-    })
-    // Clear error when user starts typing
-    if (errors[name as keyof FormErrors]) {
-      setErrors((prev) => ({ ...prev, [name]: undefined }))
     }
   }
 
@@ -162,201 +75,19 @@ export default function CreateAgent({ onSuccess }: CreateAgentProps) {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name */}
-            <div>
-              <label
-                htmlFor="name"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Full Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="John Doe"
-                className={`w-full rounded-xl border bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-1 ${
-                  errors.name
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 focus:border-[#FB5012] focus:ring-[#FB5012]'
-                }`}
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
-              )}
-            </div>
+          <AgentForm
+            onSubmit={handleSubmit}
+            isSubmitting={createAgent.isPending}
+            submitLabel="Create Agent"
+          />
 
-            {/* Phone Number */}
-            <div>
-              <label
-                htmlFor="phoneNumber"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Phone Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="phoneNumber"
-                name="phoneNumber"
-                type="tel"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-                placeholder="08012345678"
-                className={`w-full rounded-xl border bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-1 ${
-                  errors.phoneNumber
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 focus:border-[#FB5012] focus:ring-[#FB5012]'
-                }`}
-              />
-              {errors.phoneNumber && (
-                <p className="mt-1 text-sm text-red-600">{errors.phoneNumber}</p>
-              )}
-              <p className="mt-1 text-xs text-gray-400">
-                Nigerian phone number format
-              </p>
-            </div>
-
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="john@example.com"
-                className={`w-full rounded-xl border bg-white px-4 py-3 text-gray-900 focus:outline-none focus:ring-1 ${
-                  errors.email
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-200 focus:border-[#FB5012] focus:ring-[#FB5012]'
-                }`}
-              />
-              {errors.email && (
-                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-              )}
-            </div>
-
-            {/* State */}
-            <div>
-              <label
-                htmlFor="state"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                State
-              </label>
-              <select
-                id="state"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-              >
-                <option value="">Select a state</option>
-                {NIGERIAN_STATES.map((state) => (
-                  <option key={state} value={state}>
-                    {state}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* LGA */}
-            <div>
-              <label
-                htmlFor="lga"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Local Government Area (LGA)
-              </label>
-              <select
-                id="lga"
-                name="lga"
-                value={formData.lga}
-                onChange={handleChange}
-                disabled={!formData.state}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012] disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
-              >
-                <option value="">
-                  {formData.state ? 'Select an LGA' : 'Select a state first'}
-                </option>
-                {availableLGAs.map((lga) => (
-                  <option key={lga} value={lga}>
-                    {lga}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Bustop */}
-            <div>
-              <label
-                htmlFor="bustop"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Bus Stop
-              </label>
-              <input
-                id="bustop"
-                name="bustop"
-                type="text"
-                value={formData.bustop}
-                onChange={handleChange}
-                placeholder="e.g. Obantoko"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-              />
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label
-                htmlFor="notes"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                Notes
-              </label>
-              <textarea
-                id="notes"
-                name="notes"
-                value={formData.notes}
-                onChange={handleChange}
-                rows={3}
-                placeholder="Additional notes about the agent..."
-                className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-              />
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={createAgent.isPending}
-              className="w-full rounded-xl bg-black px-4 py-3 font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {createAgent.isPending ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  Creating...
-                </span>
-              ) : (
-                'Create Agent'
-              )}
-            </button>
-
-            {createAgent.isError && (
-              <p className="text-sm text-red-600">
-                {createAgent.error instanceof Error
-                  ? createAgent.error.message
-                  : 'Failed to create agent'}
-              </p>
-            )}
-          </form>
+          {createAgent.isError && (
+            <p className="mt-4 text-sm text-red-600">
+              {createAgent.error instanceof Error
+                ? createAgent.error.message
+                : 'Failed to create agent'}
+            </p>
+          )}
         </div>
 
         {/* Recently Created */}
