@@ -136,15 +136,48 @@ export class AdminAgentsController {
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Soft delete agent (set status to inactive)' })
+  @ApiOperation({ summary: 'Deactivate agent (sets status to inactive, unassigns unactivated QR kits)' })
   @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
   @ApiResponse({
     status: 200,
     description: 'Agent deactivated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        agent: { type: 'object' },
+        unassignedCount: { type: 'number', description: 'Number of unactivated QR kits that were unassigned' },
+      },
+    },
   })
   @ApiResponse({ status: 404, description: 'Agent not found' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async remove(@Param('id') id: string) {
     return this.adminAgentsService.remove(id)
+  }
+
+  @Patch(':id/suspend')
+  @ApiOperation({ summary: 'Suspend agent (blocks new assignments, keeps all QR kits)' })
+  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Agent suspended successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async suspend(@Param('id') id: string) {
+    return this.adminAgentsService.suspend(id)
+  }
+
+  @Patch(':id/reactivate')
+  @ApiOperation({ summary: 'Reactivate agent (restores status to active)' })
+  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Agent reactivated successfully',
+  })
+  @ApiResponse({ status: 404, description: 'Agent not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async reactivate(@Param('id') id: string) {
+    return this.adminAgentsService.reactivate(id)
   }
 }

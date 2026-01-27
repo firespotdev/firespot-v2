@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Delete,
   Param,
   Query,
   Body,
@@ -254,5 +255,25 @@ export class AdminQRKitsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async unassignFromAgent(@Body() dto: UnassignQRKitsDto) {
     return this.adminQRKitsService.unassignFromAgent(dto)
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a QRKit (only if not activated)' })
+  @ApiParam({ name: 'id', description: 'QRKit ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'QRKit deleted successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Cannot delete activated QRKit' })
+  @ApiResponse({ status: 404, description: 'QRKit not found' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async deleteQRKit(@Param('id') id: string) {
+    return this.adminQRKitsService.deleteQRKit(id)
   }
 }

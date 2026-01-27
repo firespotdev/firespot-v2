@@ -64,11 +64,16 @@ export class AdminQRKitsService {
    * Create a single QRKit
    */
   async createQRKit(agentId?: string): Promise<QRKitDocument> {
-    // Verify agent exists if provided
+    // Verify agent exists and is active if provided
     if (agentId) {
       const agent = await this.agentModel.findById(agentId)
       if (!agent) {
         throw new NotFoundException('Agent not found')
+      }
+      if (agent.status !== 'active') {
+        throw new BadRequestException(
+          `Cannot assign QR kit to ${agent.status} agent. Agent must be active.`,
+        )
       }
     }
 
@@ -114,11 +119,16 @@ export class AdminQRKitsService {
       throw new BadRequestException('Quantity must be between 1 and 200')
     }
 
-    // Verify agent exists if provided
+    // Verify agent exists and is active if provided
     if (agentId) {
       const agent = await this.agentModel.findById(agentId)
       if (!agent) {
         throw new NotFoundException('Agent not found')
+      }
+      if (agent.status !== 'active') {
+        throw new BadRequestException(
+          `Cannot assign QR kits to ${agent.status} agent. Agent must be active.`,
+        )
       }
     }
 
@@ -332,6 +342,13 @@ export class AdminQRKitsService {
       throw new NotFoundException('Agent not found')
     }
 
+    // Only allow assignment to active agents
+    if (agent.status !== 'active') {
+      throw new BadRequestException(
+        `Cannot assign QR kits to ${agent.status} agent. Agent must be active.`,
+      )
+    }
+
     const result = await this.qrKitModel.updateMany(
       {
         _id: { $in: dto.qrKitIds.map((id) => new Types.ObjectId(id)) },
@@ -366,6 +383,13 @@ export class AdminQRKitsService {
     }
     if (!toAgent) {
       throw new NotFoundException('Target agent not found')
+    }
+
+    // Only allow reassignment to active agents
+    if (toAgent.status !== 'active') {
+      throw new BadRequestException(
+        `Cannot reassign QR kits to ${toAgent.status} agent. Target agent must be active.`,
+      )
     }
 
     const result = await this.qrKitModel.updateMany(
@@ -409,6 +433,39 @@ export class AdminQRKitsService {
       unassigned: result.modifiedCount,
       requested: dto.qrKitIds.length,
       message: `${result.modifiedCount} of ${dto.qrKitIds.length} QRKits unassigned`,
+    }
+  }
+
+  /**
+   * Delete a QRKit (only if not activated)
+   */
+  async deleteQRKit(id: string): Promise<{ message: string }> {
+    const qrKit = await this.qrKitModel.findById(id)
+
+    if (!qrKit) {
+      throw new NotFoundException('QRKit not found')
+    }
+
+    if (qrKit.activationStatus === 'activated') {
+      throw new BadRequestException(
+        'Cannot delete an activated QR kit. Only pending or deactivated kits can be deleted.',
+      )
+    }
+
+    // Delete the QR code from Cloudinary if it exists
+    if (qrKit.qrCodeSvgPublicId) {
+      try {
+        await this.qrCodeService.deleteQRCode(qrKit.qrCodeSvgPublicId)
+      } catch (error) {
+        // Log but don't fail if Cloudinary deletion fails
+        console.error('Failed to delete QR code from Cloudinary:', error)
+      }
+    }
+
+    await this.qrKitModel.deleteOne({ _id: id })
+
+    return {
+      message: `QRKit ${qrKit.serialNumber} deleted successfully`,
     }
   }
 }

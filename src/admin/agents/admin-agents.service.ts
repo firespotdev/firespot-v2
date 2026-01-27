@@ -300,11 +300,11 @@ export class AdminAgentsService {
   }
 
   /**
-   * Soft delete agent (set status to inactive)
+   * Suspend agent (blocks new assignments, keeps all QR kits)
    */
-  async remove(id: string): Promise<AgentDocument> {
+  async suspend(id: string): Promise<AgentDocument> {
     const agent = await this.agentModel
-      .findByIdAndUpdate(id, { $set: { status: 'inactive' } }, { new: true })
+      .findByIdAndUpdate(id, { $set: { status: 'suspended' } }, { new: true })
       .exec()
 
     if (!agent) {
@@ -313,6 +313,54 @@ export class AdminAgentsService {
 
     return agent
   }
+
+  /**
+   * Deactivate agent (set status to inactive, unassign unactivated QR kits)
+   */
+  async remove(id: string): Promise<{ agent: AgentDocument; unassignedCount: number }> {
+    const agent = await this.agentModel.findById(id).exec()
+
+    if (!agent) {
+      throw new NotFoundException('Agent not found')
+    }
+
+    // Unassign QR kits that haven't been activated yet
+    const unassignResult = await this.qrKitModel.updateMany(
+      {
+        agentId: agent._id,
+        activationStatus: { $ne: 'activated' },
+      },
+      {
+        $set: { agentId: null },
+        $unset: { assignedToAgentAt: '' },
+      },
+    )
+
+    // Set agent status to inactive
+    agent.status = 'inactive'
+    await agent.save()
+
+    return {
+      agent,
+      unassignedCount: unassignResult.modifiedCount,
+    }
+  }
+
+  /**
+   * Reactivate agent (restore to active status)
+   */
+  async reactivate(id: string): Promise<AgentDocument> {
+    const agent = await this.agentModel
+      .findByIdAndUpdate(id, { $set: { status: 'active' } }, { new: true })
+      .exec()
+
+    if (!agent) {
+      throw new NotFoundException('Agent not found')
+    }
+
+    return agent
+  }
+
 
   /**
    * Get global agent statistics
