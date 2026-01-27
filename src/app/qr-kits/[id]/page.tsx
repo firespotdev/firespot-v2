@@ -11,7 +11,7 @@ import { Button, LoaderCircle, showNotificationToast } from '@/components/ui'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
 import {getInitials} from '@/lib/utils'
-import { downloadQRKitAsPDF } from '@/lib/utils/pdf-download'
+import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
 
 // Brand gradient colors (same as admin dashboard)
 const GRADIENT_START = '#FB5012'
@@ -109,7 +109,7 @@ export default function QRKitDetailPage() {
 
     setIsDownloading(true)
     try {
-      await downloadQRKitAsPDF(cardRef.current, {
+      await downloadElementAsPDF(cardRef.current, {
         filename: `firespot-qr-kit-${qrKit.serialNumber}.pdf`,
         scale: 3,
         backgroundColor: '#000000',
@@ -522,20 +522,12 @@ export default function QRKitDetailPage() {
               </p>
             </div>
 
-            {/* TODO: Add deactivate and download pdf buttons */}
             <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
-              {/* <Button
-                variant="destructive"
-                onClick={handleDeactivate}
-                className="w-[33%]"
-              >
-                Deactivate
-              </Button> */}
               <Button
                 variant="default"
                 onClick={handleDownloadPDF}
                 disabled={isDownloading}
-                className="w-[65%] flex items-center justify-center gap-2"
+                className="flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
                 <span>{isDownloading ? 'Generating...' : 'Download PDF version'}</span>

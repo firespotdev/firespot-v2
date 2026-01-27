@@ -1,9 +1,12 @@
 'use client'
 
-import { X, Check } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { X, Check, Download } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import {formatAmountInWords, formatDate} from '@/lib/utils/constants'
+import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
+import { showNotificationToast } from '@/components/ui'
 
 interface ReceiptDrawerProps {
   closeDrawer: () => void
@@ -24,6 +27,34 @@ export function ReceiptDrawer({
   description = 'Payment',
   date,
 }: ReceiptDrawerProps) {
+  const [isDownloading, setIsDownloading] = useState(false)
+  const receiptRef = useRef<HTMLDivElement>(null)
+
+  const handleDownloadReceipt = async () => {
+    if (!receiptRef.current || isDownloading) return
+
+    setIsDownloading(true)
+    try {
+      await downloadElementAsPDF(receiptRef.current, {
+        filename: `firespot-receipt-${referenceNumber}.pdf`,
+        scale: 3,
+        backgroundColor: '#F4F6F8',
+      })
+      showNotificationToast({
+        message: 'Receipt downloaded successfully',
+        duration: 2000,
+      })
+    } catch (error) {
+      console.error('Failed to download receipt:', error)
+      showNotificationToast({
+        message: 'Failed to download receipt',
+        duration: 2000,
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   const handleShareReceipt = async () => {
     if (navigator.share) {
       try {
@@ -53,7 +84,10 @@ export function ReceiptDrawer({
       </header>
 
       <div className="flex-1 px-4 pb-4 overflow-auto">
-        <div className="bg-white rounded-[6px] p-5 shadow-[0px_4.11px_8.21px_0px_#0000000A]">
+        <div 
+          ref={receiptRef}
+          className="bg-white rounded-[6px] p-5 shadow-[0px_4.11px_8.21px_0px_#0000000A]"
+        >
          
           <div className="flex items-start justify-between mb-6">
             <Image
@@ -114,10 +148,18 @@ export function ReceiptDrawer({
 
       <div className="p-4 pb-8">
         <Button
-          onClick={handleShareReceipt}
-          className="w-full"
+          onClick={handleDownloadReceipt}
+          disabled={isDownloading}
+          className="w-full flex items-center justify-center gap-2"
         >
-          Download Receipt
+          {isDownloading ? (
+            'Generating...'
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              <span>Download Receipt</span>
+            </>
+          )}
         </Button>
       </div>
     </div>

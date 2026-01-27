@@ -3,7 +3,7 @@
 import { toPng } from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
-interface DownloadQRKitOptions {
+interface DownloadElementOptions {
   filename?: string
   scale?: number
   backgroundColor?: string
@@ -11,13 +11,10 @@ interface DownloadQRKitOptions {
 
 /**
  * Downloads an HTML element as a PDF file.
- * We use html-to-image because it uses the browser's native rendering engine,
- * providing full support for modern CSS features like oklch(), lab(), 
- * and advanced gradients that libraries like html2canvas fail to parse.
  */
-export async function downloadQRKitAsPDF(
+export async function downloadElementAsPDF(
   element: HTMLElement,
-  options: DownloadQRKitOptions = {}
+  options: DownloadElementOptions = {}
 ): Promise<void> {
   const {
     filename = 'firespot-qr-kit.pdf',
