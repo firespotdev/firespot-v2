@@ -61,10 +61,39 @@ export class UpdateAgentDto {
   @IsOptional()
   status?: string
 
-  @ApiPropertyOptional({
-    description: 'Admin notes about the agent',
-  })
   @IsString()
   @IsOptional()
   notes?: string
+
+  @ApiPropertyOptional({
+    description: 'Bank code',
+    example: '058',
+  })
+  @IsString()
+  @IsOptional()
+  bankCode?: string
+
+  @ApiPropertyOptional({
+    description: 'Account number',
+    example: '0123456789',
+  })
+  @IsString()
+  @IsOptional()
+  accountNumber?: string
+
+  @ApiPropertyOptional({
+    description: 'Bank name',
+    example: 'Guaranty Trust Bank',
+  })
+  @IsString()
+  @IsOptional()
+  bankName?: string
+
+  @ApiPropertyOptional({
+    description: 'Account name',
+    example: 'JOHN DOE',
+  })
+  @IsString()
+  @IsOptional()
+  accountName?: string
 }

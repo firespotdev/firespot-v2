@@ -13,6 +13,7 @@ import { User, UserDocument } from '../../schemas/user.schema'
 import { CreateAgentDto } from './dto/create-agent.dto'
 import { UpdateAgentDto } from './dto/update-agent.dto'
 import { AgentQueryDto } from './dto/agent-query.dto'
+import { PaystackService } from '../../users/services/paystack.service'
 
 const nanoidAlphanumeric = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
 
@@ -22,6 +23,7 @@ export class AdminAgentsService {
     @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    private paystackService: PaystackService,
   ) {}
 
   /**
@@ -55,6 +57,16 @@ export class AdminAgentsService {
       referralCode,
       status: 'active',
     })
+
+    // If bank details are provided, verify and create subaccount
+    if (createAgentDto.bankCode && createAgentDto.accountNumber) {
+      await this.syncAgentSubaccount(agent, {
+        bankCode: createAgentDto.bankCode,
+        accountNumber: createAgentDto.accountNumber,
+        bankName: createAgentDto.bankName,
+        accountName: createAgentDto.accountName,
+      })
+    }
 
     return agent.save()
   }
@@ -253,15 +265,38 @@ export class AdminAgentsService {
     id: string,
     updateAgentDto: UpdateAgentDto,
   ): Promise<AgentDocument> {
-    const agent = await this.agentModel
-      .findByIdAndUpdate(id, { $set: updateAgentDto }, { new: true })
-      .exec()
+    const agent = await this.agentModel.findById(id).exec()
 
     if (!agent) {
       throw new NotFoundException('Agent not found')
     }
 
-    return agent
+    // Check if bank details are being updated
+    const isUpdatingBank =
+      (updateAgentDto.bankCode && updateAgentDto.bankCode !== agent.bankCode) ||
+      (updateAgentDto.accountNumber &&
+        updateAgentDto.accountNumber !== agent.accountNumber)
+
+    if (isUpdatingBank) {
+      const bankCode = updateAgentDto.bankCode || agent.bankCode
+      const accountNumber = updateAgentDto.accountNumber || agent.accountNumber
+
+      if (bankCode && accountNumber) {
+        await this.syncAgentSubaccount(agent, {
+          bankCode,
+          accountNumber,
+          bankName: updateAgentDto.bankName,
+          accountName: updateAgentDto.accountName,
+        })
+      }
+    }
+
+    // Only assign defined values to prevent overwriting existing fields with undefined
+    const definedUpdates = Object.fromEntries(
+      Object.entries(updateAgentDto).filter(([, value]) => value !== undefined),
+    )
+    Object.assign(agent, definedUpdates)
+    return agent.save()
   }
 
   /**
@@ -354,5 +389,98 @@ export class AdminAgentsService {
     }
 
     return agent
+  }
+
+  /**
+   * Sync agent bank details and subaccount with Paystack
+   */
+  private async syncAgentSubaccount(
+    agent: AgentDocument,
+    bankDetails: {
+      bankCode: string
+      accountNumber: string
+      bankName?: string
+      accountName?: string
+    },
+  ) {
+    try {
+      // 1. Verify bank details or use provided names
+      let accountName = bankDetails.accountName || agent.accountName
+      let bankName = bankDetails.bankName || agent.bankName
+
+      // If we don't have an account name, try to resolve it
+      if (!bankDetails.accountName) {
+        try {
+          const verification = await this.paystackService.verifyBankAccount(
+            bankDetails.accountNumber,
+            bankDetails.bankCode,
+          )
+          accountName = verification.accountName
+        } catch (error: any) {
+          console.error('Paystack Verification Error:', error.message)
+
+          const isLimitError =
+            error.message?.includes('limit') ||
+            error.response?.data?.message?.includes('limit')
+
+          if (isLimitError && !accountName) {
+            try {
+              // Fallback: Use bank name if resolution limit is reached
+              const banks = await this.paystackService.getBanks()
+              const bank = banks.find(
+                (b: any) => b.code === bankDetails.bankCode,
+              )
+              if (bank) {
+                bankName = bank.name
+                accountName = `${bank.name} (Pending Verification)`
+              }
+            } catch (bankError) {
+              console.error(
+                'Failed to fetch banks for fallback name:',
+                bankError,
+              )
+            }
+          }
+
+          if (!isLimitError) {
+            if (error instanceof HttpException) throw error
+          }
+        }
+      }
+
+      agent.accountName = accountName || 'Verification Pending'
+      agent.bankName = bankName
+      agent.accountNumber = bankDetails.accountNumber
+      agent.bankCode = bankDetails.bankCode
+
+      // 2. Create or Update Subaccount
+      try {
+        if (!agent.subaccountCode) {
+          const subaccount = await this.paystackService.createSubaccount({
+            businessName: `${agent.name} (Agent)`,
+            settlementBank: bankDetails.bankCode,
+            accountNumber: bankDetails.accountNumber,
+            percentageCharge: 75, // Firespot takes 75% (1,500 NGN) of the 2,000 NGN fee
+            description: `Subaccount for agent ${agent.agentId}`,
+          })
+          agent.subaccountCode = subaccount.subaccountCode
+        } else {
+          await this.paystackService.updateSubaccount(agent.subaccountCode, {
+            businessName: `${agent.name} (Agent)`,
+            settlementBank: bankDetails.bankCode,
+            accountNumber: bankDetails.accountNumber,
+            percentageCharge: 75,
+          })
+        }
+      } catch (error) {
+        console.error('Paystack Subaccount Sync Error:', error.message)
+        // Log error but don't block agent update/creation
+      }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error
+      }
+      console.error('Unexpected error during agent subaccount sync:', error)
+    }
   }
 }

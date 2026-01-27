@@ -87,7 +87,6 @@ export class QRKitsService {
 
     // Create scan record for this visit so that subsequent events
     // (like copying the account number) can be reliably linked to it.
-    // Note: qrKit.merchantId is populated, so we need to access merchant._id
     if (ipAddress && userAgent && merchant._id) {
       try {
         await this.scansService.createScan({
@@ -173,12 +172,28 @@ export class QRKitsService {
     // Use phone number as pseudo-email for Paystack
     const email = `${user.phoneNumber}@firespot.co`
 
+    // Handle split payment if agent is assigned
+    let subaccount: string | undefined
+    let transactionCharge: number | undefined
+
+    if (qrKit.agentId) {
+      const agent = await this.agentModel.findById(qrKit.agentId)
+      if (agent && agent.subaccountCode) {
+        subaccount = agent.subaccountCode
+        // Split: 1500 to Firespot (minus fees), 500 to Agent
+        // transactionCharge is the portion for the platform (Firespot) in kobo
+        transactionCharge = 150000
+      }
+    }
+
     // Initialize Paystack payment
     const paystackResponse = await this.paystackService.initializeTransaction({
       email,
       amount: activationAmount,
       reference,
       callbackUrl,
+      subaccount,
+      transactionCharge,
       metadata: {
         qrKitId: qrKit._id.toString(),
         serialNumber: qrKit.serialNumber,

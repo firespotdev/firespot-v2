@@ -33,6 +33,21 @@ export class Agent extends Document {
   @Prop({ unique: true, sparse: true, index: true })
   referralCode?: string // 8-char alphanumeric referral code for merchants
 
+  @Prop()
+  bankCode?: string
+
+  @Prop()
+  bankName?: string
+
+  @Prop()
+  accountNumber?: string
+
+  @Prop()
+  accountName?: string
+
+  @Prop({ unique: true, sparse: true, index: true })
+  subaccountCode?: string // Paystack subaccount code
+
   createdAt?: Date
   updatedAt?: Date
 }

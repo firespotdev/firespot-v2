@@ -22,6 +22,19 @@ interface InitializeTransactionResponse {
   }
 }
 
+interface CreateSubaccountResponse {
+  status: boolean
+  message: string
+  data: {
+    business_name: string
+    settlement_bank: string
+    account_number: string
+    percentage_charge: number
+    subaccount_code: string
+    id: number
+  }
+}
+
 interface VerifyTransactionResponse {
   status: boolean
   message: string
@@ -179,6 +192,8 @@ export class PaystackService {
     reference: string
     callbackUrl: string
     metadata?: Record<string, any>
+    subaccount?: string
+    transactionCharge?: number
   }): Promise<{
     authorizationUrl: string
     accessCode: string
@@ -193,6 +208,8 @@ export class PaystackService {
           reference: params.reference,
           callback_url: params.callbackUrl,
           metadata: params.metadata,
+          subaccount: params.subaccount,
+          transaction_charge: params.transactionCharge,
         },
         {
           headers: {
@@ -258,6 +275,92 @@ export class PaystackService {
       if (axios.isAxiosError(error)) {
         throw new HttpException(
           error.response?.data?.message || 'Failed to verify payment',
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+      throw error
+    }
+  }
+
+  async createSubaccount(params: {
+    businessName: string
+    settlementBank: string
+    accountNumber: string
+    percentageCharge: number
+    description?: string
+  }): Promise<{ subaccountCode: string }> {
+    try {
+      const response = await axios.post<CreateSubaccountResponse>(
+        `${this.baseUrl}/subaccount`,
+        {
+          business_name: params.businessName,
+          settlement_bank: params.settlementBank,
+          account_number: params.accountNumber,
+          percentage_charge: params.percentageCharge,
+          description: params.description,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.paystackSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      if (response.data.status && response.data.data) {
+        return {
+          subaccountCode: response.data.data.subaccount_code,
+        }
+      }
+
+      throw new HttpException(
+        'Failed to create subaccount',
+        HttpStatus.BAD_REQUEST,
+      )
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new HttpException(
+          error.response?.data?.message || 'Failed to create subaccount',
+          HttpStatus.BAD_REQUEST,
+        )
+      }
+      throw error
+    }
+  }
+
+  async updateSubaccount(
+    subaccountCode: string,
+    params: {
+      businessName?: string
+      settlementBank?: string
+      accountNumber?: string
+      percentageCharge?: number
+      active?: boolean
+    },
+  ): Promise<any> {
+    try {
+      const response = await axios.put(
+        `${this.baseUrl}/subaccount/${subaccountCode}`,
+        {
+          business_name: params.businessName,
+          settlement_bank: params.settlementBank,
+          account_number: params.accountNumber,
+          percentage_charge: params.percentageCharge,
+          active: params.active,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.paystackSecretKey}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      return response.data
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new HttpException(
+          error.response?.data?.message || 'Failed to update subaccount',
           HttpStatus.BAD_REQUEST,
         )
       }
