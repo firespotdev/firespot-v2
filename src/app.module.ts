@@ -10,6 +10,7 @@ import { QRKitsModule } from './qr-kits/qr-kits.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ScansModule } from './scans/scans.module';
+import { SmsModule } from './services/sms/sms.module';
 import { getDatabaseConfig } from './config/database.config';
 
 @Module({
@@ -30,6 +31,7 @@ import { getDatabaseConfig } from './config/database.config';
     AdminModule,
     PaymentsModule,
     ScansModule,
+    SmsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

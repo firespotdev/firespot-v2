@@ -5,8 +5,10 @@ import { Model } from 'mongoose'
 import { nanoid } from 'nanoid'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { User, UserDocument } from '../schemas/user.schema'
+import { Agent, AgentDocument } from '../admin/schemas/agent.schema'
 import { PaystackService } from '../users/services/paystack.service'
 import { ScansService } from '../scans/scans.service'
+import { SmsService } from '../services/sms/sms.service'
 import {
   detectDeviceType,
   detectBrowserType,
@@ -17,9 +19,11 @@ export class QRKitsService {
   constructor(
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private paystackService: PaystackService,
     private configService: ConfigService,
     private scansService: ScansService,
+    private smsService: SmsService,
   ) {}
 
   async checkSerialNumber(serialNumber: string) {
@@ -81,22 +85,25 @@ export class QRKitsService {
       )
     }
 
-    // Create scan record (non-blocking)
-    if (ipAddress && userAgent && qrKit.merchantId) {
-      this.scansService
-        .createScan({
+    // Create scan record for this visit so that subsequent events
+    // (like copying the account number) can be reliably linked to it.
+    if (ipAddress && userAgent && merchant._id) {
+      try {
+        await this.scansService.createScan({
           qrKitId: qrKit._id.toString(),
-          merchantId: qrKit.merchantId.toString(),
+          merchantId: merchant._id.toString(),
           ipAddress,
           userAgent,
           customerFingerprint,
           deviceType: detectDeviceType(userAgent),
           browserType: detectBrowserType(userAgent),
         })
-        .catch((err) => {
-          // Log error but don't block the response
-          console.error('Failed to create scan record:', err)
-        })
+      } catch (err) {
+        console.error(
+          `Failed to create scan record for QR kit ${qrKit.serialNumber}:`,
+          err,
+        )
+      }
     }
 
     const bankAccounts =
@@ -165,12 +172,28 @@ export class QRKitsService {
     // Use phone number as pseudo-email for Paystack
     const email = `${user.phoneNumber}@firespot.co`
 
+    // Handle split payment if agent is assigned
+    let subaccount: string | undefined
+    let transactionCharge: number | undefined
+
+    if (qrKit.agentId) {
+      const agent = await this.agentModel.findById(qrKit.agentId)
+      if (agent && agent.subaccountCode) {
+        subaccount = agent.subaccountCode
+        // Split: 1500 to Firespot (minus fees), 500 to Agent
+        // transactionCharge is the portion for the platform (Firespot) in kobo
+        transactionCharge = 150000
+      }
+    }
+
     // Initialize Paystack payment
     const paystackResponse = await this.paystackService.initializeTransaction({
       email,
       amount: activationAmount,
       reference,
       callbackUrl,
+      subaccount,
+      transactionCharge,
       metadata: {
         qrKitId: qrKit._id.toString(),
         serialNumber: qrKit.serialNumber,
@@ -234,6 +257,11 @@ export class QRKitsService {
     qrKit.activatedAt = new Date()
     await qrKit.save()
 
+    // Notify agent if assigned
+    if (qrKit.agentId) {
+      await this.notifyAgentOnActivation(qrKit)
+    }
+
     // Update user's merchantSlug if not set
     if (qrKit.merchantId) {
       const user = await this.userModel.findById(qrKit.merchantId)
@@ -270,6 +298,11 @@ export class QRKitsService {
     qrKit.activatedAt = new Date()
     await qrKit.save()
 
+    // Notify agent if assigned
+    if (qrKit.agentId) {
+      await this.notifyAgentOnActivation(qrKit)
+    }
+
     // Update user's merchantSlug if not set
     if (qrKit.merchantId) {
       const user = await this.userModel.findById(qrKit.merchantId)
@@ -280,5 +313,28 @@ export class QRKitsService {
     }
 
     return { success: true, message: 'Activated via webhook' }
+  }
+
+  private async notifyAgentOnActivation(qrKit: QRKitDocument) {
+    try {
+      if (!qrKit.agentId) return
+
+      const agent = await this.agentModel.findById(qrKit.agentId)
+      if (!agent || !agent.phoneNumber) return
+
+      const user = await this.userModel.findById(qrKit.merchantId)
+      const businessName = user?.businessName || 'a merchant'
+
+      const message = `Hello ${agent.name}, the QR Kit (${qrKit.serialNumber}) assigned to you has been activated by ${businessName}.`
+
+      await this.smsService.sendSms(agent.phoneNumber, message)
+
+      console.log(`Notification sent to agent ${agent.name} for QR kit ${qrKit.serialNumber}`)
+    } catch (error) {
+      console.error(
+        `Failed to notify agent for QR kit ${qrKit.serialNumber}:`,
+        error,
+      )
+    }
   }
 }

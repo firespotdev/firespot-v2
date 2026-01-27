@@ -126,4 +126,24 @@ export class QRCodeService {
       throw new Error(`Failed to convert QR code to PNG: ${error.message}`)
     }
   }
+
+  /**
+   * Delete QR code from Cloudinary
+   * @param publicId - Cloudinary public ID
+   */
+  async deleteQRCode(publicId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.destroy(
+        publicId,
+        { resource_type: 'image' },
+        (error, result) => {
+          if (error) {
+            reject(new Error(`Failed to delete QR code: ${error.message}`))
+          } else {
+            resolve()
+          }
+        },
+      )
+    })
+  }
 }

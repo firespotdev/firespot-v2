@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { User, UserSchema } from '../schemas/user.schema';
+import { Agent, AgentSchema } from '../admin/schemas/agent.schema';
 import { UsersModule } from '../users/users.module';
 
 @Module({
@@ -24,7 +25,10 @@ import { UsersModule } from '../users/users.module';
         } as JwtModuleOptions;
       },
     }),
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Agent.name, schema: AgentSchema },
+    ]),
     forwardRef(() => UsersModule),
   ],
   controllers: [AuthController],

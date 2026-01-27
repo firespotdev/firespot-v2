@@ -22,14 +22,14 @@ export class Scan extends Document {
   @Prop({ required: true, index: true })
   scannedAt: Date
 
-  @Prop()
-  bankSelected?: string
-
-  @Prop({ default: false })
-  transferInitiated: boolean
-
   @Prop({ default: false })
   accountCopied: boolean
+
+  @Prop()
+  copiedAccountNumber?: string
+
+  @Prop()
+  copiedBankName?: string
 
   @Prop()
   deviceType: string // 'mobile' | 'tablet' | 'desktop'

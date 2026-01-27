@@ -1,19 +1,12 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsOptional, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsMongoId, IsOptional } from 'class-validator';
 
 export class CreateQRKitDto {
-  @ApiProperty({
-    description: 'Number of QRKits to create (default: 1)',
-    example: 1,
-    required: false,
-    minimum: 1,
-    maximum: 1,
+  @ApiPropertyOptional({
+    description: 'Agent ID to assign QRKit to (optional)',
+    example: '507f1f77bcf86cd799439011',
   })
+  @IsMongoId()
   @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(1)
-  quantity?: number;
+  agentId?: string;
 }
