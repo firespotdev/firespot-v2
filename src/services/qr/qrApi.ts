@@ -114,7 +114,13 @@ export const qrKitsApi = {
     const response = await adminApiClient.post('/admin/qr-kits/unassign', dto)
     return response.data
   },
+
+  deleteQRKit: async (id: string): Promise<{ message: string }> => {
+    const response = await adminApiClient.delete(`/admin/qr-kits/${id}`)
+    return response.data
+  },
 }
+
 
 // Hooks
 export const useQRKits = (filters?: QRKitFilters) => {
@@ -273,6 +279,18 @@ export const useUnassignQRKits = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
       queryClient.invalidateQueries({ queryKey: ['qr-kit'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    },
+  })
+}
+
+export const useDeleteQRKit = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => qrKitsApi.deleteQRKit(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
       queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
     },
   })

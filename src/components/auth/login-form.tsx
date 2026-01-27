@@ -10,6 +10,7 @@ interface LoginFormProps {
   onSubmit: (e: React.FormEvent) => void
   isLoading?: boolean
   error?: string
+  signupUrl?: string
 }
 
 export function LoginForm({
@@ -18,6 +19,7 @@ export function LoginForm({
   onSubmit,
   isLoading = false,
   error,
+  signupUrl = '/signup',
 }: LoginFormProps) {
   return (
     <div className="h-screen bg-white">
@@ -60,7 +62,7 @@ export function LoginForm({
         <p className="text-sm text-[#00000080] mt-8 font-bold font-satoshi">
           Don't have an account?{' '}
           <Link
-            href="/signup"
+            href={signupUrl}
             className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text"
           >
             Sign Up
