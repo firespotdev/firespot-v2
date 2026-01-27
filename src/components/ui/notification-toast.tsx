@@ -19,7 +19,7 @@ function NotificationToastContent({
         <Icon className="w-3 h-3 text-white" strokeWidth={2.5} />
       </div>
 
-      <p className="flex-1 text-sm text-black font-medium">{message}</p>
+      <p className="flex-1 text-sm text-black font-medium whitespace-nowrap">{message}</p>
 
       <button
         type="button"
