@@ -219,7 +219,7 @@ function ActivatePageContent() {
       handleSerialValidation(initialSerial)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [handleSerialValidation]) // Run when handleSerialValidation is ready
+  }, [handleSerialValidation])
 
   const handleSerialInputChange = (value: string) => {
 
