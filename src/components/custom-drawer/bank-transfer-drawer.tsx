@@ -4,10 +4,10 @@ import { Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 import Image from 'next/image'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
-import { ALL_BANKS } from '@/lib/utils/all-banks'
-import { sortBanksByPopularity } from '@/lib/utils/popular-banks'
+import { ALL_BANKS, sortBanksByPopularity } from '@/lib/utils/banks'
 import { openBankingApp } from '@/lib/utils/bank-deeplinks'
 import { showNotificationToast } from '@/components/ui'
+
 
 interface BankTransferDrawerProps {
   accountNumber: string

@@ -121,10 +121,11 @@ export function CustomDrawer() {
                 <Check size={16} color="#67CE67" />{' '}
                 <span>Account number already copied!</span>
               </p>
-              <h2 className="text-base font-bold text-black leading-none mt-1">
+              <span className="text-base font-bold text-black leading-none mt-1 block text-center">
                 Open your bank app and paste
-              </h2>
+              </span>
             </DrawerTitle>
+
 
             <DrawerClose className="w-9 h-9 flex items-center justify-center">
               <X className="w-6 h-6 text-black" />

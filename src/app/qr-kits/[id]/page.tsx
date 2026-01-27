@@ -7,9 +7,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useAuthStore } from '@/services/auth'
 import { useUserQRKit, useQRCodeSVG } from '@/services/qr'
-import { Button, LoaderCircle } from '@/components/ui'
+import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
+import {getInitials} from '@/lib/utils'
 
 // Brand gradient colors (same as admin dashboard)
 const GRADIENT_START = '#FB5012'
@@ -98,16 +99,6 @@ export default function QRKitDetailPage() {
     } else {
       handleCopyUrl()
     }
-  }
-
-  const handleDownloadPDF = () => {
-    // TODO: Implement PDF download
-    console.log('Download PDF for:', qrKit._id)
-  }
-
-  const handleDeactivate = () => {
-    // TODO: Implement deactivation
-    console.log('Deactivate:', qrKit._id)
   }
 
   return (
@@ -223,13 +214,11 @@ export default function QRKitDetailPage() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Image
-                          src="/icons/firespot_logo.svg"
-                          alt="Firespot Logo"
-                          width={52}
-                          height={52}
-                          className="w-full h-full object-cover"
-                        />
+                        <div className="bg-[#FF6B35] w-full h-full flex items-center justify-center">
+                <span className="text-base font-bold text-white inline-block">
+                  {getInitials(profile?.businessName ?? '')}
+                </span>
+              </div>
                       )}
                     </div>
                   </div>
@@ -471,7 +460,7 @@ export default function QRKitDetailPage() {
 
               <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5">
                 <span className="text-sm font-medium text-[#00000080]">
-                  firespot QR ID
+                  Serial Number
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-black">
@@ -481,6 +470,10 @@ export default function QRKitDetailPage() {
                     type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(qrKit.serialNumber)
+                      showNotificationToast({
+                        message: 'Copied',
+                        duration: 2000,
+                      })
                     }}
                     className="p-1"
                   >
@@ -500,7 +493,8 @@ export default function QRKitDetailPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
+            {/* TODO: Add deactivate and download pdf buttons */}
+            {/* <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
               <Button
                 variant="destructive"
                 onClick={handleDeactivate}
@@ -516,7 +510,7 @@ export default function QRKitDetailPage() {
                 <Download className="w-5 h-5" />
                 <span>Download PDF version</span>
               </Button>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
