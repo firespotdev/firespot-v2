@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Check, Copy, Download, Share } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuthStore } from '@/services/auth'
 import { useUserQRKit, useQRCodeSVG } from '@/services/qr'
-import { LoaderCircle, showNotificationToast } from '@/components/ui'
+import { Button, LoaderCircle, showNotificationToast } from '@/components/ui'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
 import {getInitials} from '@/lib/utils'
+import { downloadQRKitAsPDF } from '@/lib/utils/pdf-download'
 
 // Brand gradient colors (same as admin dashboard)
 const GRADIENT_START = '#FB5012'
@@ -29,6 +30,8 @@ export default function QRKitDetailPage() {
     typeof qrKit?.merchantId === 'object' ? qrKit.merchantId : undefined
 
   const [copied, setCopied] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   // Apply gradient branding to SVG
   const brandedSvg = useMemo(() => {
@@ -101,6 +104,31 @@ export default function QRKitDetailPage() {
     }
   }
 
+  const handleDownloadPDF = async () => {
+    if (!cardRef.current || isDownloading) return
+
+    setIsDownloading(true)
+    try {
+      await downloadQRKitAsPDF(cardRef.current, {
+        filename: `firespot-qr-kit-${qrKit.serialNumber}.pdf`,
+        scale: 3,
+        backgroundColor: '#000000',
+      })
+      showNotificationToast({
+        message: 'PDF downloaded successfully',
+        duration: 2000,
+      })
+    } catch (error) {
+      console.error('Failed to download PDF:', error)
+      showNotificationToast({
+        message: 'Failed to download PDF',
+        duration: 2000,
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f4f6f8]">
       <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
@@ -124,6 +152,7 @@ export default function QRKitDetailPage() {
         <div className="flex-1 pb-8">
           <div className="flex justify-center mt-4 px-4">
             <div
+              ref={cardRef}
               style={{
                 background:
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
@@ -494,23 +523,24 @@ export default function QRKitDetailPage() {
             </div>
 
             {/* TODO: Add deactivate and download pdf buttons */}
-            {/* <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
-              <Button
+            <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
+              {/* <Button
                 variant="destructive"
                 onClick={handleDeactivate}
                 className="w-[33%]"
               >
                 Deactivate
-              </Button>
+              </Button> */}
               <Button
                 variant="default"
                 onClick={handleDownloadPDF}
+                disabled={isDownloading}
                 className="w-[65%] flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
-                <span>Download PDF version</span>
+                <span>{isDownloading ? 'Generating...' : 'Download PDF version'}</span>
               </Button>
-            </div> */}
+            </div>
           </div>
         </div>
       </div>
