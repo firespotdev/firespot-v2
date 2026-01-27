@@ -11,7 +11,8 @@ import { Button } from '@/components/ui/button'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
 import { useDrawerStore } from '@/services/drawer'
-import { useMerchantStats } from '@/services/scans'
+import { useMerchantInsights } from '@/services/insights'
+import { useUserQRKits } from '@/services/qr'
 import Link from 'next/link'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -25,8 +26,10 @@ const ALLOWED_FILE_TYPES = [
 export default function ProfilePage() {
   const router = useRouter()
   const { data: profile, isLoading } = useUserProfile()
-  const { data: stats } = useMerchantStats()
+  const { data: insights } = useMerchantInsights({ preset: 'last_7_days' })
+  const { data: qrKitsData } = useUserQRKits()
   const updateProfilePhoto = useUpdateProfilePhoto()
+  const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [copied, setCopied] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
@@ -231,7 +234,7 @@ export default function ProfilePage() {
               {profile?.businessName || 'Your Business Name'}
             </h1>
 
-            {!profile?.merchantSlug ? (
+            {!hasQRKits ? (
               <Link
                 href="/activate"
                 className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
@@ -292,11 +295,11 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* Stats Section */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Stats Section - Link to Insights */}
+          <Link href="/insights" className="grid grid-cols-2 gap-3">
             <div className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
-                {stats?.scansThisWeek ?? 0}
+                {insights?.qrKitScans?.totalScans ?? 0}
               </p>
               <div className="flex items-center justify-center gap-0.5">
                 <p className="text-[13px] text-[#00000080] font-medium">
@@ -308,7 +311,7 @@ export default function ProfilePage() {
 
             <div className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
-                {stats?.returningCustomers ?? 0}
+                {insights?.traffic?.customerBreakdown?.returningCustomers ?? 0}
               </p>
               <div className="flex items-center justify-center gap-0.5">
                 <p className="text-[13px] text-[#00000080] font-medium">
@@ -317,7 +320,7 @@ export default function ProfilePage() {
                 <ChevronRight className="w-3 h-3 text-[#00000080] mt-[1%]" />
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* QR Kit Button */}
@@ -327,7 +330,7 @@ export default function ProfilePage() {
               asChild
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
             >
-              {!profile?.merchantSlug ? (
+              {!hasQRKits ? (
                 <Link href="/activate">Activate your QR kit</Link>
               ) : (
                 <Link href="/qr-kits">Manage QR kit</Link>

@@ -4,70 +4,50 @@ import { useState, useEffect } from 'react'
 import { Plus, CirclePlus } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useSetPrimaryBankAccount } from '@/services/users'
 import { showNotificationToast, TagFooter } from '@/components/ui'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
 import { useDrawerStore } from '@/services/drawer'
 import type { BankAccount } from '@/services/users'
 
-interface BankDrawerProps {
-  bankAccounts: BankAccount[]
+interface SortableBankItemProps {
+  account: BankAccount
+  isFirst: boolean
 }
 
-export function BankDrawer({ bankAccounts }: BankDrawerProps) {
-  const closeDrawer = useDrawerStore((state) => state.closeDrawer)
-  const setPrimaryBankAccount = useSetPrimaryBankAccount()
+function SortableBankItem({ account, isFirst }: SortableBankItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: account.accountNumber })
 
-  // Local state for reordering
-  const [accounts, setAccounts] = useState<BankAccount[]>([])
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
-
-  // Sync accounts from props
-  useEffect(() => {
-    if (bankAccounts) {
-      const sorted = [...bankAccounts].sort((a, b) => {
-        if (a.isPrimary) return -1
-        if (b.isPrimary) return 1
-        return 0
-      })
-      setAccounts(sorted)
-    }
-  }, [bankAccounts])
-
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index)
-  }
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault()
-    if (draggedIndex === null || draggedIndex === index) return
-
-    const newAccounts = [...accounts]
-    const draggedItem = newAccounts[draggedIndex]
-    newAccounts.splice(draggedIndex, 1)
-    newAccounts.splice(index, 0, draggedItem)
-    setDraggedIndex(index)
-    setAccounts(newAccounts)
-  }
-
-  const handleDragEnd = () => {
-    if (draggedIndex !== null && accounts.length > 0) {
-      const newPrimaryAccount = accounts[0]
-      if (!newPrimaryAccount.isPrimary) {
-        setPrimaryBankAccount.mutate(newPrimaryAccount.accountNumber, {
-          onSuccess: () => {
-            showNotificationToast({ message: 'Primary account updated' })
-          },
-          onError: (error: any) => {
-            const message =
-              error?.response?.data?.message ||
-              'Failed to update primary account'
-            showNotificationToast({ message })
-          },
-        })
-      }
-    }
-    setDraggedIndex(null)
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1 : 0,
   }
 
   const renderBankLogo = (bankName: string) => {
@@ -96,6 +76,118 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
   }
 
   return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`flex items-center gap-3 py-3 px-4 border-b border-[#EBEBEB] cursor-grab active:cursor-grabbing touch-none ${
+        isDragging ? 'bg-gray-50' : ''
+      }`}
+    >
+      {renderBankLogo(account.bankName)}
+
+      <div className="flex-1 min-w-0">
+        <p className="font-bold text-sm text-[#0F172A] truncate">
+          {account.bankName}
+        </p>
+        {isFirst && (
+          <p className="text-xs text-[#64748B] font-medium">
+            Most preferred
+          </p>
+        )}
+      </div>
+
+      <Image
+        src="/icons/bars.svg"
+        alt="Drag handle"
+        width={16}
+        height={16}
+        className="w-4 h-4"
+      />
+    </div>
+  )
+}
+
+interface BankDrawerProps {
+  bankAccounts: BankAccount[]
+}
+
+export function BankDrawer({ bankAccounts }: BankDrawerProps) {
+  const closeDrawer = useDrawerStore((state) => state.closeDrawer)
+  const setPrimaryBankAccount = useSetPrimaryBankAccount()
+
+  // Local state for reordering
+  const [accounts, setAccounts] = useState<BankAccount[]>([])
+
+  // Configure sensors for both mouse/touch
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement before drag starts
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150, // 150ms delay before touch drag activates
+        tolerance: 5, // 5px tolerance
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Sync accounts from props
+  useEffect(() => {
+    if (bankAccounts) {
+      const sorted = [...bankAccounts].sort((a, b) => {
+        if (a.isPrimary) return -1
+        if (b.isPrimary) return 1
+        return 0
+      })
+      setAccounts(sorted)
+    }
+  }, [bankAccounts])
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (over && active.id !== over.id) {
+      setAccounts((items) => {
+        const oldIndex = items.findIndex(
+          (item) => item.accountNumber === active.id
+        )
+        const newIndex = items.findIndex(
+          (item) => item.accountNumber === over.id
+        )
+
+        const newItems = arrayMove(items, oldIndex, newIndex)
+
+        // If the first item changed, update the primary account
+        if (newIndex === 0 || oldIndex === 0) {
+          const newPrimaryAccount = newItems[0]
+          if (!newPrimaryAccount.isPrimary) {
+            setPrimaryBankAccount.mutate(newPrimaryAccount.accountNumber, {
+              onSuccess: () => {
+                showNotificationToast({ message: 'Primary account updated' })
+              },
+              onError: (error: any) => {
+                const message =
+                  error?.response?.data?.message ||
+                  'Failed to update primary account'
+                showNotificationToast({ message })
+              },
+            })
+          }
+        }
+
+        return newItems
+      })
+    }
+  }
+
+  return (
     <div className="px-3">
       <p className="text-xs font-medium px-1 py-1.5 text-[#545F6CE5] text-center bg-[#E8EAED] rounded-[8px] mt-2">
         Drag to reorder - from most preferred to least preferred.
@@ -110,47 +202,24 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
           </div>
         ) : (
           <div className="border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-[12px]">
-            {accounts.map((account, index) => (
-              <div
-                key={account.accountNumber}
-                draggable
-                onDragStart={() => handleDragStart(index)}
-                onDragOver={(e) => handleDragOver(e, index)}
-                onDragEnd={handleDragEnd}
-                className={`flex items-center gap-3 py-3 px-4 border-b border-[#EBEBEB] cursor-grab active:cursor-grabbing ${
-                  draggedIndex === index ? 'opacity-50' : ''
-                }`}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={accounts.map((a) => a.accountNumber)}
+                strategy={verticalListSortingStrategy}
               >
-                {renderBankLogo(account.bankName)}
-
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm text-[#0F172A] truncate">
-                    {account.bankName}
-                  </p>
-                  {index === 0 && (
-                    <p className="text-xs text-[#64748B] font-medium">
-                      Most preferred
-                    </p>
-                  )}
-                </div>
-
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#CCCCCC"
-                  strokeWidth="2.25"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-menu-icon lucide-menu"
-                >
-                  <path d="M4 5h16" />
-                  <path d="M4 12h16" />
-                </svg>
-              </div>
-            ))}
+                {accounts.map((account, index) => (
+                  <SortableBankItem
+                    key={account.accountNumber}
+                    account={account}
+                    isFirst={index === 0}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
             <Link
               href="/bank-accounts/add"
               onClick={closeDrawer}

@@ -3,12 +3,16 @@
 import { useState } from 'react'
 import { useAdminLogout, getAdminInfo } from '@/services/admin'
 import type { QRKit } from '@/services/qr'
+import type { Agent } from '@/services/agents'
 import AdminDashboard from './AdminDashboard'
 import CreateQRCodes from './CreateQRCodes'
 import QRKitsList from './QRKitsList'
 import QRKitDetail from './QRKitDetail'
+import AgentsList from './AgentsList'
+import AgentDetail from './AgentDetail'
+import CreateAgent from './CreateAgent'
 
-type Tab = 'dashboard' | 'create' | 'list'
+type Tab = 'dashboard' | 'create' | 'list' | 'agents' | 'create-agent'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -16,6 +20,7 @@ const GRADIENT_END = '#D72483'
 export default function AdminLayout() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [selectedQRKit, setSelectedQRKit] = useState<QRKit | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
   const logout = useAdminLogout()
   const adminInfo = getAdminInfo()
 
@@ -77,10 +82,37 @@ export default function AdminLayout() {
         </svg>
       ),
     },
+    {
+      id: 'agents',
+      label: 'Agents',
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+          />
+        </svg>
+      ),
+    },
   ]
 
   const handleSelectQRKit = (qrKit: QRKit) => {
     setSelectedQRKit(qrKit)
+  }
+
+  const handleSelectAgent = (agent: Agent) => {
+    setSelectedAgent(agent)
+  }
+
+  const handleCreateAgent = () => {
+    setActiveTab('create-agent')
   }
 
   return (
@@ -165,6 +197,15 @@ export default function AdminLayout() {
         {activeTab === 'list' && (
           <QRKitsList onSelectQRKit={handleSelectQRKit} />
         )}
+        {activeTab === 'agents' && (
+          <AgentsList
+            onSelectAgent={handleSelectAgent}
+            onCreateAgent={handleCreateAgent}
+          />
+        )}
+        {activeTab === 'create-agent' && (
+          <CreateAgent onSuccess={() => setActiveTab('agents')} />
+        )}
       </main>
 
       {/* QR Kit Detail Modal */}
@@ -172,6 +213,14 @@ export default function AdminLayout() {
         <QRKitDetail
           qrKit={selectedQRKit}
           onClose={() => setSelectedQRKit(null)}
+        />
+      )}
+
+      {/* Agent Detail Modal */}
+      {selectedAgent && (
+        <AgentDetail
+          agent={selectedAgent}
+          onClose={() => setSelectedAgent(null)}
         />
       )}
     </div>

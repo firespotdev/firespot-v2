@@ -5,6 +5,7 @@ import type {
   QRKit,
   QRKitListResponse,
   QRKitFilters,
+  CreateQRKitDto,
   BulkCreateDto,
   QRKitStats,
   MerchantProfile,
@@ -63,8 +64,8 @@ export const qrKitsApi = {
     return response.text()
   },
 
-  createQRKit: async (): Promise<QRKit> => {
-    const response = await adminApiClient.post<QRKit>('/admin/qr-kits', {})
+  createQRKit: async (dto: CreateQRKitDto): Promise<QRKit> => {
+    const response = await adminApiClient.post<QRKit>('/admin/qr-kits', dto)
     return response.data
   },
 
@@ -89,7 +90,37 @@ export const qrKitsApi = {
     )
     return response.data
   },
+
+  assignQRKits: async (dto: {
+    agentId: string
+    qrKitIds: string[]
+  }): Promise<{ assigned: number; requested: number; message: string }> => {
+    const response = await adminApiClient.post('/admin/qr-kits/assign', dto)
+    return response.data
+  },
+
+  reassignQRKits: async (dto: {
+    fromAgentId: string
+    toAgentId: string
+    qrKitIds: string[]
+  }): Promise<{ reassigned: number; requested: number; message: string }> => {
+    const response = await adminApiClient.post('/admin/qr-kits/reassign', dto)
+    return response.data
+  },
+
+  unassignQRKits: async (dto: {
+    qrKitIds: string[]
+  }): Promise<{ unassigned: number; requested: number; message: string }> => {
+    const response = await adminApiClient.post('/admin/qr-kits/unassign', dto)
+    return response.data
+  },
+
+  deleteQRKit: async (id: string): Promise<{ message: string }> => {
+    const response = await adminApiClient.delete(`/admin/qr-kits/${id}`)
+    return response.data
+  },
 }
+
 
 // Hooks
 export const useQRKits = (filters?: QRKitFilters) => {
@@ -132,7 +163,7 @@ export const useCreateQRKit = () => {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: () => qrKitsApi.createQRKit(),
+    mutationFn: (dto: CreateQRKitDto) => qrKitsApi.createQRKit(dto),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
       queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
@@ -205,5 +236,62 @@ export const useUserQRKit = (id: string | null) => {
     },
     enabled: !!id,
     retry: false,
+  })
+}
+
+export const useAssignQRKits = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (dto: { agentId: string; qrKitIds: string[] }) =>
+      qrKitsApi.assignQRKits(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    },
+  })
+}
+
+export const useReassignQRKits = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (dto: {
+      fromAgentId: string
+      toAgentId: string
+      qrKitIds: string[]
+    }) => qrKitsApi.reassignQRKits(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    },
+  })
+}
+
+export const useUnassignQRKits = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (dto: { qrKitIds: string[] }) =>
+      qrKitsApi.unassignQRKits(dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    },
+  })
+}
+
+export const useDeleteQRKit = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => qrKitsApi.deleteQRKit(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    },
   })
 }

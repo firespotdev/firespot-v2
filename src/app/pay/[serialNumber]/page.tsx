@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Copy, Check, ChevronRight, ArrowUpRight } from 'lucide-react'
+import { Copy, Check, ChevronRight, ArrowUpRight, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMerchantBySerial } from '@/services/qr'
@@ -22,24 +22,31 @@ export default function PaymentPage() {
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
   const [selectedBankAccount, setSelectedBankAccount] =
     useState<BankAccount | null>(null)
+  const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
 
-  const handleCopyAccountNumber = (accountNumber: string) => {
-    navigator.clipboard.writeText(accountNumber)
-    setCopiedAccount(accountNumber)
-    showNotificationToast({ message: 'Account number copied!' })
+  const trackCopyEvent = (accountNumber: string, bankName: string) => {
+    if (hasCopyBeenRecorded) return
 
-    // Record copy event
-    recordCopy.mutate(serialNumber, {
-      onError: (err) => {
-        // Silently fail - don't interrupt user experience
-        console.error('Failed to record copy event:', err)
+    setHasCopyBeenRecorded(true)
+    recordCopy.mutate(
+      { serialNumber, accountNumber, bankName },
+      {
+        onError: (err) => {
+          console.error('Failed to record copy event:', err)
+        },
       },
-    })
+    )
+  }
 
+  const handleCopyAccountNumber = (accountNumber: string, bankName: string) => {
+    navigator.clipboard.writeText(accountNumber)
+    showNotificationToast({ message: 'Account number copied!' })
+    setCopiedAccount(accountNumber)
+    trackCopyEvent(accountNumber, bankName)
     setTimeout(() => setCopiedAccount(null), 2000)
   }
 
@@ -74,36 +81,95 @@ export default function PaymentPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
-        <LoaderCircle innerBg="#F4F6F8" />
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <LoaderCircle innerBg="#FFFFFF" />
       </div>
     )
   }
 
   if (error || !merchant) {
     return (
-      <div className="min-h-screen bg-[#F4F6F8] flex flex-col items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-6 max-w-sm w-full text-center shadow-sm">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-red-500 text-2xl">!</span>
+      <div className="min-h-screen bg-white">
+        <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-2">
+            <div className="flex-1" />
+            <div className="flex flex-col items-center">
+              <h1 className="text-base font-bold text-black">
+                Firespot QR kit detected
+              </h1>
+              <p className="text-xs font-medium text-[#6B7280]">
+                Serial Number : {serialNumber}
+              </p>
+            </div>
+            <div className="flex-1 flex justify-end">
+              <Link
+                href="/"
+                className="w-10 h-10 flex items-center justify-center"
+              >
+                <X size={24} strokeWidth={2}/>
+              </Link>
+            </div>
           </div>
-          <h1 className="text-xl font-bold text-black mb-2">
-            QR Code Not Found
-          </h1>
-          <p className="text-gray-500 text-sm mb-6">
-            This QR code is not active or doesn&apos;t exist. Please check the
-            QR code and try again.
-          </p>
-          <Link
-            href="/"
-            className="text-black underline underline-offset-4 text-sm font-medium"
-          >
-            Scan another QR code
-          </Link>
+
+          {/* Device Image */}
+          <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <div className="w-full max-w-[280px] aspect-square relative mb-6">
+              <Image
+                src="/images/qr_stand.png"
+                alt="Firespot Device"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            {/* Unassigned Badge */}
+            <div className="flex items-center gap-2 px-4 py-1 rounded-full border border-[#E5E7EB] bg-white mb-6">
+              <div className="w-2 h-2 rounded-full bg-[#6B7280]" />
+              <span className="text-sm text-[#6B7280] font-medium leading-none">
+                Unassigned
+              </span>
+            </div>
+
+            {/* Heading */}
+            <h2 className="text-[32px] -tracking-[0.4px] font-bold text-black text-center mb-3">
+              Claim this QR kit
+            </h2>
+
+            {/* Description */}
+            <p className="text-[#00000080] font-medium text-center text-sm max-w-[300px]">
+              This QR kit is not assigned to any business yet. Start receiving
+              transfers in under a minute without calling it out repeatedly.
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-[#F1F1F1] bg-white p-4 pb-6 rounded-t-[32px]">
+            <Button
+              asChild
+              className="w-full"
+            >
+              <Link href={`/login?redirect=/activate&serial=${serialNumber}`}>
+                Login and activate this QR kit
+              </Link>
+            </Button>
+
+            <a
+              href=""
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
+            >
+              Learn more about Firespot QR kits
+              <ArrowUpRight className="w-3 h-3 text-[#878F98]" />
+            </a>
+          </div>
         </div>
       </div>
     )
   }
+
 
   const primaryAccount = merchant.bankAccounts.find((acc) => acc.isPrimary)
   const defaultBankAccount = primaryAccount || merchant.bankAccounts[0]
@@ -150,25 +216,17 @@ export default function PaymentPage() {
       selectedBankAccount?.accountName || bankAccount?.accountName || ''
 
     if (accountNumber) {
-      // Copy to clipboard
       navigator.clipboard.writeText(accountNumber)
       setCopiedAccount(accountNumber)
+      trackCopyEvent(accountNumber, bankName)
 
-      // Record copy event
-      recordCopy.mutate(serialNumber, {
-        onError: (err) => {
-          // Silently fail - don't interrupt user experience
-          console.error('Failed to record copy event:', err)
-        },
-      })
-
-      // Open drawer
       openDrawer({
         type: 'bank-transfer',
         props: {
           accountNumber,
           bankName,
           accountName,
+          onCopy: () => trackCopyEvent(accountNumber, bankName),
         },
       })
     }
@@ -246,7 +304,10 @@ export default function PaymentPage() {
                   </p>
                   <button
                     onClick={() =>
-                      handleCopyAccountNumber(bankAccount.accountNumber)
+                      handleCopyAccountNumber(
+                        bankAccount.accountNumber,
+                        bankAccount.bankName,
+                      )
                     }
                     type="button"
                     className="p-1 rounded"

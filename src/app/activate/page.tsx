@@ -36,8 +36,8 @@ function ActivatePageContent() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
   // Get initial mode from URL params
-  const initialMode = (searchParams.get('mode') as ViewMode) || 'scan'
   const initialSerial = searchParams.get('serial') || ''
+  const initialMode = (searchParams.get('mode') as ViewMode) || (initialSerial ? 'serial' : 'scan')
   const callbackReference = searchParams.get('reference') || ''
 
   const [mode, setMode] = useState<ViewMode>(initialMode)
@@ -46,6 +46,7 @@ function ActivatePageContent() {
   const [validationStatus, setValidationStatus] = useState<
     'idle' | 'checking' | 'available' | 'already_bound' | 'not_found'
   >('idle')
+
 
   // Scanner state
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -68,11 +69,12 @@ function ActivatePageContent() {
 
   // Handle callback from Paystack - redirect to payment-status page
   useEffect(() => {
+
     if (mode === 'callback' && callbackReference) {
-      // Redirect to payment-status page with the reference
       router.replace(`/payment-status?reference=${callbackReference}`)
     }
   }, [mode, callbackReference, router])
+
 
   // Update URL when mode changes
   const updateMode = useCallback(
@@ -211,7 +213,16 @@ function ActivatePageContent() {
     [checkSerial, updateMode],
   )
 
+  // Auto-validate serial number if provided in URL
+  useEffect(() => {
+    if (initialSerial && mode === 'serial' && validationStatus === 'idle') {
+      handleSerialValidation(initialSerial)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handleSerialValidation])
+
   const handleSerialInputChange = (value: string) => {
+
     const upperValue = value.toUpperCase()
     setSerialNumber(upperValue)
     setValidationStatus('idle')
@@ -431,7 +442,7 @@ function ActivatePageContent() {
             <div className="flex items-center justify-center">
               <div className="w-fit">
                 <Image
-                  src="/images/qr_stand.svg"
+                  src="/images/qr_stand.png"
                   alt="QR Kit Stand"
                   width={247}
                   height={247}

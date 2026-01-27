@@ -1,13 +1,14 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { OtpVerification } from '@/components/auth/otp-verification'
 import { SignupForm } from '@/components/auth/signup-form'
 import { useSignup, useVerifyOtp, useAuthStore } from '@/services/auth'
 
 function SignupPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [step, setStep] = useState<1 | 2>(1)
   const [phoneNumber, setPhoneNumber] = useState('')
   const [selectedBankCode, setSelectedBankCode] = useState<string>('')
@@ -23,10 +24,26 @@ function SignupPageContent() {
   const signup = useSignup()
   const verifyOtp = useVerifyOtp()
 
+  // Get redirect params
+  const redirectPath = searchParams.get('redirect')
+  const serialNumber = searchParams.get('serial')
+
+  // Build redirect URL after signup
+  const getRedirectUrl = () => {
+    if (redirectPath) {
+      const url = new URL(redirectPath, window.location.origin)
+      if (serialNumber) {
+        url.searchParams.set('serial', serialNumber)
+      }
+      return url.pathname + url.search
+    }
+    return '/profile'
+  }
+
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/profile')
+      router.replace(getRedirectUrl())
     }
   }, [isAuthenticated, router])
 
@@ -91,7 +108,7 @@ function SignupPageContent() {
       },
       {
         onSuccess: () => {
-          router.push('/profile')
+          router.push(getRedirectUrl())
         },
         onError: (error: any) => {
           const message =
@@ -146,6 +163,15 @@ function SignupPageContent() {
     )
   }
 
+  // Build login URL with preserved params
+  const getLoginUrl = () => {
+    const params = new URLSearchParams()
+    if (redirectPath) params.set('redirect', redirectPath)
+    if (serialNumber) params.set('serial', serialNumber)
+    const queryString = params.toString()
+    return queryString ? `/login?${queryString}` : '/login'
+  }
+
   // Step 1: Signup Form
   return (
     <SignupForm
@@ -165,6 +191,7 @@ function SignupPageContent() {
       referralError={referralError}
       onAccountErrorChange={setAccountError}
       onReferralErrorChange={setReferralError}
+      loginUrl={getLoginUrl()}
     />
   )
 }

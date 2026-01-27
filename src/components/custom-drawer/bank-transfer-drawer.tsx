@@ -3,24 +3,24 @@
 import { Copy, Check } from 'lucide-react'
 import { useState } from 'react'
 import Image from 'next/image'
-import { useDrawerStore } from '@/services/drawer'
 import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
-import { ALL_BANKS } from '@/lib/utils/all-banks'
-import { sortBanksByPopularity } from '@/lib/utils/popular-banks'
+import { ALL_BANKS, sortBanksByPopularity } from '@/lib/utils/banks'
 import { openBankingApp } from '@/lib/utils/bank-deeplinks'
 import { showNotificationToast } from '@/components/ui'
+
 
 interface BankTransferDrawerProps {
   accountNumber: string
   bankName: string
   accountName: string
+  onCopy?: () => void
   closeDrawer?: () => void
 }
 
 export function BankTransferDrawer({
   accountNumber,
   bankName,
-  accountName,
+  onCopy,
 }: BankTransferDrawerProps) {
   const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
 
@@ -28,7 +28,7 @@ export function BankTransferDrawer({
     navigator.clipboard.writeText(accountNumber)
     setCopiedAccount(accountNumber)
     showNotificationToast({ message: 'Account number copied!' })
-
+    onCopy?.()
     setTimeout(() => setCopiedAccount(null), 2000)
   }
 

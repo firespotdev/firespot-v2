@@ -1,15 +1,17 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Check, Copy, Download, Share } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuthStore } from '@/services/auth'
 import { useUserQRKit, useQRCodeSVG } from '@/services/qr'
-import { Button, LoaderCircle } from '@/components/ui'
+import { Button, LoaderCircle, showNotificationToast } from '@/components/ui'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
+import {getInitials} from '@/lib/utils'
+import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
 
 // Brand gradient colors (same as admin dashboard)
 const GRADIENT_START = '#FB5012'
@@ -28,6 +30,8 @@ export default function QRKitDetailPage() {
     typeof qrKit?.merchantId === 'object' ? qrKit.merchantId : undefined
 
   const [copied, setCopied] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
 
   // Apply gradient branding to SVG
   const brandedSvg = useMemo(() => {
@@ -100,14 +104,29 @@ export default function QRKitDetailPage() {
     }
   }
 
-  const handleDownloadPDF = () => {
-    // TODO: Implement PDF download
-    console.log('Download PDF for:', qrKit._id)
-  }
+  const handleDownloadPDF = async () => {
+    if (!cardRef.current || isDownloading) return
 
-  const handleDeactivate = () => {
-    // TODO: Implement deactivation
-    console.log('Deactivate:', qrKit._id)
+    setIsDownloading(true)
+    try {
+      await downloadElementAsPDF(cardRef.current, {
+        filename: `firespot-qr-kit-${qrKit.serialNumber}.pdf`,
+        scale: 3,
+        backgroundColor: '#000000',
+      })
+      showNotificationToast({
+        message: 'PDF downloaded successfully',
+        duration: 2000,
+      })
+    } catch (error) {
+      console.error('Failed to download PDF:', error)
+      showNotificationToast({
+        message: 'Failed to download PDF',
+        duration: 2000,
+      })
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
@@ -133,6 +152,7 @@ export default function QRKitDetailPage() {
         <div className="flex-1 pb-8">
           <div className="flex justify-center mt-4 px-4">
             <div
+              ref={cardRef}
               style={{
                 background:
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
@@ -212,24 +232,22 @@ export default function QRKitDetailPage() {
                       </div>
                     )}
 
-                    {/* Business Logo Overlay */}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full overflow-hidden border-[3px] shadow-lg border-white z-10 bg-white">
+                    {/* Business Logo Overlay*/}
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-13 h-13 rounded-full overflow-hidden border-[3px] shadow-lg border-white z-10 bg-white">
                       {profile?.profilePhotoUrl ? (
                         <Image
                           src={profile.profilePhotoUrl}
                           alt="Business Logo"
-                          width={64}
-                          height={64}
+                          width={52}
+                          height={52}
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <Image
-                          src="/icons/firespot_logo.svg"
-                          alt="Firespot Logo"
-                          width={64}
-                          height={64}
-                          className="w-full h-full object-contain p-2"
-                        />
+                        <div className="bg-[#FF6B35] w-full h-full flex items-center justify-center">
+                <span className="text-base font-bold text-white inline-block">
+                  {getInitials(profile?.businessName ?? '')}
+                </span>
+              </div>
                       )}
                     </div>
                   </div>
@@ -471,7 +489,7 @@ export default function QRKitDetailPage() {
 
               <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5">
                 <span className="text-sm font-medium text-[#00000080]">
-                  firespot QR ID
+                  Serial Number
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-black">
@@ -481,6 +499,10 @@ export default function QRKitDetailPage() {
                     type="button"
                     onClick={() => {
                       navigator.clipboard.writeText(qrKit.serialNumber)
+                      showNotificationToast({
+                        message: 'Copied',
+                        duration: 2000,
+                      })
                     }}
                     className="p-1"
                   >
@@ -502,19 +524,13 @@ export default function QRKitDetailPage() {
 
             <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
               <Button
-                variant="destructive"
-                onClick={handleDeactivate}
-                className="w-[33%]"
-              >
-                Deactivate
-              </Button>
-              <Button
                 variant="default"
                 onClick={handleDownloadPDF}
-                className="w-[65%] flex items-center justify-center gap-2"
+                disabled={isDownloading}
+                className="flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
-                <span>Download PDF version</span>
+                <span>{isDownloading ? 'Generating...' : 'Download PDF version'}</span>
               </Button>
             </div>
           </div>

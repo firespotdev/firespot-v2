@@ -34,6 +34,7 @@ interface SignupFormProps {
   referralError?: string
   onAccountErrorChange?: (error: string | undefined) => void
   onReferralErrorChange?: (error: string | undefined) => void
+  loginUrl?: string
 }
 
 export function SignupForm({
@@ -53,6 +54,7 @@ export function SignupForm({
   referralError: propReferralError,
   onAccountErrorChange,
   onReferralErrorChange,
+  loginUrl = '/login',
 }: SignupFormProps) {
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const resolveAccount = useResolveAccount()
@@ -275,7 +277,7 @@ export function SignupForm({
         <p className="text-sm text-[#00000080] mt-4 font-bold font-satoshi">
           Already have one?{' '}
           <Link
-            href="/login"
+            href={loginUrl}
             className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text"
           >
             Log in
