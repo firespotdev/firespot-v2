@@ -54,7 +54,7 @@ export async function downloadElementAsPDF(
       format: [pdfWidth, pdfHeight],
     })
 
-    // Add the image data directly to the PDF
+    // Add image data directly to the PDF
     pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
 
     // Trigger the download
