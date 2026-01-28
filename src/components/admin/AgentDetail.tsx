@@ -250,7 +250,7 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
               </div>
             ) : (
               <>
-                {/* Error State */}
+                {/* Error */}
                 {error && (
                   <div className="rounded-xl border border-red-100 bg-red-50 p-4">
                     <p className="text-sm text-red-700">
