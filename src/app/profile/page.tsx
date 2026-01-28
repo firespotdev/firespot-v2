@@ -153,17 +153,9 @@ export default function ProfilePage() {
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
           onTitleClick={() =>
             openDrawer({
-              type: 'select-bank',
+              type: 'bank-accounts',
               props: {
                 bankAccounts: sortedBankAccounts,
-                onSelectBank: (bank: any) => {
-                  const index = sortedBankAccounts.findIndex(
-                    (acc) => acc.accountNumber === bank.accountNumber,
-                  )
-                  if (index !== -1) {
-                    setSelectedBankIndex(index)
-                  }
-                },
               },
             })
           }

@@ -77,20 +77,26 @@ export function OtpVerification({
 
     if (!/^\d*$/.test(value)) return
 
-    const newValue = otp.split('')
-    newValue[index] = value
-    const newOtp = newValue.join('').slice(0, 6)
-    setOtp(newOtp)
+    setOtp((prev) => {
+      const newValue = prev.split('')
+      newValue[index] = value
+      const newOtp = newValue.join('').slice(0, 6)
 
-    // Auto-focus next input
-    if (value && index < 5) {
-      otpInputRefs.current[index + 1]?.focus()
-    }
+      // Auto-focus next input
+      if (value && index < 5) {
+        // Need to wait for next tick or just focus directly
+        setTimeout(() => {
+          otpInputRefs.current[index + 1]?.focus()
+        }, 0)
+      }
 
-    // Auto-submit if 6th digit entered
-    if (newOtp.length === 6 && index === 5 && value) {
-      onVerify(newOtp)
-    }
+      // Auto-submit if 6th digit entered
+      if (newOtp.length === 6 && index === 5 && value) {
+        onVerify(newOtp)
+      }
+
+      return newOtp
+    })
   }
 
   const handleKeyDown = (
@@ -104,12 +110,16 @@ export function OtpVerification({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
-    const pastedData = e.clipboardData.getData('text').slice(0, 6)
+    const pastedData = e.clipboardData.getData('text').trim().slice(0, 6)
     if (/^\d+$/.test(pastedData)) {
       setOtp(pastedData)
-      // Focus last input
+      // Focus last input or first empty
       const lastIndex = Math.min(pastedData.length - 1, 5)
       otpInputRefs.current[lastIndex]?.focus()
+      
+      if (pastedData.length === 6) {
+        onVerify(pastedData)
+      }
     }
   }
 
@@ -166,13 +176,12 @@ export function OtpVerification({
                     }}
                     type="text"
                     inputMode="numeric"
-                    maxLength={1}
                     value={otp[index] || ''}
                     onChange={(e) => handleChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
                     disabled={isLoading}
-                    autoComplete="one-time-code"
+                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
                     className="w-14 h-14 border-[#D8E0E9] text-center text-lg font-semibold border"
                   />
                 ))}

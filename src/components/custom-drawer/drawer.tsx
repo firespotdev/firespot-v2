@@ -117,13 +117,21 @@ export function CustomDrawer() {
             </div>
 
             <DrawerTitle className="font-bold text-base text-black">
-              <p className="text-[#00000080] text-xs font-medium text-center leading-none flex items-center justify-center gap-0.5">
-                <Check size={16} color="#67CE67" />{' '}
-                <span>Account number already copied!</span>
-              </p>
-              <span className="text-base font-bold text-black leading-none mt-1 block text-center">
-                Open your bank app and paste
-              </span>
+              {config.type === 'bank-transfer' ? (
+                <>
+                  <p className="text-[#00000080] text-xs font-medium text-center leading-none flex items-center justify-center gap-0.5">
+                    <Check size={16} color="#67CE67" />{' '}
+                    <span>Account number already copied!</span>
+                  </p>
+                  <span className="text-base font-bold text-black leading-none mt-1 block text-center">
+                    Open your bank app and paste
+                  </span>
+                </>
+              ) : (
+                <span className="text-base font-bold text-black leading-none mt-1 block text-center">
+                  {title}
+                </span>
+              )}
             </DrawerTitle>
 
 
