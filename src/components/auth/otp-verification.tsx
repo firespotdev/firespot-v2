@@ -147,8 +147,13 @@ export function OtpVerification({
                 ))}
               </div>
               {error && (
-                <p className="text-sm text-red-500 text-center mt-2">{error}</p>
-              )}
+              <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
+                <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
+                  !
+                </span>
+                {error}
+              </p>
+            )}
             </div>
 
             <Button type="submit" className="w-full">
