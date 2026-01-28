@@ -206,7 +206,7 @@ export default function ScannerPage() {
             </button>
           </header>
 
-          {/* Scanner Frame */}
+          {/* Scanner */}
           <div className="flex-1 flex items-center justify-center px-8">
             <div className="flex-1 flex items-center justify-center">
               {error ? (
