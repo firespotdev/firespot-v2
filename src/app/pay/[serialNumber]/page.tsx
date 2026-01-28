@@ -291,7 +291,7 @@ export default function PaymentPage() {
             successful transfers cannot be reversed.
           </p>
 
-          {/* Pagination Dots - Moved below disclaimer */}
+          {/* Pagination Dots */}
           {sortedBankAccounts.length > 1 && (
             <div className="flex items-center justify-center gap-1.5">
               {sortedBankAccounts.map((_, i) => (
