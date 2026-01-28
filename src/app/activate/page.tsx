@@ -239,7 +239,7 @@ function ActivatePageContent() {
   const handlePayment = () => {
     initiateActivation.mutate(validatedSerial, {
       onSuccess: (data) => {
-        // Redirect to Paystack
+        // Paystack Redirect
         window.location.href = data.authorizationUrl
       },
       onError: (error: any) => {
