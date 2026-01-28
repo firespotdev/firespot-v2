@@ -8,6 +8,9 @@ import { satoshi, sofiaPro } from '@/lib/fonts'
 export const metadata: Metadata = {
   title: 'Firespot Lite - QR Payment Merchants',
   description: 'Accept payments faster with QR codes',
+  formatDetection: {
+    telephone: false,
+  },
 }
 
 export default function RootLayout({

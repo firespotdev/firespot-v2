@@ -23,7 +23,13 @@ export function OtpVerification({
 }: OtpVerificationProps) {
   const [otp, setOtp] = useState('')
   const [countdown, setCountdown] = useState(59)
+  const [localError, setLocalError] = useState<string | undefined>(error)
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([])
+
+  // Sync local error with prop error
+  useEffect(() => {
+    setLocalError(error)
+  }, [error])
 
   // Countdown timer
   useEffect(() => {
@@ -49,17 +55,41 @@ export function OtpVerification({
     }
   }, [error])
 
-  const handleChange = (index: number, digit: string) => {
-    if (!/^\d*$/.test(digit)) return
+  const handleChange = (index: number, value: string) => {
+    if (localError) setLocalError(undefined)
+
+    // Handle auto-fill (when value is more than 1 character)
+    if (value.length > 1) {
+      const pastedData = value.slice(0, 6)
+      if (/^\d+$/.test(pastedData)) {
+        setOtp(pastedData)
+        // Focus last input
+        const lastIndex = Math.min(pastedData.length - 1, 5)
+        otpInputRefs.current[lastIndex]?.focus()
+        
+        // Auto-submit if 6 digits
+        if (pastedData.length === 6) {
+          onVerify(pastedData)
+        }
+        return
+      }
+    }
+
+    if (!/^\d*$/.test(value)) return
 
     const newValue = otp.split('')
-    newValue[index] = digit
+    newValue[index] = value
     const newOtp = newValue.join('').slice(0, 6)
     setOtp(newOtp)
 
     // Auto-focus next input
-    if (digit && index < 5) {
+    if (value && index < 5) {
       otpInputRefs.current[index + 1]?.focus()
+    }
+
+    // Auto-submit if 6th digit entered
+    if (newOtp.length === 6 && index === 5 && value) {
+      onVerify(newOtp)
     }
   }
 
@@ -142,16 +172,17 @@ export function OtpVerification({
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
                     disabled={isLoading}
+                    autoComplete="one-time-code"
                     className="w-14 h-14 border-[#D8E0E9] text-center text-lg font-semibold border"
                   />
                 ))}
               </div>
-              {error && (
+              {localError && (
               <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
                 <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
                   !
                 </span>
-                {error}
+                {localError}
               </p>
             )}
             </div>

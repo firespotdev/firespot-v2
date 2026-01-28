@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, Copy, ChevronRight, ArrowUpRight } from 'lucide-react'
+import { Camera, ChevronRight, ArrowUpRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
@@ -14,6 +14,8 @@ import { useDrawerStore } from '@/services/drawer'
 import { useMerchantInsights } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import Link from 'next/link'
+import { BankCarousel } from '@/components/bank-accounts/bank-carousel'
+import { sortBankAccounts } from '@/lib/utils/bank-account'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -30,9 +32,9 @@ export default function ProfilePage() {
   const { data: qrKitsData } = useUserQRKits()
   const updateProfilePhoto = useUpdateProfilePhoto()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
-  const [copied, setCopied] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
+  const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
@@ -58,16 +60,7 @@ export default function ProfilePage() {
     return null
   }
 
-  const primaryBankAccount = profile?.bankAccounts?.find((acc) => acc.isPrimary)
-  const bankAccount = primaryBankAccount || profile?.bankAccounts?.[0]
-
-  const handleCopyAccountNumber = () => {
-    if (bankAccount?.accountNumber) {
-      navigator.clipboard.writeText(bankAccount.accountNumber)
-      setCopied(true)
-      showNotificationToast({ message: 'Account number copied!' })
-    }
-  }
+  const sortedBankAccounts = sortBankAccounts(profile?.bankAccounts || [])
 
   const handleViewCustomerView = () => {
     // TODO: Navigate to customer view page or open in new tab
@@ -160,8 +153,18 @@ export default function ProfilePage() {
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
           onTitleClick={() =>
             openDrawer({
-              type: 'bank-accounts',
-              props: { bankAccounts: profile?.bankAccounts || [] },
+              type: 'select-bank',
+              props: {
+                bankAccounts: sortedBankAccounts,
+                onSelectBank: (bank: any) => {
+                  const index = sortedBankAccounts.findIndex(
+                    (acc) => acc.accountNumber === bank.accountNumber,
+                  )
+                  if (index !== -1) {
+                    setSelectedBankIndex(index)
+                  }
+                },
+              },
             })
           }
           onShareClick={() => console.log('Share clicked')}
@@ -260,39 +263,13 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Bank Account Card */}
-          {bankAccount && (
-            <div className="bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
-              <div className="flex flex-col justify-center items-center mb-4 px-4">
-                <p className="text-sm text-[#00000066] font-medium">
-                  Receiving Bank
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  {renderBankLogo(bankAccount.bankName)}
-                  <p className="text-base font-bold text-black">
-                    {bankAccount.bankName}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-center items-center border-t border-[#F1F1F1] pt-4 px-4">
-                <p className="text-sm text-[#00000066] font-medium mb-1">
-                  Account number
-                </p>
-                <div className="flex items-center gap-1">
-                  <p className="text-lg font-bold text-black">
-                    {bankAccount.accountNumber}
-                  </p>
-                  <button
-                    onClick={handleCopyAccountNumber}
-                    type="button"
-                    className="p-1 rounded"
-                  >
-                    <Copy className="w-4 h-4 text-[#878F98]" />
-                  </button>
-                </div>
-              </div>
-            </div>
+          {/* Bank Account Carousel */}
+          {sortedBankAccounts.length > 0 && (
+            <BankCarousel
+              bankAccounts={sortedBankAccounts}
+              initialIndex={selectedBankIndex}
+              onIndexChange={setSelectedBankIndex}
+            />
           )}
 
           {/* Stats Section - Link to Insights */}

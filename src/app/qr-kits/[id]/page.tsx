@@ -75,7 +75,7 @@ export default function QRKitDetailPage() {
   }
 
   const isActive = qrKit.activationStatus === 'activated'
-  const shareUrl = `https://lite.firespot.co/${qrKit.serialNumber}`
+  const shareUrl = `https://lite.firespot.co/pay/${qrKit.serialNumber}`
   const displayId = qrKit.serialNumber.slice(-8)
 
   const handleCopyUrl = async () => {
@@ -132,7 +132,7 @@ export default function QRKitDetailPage() {
   return (
     <div className="min-h-screen bg-[#f4f6f8]">
       <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
-        <header className="flex flex-col items-center py-3 px-4">
+        <header className="flex flex-col items-center py-3 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <div className="w-full flex items-center">
             <Link href="/qr-kits">
               <ArrowLeft className="w-6 h-6 text-black" />

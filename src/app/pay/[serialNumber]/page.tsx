@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
-import { Copy, Check, ChevronRight, ArrowUpRight, X } from 'lucide-react'
+import { Check, ChevronRight, ArrowUpRight, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMerchantBySerial } from '@/services/qr'
@@ -13,15 +13,16 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import type { MerchantProfile } from '@/services/qr/interface'
+import { BankCarousel } from '@/components/bank-accounts/bank-carousel'
+import { sortBankAccounts } from '@/lib/utils/bank-account'
+import { cn } from '@/lib/utils'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
 export default function PaymentPage() {
   const params = useParams()
   const serialNumber = params.serialNumber as string
-  const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
-  const [selectedBankAccount, setSelectedBankAccount] =
-    useState<BankAccount | null>(null)
+  const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
@@ -42,13 +43,7 @@ export default function PaymentPage() {
     )
   }
 
-  const handleCopyAccountNumber = (accountNumber: string, bankName: string) => {
-    navigator.clipboard.writeText(accountNumber)
-    showNotificationToast({ message: 'Account number copied!' })
-    setCopiedAccount(accountNumber)
-    trackCopyEvent(accountNumber, bankName)
-    setTimeout(() => setCopiedAccount(null), 2000)
-  }
+
 
   // Render bank logo with fallback to initial
   const renderBankLogo = (bankName?: string) => {
@@ -171,9 +166,8 @@ export default function PaymentPage() {
   }
 
 
-  const primaryAccount = merchant.bankAccounts.find((acc) => acc.isPrimary)
-  const defaultBankAccount = primaryAccount || merchant.bankAccounts[0]
-  const bankAccount = selectedBankAccount || defaultBankAccount
+  const sortedBankAccounts = sortBankAccounts(merchant.bankAccounts)
+  const bankAccount = sortedBankAccounts[selectedBankIndex] || sortedBankAccounts[0]
 
   const getInitials = (name: string) => {
     const words = name.trim().split(/\s+/)
@@ -198,26 +192,25 @@ export default function PaymentPage() {
       type: 'select-bank',
       direction: 'bottom',
       props: {
-        bankAccounts: merchant.bankAccounts,
-        onSelectBank: (bankAccount: BankAccount) => {
-          console.log('Bank selected:', bankAccount.bankName)
-          setSelectedBankAccount(bankAccount)
+        bankAccounts: sortedBankAccounts,
+        onSelectBank: (bank: BankAccount) => {
+          console.log('Bank selected:', bank.bankName)
+          const index = sortedBankAccounts.findIndex(
+            (acc) => acc.accountNumber === bank.accountNumber,
+          )
+          if (index !== -1) {
+            setSelectedBankIndex(index)
+          }
         },
       },
     })
   }
 
   const handleSendWithBankApp = () => {
-    const accountNumber =
-      selectedBankAccount?.accountNumber || bankAccount?.accountNumber
-    const bankName =
-      selectedBankAccount?.bankName || bankAccount?.bankName || ''
-    const accountName =
-      selectedBankAccount?.accountName || bankAccount?.accountName || ''
+    if (bankAccount) {
+      const { accountNumber, bankName, accountName } = bankAccount
 
-    if (accountNumber) {
       navigator.clipboard.writeText(accountNumber)
-      setCopiedAccount(accountNumber)
       trackCopyEvent(accountNumber, bankName)
 
       openDrawer({
@@ -279,48 +272,17 @@ export default function PaymentPage() {
             )}
           </div>
 
-          {/* Bank Account Card */}
-          {bankAccount && (
-            <div className="bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)]">
-              <div className="flex flex-col justify-center items-center mb-4 px-4">
-                <p className="text-sm text-[#00000066] font-medium">
-                  Recipient Bank
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  {renderBankLogo(bankAccount.bankName)}
-                  <p className="text-base font-bold text-black">
-                    {bankAccount.bankName}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col justify-center items-center border-t border-[#F1F1F1] pt-4 px-4">
-                <p className="text-sm text-[#00000066] font-medium mb-1">
-                  Account number
-                </p>
-                <div className="flex items-center gap-1">
-                  <p className="text-lg font-bold text-black">
-                    {bankAccount.accountNumber}
-                  </p>
-                  <button
-                    onClick={() =>
-                      handleCopyAccountNumber(
-                        bankAccount.accountNumber,
-                        bankAccount.bankName,
-                      )
-                    }
-                    type="button"
-                    className="p-1 rounded"
-                  >
-                    {copiedAccount === bankAccount.accountNumber ? (
-                      <Check className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <Copy className="w-4 h-4 text-[#878F98]" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
+          {/* Bank Account Carousel */}
+          {sortedBankAccounts.length > 0 && (
+            <BankCarousel
+              bankAccounts={sortedBankAccounts}
+              initialIndex={selectedBankIndex}
+              onIndexChange={setSelectedBankIndex}
+              showDots={false}
+              onCopy={(accountNumber, bankName) => {
+                handleSendWithBankApp()
+              }}
+            />
           )}
 
           {/* Disclaimer */}
@@ -329,13 +291,21 @@ export default function PaymentPage() {
             successful transfers cannot be reversed.
           </p>
 
-          {/* Pagination Dots */}
-          <div className="flex items-center justify-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#00000066]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#0000001A]" />
-          </div>
+          {/* Pagination Dots - Moved below disclaimer */}
+          {sortedBankAccounts.length > 1 && (
+            <div className="flex items-center justify-center gap-1.5">
+              {sortedBankAccounts.map((_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    'w-1.5 h-1.5 rounded-full transition-colors duration-200',
+                    selectedBankIndex === i ? 'bg-[#00000066]' : 'bg-[#0000001A]',
+                  )}
+                />
+              ))}
+            </div>
+          )}
+
         </div>
 
         {/* Footer */}

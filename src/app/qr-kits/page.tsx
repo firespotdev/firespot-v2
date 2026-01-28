@@ -39,7 +39,7 @@ export default function QRKitsPage() {
     <div className="min-h-screen bg-[#F4F6F8]">
       <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
         {/* Header */}
-        <header className="flex items-center py-4 px-4">
+        <header className="flex items-center py-4 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <Link href="/profile">
             <ArrowLeft className="w-6 h-6 text-black" />
           </Link>

@@ -134,9 +134,20 @@
   }
 }
 
-/* Override Sonner toast width to fit content */
-[data-sonner-toaster] [data-sonner-toast] {
+/* Override Sonner toast width to fit content and ensure perfect centering */
+[data-sonner-toaster] {
+  width: 100% !important;
+  left: 0 !important;
+  right: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  pointer-events: none !important;
+}
+
+[data-sonner-toast] {
   width: fit-content !important;
-  max-width: fit-content !important;
+  max-width: 90vw !important;
   margin: 0 auto !important;
+  pointer-events: auto !important;
 }
