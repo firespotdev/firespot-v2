@@ -242,7 +242,7 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                   <div className="mt-2">
                     <StatusBadge status={currentAgent.status || 'inactive'} />
                   </div>
-                  {/* Action Buttons - positioned below status */}
+                  {/* Action Buttons */}
                   <div className="mt-4 flex gap-2 border-t border-gray-200 pt-4">
                     {(currentAgent.status || 'inactive') !== 'active' && (
                       <button
