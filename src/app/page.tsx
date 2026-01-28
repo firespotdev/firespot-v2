@@ -174,7 +174,7 @@ export default function ScannerPage() {
 
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
-      {/* Camera Video Feed */}
+      {/* Camera Feed */}
       <video
         ref={videoRef}
         autoPlay
