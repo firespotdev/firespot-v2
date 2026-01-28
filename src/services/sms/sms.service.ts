@@ -22,7 +22,6 @@ export class SmsService {
     }
 
     const termiiApiKey = this.configService.get<string>('TERMII_API_KEY');
-    const termiiSenderId = this.configService.get<string>('TERMII_SENDER_ID', 'Firespot');
 
     if (!termiiApiKey) {
       console.error('TERMII_API_KEY is not configured');
@@ -30,14 +29,16 @@ export class SmsService {
     }
 
     try {
-      const response = await axios.post('https://api.ng.termii.com/api/sms/send', {
+      const payload = {
         api_key: termiiApiKey,
         to: formattedTo,
         from: 'N-Alert',
         sms: message,
         type: 'plain',
         channel: 'dnd',
-      });
+      };
+
+      const response = await axios.post('https://api.ng.termii.com/api/sms/send', payload);
 
       console.log('SMS sent successfully via Termii:', {
         to: formattedTo,
@@ -68,7 +69,6 @@ export class SmsService {
     }
 
     const termiiApiKey = this.configService.get<string>('TERMII_API_KEY');
-    const termiiSenderId = this.configService.get<string>('TERMII_SENDER_ID', 'Firespot');
 
     if (!termiiApiKey) {
       console.error('TERMII_API_KEY is not configured');

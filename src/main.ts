@@ -5,7 +5,7 @@ import { AppModule } from './app.module'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    rawBody: true, // Enable raw body for webhook signature verification
+    rawBody: true, 
   })
 
   const isDevelopment = process.env.NODE_ENV === 'development'

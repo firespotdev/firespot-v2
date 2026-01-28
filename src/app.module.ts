@@ -11,6 +11,8 @@ import { AdminModule } from './admin/admin.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ScansModule } from './scans/scans.module';
 import { SmsModule } from './services/sms/sms.module';
+import { EmailModule } from './services/email/email.module';
+import { NotificationModule } from './services/notifications/notification.module';
 import { getDatabaseConfig } from './config/database.config';
 
 @Module({
@@ -32,6 +34,8 @@ import { getDatabaseConfig } from './config/database.config';
     PaymentsModule,
     ScansModule,
     SmsModule,
+    EmailModule,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService],

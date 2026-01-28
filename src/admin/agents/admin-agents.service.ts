@@ -14,6 +14,7 @@ import { CreateAgentDto } from './dto/create-agent.dto'
 import { UpdateAgentDto } from './dto/update-agent.dto'
 import { AgentQueryDto } from './dto/agent-query.dto'
 import { PaystackService } from '../../users/services/paystack.service'
+import { NotificationService } from '../../services/notifications/notification.service'
 
 const nanoidAlphanumeric = customAlphabet('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
 
@@ -24,6 +25,7 @@ export class AdminAgentsService {
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private paystackService: PaystackService,
+    private notificationService: NotificationService,
   ) {}
 
   /**
@@ -68,7 +70,14 @@ export class AdminAgentsService {
       })
     }
 
-    return agent.save()
+    const savedAgent = await agent.save()
+    
+    // Trigger welcome notification
+    this.notificationService.sendAgentWelcome(savedAgent).catch(err => 
+      console.error('Failed to trigger welcome notification:', err)
+    )
+
+    return savedAgent
   }
 
   /**
@@ -295,8 +304,32 @@ export class AdminAgentsService {
     const definedUpdates = Object.fromEntries(
       Object.entries(updateAgentDto).filter(([, value]) => value !== undefined),
     )
+
+    const oldStatus = agent.status
+    const newStatus = updateAgentDto.status
+
     Object.assign(agent, definedUpdates)
-    return agent.save()
+    const savedAgent = await agent.save()
+
+    // Trigger notifications for status transitions if status was updated
+    if (newStatus && newStatus !== oldStatus) {
+
+      if (newStatus === 'suspended') {
+        this.notificationService.sendAgentSuspended(savedAgent).catch((err) =>
+          console.error('Failed to trigger suspended notification:', err),
+        )
+      } else if (newStatus === 'active' && oldStatus === 'suspended') {
+        this.notificationService.sendAgentReactivated(savedAgent).catch((err) =>
+          console.error('Failed to trigger reactivated notification:', err),
+        )
+      } else if (newStatus === 'inactive') {
+        this.notificationService.sendAgentDeactivated(savedAgent).catch((err) =>
+          console.error('Failed to trigger deactivated notification:', err),
+        )
+      }
+    }
+
+    return savedAgent
   }
 
   /**
@@ -310,6 +343,11 @@ export class AdminAgentsService {
     if (!agent) {
       throw new NotFoundException('Agent not found')
     }
+
+    // Trigger suspended notification
+    this.notificationService.sendAgentSuspended(agent).catch(err => 
+      console.error('Failed to trigger suspended notification:', err)
+    )
 
     return agent
   }
@@ -340,6 +378,11 @@ export class AdminAgentsService {
     agent.status = 'inactive'
     await agent.save()
 
+    // Trigger deactivated notification
+    this.notificationService.sendAgentDeactivated(agent).catch(err => 
+      console.error('Failed to trigger deactivated notification:', err)
+    )
+
     return {
       agent,
       unassignedCount: unassignResult.modifiedCount,
@@ -357,6 +400,11 @@ export class AdminAgentsService {
     if (!agent) {
       throw new NotFoundException('Agent not found')
     }
+
+    // Trigger reactivated notification
+    this.notificationService.sendAgentReactivated(agent).catch(err => 
+      console.error('Failed to trigger reactivated notification:', err)
+    )
 
     return agent
   }
