@@ -284,7 +284,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </a>
         </div>
 
-        {/* Section 4: Sign out */}
+        
         <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
           <button
             type="button"
