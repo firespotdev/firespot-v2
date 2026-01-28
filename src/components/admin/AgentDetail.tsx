@@ -1,6 +1,12 @@
 'use client'
 
-import { useAgent, useUpdateAgent } from '@/services/agents'
+import {
+  useAgent,
+  useUpdateAgent,
+  useSuspendAgent,
+  useReactivateAgent,
+  useDeactivateAgent,
+} from '@/services/agents'
 import type { Agent } from '@/services/agents'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminToast } from './AdminToast'
@@ -17,6 +23,8 @@ function StatusBadge({ status }: { status: string }) {
         return 'bg-emerald-100 text-emerald-700 border-emerald-200'
       case 'suspended':
         return 'bg-red-100 text-red-700 border-red-200'
+      case 'inactive':
+        return 'bg-gray-100 text-gray-700 border-gray-200'
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200'
     }
@@ -63,6 +71,10 @@ interface AgentDetailProps {
 export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
   const { data: agentWithStats, isLoading, error } = useAgent(agent._id)
   const updateAgent = useUpdateAgent()
+  const suspendAgent = useSuspendAgent()
+  const reactivateAgent = useReactivateAgent()
+  const deactivateAgent = useDeactivateAgent()
+
   const [isEditing, setIsEditing] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean
@@ -114,10 +126,23 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
     if (!confirmDialog) return
 
     try {
-      await updateAgent.mutateAsync({
-        id: agent._id,
-        dto: { status: confirmDialog.status },
-      })
+      if (confirmDialog.status === 'suspended') {
+        await suspendAgent.mutateAsync(agent._id)
+      } else if (confirmDialog.status === 'active') {
+        // If it was suspended, we call reactivate
+        if (currentAgent.status === 'suspended') {
+          await reactivateAgent.mutateAsync(agent._id)
+        } else {
+          // Otherwise use generic update for initial activation from inactive
+          await updateAgent.mutateAsync({
+            id: agent._id,
+            dto: { status: 'active' },
+          })
+        }
+      } else if (confirmDialog.status === 'inactive') {
+        await deactivateAgent.mutateAsync(agent._id)
+      }
+
       adminToast.success(`Agent ${confirmDialog.status} successfully`)
       setConfirmDialog(null)
     } catch (error) {
