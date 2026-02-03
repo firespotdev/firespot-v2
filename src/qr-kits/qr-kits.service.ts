@@ -172,16 +172,27 @@ export class QRKitsService {
     // Use phone number as pseudo-email for Paystack
     const email = `${user.phoneNumber}@firespot.co`
 
-    // Handle split payment if agent is assigned
+    // Handle split payment if agent is assigned to QR kit
+    // Fallback: if no agent on QR kit, use merchant's referring agent
     let subaccount: string | undefined
     let transactionCharge: number | undefined
 
+    // Priority 1: Agent assigned to this QR kit
     if (qrKit.agentId) {
       const agent = await this.agentModel.findById(qrKit.agentId)
       if (agent && agent.subaccountCode) {
         subaccount = agent.subaccountCode
         // Split: 1500 to Firespot (minus fees), 500 to Agent
         // transactionCharge is the portion for the platform (Firespot) in kobo
+        transactionCharge = 150000
+      }
+    }
+    // Priority 2: Agent who referred this merchant (via referral code at signup)
+    else if (user.referredByAgent) {
+      const referringAgent = await this.agentModel.findById(user.referredByAgent)
+      if (referringAgent && referringAgent.subaccountCode) {
+        subaccount = referringAgent.subaccountCode
+        // Same split: 1500 to Firespot, 500 to referring agent
         transactionCharge = 150000
       }
     }
@@ -255,20 +266,26 @@ export class QRKitsService {
     qrKit.activationStatus = 'activated'
     qrKit.paidAt = new Date(verification.paidAt)
     qrKit.activatedAt = new Date()
+
+    // Auto-assign referring agent to QR kit if unassigned
+    const user = await this.userModel.findById(qrKit.merchantId)
+    if (!qrKit.agentId && user?.referredByAgent) {
+      qrKit.agentId = user.referredByAgent as any
+      qrKit.assignedToAgentAt = new Date()
+    }
+
     await qrKit.save()
 
-    // Notify agent if assigned
-    if (qrKit.agentId) {
-      await this.notifyAgentOnActivation(qrKit)
+    // Notify agent who earned the commission
+    const earningAgentId = qrKit.agentId || user?.referredByAgent
+    if (earningAgentId) {
+      await this.notifyAgentOnCommission(earningAgentId.toString(), user?.businessName || 'a merchant', qrKit.serialNumber)
     }
 
     // Update user's merchantSlug if not set
-    if (qrKit.merchantId) {
-      const user = await this.userModel.findById(qrKit.merchantId)
-      if (user && !user.merchantSlug) {
-        user.merchantSlug = nanoid(6).toUpperCase()
-        await user.save()
-      }
+    if (user && !user.merchantSlug) {
+      user.merchantSlug = nanoid(6).toUpperCase()
+      await user.save()
     }
 
     return {
@@ -296,43 +313,47 @@ export class QRKitsService {
     qrKit.activationStatus = 'activated'
     qrKit.paidAt = new Date()
     qrKit.activatedAt = new Date()
+
+    // Auto-assign referring agent to QR kit if unassigned
+    const user = await this.userModel.findById(qrKit.merchantId)
+    if (!qrKit.agentId && user?.referredByAgent) {
+      qrKit.agentId = user.referredByAgent as any
+      qrKit.assignedToAgentAt = new Date()
+    }
+
     await qrKit.save()
 
-    // Notify agent if assigned
-    if (qrKit.agentId) {
-      await this.notifyAgentOnActivation(qrKit)
+    // Notify agent who earned the commission
+    const earningAgentId = qrKit.agentId || user?.referredByAgent
+    if (earningAgentId) {
+      await this.notifyAgentOnCommission(earningAgentId.toString(), user?.businessName || 'a merchant', qrKit.serialNumber)
     }
 
     // Update user's merchantSlug if not set
-    if (qrKit.merchantId) {
-      const user = await this.userModel.findById(qrKit.merchantId)
-      if (user && !user.merchantSlug) {
-        user.merchantSlug = nanoid(6).toUpperCase()
-        await user.save()
-      }
+    if (user && !user.merchantSlug) {
+      user.merchantSlug = nanoid(6).toUpperCase()
+      await user.save()
     }
 
     return { success: true, message: 'Activated via webhook' }
   }
 
-  private async notifyAgentOnActivation(qrKit: QRKitDocument) {
+  /**
+   * Notify agent when they earn a commission from QR kit activation
+   */
+  private async notifyAgentOnCommission(agentId: string, businessName: string, serialNumber: string) {
     try {
-      if (!qrKit.agentId) return
-
-      const agent = await this.agentModel.findById(qrKit.agentId)
+      const agent = await this.agentModel.findById(agentId)
       if (!agent || !agent.phoneNumber) return
 
-      const user = await this.userModel.findById(qrKit.merchantId)
-      const businessName = user?.businessName || 'a merchant'
-
-      const message = `Hello ${agent.name}, the QR Kit (${qrKit.serialNumber}) assigned to you has been activated by ${businessName}.`
+      const message = `Hello ${agent.name}, the QR Kit (${serialNumber}) assigned to you has been activated by ${businessName}. You have earned NGN 500 as commission.`
 
       await this.smsService.sendSms(agent.phoneNumber, message)
 
-      console.log(`Notification sent to agent ${agent.name} for QR kit ${qrKit.serialNumber}`)
+      console.log(`Commission notification sent to agent ${agent.name} for QR kit ${serialNumber}`)
     } catch (error) {
       console.error(
-        `Failed to notify agent for QR kit ${qrKit.serialNumber}:`,
+        `Failed to notify agent for QR kit ${serialNumber}:`,
         error,
       )
     }

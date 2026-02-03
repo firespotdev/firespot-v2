@@ -5,7 +5,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { MerchantsModule } from './merchants/merchants.module';
 import { QRKitsModule } from './qr-kits/qr-kits.module';
 import { AdminModule } from './admin/admin.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -28,7 +27,6 @@ import { getDatabaseConfig } from './config/database.config';
     }),
     AuthModule,
     UsersModule,
-    MerchantsModule,
     QRKitsModule,
     AdminModule,
     PaymentsModule,
