@@ -70,9 +70,7 @@ function SortableBankItem({ account, isFirst }: SortableBankItemProps) {
           {account.bankName}
         </p>
         {isFirst && (
-          <p className="text-xs text-[#64748B] font-medium">
-            Most preferred
-          </p>
+          <p className="text-xs text-[#64748B] font-medium">Most preferred</p>
         )}
       </div>
 
@@ -113,7 +111,7 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   )
 
   // Sync accounts from props
@@ -134,10 +132,10 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
     if (over && active.id !== over.id) {
       setAccounts((items) => {
         const oldIndex = items.findIndex(
-          (item) => item.accountNumber === active.id
+          (item) => item.accountNumber === active.id,
         )
         const newIndex = items.findIndex(
-          (item) => item.accountNumber === over.id
+          (item) => item.accountNumber === over.id,
         )
 
         const newItems = arrayMove(items, oldIndex, newIndex)
@@ -167,7 +165,7 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
 
   return (
     <div className="px-3">
-      <p className="text-xs font-medium px-1 py-1.5 text-[#545F6CE5] text-center bg-[#E8EAED] rounded-[8px] mt-2">
+      <p className="text-xs font-medium px-1 py-1.5 text-[#545F6CE5] text-center bg-[#E8EAED] rounded-xl mt-2">
         Drag to reorder - from most preferred to least preferred.
       </p>
 
@@ -179,7 +177,7 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
             </p>
           </div>
         ) : (
-          <div className="border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-[12px]">
+          <div className="border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-2xl">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}

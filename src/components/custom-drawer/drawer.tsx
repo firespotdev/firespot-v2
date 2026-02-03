@@ -17,6 +17,7 @@ import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
 import { ProfileMenuDrawer } from './profile-menu-drawer'
 import { SelectBankDrawer } from './select-bank-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
+import { ShareTransferDrawer } from './share-transfer-drawer'
 import { ReceiptDrawer } from './receipt-drawer'
 import { DateRangeFilterDrawer } from './date-range-filter-drawer'
 
@@ -51,6 +52,12 @@ const DRAWER_CONFIG: Record<
     title: 'Send with bank app',
     direction: 'bottom',
     Content: BankTransferDrawer,
+    fullScreen: true,
+  },
+  'share-transfer': {
+    title: '',
+    direction: 'bottom',
+    Content: ShareTransferDrawer,
     fullScreen: true,
   },
   receipt: {
@@ -109,7 +116,7 @@ export function CustomDrawer() {
         onOpenChange={(open) => !open && closeDrawer()}
         direction={drawerDirection}
       >
-        <DrawerContent className="max-w-[500px] mx-auto bg-white rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[95vh]">
+        <DrawerContent className="max-w-125 mx-auto bg-white rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[95vh]">
           {/* Header */}
           <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
             <div className="w-9 h-9 flex items-center justify-center">
@@ -134,7 +141,6 @@ export function CustomDrawer() {
               )}
             </DrawerTitle>
 
-
             <DrawerClose className="w-9 h-9 flex items-center justify-center">
               <X className="w-6 h-6 text-black" />
             </DrawerClose>
@@ -153,7 +159,7 @@ export function CustomDrawer() {
       onOpenChange={(open) => !open && closeDrawer()}
       direction={drawerDirection}
     >
-      <DrawerContent className="max-h-[85vh] max-w-[500px] mx-auto bg-[#F4F6F8]">
+      <DrawerContent className="max-h-[85vh] max-w-125 mx-auto bg-[#F4F6F8]">
         {/* Header */}
         <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
           <div className="w-9 h-9 flex items-center justify-center">

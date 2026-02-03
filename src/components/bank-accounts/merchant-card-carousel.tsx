@@ -30,7 +30,7 @@ interface MerchantCardCarouselProps {
   bankAccounts: BankAccount[]
   merchantInfo: MerchantInfo
   disclaimer?: string
-  onCopy?: (accountNumber: string, bankName: string) => void
+  onCopy?: (account: BankAccount) => void
   initialIndex?: number
   onIndexChange?: (index: number) => void
   showDots?: boolean
@@ -81,15 +81,15 @@ export function MerchantCardCarousel({
     }
   }, [api, initialIndex, current])
 
-  const handleCopy = (accountNumber: string, bankName: string) => {
-    navigator.clipboard.writeText(accountNumber)
+  const handleCopy = (account: BankAccount) => {
+    navigator.clipboard.writeText(account.accountNumber)
     showNotificationToast({ message: 'Account number copied!' })
 
     if (onCopy) {
-      onCopy(accountNumber, bankName)
+      onCopy(account)
     }
 
-    setCopiedAccount(accountNumber)
+    setCopiedAccount(account.accountNumber)
     setTimeout(() => setCopiedAccount(null), 2000)
   }
 
@@ -168,10 +168,7 @@ export function MerchantCardCarousel({
                     clickableCard && 'cursor-pointer active:bg-gray-50',
                   )}
                   onClick={
-                    clickableCard
-                      ? () =>
-                          handleCopy(account.accountNumber, account.bankName)
-                      : undefined
+                    clickableCard ? () => handleCopy(account) : undefined
                   }
                 >
                   <div className="flex flex-col justify-center items-center px-4">
@@ -201,7 +198,7 @@ export function MerchantCardCarousel({
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleCopy(account.accountNumber, account.bankName)
+                          handleCopy(account)
                         }}
                         type="button"
                         className="p-1 rounded"

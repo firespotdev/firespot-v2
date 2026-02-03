@@ -228,7 +228,7 @@ export default function ProfilePage() {
         </div>
 
         {/* QR Kit Button */}
-        <div className="border-t border-[#F1F1F1] max-w-[500px] mx-auto  fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
+        <div className="border-t border-[#F1F1F1] max-w-125 mx-auto  fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
           <div className="p-4 pb-6">
             <Button
               asChild

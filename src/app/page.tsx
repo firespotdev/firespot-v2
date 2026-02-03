@@ -183,7 +183,7 @@ export default function ScannerPage() {
       />
 
       <div className="relative z-10 min-h-screen">
-        <div className="max-w-[500px] mx-auto w-full flex flex-col min-h-screen">
+        <div className="max-w-125 mx-auto w-full flex flex-col min-h-screen">
           <header className="flex items-center justify-between py-4 px-3">
             <Image
               src="/icons/firespot_logo.svg"
@@ -217,7 +217,7 @@ export default function ScannerPage() {
                   </p>
                 </div>
               ) : (
-                <div className="w-full max-w-[300px] aspect-square relative">
+                <div className="w-full max-w-75 aspect-square relative">
                   <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-3xl border-white"></div>
                   <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-3xl border-white"></div>
                   <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-3xl border-white"></div>
@@ -229,7 +229,7 @@ export default function ScannerPage() {
 
           {/* Bottom Section - Carousel */}
           <div className="py-4 px-4">
-            <div className="bg-[#FFFFFF33] backdrop-blur-sm rounded-[16px] p-4">
+            <div className="bg-[#FFFFFF33] backdrop-blur-sm rounded-3xl p-4">
               <h3 className="text-white font-bold text-[15px] font-satoshi mb-1">
                 Login to your Firespot Lite account
               </h3>

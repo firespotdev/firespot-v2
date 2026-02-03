@@ -453,8 +453,14 @@ export default function PaymentPage() {
           showDropdown
           onTitleClick={handleOpenBankDrawer}
           onShareClick={() => {
-            // Share functionality
-            console.log('Share clicked')
+            openDrawer({
+              type: 'share-transfer',
+              props: {
+                businessName: merchant.businessName,
+                serialNumber,
+                profilePhotoUrl: merchant.profilePhotoUrl,
+              },
+            })
           }}
         />
 
@@ -472,8 +478,18 @@ export default function PaymentPage() {
               initialIndex={selectedBankIndex}
               onIndexChange={setSelectedBankIndex}
               clickableCard={true}
-              onCopy={(accountNumber, bankName) => {
-                trackCopyEvent(accountNumber, bankName)
+              onCopy={(account) => {
+                trackCopyEvent(account.accountNumber, account.bankName)
+                openDrawer({
+                  type: 'bank-transfer',
+                  props: {
+                    accountNumber: account.accountNumber,
+                    bankName: account.bankName,
+                    accountName: account.accountName,
+                    onCopy: () =>
+                      trackCopyEvent(account.accountNumber, account.bankName),
+                  },
+                })
               }}
             />
           )}
@@ -490,7 +506,7 @@ export default function PaymentPage() {
             </Button>
 
             <Link
-              href="/login"
+              href="/signup"
               className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
             >
               I want something like this for my business
