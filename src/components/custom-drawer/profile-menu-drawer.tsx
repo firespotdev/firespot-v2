@@ -212,7 +212,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         </div>
 
         {/* Section 2: Support */}
-        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-3.5 px-4 border-b border-[#F1F1F1]"
@@ -277,7 +277,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         </div>
 
         {/* Section 3: Social */}
-        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-3.5 px-4 border-b border-[#F1F1F1]"
@@ -329,7 +329,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </a>
         </div>
 
-        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
+        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
           <button
             type="button"
             onClick={handleSignOut}

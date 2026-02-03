@@ -39,7 +39,7 @@ export function PageHeader({
 
   return (
     <header className="flex items-center justify-between py-4 px-3 sticky top-0 z-50 bg-[#F4F6F8]">
-      <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
+      <div className="h-9 w-9 flex items-center justify-center rounded-2xl border border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
         {onLogoClick ? (
           <button onClick={handleLeftButtonClick} type="button">
             <Image
@@ -84,7 +84,7 @@ export function PageHeader({
       <button
         onClick={onShareClick}
         type="button"
-        className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+        className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
       >
         <Share stroke="#868788" size={20} />
       </button>

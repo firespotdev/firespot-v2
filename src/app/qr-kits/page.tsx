@@ -60,7 +60,7 @@ export default function QRKitsPage() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
               {qrKits.map((qrKit, index) => {
                 const isActive = qrKit.activationStatus === 'activated'
                 const statusText = isActive ? 'Active' : 'Inactive'
@@ -80,7 +80,9 @@ export default function QRKitsPage() {
                     >
                       <Image
                         src={
-                          isActive ? '/icons/qr_white.svg' : '/icons/qr_black.svg'
+                          isActive
+                            ? '/icons/qr_white.svg'
+                            : '/icons/qr_black.svg'
                         }
                         alt="QR"
                         width={16}

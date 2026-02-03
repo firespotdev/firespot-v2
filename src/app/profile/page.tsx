@@ -61,13 +61,6 @@ export default function ProfilePage() {
 
   const sortedBankAccounts = sortBankAccounts(profile?.bankAccounts || [])
 
-  const handleViewCustomerView = () => {
-    // TODO: Navigate to customer view page or open in new tab
-    if (profile?.merchantSlug) {
-      window.open(`/merchant/${profile.merchantSlug}`, '_blank')
-    }
-  }
-
   const handleCameraClick = () => {
     fileInputRef.current?.click()
   }
@@ -242,7 +235,6 @@ export default function ProfilePage() {
             </Button>
 
             <button
-              onClick={handleViewCustomerView}
               type="button"
               className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
             >

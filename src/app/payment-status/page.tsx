@@ -179,7 +179,7 @@ function PaymentStatusContent() {
           <div className="p-4 pb-8 space-y-3">
             {/* <button
               type="button"
-              className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
+              className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
             >
               <Image
                 src="/icons/firespot_logo.svg"
