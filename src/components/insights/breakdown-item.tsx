@@ -1,7 +1,6 @@
 'use client'
 
-import Image from 'next/image'
-import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
+import { BankLogo } from '@/components/ui/bank-logo'
 
 interface BreakdownItemProps {
   label: string
@@ -22,26 +21,11 @@ export function BreakdownItem({
 
   const renderIcon = () => {
     if (showBankLogo) {
-      const logoPath = getBankLogoPath(label)
-      const isDefaultLogo = logoPath.includes('default-image.png')
-
-      if (isDefaultLogo) {
-        return (
-          <div className="w-4 h-4 bg-[#0075FF] rounded-[4.4px] flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-[10px]">
-              {getBankInitial(label)}
-            </span>
-          </div>
-        )
-      }
-
       return (
-        <Image
-          src={logoPath}
-          alt={`${label} logo`}
-          width={24}
-          height={24}
-          className="w-4 h-4 rounded-[4.4px] object-contain shrink-0"
+        <BankLogo
+          bankName={label}
+          size={16}
+          className="rounded-[4.4px] shrink-0"
         />
       )
     }

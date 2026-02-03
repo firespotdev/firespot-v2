@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { BrowserMultiFormatReader } from '@zxing/library'
-import { ArrowUpRight, Zap } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -174,7 +174,6 @@ export default function ScannerPage() {
 
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
-      {/* Camera Feed */}
       <video
         ref={videoRef}
         autoPlay
@@ -228,37 +227,21 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          {/* Bottom Section */}
-          <div className="p-4 space-y-4">
-            <div className="bg-[#FFFFFF66] backdrop-blur-sm rounded-[16px] p-3 flex items-center gap-3">
-              <Image
-                src="/icons/firespot_logo.svg"
-                alt="firespot logo"
-                width={36}
-                height={36}
-              />
-              <div className="flex-1">
-                <p className="text-white font-bold text-[13px] font-satoshi">
-                  Pay for your purchase superfast! 🚀
-                </p>
-                <p className="text-[#E1E1E1] text-xs font-satoshi flex items-center gap-1">
-                  All Nigerian banks supported.{' '}
-                  <Link
-                    href="/signup"
-                    className="underline underline-offset-3 flex items-end gap-[0.7px]"
-                  >
-                    Learn more
-                    <ArrowUpRight size={13} />
-                  </Link>{' '}
-                </p>
-              </div>
-            </div>
-
-            {/* Pagination Dots */}
-            <div className="flex justify-center gap-1">
-              <div className="w-1 h-1 rounded-full bg-white" />
-              <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
-              <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
+          {/* Bottom Section - Carousel */}
+          <div className="py-4 px-4">
+            <div className="bg-[#FFFFFF33] backdrop-blur-sm rounded-[16px] p-4">
+              <h3 className="text-white font-bold text-[15px] font-satoshi mb-1">
+                Login to your Firespot Lite account
+              </h3>
+              <p className="text-[#E1E1E1] text-xs font-satoshi mb-4">
+                Manage your QR kits and account numbers
+              </p>
+              <Link
+                href="/login"
+                className="block w-full bg-[#FFFFFF33] hover:bg-[#FFFFFF4D] text-white text-sm font-bold py-2.5 rounded-full text-center transition-colors"
+              >
+                LOG IN
+              </Link>
             </div>
           </div>
         </div>

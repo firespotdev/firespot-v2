@@ -2,19 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Camera, ChevronRight, ArrowUpRight } from 'lucide-react'
+import { ChevronRight, ArrowUpRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle, showNotificationToast } from '@/components/ui'
-import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
+import { LoaderCircle } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantInsights } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import Link from 'next/link'
-import { BankCarousel } from '@/components/bank-accounts/bank-carousel'
+import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
 import { sortBankAccounts } from '@/lib/utils/bank-account'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -107,35 +106,6 @@ export default function ProfilePage() {
     e.target.value = ''
   }
 
-  // Render bank logo with fallback to initial
-  const renderBankLogo = (bankName?: string) => {
-    if (!bankName) return null
-
-    const logoPath = getBankLogoPath(bankName)
-    const isDefaultLogo = logoPath.includes('default-image.png')
-
-    if (isDefaultLogo) {
-      // Fallback to letter icon for banks without logos
-      return (
-        <div className="w-6 h-6 bg-[#0075FF] rounded-[6.67px] flex items-center justify-center">
-          <span className="text-white font-bold text-xs">
-            {getBankInitial(bankName)}
-          </span>
-        </div>
-      )
-    }
-
-    return (
-      <Image
-        src={logoPath}
-        alt={`${bankName} logo`}
-        width={24}
-        height={24}
-        className="w-6 h-6 rounded-[6.67px] object-contain"
-      />
-    )
-  }
-
   if (isLoading) {
     return (
       <div className="h-screen bg-[#F4F6F8] flex items-center justify-center">
@@ -146,7 +116,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-[#F4F6F8]">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
         <PageHeader
           title="Bank accounts"
           showDropdown
@@ -163,105 +133,70 @@ export default function ProfilePage() {
         />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly">
-          {/* Profile Picture Section */}
-          <div className="flex flex-col items-center">
-            <div className="relative">
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                onChange={handleFileChange}
-                className="hidden"
-              />
+          {/* Hidden file input for photo upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            onChange={handleFileChange}
+            className="hidden"
+          />
 
-              {profile?.profilePhotoUrl ? (
-                <Image
-                  src={profile.profilePhotoUrl}
-                  alt="Profile"
-                  width={96}
-                  height={96}
-                  className="w-[96px] h-[96px] rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-[96px] h-[96px] rounded-full bg-[#CED7E1] flex items-center justify-center">
-                  <Image
-                    src="/icons/store_solid.svg"
-                    alt="store icon"
-                    width={57}
-                    height={57}
-                  />
-                </div>
-              )}
-
-              {/* Upload overlay when uploading */}
-              {updateProfilePhoto.isPending && (
-                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
-                  <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={handleCameraClick}
-                disabled={updateProfilePhoto.isPending}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-[#E5E7EB] rounded-full flex items-center justify-center border-2 border-white disabled:opacity-50"
-              >
-                <Camera className="w-4 h-4 text-black" />
-              </button>
-            </div>
-
-            {/* Photo error message */}
-            {photoError && (
-              <p className="text-xs text-red-500 mt-2 text-center">
-                {photoError}
-              </p>
-            )}
-
-            {/* Success message */}
-            {photoSuccess && (
-              <p className="text-xs text-green-600 mt-2 text-center">
-                Photo updated successfully!
-              </p>
-            )}
-
-            <h1 className="font-bold text-xl text-black mt-4 text-center leading-none">
-              {profile?.businessName || 'Your Business Name'}
-            </h1>
-
-            {!hasQRKits ? (
-              <Link
-                href="/activate"
-                className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
-              >
-                1 more step: Activate your QR kit{' '}
-                <ChevronRight className="w-4 h-4 text-[#747576]" />
-              </Link>
-            ) : (
-              <Link
-                href="/qr-kits"
-                className="mt-1 text-sm text-[#24C166] font-medium flex items-center gap-1"
-              >
-                <Image
-                  src="/icons/ping.svg"
-                  alt="live ping"
-                  width={16}
-                  height={16}
-                  className="animate-pulse"
-                />
-                Your QR kit is live and accepting payments
-                <ChevronRight className="w-4 h-4 text-[#24C166] mt-[1%]" />
-              </Link>
-            )}
-          </div>
-
-          {/* Bank Account Carousel */}
+          {/* Merchant Card Carousel */}
           {sortedBankAccounts.length > 0 && (
-            <BankCarousel
+            <MerchantCardCarousel
               bankAccounts={sortedBankAccounts}
+              merchantInfo={{
+                profilePhotoUrl: profile?.profilePhotoUrl,
+                businessName: profile?.businessName || 'Your Business Name',
+                bankAccountCount: sortedBankAccounts.length,
+              }}
               initialIndex={selectedBankIndex}
               onIndexChange={setSelectedBankIndex}
+              showCameraButton={true}
+              onCameraClick={handleCameraClick}
+              isUploadingPhoto={updateProfilePhoto.isPending}
+              qrKitStatus={
+                !hasQRKits ? (
+                  <Link
+                    href="/activate"
+                    className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
+                  >
+                    1 more step: Activate your QR kit{' '}
+                    <ChevronRight className="w-4 h-4 text-[#747576]" />
+                  </Link>
+                ) : (
+                  <Link
+                    href="/qr-kits"
+                    className="mt-1 text-sm text-[#24C166] font-medium flex items-center gap-1"
+                  >
+                    <Image
+                      src="/icons/ping.svg"
+                      alt="live ping"
+                      width={16}
+                      height={16}
+                      className="animate-pulse"
+                    />
+                    Your QR kit is live and accepting payments
+                    <ChevronRight className="w-4 h-4 text-[#24C166] mt-[1%]" />
+                  </Link>
+                )
+              }
             />
+          )}
+
+          {/* Photo error message */}
+          {photoError && (
+            <p className="text-xs text-red-500 mt-2 text-center">
+              {photoError}
+            </p>
+          )}
+
+          {/* Photo success message */}
+          {photoSuccess && (
+            <p className="text-xs text-green-600 mt-2 text-center">
+              Photo updated successfully!
+            </p>
           )}
 
           {/* Stats Section - Link to Insights */}

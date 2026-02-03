@@ -17,6 +17,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
+import { useUserQRKits } from '@/services/qr'
 import { useUserProfile } from '@/services/users'
 
 interface ProfileMenuDrawerProps {
@@ -25,6 +26,7 @@ interface ProfileMenuDrawerProps {
 
 export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const { data: profile } = useUserProfile()
+  const { data: qrKitsData } = useUserQRKits()
   const logout = useAuthStore((state) => state.logout)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
@@ -58,12 +60,17 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       <header className="flex items-center justify-between py-4 px-4">
         <div className="flex items-center gap-2">
           <Image
-            src="/icons/firespot_logo.svg"
-            alt="Firespot"
+            src="/images/lite_logo.png"
+            alt="firespot logo"
             width={24}
             height={24}
           />
-          <span className="text-base font-bold text-black">firespot lite</span>
+          <Image
+            src="/images/lite_alt.png"
+            alt="firespot logo"
+            width={89}
+            height={24}
+          />
         </div>
         <button
           type="button"
@@ -77,7 +84,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       <div className="px-4 mb-4">
         <button
           type="button"
-          className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
+          className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
         >
           <div className="w-12 h-12 rounded-full bg-[#6366F1] flex items-center justify-center">
             {profile?.profilePhotoUrl ? (
@@ -94,9 +101,12 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </div>
           <div className="flex-1 text-left">
             <p className="text-sm font-bold text-black">{businessName}</p>
-            <p className="text-xs text-[#00000066] font-medium">
-              Upgrade to a business profile
-            </p>
+            <div className="flex items-center">
+              <p className="text-xs text-[#00000066] font-medium">
+                {profile?.bankAccounts?.length || 0} linked bank accounts .{' '}
+                {qrKitsData?.pagination?.total || 0} QR kits
+              </p>
+            </div>
           </div>
           <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
         </button>
@@ -105,7 +115,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       {/* Menu Sections */}
       <div className="flex-1 px-4 space-y-3">
         {/* Section 1: Main navigation */}
-        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             onClick={handleBankAccountsClick}
@@ -216,18 +226,53 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
           <button
             type="button"
-            className="w-full flex items-center gap-3 py-3.5 px-4"
+            className="w-full flex items-center justify-between gap-3 py-3.5 px-4 border-b border-[#F1F1F1]"
           >
-            <Image
-              src="/icons/firespot_logo.svg"
-              alt="Firespot"
-              width={20}
-              height={20}
-            />
-            <span className="flex-1 text-left text-base font-medium text-black">
-              About Firespot
-            </span>
+            <div className="flex items-center gap-2">
+              <Image
+                src="/images/lite_logo.png"
+                alt="Firespot"
+                width={24}
+                height={24}
+              />
+              <span className="flex-1 text-left text-base font-medium text-black">
+                About Firespot
+              </span>
+              <Image
+                src="/icons/lite.png"
+                alt="Firespot"
+                width={24}
+                height={24}
+              />
+            </div>
             <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
+          </button>
+
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-3 py-3.5 px-4"
+          >
+            <div className="flex items-center gap-2">
+              <Image
+                src="/icons/firespot_logo.svg"
+                alt="Firespot"
+                width={24}
+                height={24}
+              />
+              <span className="flex-1 text-left text-base font-medium text-black">
+                Firespot Business
+              </span>
+              <Image
+                src="/icons/pro.png"
+                alt="Firespot"
+                width={24}
+                height={24}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <p className="text-[#6B7280] font-medium text-xs">Coming Soon</p>
+              <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
+            </div>
           </button>
         </div>
 
@@ -284,7 +329,6 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </a>
         </div>
 
-        
         <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
           <button
             type="button"

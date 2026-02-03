@@ -23,8 +23,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useSetPrimaryBankAccount } from '@/services/users'
-import { showNotificationToast, TagFooter } from '@/components/ui'
-import { getBankLogoPath, getBankInitial } from '@/lib/utils/bank-logos'
+import { showNotificationToast, TagFooter, BankLogo } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { BankAccount } from '@/services/users'
 
@@ -50,31 +49,6 @@ function SortableBankItem({ account, isFirst }: SortableBankItemProps) {
     zIndex: isDragging ? 1 : 0,
   }
 
-  const renderBankLogo = (bankName: string) => {
-    const logoPath = getBankLogoPath(bankName)
-    const isDefaultLogo = logoPath.includes('default-image.png')
-
-    if (isDefaultLogo) {
-      return (
-        <div className="w-9 h-9 bg-[#0075FF] rounded-[10px] flex items-center justify-center">
-          <span className="text-white font-bold text-base">
-            {getBankInitial(bankName)}
-          </span>
-        </div>
-      )
-    }
-
-    return (
-      <Image
-        src={logoPath}
-        alt={`${bankName} logo`}
-        width={36}
-        height={36}
-        className="w-9 h-9 rounded-[10px] object-contain"
-      />
-    )
-  }
-
   return (
     <div
       ref={setNodeRef}
@@ -85,7 +59,11 @@ function SortableBankItem({ account, isFirst }: SortableBankItemProps) {
         isDragging ? 'bg-gray-50' : ''
       }`}
     >
-      {renderBankLogo(account.bankName)}
+      <BankLogo
+        bankName={account.bankName}
+        size={36}
+        className="rounded-[10px]"
+      />
 
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm text-[#0F172A] truncate">

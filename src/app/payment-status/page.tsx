@@ -100,7 +100,7 @@ function PaymentStatusContent() {
   if (status === 'success') {
     return (
       <div className="min-h-screen">
-        <div className="max-w-[500px] bg-[#24C166] mx-auto min-h-screen flex flex-col font-satoshi">
+        <div className="max-w-125 bg-[#24C166] mx-auto min-h-screen flex flex-col font-satoshi">
           <header className="flex items-center justify-between py-4 px-4">
             <div className="w-10" />
             <div className="w-10" />
@@ -129,7 +129,7 @@ function PaymentStatusContent() {
             <h1 className="text-white text-xl font-bold mb-1 leading-none">
               Activated successfully
             </h1>
-            <p className="text-[#FFFFFFE5] text-sm text-center font-medium max-w-[280px] mb-6">
+            <p className="text-[#FFFFFFE5] text-sm text-center font-medium max-w-70 mb-6">
               You can now start using this Firespot QR kit to share your bank
               account details.
             </p>
@@ -177,7 +177,7 @@ function PaymentStatusContent() {
           </div>
 
           <div className="p-4 pb-8 space-y-3">
-            <button
+            {/* <button
               type="button"
               className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
             >
@@ -203,9 +203,9 @@ function PaymentStatusContent() {
                 strokeWidth={2}
                 className="w-4 h-4 text-[#BDBDBD]"
               />
-            </button>
+            </button> */}
 
-            <div className="w-full bg-white rounded-[12px] py-3 shadow-[0px_4px_8px_0px_#0000000A]">
+            <div className="w-full bg-white rounded-2xl py-3 shadow-[0px_4px_8px_0px_#0000000A]">
               <Link
                 href="/activate"
                 className="w-full flex items-center gap-3 border-b border-[#F4F6F8] pb-3 px-3"
@@ -264,7 +264,7 @@ function PaymentStatusContent() {
   // Failed state
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
         <header className="flex items-center justify-between p-4">
           <div className="w-8" />
           <div className="w-8" />
@@ -290,7 +290,7 @@ function PaymentStatusContent() {
           <h1 className="text-black text-xl font-bold leading-none -tracking-[0.4px] mb-2 mt-4">
             Payment didn&apos;t go through
           </h1>
-          <p className="text-[#00000066] text-sm font-medium text-center max-w-[300px]">
+          <p className="text-[#00000066] text-sm font-medium text-center max-w-75">
             {errorMessage ||
               "The card couldn't be charged due to insufficient balance."}
           </p>
