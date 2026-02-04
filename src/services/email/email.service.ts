@@ -1,21 +1,30 @@
 import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
+import { Resend } from 'resend';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private readonly resend: Resend;
+  private readonly fromEmail: string;
 
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) {
+    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    if (!apiKey) {
+      this.logger.warn('RESEND_API_KEY is not configured. Email service will not work.');
+    }
+    this.resend = new Resend(apiKey);
+    this.fromEmail = this.configService.get<string>('RESEND_FROM_EMAIL', 'Firespot <noreply@firespot.co>');
+  }
 
   /**
-   * Send a templated email via Termii
+   * Send an email via Resend
    */
   async sendEmail(
     to: string,
     subject: string,
-    templateId: string,
-    variables: Record<string, any>,
+    html: string,
+    variables?: Record<string, any>,
   ): Promise<any> {
     const mockOtp = this.configService.get<string>('MOCK_OTP', 'false').toLowerCase() === 'true';
 
@@ -23,62 +32,83 @@ export class EmailService {
       this.logger.log('🔧 MOCK MODE: Email request:', {
         to,
         subject,
-        templateId,
+        html: html.substring(0, 100) + '...',
         variables,
       });
-      return { status: 'mock_success' };
-    }
-
-    const termiiApiKey = this.configService.get<string>('TERMII_API_KEY');
-    const emailConfigId = this.configService.get<string>('TERMII_EMAIL_CONFIG_ID');
-
-    if (!termiiApiKey || !emailConfigId) {
-      this.logger.error('TERMII_API_KEY or TERMII_EMAIL_CONFIG_ID is not configured');
-      throw new InternalServerErrorException('Email service is not configured.');
-    }
-
-    if (!templateId) {
-      this.logger.warn(`Template ID is missing for email to ${to} with subject "${subject}"`);
-      return; // Or handle as needed
+      return { id: 'mock_id', status: 'mock_success' };
     }
 
     try {
-      const response = await axios.post('https://api.ng.termii.com/api/templates/send-email', {
-        api_key: termiiApiKey,
-        email: to,
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: [to],
         subject: subject,
-        email_configuration_id: emailConfigId,
-        template_id: templateId,
-        variables: variables,
+        html: html,
       });
 
-      this.logger.log('Email sent successfully via Termii:', {
+      if (error) {
+        this.logger.error('Resend email error:', error);
+        throw new InternalServerErrorException('Failed to send email.');
+      }
+
+      this.logger.log('Email sent successfully via Resend:', {
         to,
         subject,
-        messageId: response.data.message_id,
+        messageId: data?.id,
       });
 
-      return response.data;
+      return data;
     } catch (error) {
-      this.handleTermiiError(error, 'Email');
+      this.handleResendError(error, 'Email');
     }
   }
 
-  private handleTermiiError(error: any, context: string): never {
-    if (axios.isAxiosError(error)) {
-      this.logger.error(`Termii ${context} error:`, {
-        status: error.response?.status,
-        data: error.response?.data,
-        message: error.message,
-      });
+  /**
+   * Send a plain text email via Resend
+   */
+  async sendTextEmail(
+    to: string,
+    subject: string,
+    text: string,
+  ): Promise<any> {
+    const mockOtp = this.configService.get<string>('MOCK_OTP', 'false').toLowerCase() === 'true';
 
-      if (error.response?.status === 401) {
-        throw new InternalServerErrorException(`${context} service authentication failed.`);
-      }
-
-      throw new InternalServerErrorException(`Failed to process ${context}.`);
+    if (mockOtp) {
+      this.logger.log('🔧 MOCK MODE: Text email request:', { to, subject, text: text.substring(0, 100) });
+      return { id: 'mock_id', status: 'mock_success' };
     }
 
-    throw error;
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: this.fromEmail,
+        to: [to],
+        subject: subject,
+        text: text,
+      });
+
+      if (error) {
+        this.logger.error('Resend email error:', error);
+        throw new InternalServerErrorException('Failed to send email.');
+      }
+
+      this.logger.log('Text email sent successfully via Resend:', {
+        to,
+        subject,
+        messageId: data?.id,
+      });
+
+      return data;
+    } catch (error) {
+      this.handleResendError(error, 'Text Email');
+    }
+  }
+
+  private handleResendError(error: any, context: string): never {
+    this.logger.error(`Resend ${context} error:`, {
+      message: error.message,
+      name: error.name,
+    });
+
+    throw new InternalServerErrorException(`Failed to send ${context.toLowerCase()}.`);
   }
 }
