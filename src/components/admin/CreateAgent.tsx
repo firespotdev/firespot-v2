@@ -42,7 +42,6 @@ export default function CreateAgent({ onSuccess }: CreateAgentProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Create Form */}
         <div className="rounded-2xl border border-gray-100 bg-white p-6">
           <div className="mb-4 flex items-center gap-3">
             <div
