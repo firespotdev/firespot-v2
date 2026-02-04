@@ -174,7 +174,7 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-black overflow-hidden">
+    <div className="relative h-screen bg-black overflow-hidden">
       <video
         ref={videoRef}
         autoPlay
@@ -183,9 +183,9 @@ export default function ScannerPage() {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      <div className="relative z-10 min-h-screen">
-        <div className="max-w-125 mx-auto w-full flex flex-col min-h-screen">
-          <header className="flex items-center justify-between py-4 px-3">
+      <div className="relative z-10 h-screen flex flex-col">
+        <div className="max-w-125 mx-auto w-full flex flex-col h-full">
+          <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-3 bg-linear-to-b from-black/50 to-transparent">
             <Image
               src="/icons/firespot_logo.svg"
               alt="firespot logo"
@@ -207,7 +207,7 @@ export default function ScannerPage() {
           </header>
 
           {/* Scanner */}
-          <div className="flex-1 flex items-center justify-center px-8">
+          <div className="flex-1 flex items-center justify-center px-8 overflow-y-auto">
             <div className="flex-1 flex items-center justify-center">
               {error ? (
                 <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
@@ -228,7 +228,7 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          <div className="py-4">
+          <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
             <CTACarousel>
               <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
                 <h3 className="text-white font-bold text-sm">

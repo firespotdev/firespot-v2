@@ -99,9 +99,9 @@ function PaymentStatusContent() {
   // Success
   if (status === 'success') {
     return (
-      <div className="min-h-screen">
-        <div className="max-w-125 bg-[#24C166] mx-auto min-h-screen flex flex-col font-satoshi">
-          <header className="flex items-center justify-between py-4 px-4">
+      <div className="h-screen overflow-hidden">
+        <div className="max-w-125 bg-[#24C166] mx-auto h-full flex flex-col font-satoshi">
+          <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-4 bg-[#24C166]">
             <div className="w-10" />
             <div className="w-10" />
             <Link href="/profile" className="text-white font-bold text-sm">
@@ -109,7 +109,7 @@ function PaymentStatusContent() {
             </Link>
           </header>
 
-          <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
             <div className="w-16 h-16 border-4 border-white rounded-full flex items-center justify-center mb-6">
               <svg
                 className="w-8 h-8"
@@ -177,33 +177,7 @@ function PaymentStatusContent() {
           </div>
 
           <div className="p-4 pb-8 space-y-3">
-            {/* <button
-              type="button"
-              className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
-            >
-              <Image
-                src="/icons/firespot_logo.svg"
-                alt="Firespot"
-                width={36}
-                height={36}
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-black">
-                  Upgrade to a business profile
-                </p>
-                <p className="text-[13px] text-[#00000080] font-medium">
-                  Re-engage customers, get feedback, receive instant payment
-                  notifications.
-                </p>
-              </div>
-              <ChevronRight
-                strokeWidth={2}
-                className="w-4 h-4 text-[#BDBDBD]"
-              />
-            </button> */}
+      
 
             <div className="w-full bg-white rounded-2xl py-3 shadow-[0px_4px_8px_0px_#0000000A]">
               <Link
@@ -263,9 +237,9 @@ function PaymentStatusContent() {
 
   // Failed state
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
-        <header className="flex items-center justify-between p-4">
+    <div className="h-screen bg-white overflow-hidden">
+      <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
+        <header className="sticky top-0 z-50 flex items-center justify-between p-4 bg-white">
           <div className="w-8" />
           <div className="w-8" />
           <Link href="/profile">
@@ -273,7 +247,7 @@ function PaymentStatusContent() {
           </Link>
         </header>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="80"

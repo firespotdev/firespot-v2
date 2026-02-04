@@ -108,8 +108,8 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8]">
-      <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
+    <div className="h-screen bg-[#F4F6F8] overflow-hidden">
+      <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
           title="Bank accounts"
           showDropdown
@@ -125,7 +125,7 @@ export default function ProfilePage() {
           onShareClick={() => console.log('Share clicked')}
         />
 
-        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly">
+        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
           {/* Hidden file input for photo upload */}
           <input
             ref={fileInputRef}

@@ -301,7 +301,7 @@ function ActivatePageContent() {
   // Scanner View
   if (mode === 'scan') {
     return (
-      <div className="relative min-h-screen bg-white overflow-hidden">
+      <div className="relative h-screen bg-white overflow-hidden">
         <video
           ref={videoRef}
           autoPlay
@@ -310,9 +310,9 @@ function ActivatePageContent() {
           className="absolute inset-0 w-full h-full object-cover"
         />
 
-        <div className="relative z-10 min-h-screen">
-          <div className="max-w-125 mx-auto w-full flex flex-col min-h-screen">
-            <header className="flex items-center justify-between py-4 px-4">
+        <div className="relative z-10 h-full flex flex-col">
+          <div className="max-w-125 mx-auto w-full flex flex-col h-full">
+            <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-4 bg-white/80 backdrop-blur-sm">
               <Link
                 href="/profile"
                 className="w-9 h-9 rounded-full flex items-center justify-center bg-white/20"
@@ -337,7 +337,7 @@ function ActivatePageContent() {
               </button>
             </header>
 
-            <div className="flex-1 flex flex-col items-center justify-center px-8">
+            <div className="flex-1 flex flex-col items-center justify-center px-8 overflow-y-auto">
               <p className="text-white text-[15px] font-medium text-center mb-8 leading-[140%]">
                 Scan an unassigned firespot QR kit
                 <br />
@@ -358,7 +358,7 @@ function ActivatePageContent() {
               )}
             </div>
 
-            <div className="p-4 pb-8">
+            <div className="p-4 pb-8 bg-white/80 backdrop-blur-sm">
               <button
                 onClick={() => updateMode('serial')}
                 className="w-full text-[#878F98] text-xs font-medium underline underline-offset-4 flex items-center justify-center gap-0.5"
@@ -380,15 +380,15 @@ function ActivatePageContent() {
     const isSuccess = validationStatus === 'available'
 
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
-          <header className="flex items-center py-4 px-4">
+      <div className="h-screen bg-white overflow-hidden">
+        <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
+          <header className="sticky top-0 z-50 flex items-center py-4 px-4 bg-white">
             <button onClick={() => updateMode('scan')} className="p-2 -ml-2">
               <ArrowLeft className="w-6 h-6 text-black" />
             </button>
           </header>
 
-          <div className="flex-1 px-4">
+          <div className="flex-1 px-4 overflow-y-auto">
             <h1 className="text-xl font-bold text-black mb-2 leading-none">
               Link with serial number
             </h1>
@@ -436,7 +436,7 @@ function ActivatePageContent() {
             </div>
           </div>
 
-          <div className="p-4 pb-8">
+          <div className="p-4 pb-8 bg-white">
             <button
               onClick={() => updateMode('scan')}
               className="w-full text-[#878F98] text-xs font-medium underline underline-offset-4 flex items-center justify-center gap-0.5"
@@ -453,9 +453,9 @@ function ActivatePageContent() {
   // Payment Confirmation View
   if (mode === 'confirm') {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
-          <header className="flex items-center justify-between py-4 px-4">
+      <div className="h-screen bg-white overflow-hidden">
+        <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
+          <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-4 bg-white">
             <button onClick={() => updateMode('serial')} className="p-2 -ml-2">
               <ArrowLeft className="w-6 h-6 text-black" />
             </button>
@@ -470,7 +470,7 @@ function ActivatePageContent() {
             <div className="w-6 h-6"></div>
           </header>
 
-          <div className="flex-1 px-4 flex flex-col justify-evenly">
+          <div className="flex-1 px-4 flex flex-col justify-evenly overflow-y-auto">
             <div className="flex items-center justify-center">
               <div
                 style={{

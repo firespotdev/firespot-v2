@@ -3,15 +3,7 @@
 import {
   X,
   ChevronRight,
-  Landmark,
-  QrCode,
-  ChartNoAxesCombined,
   Headphones,
-  Heart,
-  Twitter,
-  Instagram,
-  Facebook,
-  LogOut,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -40,7 +32,6 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
   const handleBankAccountsClick = () => {
     closeDrawer()
-    // Small delay to let the current drawer close before opening new one
     setTimeout(() => {
       openDrawer({
         type: 'bank-accounts',
@@ -52,7 +43,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const handleSignOut = () => {
     closeDrawer()
     logout()
-    window.location.href = '/login'
+    window.location.href = '/'
   }
 
   return (

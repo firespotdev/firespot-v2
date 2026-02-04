@@ -86,8 +86,8 @@ export default function PaymentPage() {
 
   if (error || !merchant) {
     return (
-      <div className="min-h-screen bg-white">
-        <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
+      <div className="h-screen bg-white overflow-hidden">
+        <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           {/* Header */}
           <header className="sticky top-0 w-full z-50 mb-1 bg-white flex items-center justify-between px-4 py-2">
             <div className="flex-1" />
@@ -110,7 +110,7 @@ export default function PaymentPage() {
           </header>
 
           {/* QR Code Display */}
-          <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
             <div
               style={{
                 background:
@@ -371,7 +371,8 @@ export default function PaymentPage() {
             </p>
           </div>
 
-          <div className="sticky bottom-0 border-t border-[#F1F1F1] bg-white p-4 pb-6 rounded-t-[32px]">
+          <div className="fixed bottom-0 left-0 right-0 border-t border-[#F1F1F1] bg-white p-4 pb-6 rounded-t-[32px]">
+            <div className="max-w-125 mx-auto">
             <Button asChild className="w-full">
               <Link href={`/login?redirect=/activate&serial=${serialNumber}`}>
                 Login and activate this QR kit
@@ -387,6 +388,7 @@ export default function PaymentPage() {
               Learn more about Firespot QR kits
               <ArrowUpRight className="w-3 h-3 text-[#878F98]" />
             </a>
+            </div>
           </div>
         </div>
       </div>
@@ -446,8 +448,8 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8]">
-      <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
+    <div className="h-screen bg-[#F4F6F8] overflow-hidden">
+      <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
           title="Transfer to"
           showDropdown
@@ -464,7 +466,7 @@ export default function PaymentPage() {
           }}
         />
 
-        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly">
+        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
           {/* Merchant Card Carousel */}
           {sortedBankAccounts.length > 0 && (
             <MerchantCardCarousel
