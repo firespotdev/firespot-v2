@@ -91,11 +91,7 @@ export class EmailService {
         throw new InternalServerErrorException('Failed to send email.');
       }
 
-      this.logger.log('Text email sent successfully via Resend:', {
-        to,
-        subject,
-        messageId: data?.id,
-      });
+      this.logger.log('Text email sent successfully via Resend');
 
       return data;
     } catch (error) {
