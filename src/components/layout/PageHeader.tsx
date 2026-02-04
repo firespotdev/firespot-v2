@@ -81,13 +81,18 @@ export function PageHeader({
         )}
       </button>
 
-      <button
-        onClick={onShareClick}
-        type="button"
-        className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
-      >
-        <Share stroke="#868788" size={20} />
-      </button>
+      {onShareClick && !isAuthenticated && (
+        <button
+          onClick={onShareClick}
+          type="button"
+          className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+        >
+          <Share stroke="#868788" size={20} />
+        </button>
+      )}
+      {(!onShareClick || isAuthenticated) && (
+        <div className="h-9 w-9" />
+      )}
     </header>
   )
 }

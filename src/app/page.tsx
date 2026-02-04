@@ -6,6 +6,7 @@ import { BrowserMultiFormatReader } from '@zxing/library'
 import { Zap } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { CTACarousel } from '@/components/ui/cta-carousel'
 
 export default function ScannerPage() {
   const router = useRouter()
@@ -227,22 +228,55 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          {/* Bottom Section - Carousel */}
-          <div className="py-4 px-4">
-            <div className="bg-[#FFFFFF33] backdrop-blur-sm rounded-3xl p-4">
-              <h3 className="text-white font-bold text-[15px] font-satoshi mb-1">
-                Login to your Firespot Lite account
-              </h3>
-              <p className="text-[#E1E1E1] text-xs font-satoshi mb-4">
-                Manage your QR kits and account numbers
-              </p>
-              <Link
-                href="/login"
-                className="block w-full bg-[#FFFFFF33] hover:bg-[#FFFFFF4D] text-white text-sm font-bold py-2.5 rounded-full text-center transition-colors"
-              >
-                LOG IN
-              </Link>
-            </div>
+          <div className="py-4">
+            <CTACarousel>
+              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <h3 className="text-white font-bold text-sm">
+                  Login to your Firespot Lite account
+                </h3>
+                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  Manage your QR kits and account numbers
+                </p>
+                <Link
+                  href="/login"
+                  className="block w-full bg-[#FFFFFF33] text-white text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                >
+                  LOG IN
+                </Link>
+              </div>
+              
+              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <h3 className="text-white font-bold text-sm">
+                  Get your Firespot QR Kit
+                </h3>
+                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  All your account numbers in one scan.
+                </p>
+                <Link
+                  href="/signup"
+                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                >
+                  SIGN UP
+                </Link>
+              </div>
+              
+              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <h3 className="text-white font-bold text-sm">
+                  Pay for your purchases faster
+                </h3>
+                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  Transfer from any Nigerian Bank
+                </p>
+                <Link
+                  href="https://firespot.co"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                >
+                  HOW IT WORKS
+                </Link>
+              </div>
+            </CTACarousel>
           </div>
         </div>
       </div>

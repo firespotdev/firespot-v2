@@ -138,7 +138,7 @@ export default function QRKitDetailPage() {
               </h2>
 
               <p className="text-[#FFFFFF99] font-sofia-pro text-center text-[8.7px] font-medium mb-3.5">
-                Transfer from any Nigerian Bank App
+                Scan with your camera, send from any bank
               </p>
 
               {/* QR Code with Gradient Border */}

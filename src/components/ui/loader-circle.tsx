@@ -7,7 +7,9 @@ const LoaderCircle = ({
 }) => {
   return (
     <div className="flex items-center justify-center min-h-full w-full">
-      <div className={`relative w-${size} h-${size} animate-loader`}>
+      <div
+        className={`relative w-${size} h-${size} animate-spin`}
+      >
         <div
           className="absolute inset-0 rounded-full"
           style={{
