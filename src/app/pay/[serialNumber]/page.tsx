@@ -32,18 +32,15 @@ export default function PaymentPage() {
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
 
-  // QR code branding for error state
   const qrCodeRef = useRef<HTMLDivElement>(null)
   const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
 
-  // Apply gradient branding to QR code when in error state
   useEffect(() => {
     if (!error && merchant) {
       setBrandedSvg(null)
       return
     }
 
-    // Wait a bit for the QR code to render
     const timer = setTimeout(() => {
       const svgElement = qrCodeRef.current?.querySelector('svg')
       if (!svgElement) return
@@ -88,7 +85,7 @@ export default function PaymentPage() {
     return (
       <div className="h-screen bg-white overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
-          {/* Header */}
+       
           <header className="sticky top-0 w-full z-50 mb-1 bg-white flex items-center justify-between px-4 py-2">
             <div className="flex-1" />
             <div className="flex flex-col items-center">
@@ -109,7 +106,6 @@ export default function PaymentPage() {
             </div>
           </header>
 
-          {/* QR Code Display */}
           <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
             <div
               style={{
