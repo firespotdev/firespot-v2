@@ -1,6 +1,7 @@
 'use client'
 
 import { useQRKitStats } from '@/services/qr'
+import { useMerchantStats } from '@/services/merchants'
 
 interface StatCardProps {
   title: string
@@ -46,14 +47,18 @@ function StatCard({ title, value, subtitle, gradient }: StatCardProps) {
 }
 
 export default function AdminDashboard() {
-  const { data: stats, isLoading, error } = useQRKitStats()
+  const { data: qrStats, isLoading: qrLoading, error: qrError } = useQRKitStats()
+  const { data: merchantStats, isLoading: merchantLoading, error: merchantError } = useMerchantStats()
+
+  const isLoading = qrLoading || merchantLoading
+  const error = qrError || merchantError
 
   if (isLoading) {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <div
               key={i}
               className="h-32 animate-pulse rounded-2xl bg-gray-100"
@@ -77,32 +82,37 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-        <p className="mt-1 text-gray-500">Overview of your QR Kit inventory</p>
+        <p className="mt-1 text-gray-500">Overview of your platform</p>
       </div>
 
-      {/* Main Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total QR Kits"
-          value={stats?.total || 0}
-          subtitle="All time"
-          gradient
-        />
-        <StatCard
-          title="Pending Activation"
-          value={stats?.byActivationStatus.pending || 0}
-          subtitle="Ready to activate"
-        />
-        <StatCard
-          title="Activated"
-          value={stats?.byActivationStatus.activated || 0}
-          subtitle="In use"
-        />
-        <StatCard
-          title="Deactivated"
-          value={stats?.byActivationStatus.deactivated || 0}
-          subtitle="Disabled"
-        />
+      {/* QR Kit Stats */}
+      <div>
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">
+          QR Kits
+        </h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total QR Kits"
+            value={qrStats?.total || 0}
+            subtitle="All time"
+            gradient
+          />
+          <StatCard
+            title="Pending Activation"
+            value={qrStats?.byActivationStatus.pending || 0}
+            subtitle="Ready to activate"
+          />
+          <StatCard
+            title="Activated"
+            value={qrStats?.byActivationStatus.activated || 0}
+            subtitle="In use"
+          />
+          <StatCard
+            title="Deactivated"
+            value={qrStats?.byActivationStatus.deactivated || 0}
+            subtitle="Disabled"
+          />
+        </div>
       </div>
 
       {/* Payment Status */}
@@ -116,7 +126,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Pending</p>
                 <p className="mt-1 text-2xl font-bold text-amber-600">
-                  {stats?.byPaymentStatus.pending || 0}
+                  {qrStats?.byPaymentStatus.pending || 0}
                 </p>
               </div>
               <div className="rounded-full bg-amber-100 p-3">
@@ -142,7 +152,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Successful</p>
                 <p className="mt-1 text-2xl font-bold text-emerald-600">
-                  {stats?.byPaymentStatus.successful || 0}
+                  {qrStats?.byPaymentStatus.successful || 0}
                 </p>
               </div>
               <div className="rounded-full bg-emerald-100 p-3">
@@ -168,7 +178,7 @@ export default function AdminDashboard() {
               <div>
                 <p className="text-sm font-medium text-gray-500">Failed</p>
                 <p className="mt-1 text-2xl font-bold text-red-600">
-                  {stats?.byPaymentStatus.failed || 0}
+                  {qrStats?.byPaymentStatus.failed || 0}
                 </p>
               </div>
               <div className="rounded-full bg-red-100 p-3">
@@ -193,3 +203,4 @@ export default function AdminDashboard() {
     </div>
   )
 }
+

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useAdminLogout, getAdminInfo } from '@/services/admin'
 import type { QRKit } from '@/services/qr'
 import type { Agent } from '@/services/agents'
+import type { Merchant } from '@/services/merchants'
 import AdminDashboard from './AdminDashboard'
 import CreateQRCodes from './CreateQRCodes'
 import QRKitsList from './QRKitsList'
@@ -11,8 +12,9 @@ import QRKitDetail from './QRKitDetail'
 import AgentsList from './AgentsList'
 import AgentDetail from './AgentDetail'
 import CreateAgent from './CreateAgent'
+import MerchantsList from './MerchantsList'
 
-type Tab = 'dashboard' | 'create' | 'list' | 'agents' | 'create-agent'
+type Tab = 'dashboard' | 'create' | 'list' | 'agents' | 'create-agent' | 'merchants'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -21,6 +23,7 @@ export default function AdminLayout() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [selectedQRKit, setSelectedQRKit] = useState<QRKit | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
+  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null)
   const logout = useAdminLogout()
   const adminInfo = getAdminInfo()
 
@@ -101,6 +104,25 @@ export default function AdminLayout() {
         </svg>
       ),
     },
+    {
+      id: 'merchants',
+      label: 'Merchants',
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+          />
+        </svg>
+      ),
+    },
   ]
 
   const handleSelectQRKit = (qrKit: QRKit) => {
@@ -109,6 +131,10 @@ export default function AdminLayout() {
 
   const handleSelectAgent = (agent: Agent) => {
     setSelectedAgent(agent)
+  }
+
+  const handleSelectMerchant = (merchant: Merchant) => {
+    setSelectedMerchant(merchant)
   }
 
   const handleCreateAgent = () => {
@@ -205,6 +231,9 @@ export default function AdminLayout() {
         )}
         {activeTab === 'create-agent' && (
           <CreateAgent onSuccess={() => setActiveTab('agents')} />
+        )}
+        {activeTab === 'merchants' && (
+          <MerchantsList onSelectMerchant={handleSelectMerchant} />
         )}
       </main>
 
