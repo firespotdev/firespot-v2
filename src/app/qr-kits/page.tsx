@@ -14,7 +14,6 @@ export default function QRKitsPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const { data: qrKitsData, isLoading } = useUserQRKits()
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login')
@@ -38,7 +37,6 @@ export default function QRKitsPage() {
   return (
     <div className="min-h-screen bg-[#F4F6F8]">
       <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
-        {/* Header */}
         <header className="flex items-center py-4 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <Link href="/profile">
             <ArrowLeft className="w-6 h-6 text-black" />
@@ -90,7 +88,6 @@ export default function QRKitsPage() {
                       />
                     </div>
 
-                    {/* QR Kit Info */}
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-[13px] font-bold text-[#111827]">
                         {qrKit.serialNumber || `QR kit ${index + 1}`}
@@ -100,7 +97,6 @@ export default function QRKitsPage() {
                       </p>
                     </div>
 
-                    {/* Chevron */}
                     <ChevronRight className="w-5 h-5 text-[#9CA3AF] shrink-0" />
                   </Link>
                 )
