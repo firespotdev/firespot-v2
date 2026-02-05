@@ -207,7 +207,7 @@ export default function ScannerPage() {
           </header>
 
           {/* Scanner */}
-          <div className="flex-1 flex items-center justify-center px-8 overflow-y-auto">
+          <div className="flex-1 flex items-center justify-center px-8">
             <div className="flex-1 flex items-center justify-center">
               {error ? (
                 <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
