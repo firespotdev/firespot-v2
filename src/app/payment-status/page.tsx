@@ -52,8 +52,7 @@ function PaymentStatusContent() {
       },
     })
   }
-
-  // Redirect to login if not authenticated
+ 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login')
