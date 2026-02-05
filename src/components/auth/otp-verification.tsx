@@ -31,7 +31,6 @@ export function OtpVerification({
     setLocalError(error)
   }, [error])
 
-  // Countdown timer
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
