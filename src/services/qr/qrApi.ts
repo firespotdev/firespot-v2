@@ -64,11 +64,12 @@ export const useMerchantBySerial = (serialNumber: string | null) => {
   })
 }
 
-export const useUserQRKits = () => {
+export const useUserQRKits = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: ['user', 'qr-kits'],
     queryFn: () => userQrApi.getUserQRKits(),
     retry: false,
+    enabled: options?.enabled ?? true,
   })
 }
 
