@@ -24,7 +24,7 @@ export default function ActivatePage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+        <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
           <LoaderCircle innerBg="#F4F6F8" />
         </div>
       }
@@ -289,7 +289,7 @@ function ActivatePageContent() {
   // Loading state for callback verification
   if (mode === 'callback') {
     return (
-      <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
         <div className="text-center">
           <LoaderCircle innerBg="#F4F6F8" />
           <p className="mt-4 text-gray-600">Verifying payment...</p>
@@ -301,7 +301,7 @@ function ActivatePageContent() {
   // Scanner View
   if (mode === 'scan') {
     return (
-      <div className="relative h-screen bg-white overflow-hidden">
+      <div className="relative h-dvh bg-white overflow-hidden">
         <video
           ref={videoRef}
           autoPlay
@@ -380,7 +380,7 @@ function ActivatePageContent() {
     const isSuccess = validationStatus === 'available'
 
     return (
-      <div className="h-screen bg-white overflow-hidden">
+      <div className="h-dvh bg-white overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 z-50 flex items-center py-4 px-4 bg-white">
             <button onClick={() => updateMode('scan')} className="p-2 -ml-2">
@@ -453,7 +453,7 @@ function ActivatePageContent() {
   // Payment Confirmation View
   if (mode === 'confirm') {
     return (
-      <div className="h-screen bg-white overflow-hidden">
+      <div className="h-dvh bg-white overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-4 bg-white">
             <button onClick={() => updateMode('serial')} className="p-2 -ml-2">

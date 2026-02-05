@@ -49,7 +49,7 @@ export default function QRKitDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-dvh bg-white flex items-center justify-center">
         <LoaderCircle innerBg="#FFFFFF" />
       </div>
     )
@@ -57,7 +57,7 @@ export default function QRKitDetailPage() {
 
   if (error || !qrKit) {
     return (
-      <div className="min-h-screen bg-white flex flex-col font-satoshi">
+      <div className="min-h-dvh bg-white flex flex-col font-satoshi">
         <header className="flex items-center py-4 px-4">
           <Link href="/qr-kits">
             <ArrowLeft className="w-6 h-6 text-black" />
@@ -101,8 +101,8 @@ export default function QRKitDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f6f8]">
-      <div className="max-w-125 mx-auto min-h-screen flex flex-col font-satoshi">
+    <div className="min-h-dvh bg-[#f4f6f8]">
+      <div className="max-w-125 mx-auto min-h-dvh flex flex-col font-satoshi">
         <header className="flex flex-col items-center py-1.5 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <div className="w-full flex items-center">
             <Link href="/qr-kits">

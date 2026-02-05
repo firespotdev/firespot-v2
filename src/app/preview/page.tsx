@@ -33,7 +33,7 @@ export default function PreviewPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-dvh bg-white flex items-center justify-center">
         <LoaderCircle innerBg="#FFFFFF" />
       </div>
     )
@@ -41,7 +41,7 @@ export default function PreviewPage() {
 
   if (!profile || !profile.bankAccounts || profile.bankAccounts.length === 0) {
     return (
-      <div className="h-screen bg-[#F4F6F8] overflow-hidden">
+      <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 w-full z-50 bg-[#F4F6F8] flex items-center justify-between px-4 py-2">
             <button
@@ -120,7 +120,7 @@ export default function PreviewPage() {
   }
 
   return (
-    <div className="h-screen bg-[#F4F6F8] overflow-hidden">
+    <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
           title="Transfer to"

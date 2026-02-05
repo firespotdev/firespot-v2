@@ -174,7 +174,7 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="relative h-screen bg-black overflow-hidden">
+    <div className="relative bg-black">
       <video
         ref={videoRef}
         autoPlay
@@ -183,7 +183,7 @@ export default function ScannerPage() {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      <div className="relative z-10 h-screen flex flex-col">
+      <div className="relative z-10 h-dvh flex flex-col">
         <div className="max-w-125 mx-auto w-full flex flex-col h-full">
           <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-3 bg-linear-to-b from-black/50 to-transparent">
             <Image

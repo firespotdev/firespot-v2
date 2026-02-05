@@ -75,7 +75,7 @@ export default function PaymentPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-dvh bg-white flex items-center justify-center">
         <LoaderCircle innerBg="#FFFFFF" />
       </div>
     )
@@ -83,7 +83,7 @@ export default function PaymentPage() {
 
   if (error || !merchant) {
     return (
-      <div className="h-screen bg-white overflow-hidden">
+      <div className="h-dvh bg-white overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
        
           <header className="sticky top-0 w-full z-50 mb-1 bg-white flex items-center justify-between px-4 py-2">
@@ -444,7 +444,7 @@ export default function PaymentPage() {
   }
 
   return (
-    <div className="h-screen bg-[#F4F6F8] overflow-hidden">
+    <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
           title="Transfer to"

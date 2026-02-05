@@ -198,7 +198,7 @@ function SignupPageContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="h-screen bg-white" />}>
+    <Suspense fallback={<div className="h-dvh bg-white" />}>
       <SignupPageContent />
     </Suspense>
   )

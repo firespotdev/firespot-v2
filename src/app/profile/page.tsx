@@ -101,14 +101,14 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-[#F4F6F8] flex items-center justify-center">
+      <div className="h-dvh bg-[#F4F6F8] flex items-center justify-center">
         <LoaderCircle innerBg="#F4F6F8" />
       </div>
     )
   }
 
   return (
-    <div className="h-screen bg-[#F4F6F8] overflow-hidden">
+    <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
           title="Bank accounts"

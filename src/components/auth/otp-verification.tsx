@@ -144,7 +144,7 @@ export function OtpVerification({
   }
 
   return (
-    <div className="h-screen bg-white">
+    <div className="h-dvh bg-white">
       <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
         <button
           onClick={onBack}

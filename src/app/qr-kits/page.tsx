@@ -26,7 +26,7 @@ export default function QRKitsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
         <LoaderCircle innerBg="#F4F6F8" />
       </div>
     )
@@ -35,8 +35,8 @@ export default function QRKitsPage() {
   const qrKits = qrKitsData?.data || []
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8]">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+    <div className="min-h-dvh bg-[#F4F6F8]">
+      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col font-satoshi">
         <header className="flex items-center py-4 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <Link href="/profile">
             <ArrowLeft className="w-6 h-6 text-black" />

@@ -16,7 +16,7 @@ export default function PaymentStatusPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+        <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
           <LoaderCircle innerBg="#F4F6F8" />
         </div>
       }
@@ -86,7 +86,7 @@ function PaymentStatusContent() {
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
         <div className="text-center">
           <LoaderCircle innerBg="#F4F6F8" />
           <p className="mt-4 text-gray-600 font-medium">Verifying payment...</p>
@@ -98,7 +98,7 @@ function PaymentStatusContent() {
   // Success
   if (status === 'success') {
     return (
-      <div className="h-screen overflow-hidden">
+      <div className="h-dvh overflow-hidden">
         <div className="max-w-125 bg-[#24C166] mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-4 bg-[#24C166]">
             <div className="w-10" />
@@ -236,7 +236,7 @@ function PaymentStatusContent() {
 
   // Failed state
   return (
-    <div className="h-screen bg-white overflow-hidden">
+    <div className="h-dvh bg-white overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <header className="sticky top-0 z-50 flex items-center justify-between p-4 bg-white">
           <div className="w-8" />
