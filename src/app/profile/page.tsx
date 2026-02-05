@@ -234,13 +234,13 @@ export default function ProfilePage() {
               )}
             </Button>
 
-            <button
-              type="button"
+            <Link
+              href="/preview"
               className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
             >
               What my customers would see when they scan
               <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
-            </button>
+            </Link>
           </div>
         </div>
       </div>

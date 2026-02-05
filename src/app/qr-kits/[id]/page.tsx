@@ -12,6 +12,7 @@ import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
 import { getInitials } from '@/lib/utils'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
+import { useDrawerStore } from '@/services/drawer'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -28,6 +29,7 @@ export default function QRKitDetailPage() {
 
   const [isDownloading, setIsDownloading] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   // Apply gradient branding to SVG
   const brandedSvg = useMemo(() => {
@@ -439,7 +441,7 @@ export default function QRKitDetailPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
+            <div className="flex flex-col gap-3 border-t border-[#F1F1F1] pt-5">
               <Button
                 variant="default"
                 onClick={handleDownloadPDF}

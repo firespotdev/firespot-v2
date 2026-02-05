@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
+import { useUserQRKits } from '@/services/qr'
+import { showNotificationToast } from '@/components/ui'
 
 interface PageHeaderProps {
   title: string
@@ -23,6 +25,11 @@ export function PageHeader({
 }: PageHeaderProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const { data: qrKitsData } = useUserQRKits()
+
+  const qrKits = qrKitsData?.data || []
+  const hasQRKits = qrKits.length > 0
+  const firstSerialNumber = hasQRKits ? qrKits[0].serialNumber : null
 
   const handleLeftButtonClick = () => {
     if (onLogoClick) {
@@ -32,6 +39,17 @@ export function PageHeader({
 
     if (isAuthenticated) {
       openDrawer({ type: 'profile-menu' })
+    }
+  }
+
+  const handleShareClick = () => {
+    if (firstSerialNumber) {
+      const merchantUrl = `https://lite.firespot.co/pay/${firstSerialNumber}`
+      navigator.clipboard.writeText(merchantUrl)
+      showNotificationToast({
+        message: 'Link copied to clipboard!',
+        duration: 2000,
+      })
     }
   }
 
@@ -79,6 +97,7 @@ export function PageHeader({
         )}
       </button>
 
+      {/* Share button for unauthenticated users with custom onShareClick */}
       {onShareClick && !isAuthenticated && (
         <button
           onClick={onShareClick}
@@ -88,9 +107,21 @@ export function PageHeader({
           <Share stroke="#868788" size={20} />
         </button>
       )}
-      {(!onShareClick || isAuthenticated) && (
-        <div className="h-9 w-9" />
+
+      {/* Share button for authenticated merchants with QR kits */}
+      {isAuthenticated && hasQRKits && (
+        <button
+          onClick={handleShareClick}
+          type="button"
+          className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+        >
+          <Share stroke="#868788" size={20} />
+        </button>
       )}
+
+      {/* Spacer when no share button is shown */}
+      {!onShareClick && !isAuthenticated && <div className="h-9 w-9" />}
+      {isAuthenticated && !hasQRKits && <div className="h-9 w-9" />}
     </header>
   )
 }

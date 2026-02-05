@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { X, ChevronRight, LinkIcon, MessageCircleHeart } from 'lucide-react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, TagFooter } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
@@ -79,6 +78,7 @@ function PaymentStatusContent() {
       },
     })
   }, [reference, hasVerified, isAuthenticated, verifyPayment])
+
 
   if (!isAuthenticated) {
     return null
