@@ -12,6 +12,7 @@ import {
 import { BankLogo } from '@/components/ui/bank-logo'
 import { cn } from '@/lib/utils'
 import { showNotificationToast } from '@/components/ui'
+import {useEffect, useState} from 'react'
 
 interface BankAccount {
   bankName: string
@@ -40,6 +41,7 @@ interface MerchantCardCarouselProps {
   onCameraClick?: () => void
   isUploadingPhoto?: boolean
   qrKitStatus?: React.ReactNode
+  onBankAccountsClick?: () => void
 }
 
 export function MerchantCardCarousel({
@@ -56,13 +58,14 @@ export function MerchantCardCarousel({
   onCameraClick,
   isUploadingPhoto = false,
   qrKitStatus,
+  onBankAccountsClick,
 }: MerchantCardCarouselProps) {
-  const [api, setApi] = React.useState<CarouselApi>()
-  const [current, setCurrent] = React.useState(0)
-  const [count, setCount] = React.useState(0)
-  const [copiedAccount, setCopiedAccount] = React.useState<string | null>(null)
+  const [api, setApi] = useState<CarouselApi>()
+  const [current, setCurrent] = useState(0)
+  const [count, setCount] = useState(0)
+  const [copiedAccount, setCopiedAccount] = useState<string | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!api) return
 
     setCount(api.scrollSnapList().length)
@@ -75,7 +78,7 @@ export function MerchantCardCarousel({
     })
   }, [api, onIndexChange])
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (api && initialIndex !== undefined && initialIndex !== current) {
       api.scrollTo(initialIndex)
     }
@@ -92,6 +95,8 @@ export function MerchantCardCarousel({
     setCopiedAccount(account.accountNumber)
     setTimeout(() => setCopiedAccount(null), 2000)
   }
+
+
 
   return (
     <div className={cn('w-full flex flex-col items-center gap-4', className)}>
@@ -153,7 +158,7 @@ export function MerchantCardCarousel({
                   {qrKitStatus ? (
                     qrKitStatus
                   ) : (
-                    <span className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1">
+                    <span onClick={onBankAccountsClick} className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1 cursor-pointer">
                       {merchantInfo.bankAccountCount} linked bank account
                       {merchantInfo.bankAccountCount === 1 ? '' : 's'}
                       <ChevronRight className="w-4 h-4 text-[#747576]" />
@@ -164,12 +169,9 @@ export function MerchantCardCarousel({
                 {/* Bank Details Section */}
                 <div
                   className={cn(
-                    'bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] mx-0.5 mt-6',
-                    clickableCard && 'cursor-pointer active:bg-gray-50',
+                    'bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] mx-0.5 mt-6'
                   )}
-                  onClick={
-                    clickableCard ? () => handleCopy(account) : undefined
-                  }
+                  
                 >
                   <div className="flex flex-col justify-center items-center px-4">
                     <p className="text-sm text-[#00000066] font-medium">
@@ -187,7 +189,9 @@ export function MerchantCardCarousel({
                     </div>
                   </div>
 
-                  <div className="flex flex-col justify-center items-center border-t border-[#F1F1F1] mt-4 pt-4 px-4">
+                  <div onClick={
+                    clickableCard ? () => handleCopy(account) : undefined
+                  } className="flex flex-col justify-center items-center border-t border-[#F1F1F1] mt-4 pt-4 px-4">
                     <p className="text-sm text-[#00000066] font-medium mb-1">
                       Account number
                     </p>

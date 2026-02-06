@@ -44,20 +44,28 @@ export function PageHeader({
     }
   }
 
-  const handleShareClick = () => {
+  const handleShareClick = async () => {
     if (firstSerialNumber) {
-      const merchantUrl = `https://lite.firespot.co/pay/${firstSerialNumber}`
-      navigator.clipboard.writeText(merchantUrl)
-      showNotificationToast({
-        message: 'Link copied to clipboard!',
-        duration: 2000,
-      })
+      try {
+        await navigator.share({
+          title: `Share transfer link`,
+          url: `https://lite.firespot.co/pay/${firstSerialNumber}`,
+        })
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          navigator.clipboard.writeText(`https://lite.firespot.co/pay/${firstSerialNumber}`)
+          showNotificationToast({
+            message: 'Link copied to clipboard!',
+            duration: 2000,
+          })
+        }
+      }
     }
   }
 
   return (
     <header className="flex items-center justify-between py-2 px-3 sticky top-0 z-50 bg-[#F4F6F8]">
-      <div className="h-9 w-9 flex items-center justify-center rounded-2xl border border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
+      <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border bg-white border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
         {onLogoClick ? (
           <button onClick={handleLeftButtonClick} type="button">
             <Image
@@ -99,29 +107,26 @@ export function PageHeader({
         )}
       </button>
 
-      {/* Share button for unauthenticated users with custom onShareClick */}
       {onShareClick && !isAuthenticated && (
         <button
           onClick={onShareClick}
           type="button"
-          className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+          className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
         >
           <Share stroke="#868788" size={20} />
         </button>
       )}
 
-      {/* Share button for authenticated merchants with QR kits */}
       {isAuthenticated && hasQRKits && (
         <button
           onClick={handleShareClick}
           type="button"
-          className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+          className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
         >
           <Share stroke="#868788" size={20} />
         </button>
       )}
 
-      {/* Spacer when no share button is shown */}
       {!onShareClick && !isAuthenticated && <div className="h-9 w-9" />}
       {isAuthenticated && !hasQRKits && <div className="h-9 w-9" />}
     </header>

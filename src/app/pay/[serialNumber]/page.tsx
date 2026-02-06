@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useMerchantBySerial } from '@/services/qr'
 import { useRecordAccountCopy } from '@/services/scans'
-import { LoaderCircle } from '@/components/ui'
+import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
@@ -401,18 +401,15 @@ export default function PaymentPage() {
       !merchant.bankAccounts ||
       merchant.bankAccounts.length === 0
     ) {
-      console.warn('Cannot open drawer: No merchant or bank accounts available')
       return
     }
 
-    console.log('Opening bank selection drawer')
     openDrawer({
       type: 'select-bank',
       direction: 'bottom',
       props: {
         bankAccounts: sortedBankAccounts,
         onSelectBank: (bank: BankAccount) => {
-          console.log('Bank selected:', bank.bankName)
           const index = sortedBankAccounts.findIndex(
             (acc) => acc.accountNumber === bank.accountNumber,
           )
@@ -429,6 +426,10 @@ export default function PaymentPage() {
       const { accountNumber, bankName, accountName } = bankAccount
 
       navigator.clipboard.writeText(accountNumber)
+      showNotificationToast({
+        message: 'Account number copied to clipboard',
+        duration: 2000,
+      })
       trackCopyEvent(accountNumber, bankName)
 
       openDrawer({
@@ -463,7 +464,7 @@ export default function PaymentPage() {
         />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
-          {/* Merchant Card Carousel */}
+      
           {sortedBankAccounts.length > 0 && (
             <MerchantCardCarousel
               bankAccounts={sortedBankAccounts}
@@ -476,6 +477,7 @@ export default function PaymentPage() {
               initialIndex={selectedBankIndex}
               onIndexChange={setSelectedBankIndex}
               clickableCard={true}
+              onBankAccountsClick={handleOpenBankDrawer}
               onCopy={(account) => {
                 trackCopyEvent(account.accountNumber, account.bankName)
                 openDrawer({
@@ -493,7 +495,6 @@ export default function PaymentPage() {
           )}
         </div>
 
-        {/* Footer */}
         <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
           <div className="max-w-125 mx-auto p-4 pb-6">
             <Button

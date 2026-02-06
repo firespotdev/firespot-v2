@@ -122,7 +122,6 @@ export default function ProfilePage() {
               },
             })
           }
-          onShareClick={() => console.log('Share clicked')}
         />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
