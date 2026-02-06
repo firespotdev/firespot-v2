@@ -26,7 +26,6 @@ export function PageHeader({
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   
-  // Only fetch QR kits when user is authenticated to avoid 401 on public pages
   const { data: qrKitsData } = useUserQRKits({ enabled: isAuthenticated })
 
   const qrKits = qrKitsData?.data || []
