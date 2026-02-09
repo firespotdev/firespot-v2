@@ -1,29 +1,29 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
 @Schema({ timestamps: true })
 export class Admin extends Document {
   @Prop({ required: true, unique: true, index: true })
-  adminId: string // Format: "ADM-001", "ADM-002", etc.
+  adminId: string; // Format: "ADM-001", "ADM-002", etc.
 
   @Prop({ required: true })
-  password: string // Hashed with bcrypt
+  password: string; // Hashed with bcrypt
 
   @Prop({ required: true })
-  name: string
+  name: string;
 
-  @Prop({ default: 'admin' })
-  role: string // 'admin'
+  @Prop({ default: "admin" })
+  role: string; // 'admin'
 
   @Prop({ default: true })
-  isActive: boolean
+  isActive: boolean;
 
   @Prop()
-  lastLoginAt?: Date
+  lastLoginAt?: Date;
 }
 
-export const AdminSchema = SchemaFactory.createForClass(Admin)
-export type AdminDocument = Admin & Document
+export const AdminSchema = SchemaFactory.createForClass(Admin);
+export type AdminDocument = Admin & Document;
 
 // Indexes
-AdminSchema.index({ adminId: 1 })
+AdminSchema.index({ adminId: 1 });

@@ -1,8 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { SmsService } from '../sms/sms.service';
-import { EmailService } from '../email/email.service';
-import { AgentDocument } from '../../admin/schemas/agent.schema';
+import { Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { SmsService } from "../sms/sms.service";
+import { EmailService } from "../email/email.service";
+import { AgentDocument } from "../../admin/schemas/agent.schema";
 
 @Injectable()
 export class NotificationService {
@@ -18,8 +18,11 @@ export class NotificationService {
    * Send welcome notification to a new agent
    */
   async sendAgentWelcome(agent: AgentDocument): Promise<void> {
-    const supportPhone = this.configService.get<string>('SUPPORT_PHONE_NUMBER', '+234 XXX XXX XXXX');
-    
+    const supportPhone = this.configService.get<string>(
+      "SUPPORT_PHONE_NUMBER",
+      "+234 XXX XXX XXXX",
+    );
+
     // SMS Message
     const smsMessage = `You're now an active Firespot Agent.
 
@@ -44,17 +47,32 @@ Agent support: ${supportPhone}
         await this.smsService.sendSms(agent.phoneNumber, smsMessage);
       }
     } catch (error) {
-      this.logger.error(`Failed to send welcome SMS to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send welcome SMS to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
 
     // Send Email
     try {
       if (agent.email) {
-        const html = this.getWelcomeEmailHtml(agent.name, agent.agentId, agent.referralCode, supportPhone);
-        await this.emailService.sendEmail(agent.email, 'Welcome to Firespot!', html);
+        const html = this.getWelcomeEmailHtml(
+          agent.name,
+          agent.agentId,
+          agent.referralCode,
+          supportPhone,
+        );
+        await this.emailService.sendEmail(
+          agent.email,
+          "Welcome to Firespot!",
+          html,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to send welcome email to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send welcome email to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
   }
 
@@ -62,8 +80,11 @@ Agent support: ${supportPhone}
    * Send suspended notification
    */
   async sendAgentSuspended(agent: AgentDocument): Promise<void> {
-    const supportPhone = this.configService.get<string>('SUPPORT_PHONE_NUMBER', '+234 XXX XXX XXXX');
-    
+    const supportPhone = this.configService.get<string>(
+      "SUPPORT_PHONE_NUMBER",
+      "+234 XXX XXX XXXX",
+    );
+
     const smsMessage = `Your Firespot Agent account (${agent.agentId}) has been suspended. You can no longer perform any activities as a Firespot Agent. Contact support at ${supportPhone} if you have questions.`;
 
     try {
@@ -71,16 +92,31 @@ Agent support: ${supportPhone}
         await this.smsService.sendSms(agent.phoneNumber, smsMessage);
       }
     } catch (error) {
-      this.logger.error(`Failed to send suspension SMS to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send suspension SMS to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
 
     try {
       if (agent.email) {
-        const html = this.getStatusChangeEmailHtml(agent.name, agent.agentId, 'suspended', supportPhone);
-        await this.emailService.sendEmail(agent.email, 'Account Suspended', html);
+        const html = this.getStatusChangeEmailHtml(
+          agent.name,
+          agent.agentId,
+          "suspended",
+          supportPhone,
+        );
+        await this.emailService.sendEmail(
+          agent.email,
+          "Account Suspended",
+          html,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to send suspension email to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send suspension email to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
   }
 
@@ -88,8 +124,11 @@ Agent support: ${supportPhone}
    * Send deactivated notification
    */
   async sendAgentDeactivated(agent: AgentDocument): Promise<void> {
-    const supportPhone = this.configService.get<string>('SUPPORT_PHONE_NUMBER', '+234 XXX XXX XXXX');
-    
+    const supportPhone = this.configService.get<string>(
+      "SUPPORT_PHONE_NUMBER",
+      "+234 XXX XXX XXXX",
+    );
+
     const smsMessage = `Your Firespot Agent account (${agent.agentId}) has been deactivated. Any unactivated QR kits assigned to you have been unassigned. Contact support at ${supportPhone} if you have questions.`;
 
     try {
@@ -97,16 +136,31 @@ Agent support: ${supportPhone}
         await this.smsService.sendSms(agent.phoneNumber, smsMessage);
       }
     } catch (error) {
-      this.logger.error(`Failed to send deactivation SMS to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send deactivation SMS to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
 
     try {
       if (agent.email) {
-        const html = this.getStatusChangeEmailHtml(agent.name, agent.agentId, 'deactivated', supportPhone);
-        await this.emailService.sendEmail(agent.email, 'Account Deactivated', html);
+        const html = this.getStatusChangeEmailHtml(
+          agent.name,
+          agent.agentId,
+          "deactivated",
+          supportPhone,
+        );
+        await this.emailService.sendEmail(
+          agent.email,
+          "Account Deactivated",
+          html,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to send deactivation email to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send deactivation email to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
   }
 
@@ -114,8 +168,11 @@ Agent support: ${supportPhone}
    * Send reactivated notification
    */
   async sendAgentReactivated(agent: AgentDocument): Promise<void> {
-    const supportPhone = this.configService.get<string>('SUPPORT_PHONE_NUMBER', '+234 XXX XXX XXXX');
-    
+    const supportPhone = this.configService.get<string>(
+      "SUPPORT_PHONE_NUMBER",
+      "+234 XXX XXX XXXX",
+    );
+
     const smsMessage = `Your Firespot Agent account (${agent.agentId}) has been reactivated. You can now resume your activities as a Firespot Agent. Support: ${supportPhone}`;
 
     try {
@@ -123,23 +180,43 @@ Agent support: ${supportPhone}
         await this.smsService.sendSms(agent.phoneNumber, smsMessage);
       }
     } catch (error) {
-      this.logger.error(`Failed to send reactivation SMS to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send reactivation SMS to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
 
     try {
       if (agent.email) {
-        const html = this.getStatusChangeEmailHtml(agent.name, agent.agentId, 'reactivated', supportPhone);
-        await this.emailService.sendEmail(agent.email, 'Account Reactivated', html);
+        const html = this.getStatusChangeEmailHtml(
+          agent.name,
+          agent.agentId,
+          "reactivated",
+          supportPhone,
+        );
+        await this.emailService.sendEmail(
+          agent.email,
+          "Account Reactivated",
+          html,
+        );
       }
     } catch (error) {
-      this.logger.error(`Failed to send reactivation email to agent ${agent.agentId}:`, error.message);
+      this.logger.error(
+        `Failed to send reactivation email to agent ${agent.agentId}:`,
+        error.message,
+      );
     }
   }
 
   /**
    * Generate welcome email HTML
    */
-  private getWelcomeEmailHtml(name: string, agentId: string, referralCode: string, supportPhone: string): string {
+  private getWelcomeEmailHtml(
+    name: string,
+    agentId: string,
+    referralCode: string,
+    supportPhone: string,
+  ): string {
     return `
 <!DOCTYPE html>
 <html>
@@ -174,17 +251,25 @@ Agent support: ${supportPhone}
   /**
    * Generate status change email HTML
    */
-  private getStatusChangeEmailHtml(name: string, agentId: string, status: 'suspended' | 'deactivated' | 'reactivated', supportPhone: string): string {
+  private getStatusChangeEmailHtml(
+    name: string,
+    agentId: string,
+    status: "suspended" | "deactivated" | "reactivated",
+    supportPhone: string,
+  ): string {
     const statusColors = {
-      suspended: '#f59e0b',
-      deactivated: '#ef4444',
-      reactivated: '#22c55e',
+      suspended: "#f59e0b",
+      deactivated: "#ef4444",
+      reactivated: "#22c55e",
     };
-    
+
     const statusMessages = {
-      suspended: 'Your account has been suspended. You can no longer perform any activities as a Firespot Agent.',
-      deactivated: 'Your account has been deactivated. Any unactivated QR kits assigned to you have been unassigned.',
-      reactivated: 'Great news! Your account has been reactivated. You can now resume your activities as a Firespot Agent.',
+      suspended:
+        "Your account has been suspended. You can no longer perform any activities as a Firespot Agent.",
+      deactivated:
+        "Your account has been deactivated. Any unactivated QR kits assigned to you have been unassigned.",
+      reactivated:
+        "Great news! Your account has been reactivated. You can now resume your activities as a Firespot Agent.",
     };
 
     return `

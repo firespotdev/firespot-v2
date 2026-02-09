@@ -1,5 +1,5 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document, Types } from "mongoose";
 
 @Schema({ timestamps: true })
 export class QRKit extends Document {
@@ -8,11 +8,11 @@ export class QRKit extends Document {
   serialNumber: string;
 
   // Merchant ID (null until activated, then permanently linked)
-  @Prop({ type: Types.ObjectId, ref: 'User', index: true })
+  @Prop({ type: Types.ObjectId, ref: "User", index: true })
   merchantId?: Types.ObjectId;
 
   // Activation
-  @Prop({ default: 'pending', index: true })
+  @Prop({ default: "pending", index: true })
   activationStatus: string; // 'pending' | 'activated' | 'deactivated'
 
   // Payment for activation
@@ -25,7 +25,7 @@ export class QRKit extends Document {
   @Prop({ default: 200000 }) // NGN 2,000 in kobo
   activationAmount: number;
 
-  @Prop({ default: 'pending', index: true })
+  @Prop({ default: "pending", index: true })
   paymentStatus: string; // 'pending' | 'successful' | 'failed'
 
   @Prop()
@@ -38,7 +38,7 @@ export class QRKit extends Document {
   firstScannedAt?: Date;
 
   // Agent assignment (field sales representative)
-  @Prop({ type: Types.ObjectId, ref: 'Agent', index: true })
+  @Prop({ type: Types.ObjectId, ref: "Agent", index: true })
   agentId?: Types.ObjectId;
 
   @Prop()
@@ -50,6 +50,9 @@ export class QRKit extends Document {
 
   @Prop()
   qrCodeSvgPublicId?: string; // Cloudinary public ID for deletion
+
+  @Prop()
+  name?: string;
 }
 
 export const QRKitSchema = SchemaFactory.createForClass(QRKit);

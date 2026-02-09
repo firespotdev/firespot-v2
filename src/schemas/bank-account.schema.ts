@@ -1,24 +1,24 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 
 @Schema({ _id: false, timestamps: true })
 export class BankAccount {
   @Prop({ required: true })
-  bankName: string
+  bankName: string;
 
   @Prop({ required: true })
-  bankCode: string
+  bankCode: string;
 
   @Prop({ required: true, length: 10 })
-  accountNumber: string
+  accountNumber: string;
 
   @Prop({ required: true }) // From Paystack verification
-  accountName: string
+  accountName: string;
 
   @Prop({ default: false })
-  isPrimary: boolean
+  isPrimary: boolean;
 
-  createdAt?: Date
-  updatedAt?: Date
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export const BankAccountSchema = SchemaFactory.createForClass(BankAccount)
+export const BankAccountSchema = SchemaFactory.createForClass(BankAccount);

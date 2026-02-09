@@ -1,30 +1,30 @@
-import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-import * as QRCode from 'qrcode'
-import { v2 as cloudinary } from 'cloudinary'
-import { Readable } from 'stream'
-import sharp from 'sharp'
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import * as QRCode from "qrcode";
+import { v2 as cloudinary } from "cloudinary";
+import { Readable } from "stream";
+import sharp from "sharp";
 
 @Injectable()
 export class QRCodeService {
-  private readonly qrCodeBaseUrl: string
+  private readonly qrCodeBaseUrl: string;
 
   constructor(private configService: ConfigService) {
-    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME')
-    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY')
-    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET')
+    const cloudName = this.configService.get<string>("CLOUDINARY_CLOUD_NAME");
+    const apiKey = this.configService.get<string>("CLOUDINARY_API_KEY");
+    const apiSecret = this.configService.get<string>("CLOUDINARY_API_SECRET");
 
     if (cloudName && apiKey && apiSecret) {
       cloudinary.config({
         cloud_name: cloudName,
         api_key: apiKey,
         api_secret: apiSecret,
-      })
+      });
     }
 
     this.qrCodeBaseUrl =
-      this.configService.get<string>('QR_CODE_BASE_URL') ||
-      'https://lite.firespot.co/pay'
+      this.configService.get<string>("QR_CODE_BASE_URL") ||
+      "https://lite.firespot.co/pay";
   }
 
   /**
@@ -34,22 +34,22 @@ export class QRCodeService {
    */
   async generateQRCodeSVG(serialNumber: string): Promise<string> {
     // Generate URL pointing to the payment page: {BASE_URL}/pay/{serialNumber}
-    const url = `${this.qrCodeBaseUrl}/pay/${serialNumber}`
+    const url = `${this.qrCodeBaseUrl}/pay/${serialNumber}`;
 
     try {
       const svg = await QRCode.toString(url, {
-        type: 'svg',
+        type: "svg",
         width: 1000,
         margin: 2,
         color: {
-          dark: '#000000',
-          light: '#FFFFFF',
+          dark: "#000000",
+          light: "#FFFFFF",
         },
-      })
+      });
 
-      return svg
+      return svg;
     } catch (error) {
-      throw new Error(`Failed to generate QR code: ${error.message}`)
+      throw new Error(`Failed to generate QR code: ${error.message}`);
     }
   }
 
@@ -64,36 +64,36 @@ export class QRCodeService {
     serialNumber: string,
   ): Promise<{ url: string; publicId: string }> {
     return new Promise((resolve, reject) => {
-      const svgBuffer = Buffer.from(svgString, 'utf-8')
+      const svgBuffer = Buffer.from(svgString, "utf-8");
 
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: 'flare/qr-codes',
-          resource_type: 'image',
+          folder: "flare/qr-codes",
+          resource_type: "image",
           public_id: `qr-${serialNumber}`,
         },
         (error, result) => {
           if (error) {
             reject(
               new Error(
-                `Failed to upload QR code: ${error.message || 'Unknown error'}`,
+                `Failed to upload QR code: ${error.message || "Unknown error"}`,
               ),
-            )
+            );
           }
           if (result) {
             resolve({
               url: result.secure_url,
               publicId: result.public_id,
-            })
+            });
           }
         },
-      )
+      );
 
-      const readableStream = new Readable()
-      readableStream.push(svgBuffer)
-      readableStream.push(null)
-      readableStream.pipe(uploadStream)
-    })
+      const readableStream = new Readable();
+      readableStream.push(svgBuffer);
+      readableStream.push(null);
+      readableStream.pipe(uploadStream);
+    });
   }
 
   /**
@@ -105,25 +105,25 @@ export class QRCodeService {
     try {
       // Get svg url from Cloudinary (auto-detects format)
       const svgUrl = cloudinary.url(publicId, {
-        resource_type: 'image',
-      })
+        resource_type: "image",
+      });
 
       // Fetch SVG
-      const response = await fetch(svgUrl)
+      const response = await fetch(svgUrl);
       if (!response.ok) {
-        throw new Error('Failed to fetch SVG from Cloudinary')
+        throw new Error("Failed to fetch SVG from Cloudinary");
       }
-      const svgString = await response.text()
+      const svgString = await response.text();
 
       // Convert SVG to PNG using sharp
       const pngBuffer = await sharp(Buffer.from(svgString))
         .resize(1000, 1000)
         .png()
-        .toBuffer()
+        .toBuffer();
 
-      return pngBuffer
+      return pngBuffer;
     } catch (error) {
-      throw new Error(`Failed to convert QR code to PNG: ${error.message}`)
+      throw new Error(`Failed to convert QR code to PNG: ${error.message}`);
     }
   }
 
@@ -135,15 +135,15 @@ export class QRCodeService {
     return new Promise((resolve, reject) => {
       cloudinary.uploader.destroy(
         publicId,
-        { resource_type: 'image' },
+        { resource_type: "image" },
         (error, result) => {
           if (error) {
-            reject(new Error(`Failed to delete QR code: ${error.message}`))
+            reject(new Error(`Failed to delete QR code: ${error.message}`));
           } else {
-            resolve()
+            resolve();
           }
         },
-      )
-    })
+      );
+    });
   }
 }

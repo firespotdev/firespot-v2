@@ -1,8 +1,8 @@
 export function detectDeviceType(userAgent: string): string {
-  const ua = userAgent.toLowerCase()
+  const ua = userAgent.toLowerCase();
 
   if (/tablet|ipad|playbook|silk/i.test(ua)) {
-    return 'tablet'
+    return "tablet";
   }
 
   if (
@@ -10,30 +10,30 @@ export function detectDeviceType(userAgent: string): string {
       ua,
     )
   ) {
-    return 'mobile'
+    return "mobile";
   }
 
-  return 'desktop'
+  return "desktop";
 }
 
 export function detectBrowserType(userAgent: string): string {
-  const ua = userAgent.toLowerCase()
+  const ua = userAgent.toLowerCase();
 
-  if (ua.includes('chrome') && !ua.includes('edg')) {
-    return 'chrome'
+  if (ua.includes("chrome") && !ua.includes("edg")) {
+    return "chrome";
   }
-  if (ua.includes('firefox')) {
-    return 'firefox'
+  if (ua.includes("firefox")) {
+    return "firefox";
   }
-  if (ua.includes('safari') && !ua.includes('chrome')) {
-    return 'safari'
+  if (ua.includes("safari") && !ua.includes("chrome")) {
+    return "safari";
   }
-  if (ua.includes('edg')) {
-    return 'edge'
+  if (ua.includes("edg")) {
+    return "edge";
   }
-  if (ua.includes('opera') || ua.includes('opr')) {
-    return 'opera'
+  if (ua.includes("opera") || ua.includes("opr")) {
+    return "opera";
   }
 
-  return 'unknown'
+  return "unknown";
 }

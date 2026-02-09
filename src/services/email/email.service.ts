@@ -1,6 +1,10 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Resend } from 'resend';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { Resend } from "resend";
 
 @Injectable()
 export class EmailService {
@@ -9,12 +13,17 @@ export class EmailService {
   private readonly fromEmail: string;
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('RESEND_API_KEY');
+    const apiKey = this.configService.get<string>("RESEND_API_KEY");
     if (!apiKey) {
-      this.logger.warn('RESEND_API_KEY is not configured. Email service will not work.');
+      this.logger.warn(
+        "RESEND_API_KEY is not configured. Email service will not work.",
+      );
     }
     this.resend = new Resend(apiKey);
-    this.fromEmail = this.configService.get<string>('RESEND_FROM_EMAIL', 'Firespot <noreply@firespot.co>');
+    this.fromEmail = this.configService.get<string>(
+      "RESEND_FROM_EMAIL",
+      "Firespot <noreply@firespot.co>",
+    );
   }
 
   /**
@@ -26,16 +35,18 @@ export class EmailService {
     html: string,
     variables?: Record<string, any>,
   ): Promise<any> {
-    const mockOtp = this.configService.get<string>('MOCK_OTP', 'false').toLowerCase() === 'true';
+    const mockOtp =
+      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
+      "true";
 
     if (mockOtp) {
-      this.logger.log('🔧 MOCK MODE: Email request:', {
+      this.logger.log("🔧 MOCK MODE: Email request:", {
         to,
         subject,
-        html: html.substring(0, 100) + '...',
+        html: html.substring(0, 100) + "...",
         variables,
       });
-      return { id: 'mock_id', status: 'mock_success' };
+      return { id: "mock_id", status: "mock_success" };
     }
 
     try {
@@ -47,11 +58,11 @@ export class EmailService {
       });
 
       if (error) {
-        this.logger.error('Resend email error:', error);
-        throw new InternalServerErrorException('Failed to send email.');
+        this.logger.error("Resend email error:", error);
+        throw new InternalServerErrorException("Failed to send email.");
       }
 
-      this.logger.log('Email sent successfully via Resend:', {
+      this.logger.log("Email sent successfully via Resend:", {
         to,
         subject,
         messageId: data?.id,
@@ -59,23 +70,25 @@ export class EmailService {
 
       return data;
     } catch (error) {
-      this.handleResendError(error, 'Email');
+      this.handleResendError(error, "Email");
     }
   }
 
   /**
    * Send a plain text email via Resend
    */
-  async sendTextEmail(
-    to: string,
-    subject: string,
-    text: string,
-  ): Promise<any> {
-    const mockOtp = this.configService.get<string>('MOCK_OTP', 'false').toLowerCase() === 'true';
+  async sendTextEmail(to: string, subject: string, text: string): Promise<any> {
+    const mockOtp =
+      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
+      "true";
 
     if (mockOtp) {
-      this.logger.log('🔧 MOCK MODE: Text email request:', { to, subject, text: text.substring(0, 100) });
-      return { id: 'mock_id', status: 'mock_success' };
+      this.logger.log("🔧 MOCK MODE: Text email request:", {
+        to,
+        subject,
+        text: text.substring(0, 100),
+      });
+      return { id: "mock_id", status: "mock_success" };
     }
 
     try {
@@ -87,15 +100,15 @@ export class EmailService {
       });
 
       if (error) {
-        this.logger.error('Resend email error:', error);
-        throw new InternalServerErrorException('Failed to send email.');
+        this.logger.error("Resend email error:", error);
+        throw new InternalServerErrorException("Failed to send email.");
       }
 
-      this.logger.log('Text email sent successfully via Resend');
+      this.logger.log("Text email sent successfully via Resend");
 
       return data;
     } catch (error) {
-      this.handleResendError(error, 'Text Email');
+      this.handleResendError(error, "Text Email");
     }
   }
 
@@ -105,6 +118,8 @@ export class EmailService {
       name: error.name,
     });
 
-    throw new InternalServerErrorException(`Failed to send ${context.toLowerCase()}.`);
+    throw new InternalServerErrorException(
+      `Failed to send ${context.toLowerCase()}.`,
+    );
   }
 }

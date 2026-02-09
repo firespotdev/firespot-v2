@@ -1,12 +1,12 @@
-import { Module, forwardRef } from '@nestjs/common'
-import { MongooseModule } from '@nestjs/mongoose'
-import { QRKitsController } from './qr-kits.controller'
-import { QRKitsService } from './qr-kits.service'
-import { QRKit, QRKitSchema } from '../schemas/qrkit.schema'
-import { User, UserSchema } from '../schemas/user.schema'
-import { Agent, AgentSchema } from '../admin/schemas/agent.schema'
-import { UsersModule } from '../users/users.module'
-import { ScansModule } from '../scans/scans.module'
+import { Module, forwardRef } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { QRKitsController } from "./qr-kits.controller";
+import { QRKitsService } from "./qr-kits.service";
+import { QRKit, QRKitSchema } from "../schemas/qrkit.schema";
+import { User, UserSchema } from "../schemas/user.schema";
+import { Agent, AgentSchema } from "../admin/schemas/agent.schema";
+import { UsersModule } from "../users/users.module";
+import { ScansModule } from "../scans/scans.module";
 
 @Module({
   imports: [
