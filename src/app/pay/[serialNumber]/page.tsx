@@ -106,14 +106,14 @@ export default function PaymentPage() {
             </div>
           </header>
 
-          <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
+          <div className="flex-1 flex flex-col items-center px-4 overflow-y-auto">
             <div
               style={{
                 background:
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                 backdropFilter: 'blur(125.30880737304688px)',
               }}
-              className="py-6 px-6 rounded-2xl flex flex-col items-center relative w-full max-w-75 mb-6"
+              className="p-4 rounded-2xl flex flex-col items-center relative w-full max-w-75 mb-5"
             >
               <h3 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
                 SCAN TO TRANSFER
@@ -123,11 +123,11 @@ export default function PaymentPage() {
                 </span>
               </h3>
 
-              <p className="text-[#FFFFFF99] font-sofia-pro text-center text-[8.7px] font-medium mb-3.5">
+              <p className="text-[#FFFFFF99] font-sofia-pro text-center text-[8.7px] font-medium mb-2">
                 Scan with your camera, send from any bank
               </p>
 
-              <div className="rounded-xl relative mb-4">
+              <div className="rounded-xl relative mb-3">
                 <svg style={{ position: 'absolute', width: 0, height: 0 }}>
                   <defs>
                     <linearGradient
@@ -178,7 +178,7 @@ export default function PaymentPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between items-center mb-4 w-full gap-1 px-10">
+              <div className="flex justify-between items-center mb-3 w-full gap-1 px-10">
                 <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-1 w-1/2">
                   <p className="text-white text-[6px] pl-0.5 font-sofia">
                     scan with
@@ -330,7 +330,7 @@ export default function PaymentPage() {
                 </div>
               </div>
 
-              <div className="flex justify-between -mx-10 w-full items-center mt-6">
+              <div className="flex justify-between -mx-10 w-full items-center">
                 <div className="flex items-center">
                   <Image
                     src="/icons/firespot_logo.svg"
@@ -350,14 +350,14 @@ export default function PaymentPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 px-4 py-1 rounded-full border border-[#E5E7EB] bg-white mb-6">
+            <div className="flex items-center gap-2 px-4 py-1 rounded-full border border-[#E5E7EB] bg-white mb-5">
               <div className="w-2 h-2 rounded-full bg-[#6B7280]" />
               <span className="text-sm text-[#6B7280] font-medium leading-none">
                 Unassigned
               </span>
             </div>
 
-            <h2 className="text-[32px] -tracking-[0.4px] font-bold text-black text-center mb-3">
+            <h2 className="text-[28px] leading-none -tracking-[0.4px] font-bold text-black text-center mb-2">
               Claim this QR kit
             </h2>
 
