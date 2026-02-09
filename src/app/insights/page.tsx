@@ -70,7 +70,7 @@ export default function InsightsPage() {
       ? 'Custom'
       : DATE_RANGE_LABELS[filter.preset as DateRangePreset] || 'All time'
 
-  // Prepare donut chart data for traffic
+  
   const trafficSegments = insights
     ? [
         {
