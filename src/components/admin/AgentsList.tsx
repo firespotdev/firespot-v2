@@ -231,7 +231,6 @@ export default function AgentsList({
             </div>
           )}
 
-          {/* Clear Filters */}
           {(filters.status || filters.state || filters.lga || filters.search) && (
             <button
               onClick={() => {
