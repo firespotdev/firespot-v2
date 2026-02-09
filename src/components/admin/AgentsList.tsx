@@ -246,7 +246,6 @@ export default function AgentsList({
         </div>
       </div>
 
-      {/* List */}
       {isLoading ? (
         <div className="space-y-3">
           {[...Array(5)].map((_, i) => (
