@@ -71,7 +71,7 @@ export function DateRangeFilterDrawer({
   return (
     <div className="px-4 pb-6 pt-2">
       {/* Preset Options */}
-      <div className="bg-white rounded-2xl p-4 mb-4">
+      <div className="bg-white rounded-2xl p-4 mb-4 shadow-[0px_4px_8px_0px_#0000000A]">
         <p className="text-xs text-[#00000066] font-medium mb-3">
           Filter by date range
         </p>
@@ -102,7 +102,7 @@ export function DateRangeFilterDrawer({
       </div>
 
       {/* Custom Date Range */}
-      <div className="bg-white rounded-2xl p-4 mb-6">
+      <div className="bg-white rounded-2xl p-4 shadow-[0px_4px_8px_0px_#0000000A]">
         <p className="text-xs text-[#00000066] font-medium mb-3">
           OR choose a specific date range
         </p>
