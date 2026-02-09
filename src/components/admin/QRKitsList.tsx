@@ -138,34 +138,26 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
     }))
   }
 
-  const handleFilterChange = (
-    key: keyof QRKitFilters,
-    value: string | boolean | undefined,
-  ) => {
-    setFilters((prev) => ({ ...prev, [key]: value || undefined, page: 1 }))
-  }
-
-  const handleAgentFilterChange = (agentId: string | null) => {
-    setAgentFilter(agentId)
-    setUnassignedOnly(false)
-    setFilters((prev) => ({
-      ...prev,
-      agentId: agentId || undefined,
-      unassigned: undefined,
-      page: 1,
-    }))
-  }
-
-  const handleUnassignedToggle = () => {
-    const newValue = !unassignedOnly
-    setUnassignedOnly(newValue)
-    setAgentFilter(null)
-    setFilters((prev) => ({
-      ...prev,
-      agentId: undefined,
-      unassigned: newValue || undefined,
-      page: 1,
-    }))
+  const handleActivationStatusChange = (value: string) => {
+    if (value === 'unassigned') {
+      setFilters((prev) => ({
+        ...prev,
+        status: undefined,
+        unassigned: true,
+        agentId: undefined,
+        page: 1,
+      }))
+      setAgentFilter(null)
+      setUnassignedOnly(true)
+    } else {
+      setFilters((prev) => ({
+        ...prev,
+        status: value || undefined,
+        unassigned: undefined,
+        page: 1,
+      }))
+      setUnassignedOnly(false)
+    }
   }
 
   const handlePageChange = (newPage: number) => {
@@ -403,16 +395,24 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Activation Status
             </label>
-            <select
-              value={filters.status || ''}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-            >
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="activated">Activated</option>
-              <option value="deactivated">Deactivated</option>
-            </select>
+            <div className="relative">
+              <select
+                value={unassignedOnly ? 'unassigned' : filters.status || ''}
+                onChange={(e) => handleActivationStatusChange(e.target.value)}
+                className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
+              >
+                <option value="">All</option>
+                <option value="unassigned">Unassigned</option>
+                <option value="pending">Pending</option>
+                <option value="activated">Activated</option>
+                <option value="deactivated">Deactivated</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Payment Status Filter */}
@@ -420,18 +420,25 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Payment Status
             </label>
-            <select
-              value={filters.paymentStatus || ''}
-              onChange={(e) =>
-                handleFilterChange('paymentStatus', e.target.value)
-              }
-              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-            >
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="successful">Successful</option>
-              <option value="failed">Failed</option>
-            </select>
+            <div className="relative">
+              <select
+                value={filters.paymentStatus || ''}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, paymentStatus: e.target.value || undefined, page: 1 }))
+                }
+                className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
+              >
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="successful">Successful</option>
+                <option value="failed">Failed</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Agent Filter */}
@@ -441,7 +448,16 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
             </label>
             <AgentSelect
               value={agentFilter}
-              onChange={handleAgentFilterChange}
+              onChange={(agentId) => {
+                setAgentFilter(agentId)
+                setUnassignedOnly(false)
+                setFilters((prev) => ({
+                  ...prev,
+                  agentId: agentId || undefined,
+                  unassigned: undefined,
+                  page: 1,
+                }))
+              }}
               placeholder="All agents"
               disabled={unassignedOnly}
             />
