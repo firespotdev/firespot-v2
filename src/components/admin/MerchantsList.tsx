@@ -1,51 +1,37 @@
 'use client'
 
 import { useState } from 'react'
-import { useAgents } from '@/services/agents'
-import type { Agent, AgentFilters } from '@/services/agents'
-import { NIGERIAN_STATES, STATE_LGA_MAP } from '@/lib/utils/nigerian-states-lgas'
+import { useMerchants } from '@/services/merchants'
+import type { Merchant, MerchantFilters } from '@/services/merchants'
 
-function StatusBadge({ status }: { status: string }) {
-  const getStyles = () => {
-    switch (status) {
-      case 'active':
-        return 'bg-emerald-100 text-emerald-700'
-      case 'suspended':
-        return 'bg-red-100 text-red-700'
-      default:
-        return 'bg-gray-100 text-gray-700'
-    }
-  }
-
+function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
     <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${getStyles()}`}
+      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+        isActive
+          ? 'bg-emerald-100 text-emerald-700'
+          : 'bg-gray-100 text-gray-700'
+      }`}
     >
-      {status}
+      {isActive ? 'Active' : 'Inactive'}
     </span>
   )
 }
 
-interface AgentsListProps {
-  onSelectAgent?: (agent: Agent) => void
-  onCreateAgent?: () => void
+interface MerchantsListProps {
+  onSelectMerchant?: (merchant: Merchant) => void
 }
 
-export default function AgentsList({
-  onSelectAgent,
-  onCreateAgent,
-}: AgentsListProps) {
-  const [filters, setFilters] = useState<AgentFilters>({
+export default function MerchantsList({
+  onSelectMerchant,
+}: MerchantsListProps) {
+  const [filters, setFilters] = useState<MerchantFilters>({
     page: 1,
     limit: 20,
   })
   const [searchInput, setSearchInput] = useState('')
-  const [selectedState, setSelectedState] = useState('')
 
-  // Get LGAs for selected state
-  const availableLGAs = selectedState ? STATE_LGA_MAP[selectedState] || [] : []
-
-  const { data, isLoading, error, refetch } = useAgents(filters)
+  const { data, isLoading, error, refetch } = useMerchants(filters)
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,15 +43,10 @@ export default function AgentsList({
   }
 
   const handleFilterChange = (
-    key: keyof AgentFilters,
+    key: keyof MerchantFilters,
     value: string | undefined,
   ) => {
     setFilters((prev) => ({ ...prev, [key]: value || undefined, page: 1 }))
-    // Clear LGA filter when state changes
-    if (key === 'state') {
-      setSelectedState(value || '')
-      setFilters((prev) => ({ ...prev, lga: undefined, page: 1 }))
-    }
   }
 
   const handlePageChange = (newPage: number) => {
@@ -76,9 +57,9 @@ export default function AgentsList({
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Agents</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Merchants</h2>
           <p className="mt-1 text-gray-500">
-            {data?.pagination.total || 0} total agents
+            {data?.pagination.total || 0} total merchants
           </p>
         </div>
         <div className="flex gap-2">
@@ -101,27 +82,6 @@ export default function AgentsList({
             </svg>
             Refresh
           </button>
-          {onCreateAgent && (
-            <button
-              onClick={onCreateAgent}
-              className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Add Agent
-            </button>
-          )}
         </div>
       </div>
 
@@ -138,7 +98,7 @@ export default function AgentsList({
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Name, phone, or agent ID..."
+                placeholder="Business name, phone, or slug..."
                 className="flex-1 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
               />
               <button
@@ -158,13 +118,12 @@ export default function AgentsList({
             <div className="relative">
               <select
                 value={filters.status || ''}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
+                onChange={(e) => handleFilterChange('status', e.target.value as 'active' | 'inactive' | undefined)}
                 className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
               >
                 <option value="">All</option>
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-                <option value="suspended">Suspended</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -174,69 +133,12 @@ export default function AgentsList({
             </div>
           </div>
 
-          {/* State Filter */}
-          <div className="w-full lg:w-48">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              State
-            </label>
-            <div className="relative">
-              <select
-                value={filters.state || ''}
-                onChange={(e) => {
-                  handleFilterChange('state', e.target.value)
-                  setSelectedState(e.target.value)
-                }}
-                className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-              >
-                <option value="">All States</option>
-                {NIGERIAN_STATES.map((state) => (
-                  <option key={state} value={state}>
-                    {state}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* LGA Filter */}
-          {filters.state && (
-            <div className="w-full lg:w-48">
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                LGA
-              </label>
-              <div className="relative">
-                <select
-                  value={filters.lga || ''}
-                  onChange={(e) => handleFilterChange('lga', e.target.value)}
-                  className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-                >
-                  <option value="">All LGAs</option>
-                  {availableLGAs.map((lga) => (
-                    <option key={lga} value={lga}>
-                      {lga}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {(filters.status || filters.state || filters.lga || filters.search) && (
+          {/* Clear Filters */}
+          {(filters.status || filters.search) && (
             <button
               onClick={() => {
                 setFilters({ page: 1, limit: 20 })
                 setSearchInput('')
-                setSelectedState('')
               }}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
@@ -259,7 +161,7 @@ export default function AgentsList({
       ) : error ? (
         <div className="rounded-xl bg-red-50 p-4 text-red-600">
           Error:{' '}
-          {error instanceof Error ? error.message : 'Failed to load agents'}
+          {error instanceof Error ? error.message : 'Failed to load merchants'}
         </div>
       ) : data?.data.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-white p-8 text-center">
@@ -274,15 +176,15 @@ export default function AgentsList({
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900">No agents found</h3>
+          <h3 className="text-lg font-medium text-gray-900">No merchants found</h3>
           <p className="mt-1 text-gray-500">
-            {filters.search || filters.status || filters.state || filters.lga
+            {filters.search || filters.status
               ? 'Try adjusting your filters'
-              : 'Add some agents to get started'}
+              : 'No merchants registered yet'}
           </p>
         </div>
       ) : (
@@ -291,83 +193,70 @@ export default function AgentsList({
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Agent ID
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Name
+                  Business
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Phone
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Location
+                  Slug
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Bank Accounts
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Created
+                  Registered
                 </th>
-                
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {data?.data.map((agent) => (
+              {data?.data.map((merchant) => (
                 <tr
-                  key={agent._id}
-                  onClick={() => onSelectAgent?.(agent)}
+                  key={merchant._id}
+                  onClick={() => onSelectMerchant?.(merchant)}
                   className="cursor-pointer transition-colors hover:bg-gray-50"
                 >
                   <td className="whitespace-nowrap px-4 py-3">
-                    <span className="font-mono text-sm font-medium text-gray-900">
-                      {agent.agentId}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                    <div className="flex items-center gap-2">
-                      <span className="truncate">{agent.name}</span>
-                      {agent.subaccountCode && (
-                        <span title="Bank details verified with Paystack">
-                          <svg
-                            className="h-3.5 w-3.5 text-blue-500"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </span>
+                    <div className="flex items-center gap-3">
+                      {merchant.profilePhotoUrl ? (
+                        <img
+                          src={merchant.profilePhotoUrl}
+                          alt=""
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-sm font-medium text-gray-600">
+                          {merchant.businessName?.charAt(0) || 'M'}
+                        </div>
                       )}
+                      <span className="font-medium text-gray-900">
+                        {merchant.businessName || '—'}
+                      </span>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                    {agent.phoneNumber}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {agent.state || agent.lga || agent.bustop ? (
-                      <div className="space-y-0.5">
-                        {agent.state && <div>{agent.state}</div>}
-                        {agent.lga && (
-                          <div className="text-xs text-gray-400">{agent.lga}</div>
-                        )}
-                        {agent.bustop && (
-                          <div className="text-xs text-gray-400">
-                            {agent.bustop}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      '—'
-                    )}
+                    {merchant.fullPhoneNumber}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
-                    <StatusBadge status={agent.status} />
+                    {merchant.merchantSlug ? (
+                      <span className="font-mono text-sm text-gray-900">
+                        {merchant.merchantSlug}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                    {new Date(agent.createdAt).toLocaleDateString()}
+                    {merchant.bankAccounts?.length || 0}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <StatusBadge isActive={merchant.isActive} />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                    {new Date(merchant.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
               ))}

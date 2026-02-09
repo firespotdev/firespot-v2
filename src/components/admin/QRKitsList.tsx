@@ -1,11 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useQRKits, useQRCodeSVG, useDownloadQRCodePNG, useDeleteQRKit } from '@/services/qr'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useQRKits, useQRCodeSVG, useDeleteQRKit, qrKitsApi } from '@/services/qr'
 import type { QRKit, QRKitFilters } from '@/services/qr'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
+import { generatePDFBlob, downloadQRKitsAsZip } from '@/lib/utils/batch-pdf-download'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import AgentSelect from './AgentSelect'
+import QRKitCard from './QRKitCard'
+import { adminToast } from './AdminToast'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -114,9 +117,15 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
   const [searchInput, setSearchInput] = useState('')
   const [agentFilter, setAgentFilter] = useState<string | null>(null)
   const [unassignedOnly, setUnassignedOnly] = useState(false)
+  
+  // Selection state for batch download
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false)
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 0 })
+  const cardRenderRef = useRef<HTMLDivElement>(null)
+  const [renderingCard, setRenderingCard] = useState<{ brandedSvg: string; serialNumber: string } | null>(null)
 
   const { data, isLoading, error, refetch } = useQRKits(filters)
-  const downloadPNG = useDownloadQRCodePNG()
   const deleteQRKit = useDeleteQRKit()
   const [deleteTarget, setDeleteTarget] = useState<QRKit | null>(null)
 
@@ -129,43 +138,30 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
     }))
   }
 
-  const handleFilterChange = (
-    key: keyof QRKitFilters,
-    value: string | boolean | undefined,
-  ) => {
-    setFilters((prev) => ({ ...prev, [key]: value || undefined, page: 1 }))
-  }
-
-  const handleAgentFilterChange = (agentId: string | null) => {
-    setAgentFilter(agentId)
-    setUnassignedOnly(false)
-    setFilters((prev) => ({
-      ...prev,
-      agentId: agentId || undefined,
-      unassigned: undefined,
-      page: 1,
-    }))
-  }
-
-  const handleUnassignedToggle = () => {
-    const newValue = !unassignedOnly
-    setUnassignedOnly(newValue)
-    setAgentFilter(null)
-    setFilters((prev) => ({
-      ...prev,
-      agentId: undefined,
-      unassigned: newValue || undefined,
-      page: 1,
-    }))
+  const handleActivationStatusChange = (value: string) => {
+    if (value === 'unassigned') {
+      setFilters((prev) => ({
+        ...prev,
+        status: undefined,
+        unassigned: true,
+        agentId: undefined,
+        page: 1,
+      }))
+      setAgentFilter(null)
+      setUnassignedOnly(true)
+    } else {
+      setFilters((prev) => ({
+        ...prev,
+        status: value || undefined,
+        unassigned: undefined,
+        page: 1,
+      }))
+      setUnassignedOnly(false)
+    }
   }
 
   const handlePageChange = (newPage: number) => {
     setFilters((prev) => ({ ...prev, page: newPage }))
-  }
-
-  const handleDownloadPNG = (e: React.MouseEvent, qrKit: QRKit) => {
-    e.stopPropagation() // Prevent row click
-    downloadPNG.mutate({ id: qrKit._id, serialNumber: qrKit.serialNumber })
   }
 
   const handleDelete = (e: React.MouseEvent, qrKit: QRKit) => {
@@ -183,6 +179,113 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
   const handleRowClick = (qrKit: QRKit) => {
     onSelectQRKit?.(qrKit)
   }
+
+  // Selection handlers
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked && data?.data) {
+      setSelectedIds(new Set(data.data.map((qr) => qr._id)))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectOne = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
+    e.stopPropagation()
+    const newSet = new Set(selectedIds)
+    if (e.target.checked) {
+      newSet.add(id)
+    } else {
+      newSet.delete(id)
+    }
+    setSelectedIds(newSet)
+  }
+
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+  }
+
+  // Clear selection when page/filters change
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [filters])
+
+  // Batch download handler
+  const handleBatchDownload = useCallback(async () => {
+    if (selectedIds.size === 0 || !data?.data) return
+
+    setIsDownloadingZip(true)
+    const selectedQRKits = data.data.filter((qr) => selectedIds.has(qr._id))
+    setDownloadProgress({ current: 0, total: selectedQRKits.length })
+
+    try {
+      console.log(`Starting batch download for ${selectedQRKits.length} kits`)
+      const pdfDataList: { serialNumber: string; pdfBlob: Blob }[] = []
+
+      for (let i = 0; i < selectedQRKits.length; i++) {
+        const qrKit = selectedQRKits[i]
+        console.log(`Processing ${i + 1}/${selectedQRKits.length}: ${qrKit.serialNumber}`)
+        setDownloadProgress({ current: i + 1, total: selectedQRKits.length })
+
+        // Fetch SVG data
+        const svgData = await qrKitsApi.fetchQRCodeSVG(qrKit.qrCodeSvgUrl || '')
+        if (!svgData) {
+          console.warn(`No SVG data for kit ${qrKit.serialNumber}`)
+          continue
+        }
+
+        const brandedSvg = applyBrandingToSVG(svgData, GRADIENT_START, GRADIENT_END, null, 20)
+
+        // Render the card
+        setRenderingCard({ brandedSvg, serialNumber: qrKit.serialNumber })
+
+        // Wait for render and ensure ref is populated
+        let count = 0
+        while (!cardRenderRef.current && count < 20) {
+          await new Promise((resolve) => setTimeout(resolve, 50))
+          count++
+        }
+
+        // Generate PDF blob
+        if (cardRenderRef.current) {
+          console.log(`Generating PDF for ${qrKit.serialNumber}`)
+          try {
+            const pdfBlob = await generatePDFBlob(cardRenderRef.current, {
+              scale: 3,
+              backgroundColor: '#000000',
+            })
+            pdfDataList.push({ serialNumber: qrKit.serialNumber, pdfBlob })
+          } catch (pdfErr) {
+            console.error(`Failed to generate PDF for ${qrKit.serialNumber}:`, pdfErr)
+            adminToast.error(`Failed to generate PDF for ${qrKit.serialNumber}`)
+          }
+        } else {
+          console.error(`Failed to find cardRenderRef for serial ${qrKit.serialNumber}`)
+        }
+      }
+
+      // Clear rendering card
+      setRenderingCard(null)
+
+      if (pdfDataList.length === 0) {
+        throw new Error('No PDFs were generated successfully')
+      }
+
+      // Download as ZIP
+      console.log('Bundling ZIP...')
+      await downloadQRKitsAsZip(pdfDataList, `firespot-qr-kits-${Date.now()}.zip`)
+      adminToast.success(`Downloaded ${pdfDataList.length} QR kits as ZIP`)
+      clearSelection()
+    } catch (error) {
+      console.error('Batch download failed:', error)
+      adminToast.error(error instanceof Error ? error.message : 'Failed to download QR kits')
+    } finally {
+      setIsDownloadingZip(false)
+      setRenderingCard(null)
+      setDownloadProgress({ current: 0, total: 0 })
+    }
+  }, [selectedIds, data?.data])
+
+  const isAllSelected = data?.data && data.data.length > 0 && data.data.every((qr) => selectedIds.has(qr._id))
 
   return (
     <div className="space-y-6">
@@ -214,6 +317,54 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
         </button>
       </div>
 
+      {/* Selection Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between rounded-xl bg-black px-4 py-3 text-white shadow-lg animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium">
+              {selectedIds.size} QR kit{selectedIds.size === 1 ? '' : 's'} selected
+            </span>
+            <button
+              onClick={clearSelection}
+              className="text-xs text-gray-400 hover:text-white underline underline-offset-4"
+            >
+              Clear selection
+            </button>
+          </div>
+          <button
+            onClick={handleBatchDownload}
+            disabled={isDownloadingZip}
+            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-bold text-black transition-colors hover:bg-gray-100 disabled:opacity-50"
+          >
+            {isDownloadingZip ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+                <span>
+                  Downloading {downloadProgress.current}/{downloadProgress.total}...
+                </span>
+              </>
+            ) : (
+              <>
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+                <span>Download as PDF (ZIP)</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Filters */}
       <div className="rounded-xl border border-gray-100 bg-white p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
@@ -244,16 +395,24 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Activation Status
             </label>
-            <select
-              value={filters.status || ''}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-            >
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="activated">Activated</option>
-              <option value="deactivated">Deactivated</option>
-            </select>
+            <div className="relative">
+              <select
+                value={unassignedOnly ? 'unassigned' : filters.status || ''}
+                onChange={(e) => handleActivationStatusChange(e.target.value)}
+                className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
+              >
+                <option value="">All</option>
+                <option value="unassigned">Unassigned</option>
+                <option value="pending">Pending</option>
+                <option value="activated">Activated</option>
+                <option value="deactivated">Deactivated</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Payment Status Filter */}
@@ -261,18 +420,25 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Payment Status
             </label>
-            <select
-              value={filters.paymentStatus || ''}
-              onChange={(e) =>
-                handleFilterChange('paymentStatus', e.target.value)
-              }
-              className="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
-            >
-              <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="successful">Successful</option>
-              <option value="failed">Failed</option>
-            </select>
+            <div className="relative">
+              <select
+                value={filters.paymentStatus || ''}
+                onChange={(e) =>
+                  setFilters((prev) => ({ ...prev, paymentStatus: e.target.value || undefined, page: 1 }))
+                }
+                className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
+              >
+                <option value="">All</option>
+                <option value="pending">Pending</option>
+                <option value="successful">Successful</option>
+                <option value="failed">Failed</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
           {/* Agent Filter */}
@@ -282,23 +448,19 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
             </label>
             <AgentSelect
               value={agentFilter}
-              onChange={handleAgentFilterChange}
+              onChange={(agentId) => {
+                setAgentFilter(agentId)
+                setUnassignedOnly(false)
+                setFilters((prev) => ({
+                  ...prev,
+                  agentId: agentId || undefined,
+                  unassigned: undefined,
+                  page: 1,
+                }))
+              }}
               placeholder="All agents"
               disabled={unassignedOnly}
             />
-          </div>
-
-          {/* Unassigned Toggle */}
-          <div className="flex items-end">
-            <label className="flex cursor-pointer items-center gap-2">
-              <input
-                type="checkbox"
-                checked={unassignedOnly}
-                onChange={handleUnassignedToggle}
-                className="h-4 w-4 rounded border-gray-300 text-[#FB5012] focus:ring-[#FB5012]"
-              />
-              <span className="text-sm text-gray-700">Unassigned only</span>
-            </label>
           </div>
 
           {/* Clear Filters */}
@@ -364,6 +526,14 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   QR Code
                 </th>
@@ -382,9 +552,7 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Created
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Actions
-                </th>
+               
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -392,8 +560,18 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                 <tr
                   key={qrKit._id}
                   onClick={() => handleRowClick(qrKit)}
-                  className="cursor-pointer transition-colors hover:bg-gray-50"
+                  className={`cursor-pointer transition-colors hover:bg-gray-50 ${
+                    selectedIds.has(qrKit._id) ? 'bg-orange-50/50' : ''
+                  }`}
                 >
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(qrKit._id)}
+                      onChange={(e) => handleSelectOne(e, qrKit._id)}
+                      className="h-4 w-4 rounded border-gray-300 text-black focus:ring-black"
+                    />
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <QRPreviewSmall qrKit={qrKit} />
                   </td>
@@ -434,52 +612,7 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                     {new Date(qrKit.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={(e) => handleDownloadPNG(e, qrKit)}
-                        disabled={downloadPNG.isPending}
-                        className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
-                        title="Download PNG"
-                      >
-                        <svg
-                          className="h-4 w-4"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                          />
-                        </svg>
-                      </button>
-                      {qrKit.activationStatus !== 'activated' && (
-                        <button
-                          onClick={(e) => handleDelete(e, qrKit)}
-                          disabled={deleteQRKit.isPending}
-                          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                          title="Delete QR Kit"
-                        >
-                          <svg
-                            className="h-4 w-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </td>
+                  
                 </tr>
               ))}
             </tbody>
@@ -530,6 +663,19 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
         onConfirm={confirmDelete}
         isLoading={deleteQRKit.isPending}
       />
+
+      {/* Hidden card render area for PDF generation */}
+      <div 
+        className="pointer-events-none fixed -left-[5000px] top-0 overflow-hidden" 
+        style={{ width: '400px', height: '600px', opacity: 0.01 }}
+      >
+        {renderingCard && (
+          <QRKitCard
+            ref={cardRenderRef}
+            brandedSvg={renderingCard.brandedSvg}
+          />
+        )}
+      </div>
     </div>
   )
 }

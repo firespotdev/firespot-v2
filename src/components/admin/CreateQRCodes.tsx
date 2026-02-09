@@ -181,7 +181,6 @@ export default function CreateQRCodes() {
           )}
         </div>
 
-        {/* Bulk Creation */}
         <div className="rounded-2xl border border-gray-100 bg-white p-6">
           <div className="mb-4 flex items-center gap-3">
             <div className="rounded-xl bg-linear-to-br from-[#FB5012] to-[#D72483] p-3">

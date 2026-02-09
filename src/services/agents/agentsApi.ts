@@ -60,6 +60,18 @@ export const agentsApi = {
   deleteAgent: async (id: string): Promise<void> => {
     await adminApiClient.delete(`/admin/agents/${id}`)
   },
+  suspendAgent: async (id: string): Promise<Agent> => {
+    const response = await adminApiClient.patch<Agent>(`/admin/agents/${id}/suspend`)
+    return response.data
+  },
+  reactivateAgent: async (id: string): Promise<Agent> => {
+    const response = await adminApiClient.patch<Agent>(`/admin/agents/${id}/reactivate`)
+    return response.data
+  },
+  deactivateAgent: async (id: string): Promise<{ agent: Agent; unassignedCount: number }> => {
+    const response = await adminApiClient.delete<{ agent: Agent; unassignedCount: number }>(`/admin/agents/${id}`)
+    return response.data
+  },
 }
 
 // React Query Hooks
@@ -136,6 +148,45 @@ export const useDeleteAgent = () => {
     mutationFn: (id: string) => agentsApi.deleteAgent(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['agent-stats'] })
+    },
+  })
+}
+
+export const useSuspendAgent = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => agentsApi.suspendAgent(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['agent', id] })
+      queryClient.invalidateQueries({ queryKey: ['agent-stats'] })
+    },
+  })
+}
+
+export const useReactivateAgent = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => agentsApi.reactivateAgent(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['agent', id] })
+      queryClient.invalidateQueries({ queryKey: ['agent-stats'] })
+    },
+  })
+}
+
+export const useDeactivateAgent = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => agentsApi.deactivateAgent(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['agents'] })
+      queryClient.invalidateQueries({ queryKey: ['agent', id] })
       queryClient.invalidateQueries({ queryKey: ['agent-stats'] })
     },
   })
