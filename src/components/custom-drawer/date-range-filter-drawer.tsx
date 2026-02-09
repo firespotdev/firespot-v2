@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Calendar } from 'lucide-react'
 import type { DateRangePreset, InsightsQuery } from '@/services/insights'
 import { DATE_RANGE_LABELS } from '@/services/insights'
+import { Input } from '@/components/ui'
 
 interface DateRangeFilterDrawerProps {
   currentFilter?: InsightsQuery
@@ -108,24 +109,28 @@ export function DateRangeFilterDrawer({
         <div className="flex gap-3">
           <div className="flex-1">
             <div className="relative">
-              <input
-                type="date"
+              <Input
+                type={startDate ? 'date' : 'text'}
+                onFocus={(e) => (e.currentTarget.type = 'date')}
+                onBlur={(e) => !startDate && (e.currentTarget.type = 'text')}
+                placeholder="From"
                 value={startDate}
                 onChange={(e) => handleCustomDateChange('start', e.target.value)}
-                placeholder="From"
-                className="w-full px-3 py-2.5 pr-10 border border-[#E5E7EB] rounded-xl text-sm text-black placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
               />
               <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none" />
             </div>
           </div>
           <div className="flex-1">
             <div className="relative">
-              <input
-                type="date"
+              <Input
+                type={endDate ? 'date' : 'text'}
+                onFocus={(e) => (e.currentTarget.type = 'date')}
+                onBlur={(e) => !endDate && (e.currentTarget.type = 'text')}
+                placeholder="To"
                 value={endDate}
                 onChange={(e) => handleCustomDateChange('end', e.target.value)}
-                placeholder="To"
-                className="w-full px-3 py-2.5 pr-10 border border-[#E5E7EB] rounded-xl text-sm text-black placeholder:text-[#9CA3AF] focus:outline-none focus:ring-2 focus:ring-black/10"
+                className="pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
               />
               <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none" />
             </div>

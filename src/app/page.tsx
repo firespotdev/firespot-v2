@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { BrowserMultiFormatReader } from '@zxing/library'
-import { ArrowUpRight, Zap } from 'lucide-react'
+import { Zap } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { CTACarousel } from '@/components/ui/cta-carousel'
 
 export default function ScannerPage() {
   const router = useRouter()
@@ -173,8 +174,7 @@ export default function ScannerPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-black overflow-hidden">
-      {/* Camera Video Feed */}
+    <div className="relative bg-black">
       <video
         ref={videoRef}
         autoPlay
@@ -183,9 +183,9 @@ export default function ScannerPage() {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      <div className="relative z-10 min-h-screen">
-        <div className="max-w-[500px] mx-auto w-full flex flex-col min-h-screen">
-          <header className="flex items-center justify-between py-4 px-3">
+      <div className="relative z-10 h-dvh flex flex-col">
+        <div className="max-w-125 mx-auto w-full flex flex-col h-full">
+          <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-3 bg-linear-to-b from-black/50 to-transparent">
             <Image
               src="/icons/firespot_logo.svg"
               alt="firespot logo"
@@ -206,7 +206,7 @@ export default function ScannerPage() {
             </button>
           </header>
 
-          {/* Scanner Frame */}
+          {/* Scanner */}
           <div className="flex-1 flex items-center justify-center px-8">
             <div className="flex-1 flex items-center justify-center">
               {error ? (
@@ -218,7 +218,7 @@ export default function ScannerPage() {
                   </p>
                 </div>
               ) : (
-                <div className="w-full max-w-[300px] aspect-square relative">
+                <div className="w-full max-w-75 aspect-square relative">
                   <div className="absolute top-0 left-0 w-10 h-10 border-t-4 border-l-4 rounded-tl-3xl border-white"></div>
                   <div className="absolute top-0 right-0 w-10 h-10 border-t-4 border-r-4 rounded-tr-3xl border-white"></div>
                   <div className="absolute bottom-0 left-0 w-10 h-10 border-b-4 border-l-4 rounded-bl-3xl border-white"></div>
@@ -228,38 +228,55 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          {/* Bottom Section */}
-          <div className="p-4 space-y-4">
-            <div className="bg-[#FFFFFF66] backdrop-blur-sm rounded-[16px] p-3 flex items-center gap-3">
-              <Image
-                src="/icons/firespot_logo.svg"
-                alt="firespot logo"
-                width={36}
-                height={36}
-              />
-              <div className="flex-1">
-                <p className="text-white font-bold text-[13px] font-satoshi">
-                  Pay for your purchase superfast! 🚀
+          <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
+            <CTACarousel>
+              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <h3 className="text-white font-bold text-sm">
+                  Login to your Firespot Lite account
+                </h3>
+                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  Manage your QR kits and account numbers
                 </p>
-                <p className="text-[#E1E1E1] text-xs font-satoshi flex items-center gap-1">
-                  All Nigerian banks supported.{' '}
-                  <Link
-                    href="/signup"
-                    className="underline underline-offset-3 flex items-end gap-[0.7px]"
-                  >
-                    Learn more
-                    <ArrowUpRight size={13} />
-                  </Link>{' '}
-                </p>
+                <Link
+                  href="/login"
+                  className="block w-full bg-[#FFFFFF33] text-white text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                >
+                  LOG IN
+                </Link>
               </div>
-            </div>
-
-            {/* Pagination Dots */}
-            <div className="flex justify-center gap-1">
-              <div className="w-1 h-1 rounded-full bg-white" />
-              <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
-              <div className="w-1 h-1 rounded-full bg-[#FFFFFF66]" />
-            </div>
+              
+              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <h3 className="text-white font-bold text-sm">
+                  Get your Firespot QR Kit
+                </h3>
+                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  All your account numbers in one scan.
+                </p>
+                <Link
+                  href="/signup"
+                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                >
+                  SIGN UP
+                </Link>
+              </div>
+              
+              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <h3 className="text-white font-bold text-sm">
+                  Pay for your purchases faster
+                </h3>
+                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  Transfer from any Nigerian Bank
+                </p>
+                <Link
+                  href="https://firespot.co"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                >
+                  HOW IT WORKS
+                </Link>
+              </div>
+            </CTACarousel>
           </div>
         </div>
       </div>

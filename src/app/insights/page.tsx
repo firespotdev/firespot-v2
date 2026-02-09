@@ -70,7 +70,7 @@ export default function InsightsPage() {
       ? 'Custom'
       : DATE_RANGE_LABELS[filter.preset as DateRangePreset] || 'All time'
 
-  // Prepare donut chart data for traffic
+  
   const trafficSegments = insights
     ? [
         {
@@ -88,15 +88,15 @@ export default function InsightsPage() {
 
   if (isLoading) {
     return (
-      <div className="h-screen bg-[#FFFFFF] flex items-center justify-center">
+      <div className="h-dvh bg-[#FFFFFF] flex items-center justify-center">
         <LoaderCircle innerBg="#FFFFFF" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFFFF]">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+    <div className="min-h-dvh bg-[#FFFFFF]">
+      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col font-satoshi">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#FFFFFF] px-4 py-3">
           <div className="flex items-center justify-between">

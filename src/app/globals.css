@@ -132,11 +132,31 @@
   .font-sofia-pro {
     font-family: var(--font-sofia-pro), sans-serif;
   }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
-/* Override Sonner toast width to fit content */
-[data-sonner-toaster] [data-sonner-toast] {
+/* Override Sonner toast width to fit content and ensure perfect centering within 500px layout */
+[data-sonner-toaster] {
+  width: 100% !important;
+  max-width: 500px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  pointer-events: none !important;
+}
+
+[data-sonner-toast] {
   width: fit-content !important;
-  max-width: fit-content !important;
+  max-width: 90vw !important;
   margin: 0 auto !important;
+  pointer-events: auto !important;
 }

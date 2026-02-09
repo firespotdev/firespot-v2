@@ -30,6 +30,7 @@ export interface QRKit {
   assignedToAgentAt?: string
   createdAt: string
   updatedAt: string
+  name?: string
 }
 
 export interface QRKitListResponse {

@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
+import { useUserQRKits } from '@/services/qr'
+import { showNotificationToast } from '@/components/ui'
 
 interface PageHeaderProps {
   title: string
@@ -23,6 +25,12 @@ export function PageHeader({
 }: PageHeaderProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  
+  const { data: qrKitsData } = useUserQRKits({ enabled: isAuthenticated })
+
+  const qrKits = qrKitsData?.data || []
+  const hasQRKits = qrKits.length > 0
+  const firstSerialNumber = hasQRKits ? qrKits[0].serialNumber : null
 
   const handleLeftButtonClick = () => {
     if (onLogoClick) {
@@ -31,15 +39,32 @@ export function PageHeader({
     }
 
     if (isAuthenticated) {
-      // Merchant: Open profile menu drawer
       openDrawer({ type: 'profile-menu' })
     }
-    // Customer: Link will handle navigation to "/"
+  }
+
+  const handleShareClick = async () => {
+    if (firstSerialNumber) {
+      try {
+        await navigator.share({
+          title: `Share transfer link`,
+          url: `https://lite.firespot.co/pay/${firstSerialNumber}`,
+        })
+      } catch (error) {
+        if ((error as Error).name !== 'AbortError') {
+          navigator.clipboard.writeText(`https://lite.firespot.co/pay/${firstSerialNumber}`)
+          showNotificationToast({
+            message: 'Link copied to clipboard!',
+            duration: 2000,
+          })
+        }
+      }
+    }
   }
 
   return (
-    <header className="flex items-center justify-between py-4 px-3">
-      <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
+    <header className="flex items-center justify-between py-2 px-3 sticky top-0 z-50 bg-[#F4F6F8]">
+      <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border bg-white border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
         {onLogoClick ? (
           <button onClick={handleLeftButtonClick} type="button">
             <Image
@@ -81,13 +106,28 @@ export function PageHeader({
         )}
       </button>
 
-      <button
-        onClick={onShareClick}
-        type="button"
-        className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
-      >
-        <Share stroke="#868788" size={20} />
-      </button>
+      {onShareClick && !isAuthenticated && (
+        <button
+          onClick={onShareClick}
+          type="button"
+          className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+        >
+          <Share stroke="#868788" size={20} />
+        </button>
+      )}
+
+      {isAuthenticated && hasQRKits && (
+        <button
+          onClick={handleShareClick}
+          type="button"
+          className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+        >
+          <Share stroke="#868788" size={20} />
+        </button>
+      )}
+
+      {!onShareClick && !isAuthenticated && <div className="h-9 w-9" />}
+      {isAuthenticated && !hasQRKits && <div className="h-9 w-9" />}
     </header>
   )
 }

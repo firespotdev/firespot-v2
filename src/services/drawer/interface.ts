@@ -3,6 +3,7 @@ export type DrawerContentType =
   | 'profile-menu'
   | 'select-bank'
   | 'bank-transfer'
+  | 'share-transfer'
   | 'receipt'
   | 'date-range-filter'
   | 'custom'

@@ -140,8 +140,8 @@ export default function AddBankAccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
+    <div className="min-h-dvh bg-white">
+      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col font-satoshi">
         {/* Header */}
         <header className="flex items-center p-4">
           <ArrowLeft

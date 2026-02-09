@@ -15,12 +15,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
 
   return (
     <>
-      <style>{`
-        [data-sonner-toaster][data-x-position="center"] [data-sonner-toast] {
-          left: 50% !important;
-          transform: translateX(-50%) !important;
-        }
-      `}</style>
       <Sonner
         theme={theme as ToasterProps["theme"]}
         className="toaster group"

@@ -6,14 +6,15 @@ import { ArrowLeft, Check, Copy, Download, Share } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuthStore } from '@/services/auth'
-import { useUserQRKit, useQRCodeSVG } from '@/services/qr'
+import { useUserQRKit, useQRCodeSVG, useUpdateQRKit } from '@/services/qr'
 import { Button, LoaderCircle, showNotificationToast } from '@/components/ui'
+import { Pencil } from 'lucide-react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
-import {getInitials} from '@/lib/utils'
+import { getInitials } from '@/lib/utils'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
+import { useDrawerStore } from '@/services/drawer'
 
-// Brand gradient colors (same as admin dashboard)
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
 
@@ -25,13 +26,45 @@ export default function QRKitDetailPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const { data: qrKit, isLoading, error } = useUserQRKit(id)
   const { data: svgContent } = useQRCodeSVG(qrKit?.qrCodeSvgUrl)
-  const { data: profile, isLoading: profileLoading } = useUserProfile()
-  const merchant =
-    typeof qrKit?.merchantId === 'object' ? qrKit.merchantId : undefined
+  const { data: profile } = useUserProfile()
 
-  const [copied, setCopied] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [kitName, setKitName] = useState('')
   const cardRef = useRef<HTMLDivElement>(null)
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const updateQRKit = useUpdateQRKit()
+
+  useEffect(() => {
+    if (qrKit?.name) {
+      setKitName(qrKit.name)
+    }
+  }, [qrKit?.name])
+
+  const handleUpdateName = async () => {
+    if (!kitName.trim() || kitName === qrKit?.name) {
+      setIsEditingName(false)
+      return
+    }
+
+    try {
+      await updateQRKit.mutateAsync({
+        id,
+        data: { name: kitName.trim() },
+      })
+      showNotificationToast({
+        message: 'Name updated successfully',
+        duration: 2000,
+      })
+      setIsEditingName(false)
+    } catch (error) {
+      console.error('Failed to update name:', error)
+      showNotificationToast({
+        message: 'Failed to update name',
+        duration: 2000,
+      })
+    }
+  }
 
   // Apply gradient branding to SVG
   const brandedSvg = useMemo(() => {
@@ -51,7 +84,7 @@ export default function QRKitDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-dvh bg-white flex items-center justify-center">
         <LoaderCircle innerBg="#FFFFFF" />
       </div>
     )
@@ -59,7 +92,7 @@ export default function QRKitDetailPage() {
 
   if (error || !qrKit) {
     return (
-      <div className="min-h-screen bg-white flex flex-col font-satoshi">
+      <div className="min-h-dvh bg-white flex flex-col font-satoshi">
         <header className="flex items-center py-4 px-4">
           <Link href="/qr-kits">
             <ArrowLeft className="w-6 h-6 text-black" />
@@ -75,34 +108,7 @@ export default function QRKitDetailPage() {
   }
 
   const isActive = qrKit.activationStatus === 'activated'
-  const shareUrl = `https://lite.firespot.co/${qrKit.serialNumber}`
   const displayId = qrKit.serialNumber.slice(-8)
-
-  const handleCopyUrl = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
-  }
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Firespot QR Kit',
-          text: 'Pay me with Firespot',
-          url: shareUrl,
-        })
-      } catch (err) {
-        console.error('Share failed:', err)
-      }
-    } else {
-      handleCopyUrl()
-    }
-  }
 
   const handleDownloadPDF = async () => {
     if (!cardRef.current || isDownloading) return
@@ -130,16 +136,16 @@ export default function QRKitDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f6f8]">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
-        <header className="flex flex-col items-center py-3 px-4">
+    <div className="min-h-dvh bg-[#f4f6f8]">
+      <div className="max-w-125 mx-auto min-h-dvh flex flex-col font-satoshi">
+        <header className="flex flex-col items-center py-1.5 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <div className="w-full flex items-center">
             <Link href="/qr-kits">
               <ArrowLeft className="w-6 h-6 text-black" />
             </Link>
             <div className="flex-1 text-center">
               <h1 className="text-base font-bold text-black">
-                {qrKit.serialNumber}
+                {qrKit.name || qrKit.serialNumber}
               </h1>
               <p className="text-xs text-[#00000066] font-medium">
                 Collecting payments
@@ -158,24 +164,10 @@ export default function QRKitDetailPage() {
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                 backdropFilter: 'blur(125.30880737304688px)',
               }}
-              className="py-6 px-6 rounded-2xl flex flex-col items-center relative w-full max-w-[300px]"
+              className="py-6 px-6 rounded-2xl flex flex-col items-center relative w-full max-w-75"
             >
-              <div className="flex justify-center mb-3">
-                <div className="flex items-center">
-                  <Image
-                    src="/icons/firespot_logo.svg"
-                    alt="Firespot"
-                    width={20}
-                    height={20}
-                  />
-                  <span className="text-white text-sm font-bold ml-1">
-                    firespot
-                  </span>
-                </div>
-              </div>
-
               <h2 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
-                PAY WITH YOUR CARD
+                SCAN TO TRANSFER
                 <br />
                 <span className="bg-linear-to-r from-[#FB5012] to-[#D72483] text-transparent bg-clip-text">
                   IN UNDER A MINUTE
@@ -183,7 +175,7 @@ export default function QRKitDetailPage() {
               </h2>
 
               <p className="text-[#FFFFFF99] font-sofia-pro text-center text-[8.7px] font-medium mb-3.5">
-                Scan with your smartphone camera
+                Scan with your camera, send from any bank
               </p>
 
               {/* QR Code with Gradient Border */}
@@ -204,14 +196,12 @@ export default function QRKitDetailPage() {
                   </defs>
                 </svg>
 
-                {/* Gradient Border Container */}
                 <div
-                  className="rounded-2xl p-[4px]"
+                  className="rounded-2xl p-1"
                   style={{
                     background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                   }}
                 >
-                  {/* White Background + QR Code */}
                   <div className="bg-white p-2 rounded-[1.2rem] relative">
                     {brandedSvg ? (
                       <div
@@ -244,10 +234,10 @@ export default function QRKitDetailPage() {
                         />
                       ) : (
                         <div className="bg-[#FF6B35] w-full h-full flex items-center justify-center">
-                <span className="text-base font-bold text-white inline-block">
-                  {getInitials(profile?.businessName ?? '')}
-                </span>
-              </div>
+                          <span className="text-base font-bold text-white inline-block">
+                            {getInitials(profile?.businessName ?? '')}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -256,10 +246,10 @@ export default function QRKitDetailPage() {
 
               <div className="flex justify-between items-center mb-4 w-full gap-1 px-10">
                 <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-1 w-1/2">
-                  <p className="text-white text-[6px] pl-[2px] font-sofia">
+                  <p className="text-white text-[6px] pl-0.5 font-sofia">
                     scan with
                   </p>
-                  <div className="flex items-center gap-[2px] justify-center">
+                  <div className="flex items-center gap-0.5 justify-center">
                     <div className="camera w-[8.7px] h-[8.7px] rounded-full bg-white flex items-center justify-center">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -392,7 +382,7 @@ export default function QRKitDetailPage() {
                   </div>
                 </div>
 
-                <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-[2px] w-1/2">
+                <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-0.5 w-1/2">
                   <p className="text-white text-[6px] font-sofia">
                     <span className="text-[#FFFFFF80]">or go to </span>
                     pay.firespot.co
@@ -407,40 +397,21 @@ export default function QRKitDetailPage() {
               </div>
 
               <div className="flex justify-between -mx-10 w-full items-center mt-6">
-                <div className="text-[#FFFFFF99] text-[7px] font-sofia absolute left-4">
-                  We accept
+                <div className="flex items-center">
+                  <Image
+                    src="/icons/firespot_logo.svg"
+                    alt="Firespot"
+                    width={12}
+                    height={12}
+                  />
+                  <span className="text-white text-[8px] font-medium ml-1">
+                    firespot
+                  </span>
                 </div>
                 <div className="flex gap-1 absolute right-4">
-                  <Image
-                    src="/images/mastercard.png"
-                    alt="mastercard"
-                    width={12.7}
-                    height={8.7}
-                  />
-                  <Image
-                    src="/images/visa.png"
-                    alt="visa"
-                    width={12.7}
-                    height={8.7}
-                  />
-                  <Image
-                    src="/images/verve.png"
-                    alt="verve"
-                    width={12.7}
-                    height={8.7}
-                  />
-                  <Image
-                    src="/images/applepay.png"
-                    alt="applepay"
-                    width={12.7}
-                    height={8.7}
-                  />
-                  <Image
-                    src="/images/amex.png"
-                    alt="american-express"
-                    width={12.7}
-                    height={8.7}
-                  />
+                  <span className="font-sofia-pro font-medium text-[#FFFFFF80] -tracking-[3%] text-[5.81px]">
+                    Powered by Firespot
+                  </span>
                 </div>
               </div>
             </div>
@@ -449,25 +420,54 @@ export default function QRKitDetailPage() {
 
         <div className="bg-white py-5 px-4">
           <div className="w-full">
-            <div className="flex items-center gap-2 border-b border-[#F1F1F1] pb-5">
-              <div className="flex-1 min-w-0 border border-[#DFDFDF] rounded-[30px] px-4 py-2.5">
-                <p className="text-sm text-[#6B7280] font-medium truncate leading-none">
-                  {shareUrl}
-                </p>
-              </div>
-              <button
-                onClick={handleShare}
-                className="flex items-center gap-1.5 px-4 py-2.5 bg-[#F1F1F1] rounded-[30px] shrink-0"
-              >
-                <Share className="w-4 h-4 text-black" />
-                <span className="text-[10px] font-bold text-black tracking-[1px] whitespace-nowrap">
-                  SHARE
-                </span>
-              </button>
-            </div>
-
             <div className="space-y-5">
-              <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5 pt-5">
+              <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5">
+                <span className="text-sm font-medium text-[#00000080]">
+                  Name
+                </span>
+                <div className="flex-1 ml-4 flex justify-end min-w-0">
+                  {isEditingName ? (
+                    <div className="flex items-center gap-2 w-full max-w-[220px] min-w-0">
+                      <input
+                        type="text"
+                        value={kitName}
+                        onChange={(e) => setKitName(e.target.value)}
+                        className="flex-1 min-w-0 text-sm font-bold text-black bg-[#F4F6F8] rounded-lg px-2 py-1 outline-none border border-[#0075FF]"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdateName()
+                          if (e.key === 'Escape') {
+                            setKitName(qrKit.name || '')
+                            setIsEditingName(false)
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleUpdateName}
+                        disabled={updateQRKit.isPending}
+                        className="shrink-0 w-fit h-8 text-xs font-bold px-3"
+                      >
+                        {updateQRKit.isPending ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="text-sm font-bold text-black truncate">
+                        {qrKit.name || 'Not set'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingName(true)}
+                        className="p-1"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-[#00000066]" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5">
                 <span className="text-sm font-medium text-[#00000080]">
                   Status
                 </span>
@@ -512,7 +512,7 @@ export default function QRKitDetailPage() {
               </div>
             </div>
 
-            <div className="my-5 bg-[#F0F7FF] rounded-[12px] px-4 py-3 flex items-center gap-3">
+            <div className="my-5 bg-[#F0F7FF] rounded-2xl px-4 py-3 flex items-center gap-3">
               <div className="w-5 h-5 rounded-full bg-[#0075FF] flex items-center justify-center shrink-0 mt-0.5">
                 <span className="text-white text-xs font-bold">i</span>
               </div>
@@ -522,7 +522,7 @@ export default function QRKitDetailPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 border-t border-[#F1F1F1] pt-5">
+            <div className="flex flex-col gap-3 border-t border-[#F1F1F1] pt-5">
               <Button
                 variant="default"
                 onClick={handleDownloadPDF}
@@ -530,7 +530,9 @@ export default function QRKitDetailPage() {
                 className="flex items-center justify-center gap-2"
               >
                 <Download className="w-5 h-5" />
-                <span>{isDownloading ? 'Generating...' : 'Download PDF version'}</span>
+                <span>
+                  {isDownloading ? 'Generating...' : 'Download PDF version'}
+                </span>
               </Button>
             </div>
           </div>

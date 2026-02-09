@@ -44,43 +44,6 @@ apiClient.interceptors.response.use(
   },
 )
 
-// Admin API client
-export const adminApiClient = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
-
-adminApiClient.interceptors.request.use(
-  (config) => {
-    if (config.url?.includes('/admin/auth/login')) {
-      return config
-    }
-
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('admin_token')
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    }
-    return config
-  },
-  (error) => Promise.reject(error),
-)
-
-adminApiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('admin_token')
-      localStorage.removeItem('admin_info')
-      window.location.href = '/admin/login'
-    }
-    return Promise.reject(error)
-  },
-)
-
 // Public API client (no authentication required)
 export const publicApiClient = axios.create({
   baseURL: API_BASE_URL,

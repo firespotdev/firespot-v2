@@ -14,7 +14,6 @@ export default function QRKitsPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const { data: qrKitsData, isLoading } = useUserQRKits()
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login')
@@ -27,7 +26,7 @@ export default function QRKitsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
         <LoaderCircle innerBg="#F4F6F8" />
       </div>
     )
@@ -36,10 +35,9 @@ export default function QRKitsPage() {
   const qrKits = qrKitsData?.data || []
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8]">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
-        {/* Header */}
-        <header className="flex items-center py-4 px-4">
+    <div className="min-h-dvh bg-[#F4F6F8]">
+      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col font-satoshi">
+        <header className="flex items-center py-4 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <Link href="/profile">
             <ArrowLeft className="w-6 h-6 text-black" />
           </Link>
@@ -60,7 +58,7 @@ export default function QRKitsPage() {
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
               {qrKits.map((qrKit, index) => {
                 const isActive = qrKit.activationStatus === 'activated'
                 const statusText = isActive ? 'Active' : 'Inactive'
@@ -80,7 +78,9 @@ export default function QRKitsPage() {
                     >
                       <Image
                         src={
-                          isActive ? '/icons/qr_white.svg' : '/icons/qr_black.svg'
+                          isActive
+                            ? '/icons/qr_white.svg'
+                            : '/icons/qr_black.svg'
                         }
                         alt="QR"
                         width={16}
@@ -88,17 +88,15 @@ export default function QRKitsPage() {
                       />
                     </div>
 
-                    {/* QR Kit Info */}
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-[13px] font-bold text-[#111827]">
-                        {qrKit.serialNumber || `QR kit ${index + 1}`}
+                        {qrKit.name || qrKit.serialNumber || `QR kit ${index + 1}`}
                       </p>
                       <p className="text-xs font-medium text-[#6B7280] mt-0.5">
                         {statusText}
                       </p>
                     </div>
 
-                    {/* Chevron */}
                     <ChevronRight className="w-5 h-5 text-[#9CA3AF] shrink-0" />
                   </Link>
                 )

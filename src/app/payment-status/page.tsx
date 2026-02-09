@@ -4,7 +4,6 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { X, ChevronRight, LinkIcon, MessageCircleHeart } from 'lucide-react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, TagFooter } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
@@ -17,7 +16,7 @@ export default function PaymentStatusPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+        <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
           <LoaderCircle innerBg="#F4F6F8" />
         </div>
       }
@@ -53,8 +52,7 @@ function PaymentStatusContent() {
       },
     })
   }
-
-  // Redirect to login if not authenticated
+ 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login')
@@ -80,6 +78,7 @@ function PaymentStatusContent() {
     })
   }, [reference, hasVerified, isAuthenticated, verifyPayment])
 
+
   if (!isAuthenticated) {
     return null
   }
@@ -87,7 +86,7 @@ function PaymentStatusContent() {
   // Loading state
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-[#F4F6F8] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
         <div className="text-center">
           <LoaderCircle innerBg="#F4F6F8" />
           <p className="mt-4 text-gray-600 font-medium">Verifying payment...</p>
@@ -99,9 +98,9 @@ function PaymentStatusContent() {
   // Success
   if (status === 'success') {
     return (
-      <div className="min-h-screen">
-        <div className="max-w-[500px] bg-[#24C166] mx-auto min-h-screen flex flex-col font-satoshi">
-          <header className="flex items-center justify-between py-4 px-4">
+      <div className="h-dvh overflow-hidden">
+        <div className="max-w-125 bg-[#24C166] mx-auto h-full flex flex-col font-satoshi">
+          <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-4 bg-[#24C166]">
             <div className="w-10" />
             <div className="w-10" />
             <Link href="/profile" className="text-white font-bold text-sm">
@@ -109,7 +108,7 @@ function PaymentStatusContent() {
             </Link>
           </header>
 
-          <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
             <div className="w-16 h-16 border-4 border-white rounded-full flex items-center justify-center mb-6">
               <svg
                 className="w-8 h-8"
@@ -129,7 +128,7 @@ function PaymentStatusContent() {
             <h1 className="text-white text-xl font-bold mb-1 leading-none">
               Activated successfully
             </h1>
-            <p className="text-[#FFFFFFE5] text-sm text-center font-medium max-w-[280px] mb-6">
+            <p className="text-[#FFFFFFE5] text-sm text-center font-medium max-w-70 mb-6">
               You can now start using this Firespot QR kit to share your bank
               account details.
             </p>
@@ -177,35 +176,9 @@ function PaymentStatusContent() {
           </div>
 
           <div className="p-4 pb-8 space-y-3">
-            <button
-              type="button"
-              className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
-            >
-              <Image
-                src="/icons/firespot_logo.svg"
-                alt="Firespot"
-                width={36}
-                height={36}
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
-              <div className="flex-1 text-left">
-                <p className="text-sm font-bold text-black">
-                  Upgrade to a business profile
-                </p>
-                <p className="text-[13px] text-[#00000080] font-medium">
-                  Re-engage customers, get feedback, receive instant payment
-                  notifications.
-                </p>
-              </div>
-              <ChevronRight
-                strokeWidth={2}
-                className="w-4 h-4 text-[#BDBDBD]"
-              />
-            </button>
+      
 
-            <div className="w-full bg-white rounded-[12px] py-3 shadow-[0px_4px_8px_0px_#0000000A]">
+            <div className="w-full bg-white rounded-2xl py-3 shadow-[0px_4px_8px_0px_#0000000A]">
               <Link
                 href="/activate"
                 className="w-full flex items-center gap-3 border-b border-[#F4F6F8] pb-3 px-3"
@@ -263,9 +236,9 @@ function PaymentStatusContent() {
 
   // Failed state
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-[500px] mx-auto min-h-screen flex flex-col font-satoshi">
-        <header className="flex items-center justify-between p-4">
+    <div className="h-dvh bg-white overflow-hidden">
+      <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
+        <header className="sticky top-0 z-50 flex items-center justify-between p-4 bg-white">
           <div className="w-8" />
           <div className="w-8" />
           <Link href="/profile">
@@ -273,7 +246,7 @@ function PaymentStatusContent() {
           </Link>
         </header>
 
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
+        <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="80"
@@ -290,7 +263,7 @@ function PaymentStatusContent() {
           <h1 className="text-black text-xl font-bold leading-none -tracking-[0.4px] mb-2 mt-4">
             Payment didn&apos;t go through
           </h1>
-          <p className="text-[#00000066] text-sm font-medium text-center max-w-[300px]">
+          <p className="text-[#00000066] text-sm font-medium text-center max-w-75">
             {errorMessage ||
               "The card couldn't be charged due to insufficient balance."}
           </p>

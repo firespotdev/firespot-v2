@@ -23,9 +23,14 @@ export function OtpVerification({
 }: OtpVerificationProps) {
   const [otp, setOtp] = useState('')
   const [countdown, setCountdown] = useState(59)
+  const [localError, setLocalError] = useState<string | undefined>(error)
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([])
 
-  // Countdown timer
+  // Sync local error with prop error
+  useEffect(() => {
+    setLocalError(error)
+  }, [error])
+
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
@@ -49,18 +54,48 @@ export function OtpVerification({
     }
   }, [error])
 
-  const handleChange = (index: number, digit: string) => {
-    if (!/^\d*$/.test(digit)) return
+  const handleChange = (index: number, value: string) => {
+    if (localError) setLocalError(undefined)
 
-    const newValue = otp.split('')
-    newValue[index] = digit
-    const newOtp = newValue.join('').slice(0, 6)
-    setOtp(newOtp)
-
-    // Auto-focus next input
-    if (digit && index < 5) {
-      otpInputRefs.current[index + 1]?.focus()
+    // Handle auto-fill (when value is more than 1 character)
+    if (value.length > 1) {
+      const pastedData = value.slice(0, 6)
+      if (/^\d+$/.test(pastedData)) {
+        setOtp(pastedData)
+        // Focus last input
+        const lastIndex = Math.min(pastedData.length - 1, 5)
+        otpInputRefs.current[lastIndex]?.focus()
+        
+        // Auto-submit if 6 digits
+        if (pastedData.length === 6) {
+          onVerify(pastedData)
+        }
+        return
+      }
     }
+
+    if (!/^\d*$/.test(value)) return
+
+    setOtp((prev) => {
+      const newValue = prev.split('')
+      newValue[index] = value
+      const newOtp = newValue.join('').slice(0, 6)
+
+      // Auto-focus next input
+      if (value && index < 5) {
+        // Need to wait for next tick or just focus directly
+        setTimeout(() => {
+          otpInputRefs.current[index + 1]?.focus()
+        }, 0)
+      }
+
+      // Auto-submit if 6th digit entered
+      if (newOtp.length === 6 && index === 5 && value) {
+        onVerify(newOtp)
+      }
+
+      return newOtp
+    })
   }
 
   const handleKeyDown = (
@@ -74,12 +109,16 @@ export function OtpVerification({
 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
-    const pastedData = e.clipboardData.getData('text').slice(0, 6)
+    const pastedData = e.clipboardData.getData('text').trim().slice(0, 6)
     if (/^\d+$/.test(pastedData)) {
       setOtp(pastedData)
-      // Focus last input
+      // Focus last input or first empty
       const lastIndex = Math.min(pastedData.length - 1, 5)
       otpInputRefs.current[lastIndex]?.focus()
+      
+      if (pastedData.length === 6) {
+        onVerify(pastedData)
+      }
     }
   }
 
@@ -104,7 +143,7 @@ export function OtpVerification({
   }
 
   return (
-    <div className="h-screen bg-white">
+    <div className="h-dvh bg-white">
       <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
         <button
           onClick={onBack}
@@ -136,19 +175,24 @@ export function OtpVerification({
                     }}
                     type="text"
                     inputMode="numeric"
-                    maxLength={1}
                     value={otp[index] || ''}
                     onChange={(e) => handleChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     onPaste={handlePaste}
                     disabled={isLoading}
+                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
                     className="w-14 h-14 border-[#D8E0E9] text-center text-lg font-semibold border"
                   />
                 ))}
               </div>
-              {error && (
-                <p className="text-sm text-red-500 text-center mt-2">{error}</p>
-              )}
+              {localError && (
+              <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
+                <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
+                  !
+                </span>
+                {localError}
+              </p>
+            )}
             </div>
 
             <Button type="submit" className="w-full">

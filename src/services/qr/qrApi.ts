@@ -1,13 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { adminApiClient, publicApiClient, apiClient } from '@/lib/utils/axios'
+import { publicApiClient, apiClient } from '@/lib/utils/axios'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import type {
   QRKit,
   QRKitListResponse,
-  QRKitFilters,
-  CreateQRKitDto,
-  BulkCreateDto,
-  QRKitStats,
   MerchantProfile,
 } from './interface'
 
@@ -38,172 +34,32 @@ export const userQrApi = {
     const response = await apiClient.get<QRKit>(`/users/me/qr-kits/${id}`)
     return response.data
   },
-}
 
-export const qrKitsApi = {
-  getQRKits: async (filters?: QRKitFilters): Promise<QRKitListResponse> => {
-    const response = await adminApiClient.get<QRKitListResponse>(
-      '/admin/qr-kits',
-      {
-        params: filters,
-      },
+  updateUserQRKit: async (
+    id: string,
+    data: { name: string },
+  ): Promise<{ message: string; qrKit: QRKit }> => {
+    const response = await apiClient.patch<{ message: string; qrKit: QRKit }>(
+      `/users/me/qr-kits/${id}`,
+      data,
     )
-    return response.data
-  },
-
-  getQRKitById: async (id: string): Promise<QRKit> => {
-    const response = await adminApiClient.get<QRKit>(`/admin/qr-kits/${id}`)
-    return response.data
-  },
-
-  fetchQRCodeSVG: async (url: string): Promise<string> => {
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error('Failed to fetch QR code SVG')
-    }
-    return response.text()
-  },
-
-  createQRKit: async (dto: CreateQRKitDto): Promise<QRKit> => {
-    const response = await adminApiClient.post<QRKit>('/admin/qr-kits', dto)
-    return response.data
-  },
-
-  bulkCreateQRKits: async (dto: BulkCreateDto): Promise<QRKit[]> => {
-    const response = await adminApiClient.post<QRKit[]>(
-      '/admin/qr-kits/bulk',
-      dto,
-    )
-    return response.data
-  },
-
-  downloadQRCodePNG: async (id: string): Promise<Blob> => {
-    const response = await adminApiClient.get(`/admin/qr-kits/${id}/qr-code`, {
-      responseType: 'blob',
-    })
-    return response.data
-  },
-
-  getStats: async (): Promise<QRKitStats> => {
-    const response = await adminApiClient.get<QRKitStats>(
-      '/admin/qr-kits/stats',
-    )
-    return response.data
-  },
-
-  assignQRKits: async (dto: {
-    agentId: string
-    qrKitIds: string[]
-  }): Promise<{ assigned: number; requested: number; message: string }> => {
-    const response = await adminApiClient.post('/admin/qr-kits/assign', dto)
-    return response.data
-  },
-
-  reassignQRKits: async (dto: {
-    fromAgentId: string
-    toAgentId: string
-    qrKitIds: string[]
-  }): Promise<{ reassigned: number; requested: number; message: string }> => {
-    const response = await adminApiClient.post('/admin/qr-kits/reassign', dto)
-    return response.data
-  },
-
-  unassignQRKits: async (dto: {
-    qrKitIds: string[]
-  }): Promise<{ unassigned: number; requested: number; message: string }> => {
-    const response = await adminApiClient.post('/admin/qr-kits/unassign', dto)
-    return response.data
-  },
-
-  deleteQRKit: async (id: string): Promise<{ message: string }> => {
-    const response = await adminApiClient.delete(`/admin/qr-kits/${id}`)
     return response.data
   },
 }
-
 
 // Hooks
-export const useQRKits = (filters?: QRKitFilters) => {
-  return useQuery({
-    queryKey: ['qr-kits', filters],
-    queryFn: () => qrKitsApi.getQRKits(filters),
-  })
-}
-
-export const useQRKit = (id: string | null) => {
-  return useQuery({
-    queryKey: ['qr-kit', id],
-    queryFn: () => {
-      if (!id) throw new Error('QRKit ID is required')
-      return qrKitsApi.getQRKitById(id)
-    },
-    enabled: !!id,
-  })
-}
-
 export const useQRCodeSVG = (url: string | null | undefined) => {
   return useQuery({
     queryKey: ['qr-code-svg', url],
-    queryFn: () => {
+    queryFn: async () => {
       if (!url) throw new Error('SVG URL is required')
-      return qrKitsApi.fetchQRCodeSVG(url)
+      const response = await fetch(url)
+      if (!response.ok) {
+        throw new Error('Failed to fetch QR code SVG')
+      }
+      return response.text()
     },
     enabled: !!url,
-  })
-}
-
-export const useQRKitStats = () => {
-  return useQuery({
-    queryKey: ['qr-kit-stats'],
-    queryFn: () => qrKitsApi.getStats(),
-  })
-}
-
-export const useCreateQRKit = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (dto: CreateQRKitDto) => qrKitsApi.createQRKit(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
-    },
-  })
-}
-
-export const useBulkCreateQRKits = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (dto: BulkCreateDto) => qrKitsApi.bulkCreateQRKits(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
-    },
-  })
-}
-
-export const useDownloadQRCodePNG = () => {
-  return useMutation({
-    mutationFn: async ({
-      id,
-      serialNumber,
-    }: {
-      id: string
-      serialNumber: string
-    }) => {
-      const blob = await qrKitsApi.downloadQRCodePNG(id)
-
-      // Create download link
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${serialNumber}.png`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    },
   })
 }
 
@@ -219,11 +75,12 @@ export const useMerchantBySerial = (serialNumber: string | null) => {
   })
 }
 
-export const useUserQRKits = () => {
+export const useUserQRKits = (options?: { enabled?: boolean }) => {
   return useQuery({
     queryKey: ['user', 'qr-kits'],
     queryFn: () => userQrApi.getUserQRKits(),
     retry: false,
+    enabled: options?.enabled ?? true,
   })
 }
 
@@ -239,59 +96,14 @@ export const useUserQRKit = (id: string | null) => {
   })
 }
 
-export const useAssignQRKits = () => {
+export const useUpdateQRKit = () => {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: (dto: { agentId: string; qrKitIds: string[] }) =>
-      qrKitsApi.assignQRKits(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
-    },
-  })
-}
-
-export const useReassignQRKits = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (dto: {
-      fromAgentId: string
-      toAgentId: string
-      qrKitIds: string[]
-    }) => qrKitsApi.reassignQRKits(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
-    },
-  })
-}
-
-export const useUnassignQRKits = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (dto: { qrKitIds: string[] }) =>
-      qrKitsApi.unassignQRKits(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
-    },
-  })
-}
-
-export const useDeleteQRKit = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (id: string) => qrKitsApi.deleteQRKit(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['qr-kit-stats'] })
+    mutationFn: ({ id, data }: { id: string; data: { name: string } }) =>
+      userQrApi.updateUserQRKit(id, data),
+    onSuccess: (data, { id }) => {
+      queryClient.setQueryData(['user', 'qr-kit', id], data.qrKit)
+      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
     },
   })
 }

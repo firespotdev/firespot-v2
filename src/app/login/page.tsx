@@ -156,7 +156,7 @@ function LoginPageContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="h-screen bg-white" />}>
+    <Suspense fallback={<div className="h-dvh bg-white" />}>
       <LoginPageContent />
     </Suspense>
   )
