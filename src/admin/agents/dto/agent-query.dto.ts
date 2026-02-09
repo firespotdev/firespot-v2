@@ -1,42 +1,42 @@
-import { ApiPropertyOptional } from '@nestjs/swagger'
-import { IsString, IsOptional, IsIn, IsInt, Min, Max } from 'class-validator'
-import { Type } from 'class-transformer'
+import { ApiPropertyOptional } from "@nestjs/swagger";
+import { IsString, IsOptional, IsIn, IsInt, Min, Max } from "class-validator";
+import { Type } from "class-transformer";
 
 export class AgentQueryDto {
   @ApiPropertyOptional({
-    description: 'Filter by status',
-    enum: ['active', 'inactive', 'suspended'],
+    description: "Filter by status",
+    enum: ["active", "inactive", "suspended"],
   })
-  @IsIn(['active', 'inactive', 'suspended'])
+  @IsIn(["active", "inactive", "suspended"])
   @IsOptional()
-  status?: string
+  status?: string;
 
   @ApiPropertyOptional({
-    description: 'Filter by state',
-    example: 'Ogun',
-  })
-  @IsString()
-  @IsOptional()
-  state?: string
-
-  @ApiPropertyOptional({
-    description: 'Filter by Local Government Area',
-    example: 'Abeokuta North',
+    description: "Filter by state",
+    example: "Ogun",
   })
   @IsString()
   @IsOptional()
-  lga?: string
+  state?: string;
 
   @ApiPropertyOptional({
-    description: 'Search by name, agentId, or phone number',
-    example: 'John',
+    description: "Filter by Local Government Area",
+    example: "Abeokuta North",
   })
   @IsString()
   @IsOptional()
-  search?: string
+  lga?: string;
 
   @ApiPropertyOptional({
-    description: 'Page number',
+    description: "Search by name, agentId, or phone number",
+    example: "John",
+  })
+  @IsString()
+  @IsOptional()
+  search?: string;
+
+  @ApiPropertyOptional({
+    description: "Page number",
     example: 1,
     default: 1,
   })
@@ -44,10 +44,10 @@ export class AgentQueryDto {
   @IsInt()
   @Min(1)
   @IsOptional()
-  page?: number
+  page?: number;
 
   @ApiPropertyOptional({
-    description: 'Items per page',
+    description: "Items per page",
     example: 50,
     default: 50,
   })
@@ -56,5 +56,5 @@ export class AgentQueryDto {
   @Min(1)
   @Max(100)
   @IsOptional()
-  limit?: number
+  limit?: number;
 }

@@ -1,16 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { Admin, AdminDocument } from '../../schemas/admin.schema';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
+import { ConfigService } from "@nestjs/config";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import { Admin, AdminDocument } from "../../schemas/admin.schema";
 
 @Injectable()
-export class AdminJwtStrategy extends PassportStrategy(
-  Strategy,
-  'admin-jwt',
-) {
+export class AdminJwtStrategy extends PassportStrategy(Strategy, "admin-jwt") {
   constructor(
     private configService: ConfigService,
     @InjectModel(Admin.name) private adminModel: Model<AdminDocument>,
@@ -18,7 +15,7 @@ export class AdminJwtStrategy extends PassportStrategy(
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('ADMIN_JWT_SECRET'),
+      secretOrKey: configService.get<string>("ADMIN_JWT_SECRET"),
     });
   }
 
@@ -29,7 +26,7 @@ export class AdminJwtStrategy extends PassportStrategy(
     });
 
     if (!admin) {
-      throw new UnauthorizedException('Admin not found or inactive');
+      throw new UnauthorizedException("Admin not found or inactive");
     }
 
     return {

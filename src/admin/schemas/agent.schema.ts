@@ -1,64 +1,64 @@
-import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
-import { Document } from 'mongoose'
+import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
+import { Document } from "mongoose";
 
 @Schema({ timestamps: true })
 export class Agent extends Document {
   @Prop({ required: true, unique: true, index: true })
-  agentId: string // Format: "AGT-001", "AGT-002", etc.
+  agentId: string; // Format: "AGT-001", "AGT-002", etc.
 
   @Prop({ required: true })
-  name: string
+  name: string;
 
   @Prop({ required: true, index: true })
-  phoneNumber: string
+  phoneNumber: string;
 
   @Prop()
-  email?: string
+  email?: string;
 
   @Prop({ index: true })
-  state?: string // Nigerian state
+  state?: string; // Nigerian state
 
   @Prop({ index: true })
-  lga?: string // Local Government Area
+  lga?: string; // Local Government Area
 
   @Prop()
-  bustop?: string // Bus stop location
+  bustop?: string; // Bus stop location
 
-  @Prop({ default: 'active', index: true })
-  status: string // 'active' | 'inactive' | 'suspended'
+  @Prop({ default: "active", index: true })
+  status: string; // 'active' | 'inactive' | 'suspended'
 
   @Prop()
-  notes?: string // Admin notes about the agent
+  notes?: string; // Admin notes about the agent
 
   @Prop({ unique: true, sparse: true, index: true })
-  referralCode?: string // 8-char alphanumeric referral code for merchants
+  referralCode?: string; // 8-char alphanumeric referral code for merchants
 
   @Prop()
-  bankCode?: string
+  bankCode?: string;
 
   @Prop()
-  bankName?: string
+  bankName?: string;
 
   @Prop()
-  accountNumber?: string
+  accountNumber?: string;
 
   @Prop()
-  accountName?: string
+  accountName?: string;
 
   @Prop({ unique: true, sparse: true, index: true })
-  subaccountCode?: string // Paystack subaccount code
+  subaccountCode?: string; // Paystack subaccount code
 
-  createdAt?: Date
-  updatedAt?: Date
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export const AgentSchema = SchemaFactory.createForClass(Agent)
-export type AgentDocument = Agent & Document
+export const AgentSchema = SchemaFactory.createForClass(Agent);
+export type AgentDocument = Agent & Document;
 
 // Indexes
-AgentSchema.index({ agentId: 1 })
-AgentSchema.index({ phoneNumber: 1 })
-AgentSchema.index({ status: 1 })
-AgentSchema.index({ state: 1 })
-AgentSchema.index({ lga: 1 })
-AgentSchema.index({ referralCode: 1 }, { sparse: true })
+AgentSchema.index({ agentId: 1 });
+AgentSchema.index({ phoneNumber: 1 });
+AgentSchema.index({ status: 1 });
+AgentSchema.index({ state: 1 });
+AgentSchema.index({ lga: 1 });
+AgentSchema.index({ referralCode: 1 }, { sparse: true });

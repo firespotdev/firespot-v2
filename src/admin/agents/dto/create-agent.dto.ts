@@ -1,97 +1,97 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsString,
   IsNotEmpty,
   IsOptional,
   IsEmail,
   Matches,
-} from 'class-validator'
+} from "class-validator";
 
 export class CreateAgentDto {
   @ApiProperty({
-    description: 'Agent full name',
-    example: 'John Doe',
+    description: "Agent full name",
+    example: "John Doe",
   })
   @IsString()
   @IsNotEmpty()
-  name: string
+  name: string;
 
   @ApiProperty({
-    description: 'Phone number (Nigerian format)',
-    example: '08012345678',
+    description: "Phone number (Nigerian format)",
+    example: "08012345678",
   })
   @IsString()
   @IsNotEmpty()
   @Matches(/^0[7-9][0-1]\d{8}$/, {
-    message: 'Invalid Nigerian phone number format',
+    message: "Invalid Nigerian phone number format",
   })
-  phoneNumber: string
+  phoneNumber: string;
 
   @ApiPropertyOptional({
-    description: 'Email address',
-    example: 'john@example.com',
+    description: "Email address",
+    example: "john@example.com",
   })
   @IsEmail()
   @IsOptional()
-  email?: string
+  email?: string;
 
   @ApiPropertyOptional({
-    description: 'Nigerian state',
-    example: 'Ogun',
+    description: "Nigerian state",
+    example: "Ogun",
   })
   @IsString()
   @IsOptional()
-  state?: string
+  state?: string;
 
   @ApiPropertyOptional({
-    description: 'Local Government Area',
-    example: 'Abeokuta North',
+    description: "Local Government Area",
+    example: "Abeokuta North",
   })
   @IsString()
   @IsOptional()
-  lga?: string
+  lga?: string;
 
   @ApiPropertyOptional({
-    description: 'Bus stop location',
-    example: 'Obantoko',
+    description: "Bus stop location",
+    example: "Obantoko",
   })
   @IsString()
   @IsOptional()
-  bustop?: string
+  bustop?: string;
 
   @IsString()
   @IsOptional()
-  notes?: string
+  notes?: string;
 
   @ApiPropertyOptional({
-    description: 'Bank code',
-    example: '058',
+    description: "Bank code",
+    example: "058",
   })
   @IsString()
   @IsOptional()
-  bankCode?: string
+  bankCode?: string;
 
   @ApiPropertyOptional({
-    description: 'Account number',
-    example: '0123456789',
+    description: "Account number",
+    example: "0123456789",
   })
   @IsString()
   @IsOptional()
-  accountNumber?: string
+  accountNumber?: string;
 
   @ApiPropertyOptional({
-    description: 'Bank name',
-    example: 'Guaranty Trust Bank',
+    description: "Bank name",
+    example: "Guaranty Trust Bank",
   })
   @IsString()
   @IsOptional()
-  bankName?: string
+  bankName?: string;
 
   @ApiPropertyOptional({
-    description: 'Account name',
-    example: 'JOHN DOE',
+    description: "Account name",
+    example: "JOHN DOE",
   })
   @IsString()
   @IsOptional()
-  accountName?: string
+  accountName?: string;
 }

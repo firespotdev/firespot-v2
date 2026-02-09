@@ -8,176 +8,184 @@ import {
   Query,
   Body,
   UseGuards,
-} from '@nestjs/common'
+} from "@nestjs/common";
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
-} from '@nestjs/swagger'
-import { AdminAgentsService } from './admin-agents.service'
-import { AdminJwtAuthGuard } from '../admin-auth/guards/admin-jwt-auth.guard'
-import { CreateAgentDto } from './dto/create-agent.dto'
-import { UpdateAgentDto } from './dto/update-agent.dto'
-import { AgentQueryDto } from './dto/agent-query.dto'
+} from "@nestjs/swagger";
+import { AdminAgentsService } from "./admin-agents.service";
+import { AdminJwtAuthGuard } from "../admin-auth/guards/admin-jwt-auth.guard";
+import { CreateAgentDto } from "./dto/create-agent.dto";
+import { UpdateAgentDto } from "./dto/update-agent.dto";
+import { AgentQueryDto } from "./dto/agent-query.dto";
 
-@ApiTags('admin-agents')
-@Controller('admin/agents')
+@ApiTags("admin-agents")
+@Controller("admin/agents")
 @UseGuards(AdminJwtAuthGuard)
-@ApiBearerAuth('admin-jwt')
+@ApiBearerAuth("admin-jwt")
 export class AdminAgentsController {
   constructor(private readonly adminAgentsService: AdminAgentsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new agent' })
+  @ApiOperation({ summary: "Create a new agent" })
   @ApiResponse({
     status: 201,
-    description: 'Agent created successfully',
+    description: "Agent created successfully",
   })
-  @ApiResponse({ status: 400, description: 'Invalid input' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 400, description: "Invalid input" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
   async create(@Body() createAgentDto: CreateAgentDto) {
-    return this.adminAgentsService.create(createAgentDto)
+    return this.adminAgentsService.create(createAgentDto);
   }
 
   @Get()
-  @ApiOperation({ summary: 'List all agents with filters and pagination' })
+  @ApiOperation({ summary: "List all agents with filters and pagination" })
   @ApiResponse({
     status: 200,
-    description: 'Agents retrieved successfully',
+    description: "Agents retrieved successfully",
   })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
   async findAll(@Query() queryDto: AgentQueryDto) {
-    return this.adminAgentsService.findAll(queryDto)
+    return this.adminAgentsService.findAll(queryDto);
   }
 
-  @Get('stats')
-  @ApiOperation({ summary: 'Get global agent statistics' })
+  @Get("stats")
+  @ApiOperation({ summary: "Get global agent statistics" })
   @ApiResponse({
     status: 200,
-    description: 'Agent statistics retrieved successfully',
+    description: "Agent statistics retrieved successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        total: { type: 'number', example: 25 },
+        total: { type: "number", example: 25 },
         byStatus: {
-          type: 'object',
+          type: "object",
           properties: {
-            active: { type: 'number', example: 20 },
-            inactive: { type: 'number', example: 3 },
-            suspended: { type: 'number', example: 2 },
+            active: { type: "number", example: 20 },
+            inactive: { type: "number", example: 3 },
+            suspended: { type: "number", example: 2 },
           },
         },
         byState: {
-          type: 'object',
-          additionalProperties: { type: 'number' },
+          type: "object",
+          additionalProperties: { type: "number" },
           example: {
-            'Ogun': 10,
-            'Lagos': 8,
-            'Abuja': 7,
+            Ogun: 10,
+            Lagos: 8,
+            Abuja: 7,
           },
         },
       },
     },
   })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
   async getStats() {
-    return this.adminAgentsService.getStats()
+    return this.adminAgentsService.getStats();
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Get agent details by ID with QRKit statistics' })
-  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @Get(":id")
+  @ApiOperation({ summary: "Get agent details by ID with QRKit statistics" })
+  @ApiParam({ name: "id", description: "Agent ID (MongoDB ObjectId)" })
   @ApiResponse({
     status: 200,
-    description: 'Agent retrieved successfully with QRKit stats',
+    description: "Agent retrieved successfully with QRKit stats",
   })
-  @ApiResponse({ status: 404, description: 'Agent not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async findById(@Param('id') id: string) {
-    return this.adminAgentsService.findById(id)
+  @ApiResponse({ status: 404, description: "Agent not found" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async findById(@Param("id") id: string) {
+    return this.adminAgentsService.findById(id);
   }
 
-  @Get(':id/qr-kits')
-  @ApiOperation({ summary: 'Get QRKits assigned to an agent' })
-  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @Get(":id/qr-kits")
+  @ApiOperation({ summary: "Get QRKits assigned to an agent" })
+  @ApiParam({ name: "id", description: "Agent ID (MongoDB ObjectId)" })
   @ApiResponse({
     status: 200,
-    description: 'QRKits retrieved successfully',
+    description: "QRKits retrieved successfully",
   })
-  @ApiResponse({ status: 404, description: 'Agent not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: "Agent not found" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
   async getAgentQRKits(
-    @Param('id') id: string,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
+    @Param("id") id: string,
+    @Query("page") page?: number,
+    @Query("limit") limit?: number,
   ) {
     return this.adminAgentsService.getAgentQRKits(id, {
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
-    })
+    });
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Update agent details' })
-  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @Patch(":id")
+  @ApiOperation({ summary: "Update agent details" })
+  @ApiParam({ name: "id", description: "Agent ID (MongoDB ObjectId)" })
   @ApiResponse({
     status: 200,
-    description: 'Agent updated successfully',
+    description: "Agent updated successfully",
   })
-  @ApiResponse({ status: 404, description: 'Agent not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: "Agent not found" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
   async update(
-    @Param('id') id: string,
+    @Param("id") id: string,
     @Body() updateAgentDto: UpdateAgentDto,
   ) {
-    return this.adminAgentsService.update(id, updateAgentDto)
+    return this.adminAgentsService.update(id, updateAgentDto);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Deactivate agent (sets status to inactive, unassigns unactivated QR kits)' })
-  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @Delete(":id")
+  @ApiOperation({
+    summary:
+      "Deactivate agent (sets status to inactive, unassigns unactivated QR kits)",
+  })
+  @ApiParam({ name: "id", description: "Agent ID (MongoDB ObjectId)" })
   @ApiResponse({
     status: 200,
-    description: 'Agent deactivated successfully',
+    description: "Agent deactivated successfully",
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        agent: { type: 'object' },
-        unassignedCount: { type: 'number', description: 'Number of unactivated QR kits that were unassigned' },
+        agent: { type: "object" },
+        unassignedCount: {
+          type: "number",
+          description: "Number of unactivated QR kits that were unassigned",
+        },
       },
     },
   })
-  @ApiResponse({ status: 404, description: 'Agent not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async remove(@Param('id') id: string) {
-    return this.adminAgentsService.remove(id)
+  @ApiResponse({ status: 404, description: "Agent not found" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async remove(@Param("id") id: string) {
+    return this.adminAgentsService.remove(id);
   }
 
-  @Patch(':id/suspend')
-  @ApiOperation({ summary: 'Suspend agent (blocks new assignments, keeps all QR kits)' })
-  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @Patch(":id/suspend")
+  @ApiOperation({
+    summary: "Suspend agent (blocks new assignments, keeps all QR kits)",
+  })
+  @ApiParam({ name: "id", description: "Agent ID (MongoDB ObjectId)" })
   @ApiResponse({
     status: 200,
-    description: 'Agent suspended successfully',
+    description: "Agent suspended successfully",
   })
-  @ApiResponse({ status: 404, description: 'Agent not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async suspend(@Param('id') id: string) {
-    return this.adminAgentsService.suspend(id)
+  @ApiResponse({ status: 404, description: "Agent not found" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async suspend(@Param("id") id: string) {
+    return this.adminAgentsService.suspend(id);
   }
 
-  @Patch(':id/reactivate')
-  @ApiOperation({ summary: 'Reactivate agent (restores status to active)' })
-  @ApiParam({ name: 'id', description: 'Agent ID (MongoDB ObjectId)' })
+  @Patch(":id/reactivate")
+  @ApiOperation({ summary: "Reactivate agent (restores status to active)" })
+  @ApiParam({ name: "id", description: "Agent ID (MongoDB ObjectId)" })
   @ApiResponse({
     status: 200,
-    description: 'Agent reactivated successfully',
+    description: "Agent reactivated successfully",
   })
-  @ApiResponse({ status: 404, description: 'Agent not found' })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async reactivate(@Param('id') id: string) {
-    return this.adminAgentsService.reactivate(id)
+  @ApiResponse({ status: 404, description: "Agent not found" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async reactivate(@Param("id") id: string) {
+    return this.adminAgentsService.reactivate(id);
   }
 }

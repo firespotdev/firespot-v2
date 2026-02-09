@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common'
-import { MongooseModule } from '@nestjs/mongoose'
-import { ScansController } from './scans.controller'
-import { ScansService } from './scans.service'
-import { Scan, ScanSchema } from '../schemas/scan.schema'
-import { QRKit, QRKitSchema } from '../schemas/qrkit.schema'
-import { User, UserSchema } from '../schemas/user.schema'
+import { Module } from "@nestjs/common";
+import { MongooseModule } from "@nestjs/mongoose";
+import { ScansController } from "./scans.controller";
+import { ScansService } from "./scans.service";
+import { Scan, ScanSchema } from "../schemas/scan.schema";
+import { QRKit, QRKitSchema } from "../schemas/qrkit.schema";
+import { User, UserSchema } from "../schemas/user.schema";
 
 @Module({
   imports: [

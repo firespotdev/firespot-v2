@@ -3,14 +3,14 @@ import {
   UnauthorizedException,
   HttpException,
   HttpStatus,
-} from '@nestjs/common'
-import { JwtService } from '@nestjs/jwt'
-import { ConfigService } from '@nestjs/config'
-import { InjectModel } from '@nestjs/mongoose'
-import { Model } from 'mongoose'
-import * as bcrypt from 'bcrypt'
-import { Admin, AdminDocument } from '../schemas/admin.schema'
-import { AdminLoginDto } from './dto/admin-login.dto'
+} from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@nestjs/config";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
+import * as bcrypt from "bcrypt";
+import { Admin, AdminDocument } from "../schemas/admin.schema";
+import { AdminLoginDto } from "./dto/admin-login.dto";
 
 @Injectable()
 export class AdminAuthService {
@@ -21,29 +21,29 @@ export class AdminAuthService {
   ) {}
 
   async login(loginDto: AdminLoginDto) {
-    const { adminId, password } = loginDto
+    const { adminId, password } = loginDto;
 
     // Find admin
-    const admin = await this.adminModel.findOne({ adminId, isActive: true })
+    const admin = await this.adminModel.findOne({ adminId, isActive: true });
 
     if (!admin) {
-      throw new UnauthorizedException('Invalid admin ID or password')
+      throw new UnauthorizedException("Invalid admin ID or password");
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(password, admin.password)
+    const isPasswordValid = await bcrypt.compare(password, admin.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid admin ID or password')
+      throw new UnauthorizedException("Invalid admin ID or password");
     }
 
     // Update last login
-    admin.lastLoginAt = new Date()
-    await admin.save()
+    admin.lastLoginAt = new Date();
+    await admin.save();
 
     // Generate JWT token
-    const payload = { sub: admin.adminId, role: admin.role }
-    const accessToken = this.jwtService.sign(payload)
+    const payload = { sub: admin.adminId, role: admin.role };
+    const accessToken = this.jwtService.sign(payload);
 
     return {
       accessToken,
@@ -52,25 +52,25 @@ export class AdminAuthService {
         name: admin.name,
         role: admin.role,
       },
-    }
+    };
   }
 
   async getAdminProfile(adminId: string) {
     const admin = await this.adminModel
       .findOne({ adminId, isActive: true })
-      .select('-password')
+      .select("-password");
 
     if (!admin) {
-      throw new HttpException('Admin not found', HttpStatus.NOT_FOUND)
+      throw new HttpException("Admin not found", HttpStatus.NOT_FOUND);
     }
 
-    const adminObj = admin.toObject() as any
+    const adminObj = admin.toObject() as any;
     return {
       adminId: admin.adminId,
       name: admin.name,
       role: admin.role,
       lastLoginAt: admin.lastLoginAt,
       createdAt: adminObj.createdAt,
-    }
+    };
   }
 }
