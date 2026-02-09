@@ -34,6 +34,17 @@ export const userQrApi = {
     const response = await apiClient.get<QRKit>(`/users/me/qr-kits/${id}`)
     return response.data
   },
+
+  updateUserQRKit: async (
+    id: string,
+    data: { name: string },
+  ): Promise<{ message: string; qrKit: QRKit }> => {
+    const response = await apiClient.patch<{ message: string; qrKit: QRKit }>(
+      `/users/me/qr-kits/${id}`,
+      data,
+    )
+    return response.data
+  },
 }
 
 // Hooks
@@ -82,5 +93,17 @@ export const useUserQRKit = (id: string | null) => {
     },
     enabled: !!id,
     retry: false,
+  })
+}
+
+export const useUpdateQRKit = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name: string } }) =>
+      userQrApi.updateUserQRKit(id, data),
+    onSuccess: (data, { id }) => {
+      queryClient.setQueryData(['user', 'qr-kit', id], data.qrKit)
+      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
+    },
   })
 }

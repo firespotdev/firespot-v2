@@ -90,7 +90,7 @@ export default function QRKitsPage() {
 
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-[13px] font-bold text-[#111827]">
-                        {qrKit.serialNumber || `QR kit ${index + 1}`}
+                        {qrKit.name || qrKit.serialNumber || `QR kit ${index + 1}`}
                       </p>
                       <p className="text-xs font-medium text-[#6B7280] mt-0.5">
                         {statusText}

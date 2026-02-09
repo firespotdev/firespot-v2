@@ -6,8 +6,9 @@ import { ArrowLeft, Check, Copy, Download, Share } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuthStore } from '@/services/auth'
-import { useUserQRKit, useQRCodeSVG } from '@/services/qr'
+import { useUserQRKit, useQRCodeSVG, useUpdateQRKit } from '@/services/qr'
 import { Button, LoaderCircle, showNotificationToast } from '@/components/ui'
+import { Pencil } from 'lucide-react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
 import { getInitials } from '@/lib/utils'
@@ -28,8 +29,42 @@ export default function QRKitDetailPage() {
   const { data: profile } = useUserProfile()
 
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [kitName, setKitName] = useState('')
   const cardRef = useRef<HTMLDivElement>(null)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const updateQRKit = useUpdateQRKit()
+
+  useEffect(() => {
+    if (qrKit?.name) {
+      setKitName(qrKit.name)
+    }
+  }, [qrKit?.name])
+
+  const handleUpdateName = async () => {
+    if (!kitName.trim() || kitName === qrKit?.name) {
+      setIsEditingName(false)
+      return
+    }
+
+    try {
+      await updateQRKit.mutateAsync({
+        id,
+        data: { name: kitName.trim() },
+      })
+      showNotificationToast({
+        message: 'Name updated successfully',
+        duration: 2000,
+      })
+      setIsEditingName(false)
+    } catch (error) {
+      console.error('Failed to update name:', error)
+      showNotificationToast({
+        message: 'Failed to update name',
+        duration: 2000,
+      })
+    }
+  }
 
   // Apply gradient branding to SVG
   const brandedSvg = useMemo(() => {
@@ -110,7 +145,7 @@ export default function QRKitDetailPage() {
             </Link>
             <div className="flex-1 text-center">
               <h1 className="text-base font-bold text-black">
-                {qrKit.serialNumber}
+                {qrKit.name || qrKit.serialNumber}
               </h1>
               <p className="text-xs text-[#00000066] font-medium">
                 Collecting payments
@@ -386,6 +421,52 @@ export default function QRKitDetailPage() {
         <div className="bg-white py-5 px-4">
           <div className="w-full">
             <div className="space-y-5">
+              <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5">
+                <span className="text-sm font-medium text-[#00000080]">
+                  Name
+                </span>
+                <div className="flex-1 ml-4 flex justify-end min-w-0">
+                  {isEditingName ? (
+                    <div className="flex items-center gap-2 w-full max-w-[220px] min-w-0">
+                      <input
+                        type="text"
+                        value={kitName}
+                        onChange={(e) => setKitName(e.target.value)}
+                        className="flex-1 min-w-0 text-sm font-bold text-black bg-[#F4F6F8] rounded-lg px-2 py-1 outline-none border border-[#0075FF]"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdateName()
+                          if (e.key === 'Escape') {
+                            setKitName(qrKit.name || '')
+                            setIsEditingName(false)
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleUpdateName}
+                        disabled={updateQRKit.isPending}
+                        className="shrink-0 w-fit h-8 text-xs font-bold px-3"
+                      >
+                        {updateQRKit.isPending ? 'Saving...' : 'Save'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 truncate">
+                      <span className="text-sm font-bold text-black truncate">
+                        {qrKit.name || 'Not set'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingName(true)}
+                        className="p-1"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-[#00000066]" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5">
                 <span className="text-sm font-medium text-[#00000080]">
                   Status
