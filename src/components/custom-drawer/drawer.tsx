@@ -115,7 +115,7 @@ export function CustomDrawer() {
         onOpenChange={(open) => !open && closeDrawer()}
         direction={drawerDirection}
       >
-        <DrawerContent className="max-w-125 mx-auto bg-white rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[95vh]">
+        <DrawerContent className="max-w-125 mx-auto bg-white rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[85vh]">
           {/* Header */}
           <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
             <div className="w-9 h-9 flex items-center justify-center">
@@ -158,7 +158,7 @@ export function CustomDrawer() {
       onOpenChange={(open) => !open && closeDrawer()}
       direction={drawerDirection}
     >
-      <DrawerContent className="max-h-[85vh] max-w-125 mx-auto bg-[#F4F6F8]">
+      <DrawerContent className="max-w-125 mx-auto bg-white data-[vaul-drawer-direction=bottom]:max-h-[85vh]">
         {/* Header */}
         <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
           <div className="w-9 h-9 flex items-center justify-center">
