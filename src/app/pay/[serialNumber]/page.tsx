@@ -370,7 +370,7 @@ export default function PaymentPage() {
           <div className="fixed bottom-0 left-0 right-0 border-t border-[#F1F1F1] bg-white p-4 pb-6 rounded-t-[32px]">
             <div className="max-w-125 mx-auto">
             <Button asChild className="w-full">
-              <Link href={`/login?redirect=/activate&serial=${serialNumber}`}>
+              <Link href={`/signup?redirect=/activate&serial=${serialNumber}`}>
                 Login and activate this QR kit
               </Link>
             </Button>

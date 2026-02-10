@@ -48,11 +48,11 @@ export function PageHeader({
       try {
         await navigator.share({
           title: `Share transfer link`,
-          url: `https://lite.firespot.co/pay/${firstSerialNumber}`,
+          url: `${process.env.NEXT_PUBLIC_APP_URL}/pay/${firstSerialNumber}`,
         })
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {
-          navigator.clipboard.writeText(`https://lite.firespot.co/pay/${firstSerialNumber}`)
+          navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_APP_URL}/pay/${firstSerialNumber}`)
           showNotificationToast({
             message: 'Link copied to clipboard!',
             duration: 2000,
