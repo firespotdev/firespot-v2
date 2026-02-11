@@ -126,6 +126,12 @@ export default function PreviewPage() {
           title="Transfer to"
           showDropdown
           onTitleClick={handleOpenBankDrawer}
+          onShareClick={() => {
+            showNotificationToast({
+              message: 'Only available to customers',
+              duration: 2000,
+            })
+          }}
         />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">

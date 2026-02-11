@@ -106,7 +106,7 @@ export function PageHeader({
         )}
       </button>
 
-      {onShareClick && !isAuthenticated && (
+      {onShareClick && (
         <button
           onClick={onShareClick}
           type="button"
@@ -116,7 +116,7 @@ export function PageHeader({
         </button>
       )}
 
-      {isAuthenticated && hasQRKits && (
+      {/* {isAuthenticated && hasQRKits && (
         <button
           onClick={handleShareClick}
           type="button"
@@ -124,10 +124,10 @@ export function PageHeader({
         >
           <Share stroke="#868788" size={20} />
         </button>
-      )}
+      )} */}
 
-      {!onShareClick && !isAuthenticated && <div className="h-9 w-9" />}
-      {isAuthenticated && !hasQRKits && <div className="h-9 w-9" />}
+      {!onShareClick && <div className="h-9 w-9" />}
+      {/* {isAuthenticated && !hasQRKits && <div className="h-9 w-9" />} */}
     </header>
   )
 }

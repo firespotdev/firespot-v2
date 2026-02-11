@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle } from '@/components/ui'
+import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantInsights } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
@@ -37,7 +37,6 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
-  const user = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
   // Redirect to login if not authenticated
@@ -99,6 +98,29 @@ export default function ProfilePage() {
     e.target.value = ''
   }
 
+  const handleShareClick = async () => {
+      if (qrKitsData?.data[0].serialNumber) {
+    console.log('handleShareClick')
+        try {
+          await navigator.share({
+            title: `Share transfer link`,
+            url: `${process.env.NEXT_PUBLIC_APP_URL}/pay/${qrKitsData?.data[0].serialNumber}`,
+          })
+        } catch (error) {
+          navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_APP_URL}/pay/${qrKitsData?.data[0].serialNumber}`)
+            showNotificationToast({
+              message: 'Link copied to clipboard!',
+              duration: 2000,
+            })
+        }
+      } else {
+        showNotificationToast({
+          message: 'No QR kits found!',
+          duration: 2000,
+        })
+      }
+    }
+
   if (isLoading) {
     return (
       <div className="h-dvh bg-[#F4F6F8] flex items-center justify-center">
@@ -122,6 +144,7 @@ export default function ProfilePage() {
               },
             })
           }
+          onShareClick={handleShareClick}
         />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
