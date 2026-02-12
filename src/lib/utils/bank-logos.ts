@@ -3,7 +3,6 @@
 export const BANK_PLACEHOLDER = '/bank_logos/bank_placeholder.png'
 
 const BANK_LOGO_MAP: Record<string, string> = {
-  // Major Banks
   'access bank': 'access-bank.png',
   'access bank (diamond)': 'access-bank-diamond.png',
   'access diamond': 'access-bank-diamond.png',

@@ -66,7 +66,7 @@ export function useResolveAccount() {
       return paystackApi.resolveAccount(accountNumber, bankCode)
     },
     onSuccess: (data) => {
-      console.log('Account resolved:', data.accountName)
+      console.log('Account resolved')
     },
     onError: (error: any) => {
       const errorMessage =

@@ -100,7 +100,6 @@ export default function ProfilePage() {
 
   const handleShareClick = async () => {
       if (qrKitsData?.data[0].serialNumber) {
-    console.log('handleShareClick')
         try {
           await navigator.share({
             title: `Share transfer link`,
