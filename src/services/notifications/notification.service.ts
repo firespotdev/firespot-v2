@@ -19,8 +19,8 @@ export class NotificationService {
    */
   async sendAgentWelcome(agent: AgentDocument): Promise<void> {
     const supportPhone = this.configService.get<string>(
-      "SUPPORT_PHONE_NUMBER",
-      "+234 XXX XXX XXXX",
+      "SUPPORT_EMAIL",
+      "support@firespot.co",
     );
 
     // SMS Message
@@ -81,8 +81,8 @@ Agent support: ${supportPhone}
    */
   async sendAgentSuspended(agent: AgentDocument): Promise<void> {
     const supportPhone = this.configService.get<string>(
-      "SUPPORT_PHONE_NUMBER",
-      "+234 XXX XXX XXXX",
+      "SUPPORT_EMAIL",
+      "support@firespot.co",
     );
 
     const smsMessage = `Your Firespot Agent account (${agent.agentId}) has been suspended. You can no longer perform any activities as a Firespot Agent. Contact support at ${supportPhone} if you have questions.`;
@@ -125,8 +125,8 @@ Agent support: ${supportPhone}
    */
   async sendAgentDeactivated(agent: AgentDocument): Promise<void> {
     const supportPhone = this.configService.get<string>(
-      "SUPPORT_PHONE_NUMBER",
-      "+234 XXX XXX XXXX",
+      "SUPPORT_EMAIL",
+      "support@firespot.co",
     );
 
     const smsMessage = `Your Firespot Agent account (${agent.agentId}) has been deactivated. Any unactivated QR kits assigned to you have been unassigned. Contact support at ${supportPhone} if you have questions.`;
@@ -169,8 +169,8 @@ Agent support: ${supportPhone}
    */
   async sendAgentReactivated(agent: AgentDocument): Promise<void> {
     const supportPhone = this.configService.get<string>(
-      "SUPPORT_PHONE_NUMBER",
-      "+234 XXX XXX XXXX",
+      "SUPPORT_EMAIL",
+      "support@firespot.co",
     );
 
     const smsMessage = `Your Firespot Agent account (${agent.agentId}) has been reactivated. You can now resume your activities as a Firespot Agent. Support: ${supportPhone}`;
