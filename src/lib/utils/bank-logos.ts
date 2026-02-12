@@ -1,6 +1,4 @@
 // Bank name to logo mapping
-// File names are in kebab-case format in /bank_logos folder
-// Only includes banks with deeplinks defined in bank-deeplinks.ts
 
 export const BANK_PLACEHOLDER = '/bank_logos/bank_placeholder.png'
 
@@ -93,8 +91,7 @@ const BANK_LOGO_MAP: Record<string, string> = {
 }
 
 /**
- * Get the logo path for a bank (best-effort mapping)
- * Use with BankLogo component which handles missing files gracefully
+ * Get the logo path for a bank
  */
 export function getBankLogoPath(bankName: string): string {
   if (!bankName) return BANK_PLACEHOLDER
