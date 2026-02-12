@@ -87,15 +87,6 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-### Available Scripts
-
-| Command        | Description                    |
-| -------------- | ------------------------------ |
-| `pnpm dev`     | Start development server       |
-| `pnpm build`   | Build for production           |
-| `pnpm start`   | Start production server        |
-| `pnpm lint`    | Run ESLint                     |
-
 ---
 
 ## Project Structure
