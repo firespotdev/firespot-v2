@@ -149,6 +149,14 @@ const BANK_APP_SCHEMES: Record<
   'Konga Pay': {
     ios: 'https://apps.apple.com/ng/app/kongapay/id1105457515',
     android: 'https://play.google.com/store/apps/details?id=com.kongapay.android&hl=en'
+  },
+  '9Payment SB': {
+    ios: 'https://apps.apple.com/ng/app/bank9ja/id1623785886',
+    android: 'https://play.google.com/store/apps/details?id=com.psbcustomer'
+  },
+  'Momo PSB': {
+    ios: 'https://apps.apple.com/ng/app/momopsb-app/id6466779764',
+    android: 'https://play.google.com/store/apps/details?id=ng.mtn.android.psb.momo'
   }
 }
 

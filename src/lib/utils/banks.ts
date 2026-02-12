@@ -49,6 +49,8 @@ export const ALL_BANKS = [
   'Pocket App',
   'Jumia Pay',
   'Konga Pay',
+  '9payment PSB',
+  'Momo PSB'
 ] as const
 
 

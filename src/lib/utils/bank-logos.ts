@@ -87,6 +87,8 @@ const BANK_LOGO_MAP: Record<string, string> = {
   'pocket app': 'pocketapp.jpg',
   'jumia pay': 'jumiapay.png',
   'konga pay': 'kongapay.png',
+  '9payment psb': '9psb.png',
+  'momo psb': 'momo.png'
 }
 
 /**
