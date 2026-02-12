@@ -48,11 +48,11 @@ export function PageHeader({
       try {
         await navigator.share({
           title: `Share transfer link`,
-          url: `https://lite.firespot.co/pay/${firstSerialNumber}`,
+          url: `${process.env.NEXT_PUBLIC_APP_URL}/pay/${firstSerialNumber}`,
         })
       } catch (error) {
         if ((error as Error).name !== 'AbortError') {
-          navigator.clipboard.writeText(`https://lite.firespot.co/pay/${firstSerialNumber}`)
+          navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_APP_URL}/pay/${firstSerialNumber}`)
           showNotificationToast({
             message: 'Link copied to clipboard!',
             duration: 2000,
@@ -106,7 +106,7 @@ export function PageHeader({
         )}
       </button>
 
-      {onShareClick && !isAuthenticated && (
+      {onShareClick && (
         <button
           onClick={onShareClick}
           type="button"
@@ -116,7 +116,7 @@ export function PageHeader({
         </button>
       )}
 
-      {isAuthenticated && hasQRKits && (
+      {/* {isAuthenticated && hasQRKits && (
         <button
           onClick={handleShareClick}
           type="button"
@@ -124,10 +124,10 @@ export function PageHeader({
         >
           <Share stroke="#868788" size={20} />
         </button>
-      )}
+      )} */}
 
-      {!onShareClick && !isAuthenticated && <div className="h-9 w-9" />}
-      {isAuthenticated && !hasQRKits && <div className="h-9 w-9" />}
+      {!onShareClick && <div className="h-9 w-9" />}
+      {/* {isAuthenticated && !hasQRKits && <div className="h-9 w-9" />} */}
     </header>
   )
 }

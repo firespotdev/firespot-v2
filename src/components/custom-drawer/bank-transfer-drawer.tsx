@@ -13,7 +13,7 @@ export function BankTransferDrawer() {
   const sortedBanks = sortBanksByPopularity([...ALL_BANKS])
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white">
+    <div className="flex flex-col overflow-hidden bg-white">
       <div className="flex-1 overflow-y-auto px-4 mt-1 pb-5 border-t-2 border-[#F1F1F1]">
         <div className="grid grid-cols-4 gap-4 pt-4">
           {sortedBanks.map((bank) => (

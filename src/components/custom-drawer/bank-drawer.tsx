@@ -220,7 +220,6 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
   )
 }
 
-// Header actions for bank accounts drawer
 export function BankDrawerHeaderLeft() {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
 

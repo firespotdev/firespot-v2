@@ -22,7 +22,7 @@ export function ShareTransferDrawer({
   serialNumber,
   profilePhotoUrl,
 }: ShareTransferDrawerProps) {
-  const shareUrl = `https://lite.firespot.co/pay/${serialNumber}`
+  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/pay/${serialNumber}`
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl)

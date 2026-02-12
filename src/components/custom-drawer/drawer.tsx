@@ -52,7 +52,6 @@ const DRAWER_CONFIG: Record<
     title: 'Send with bank app',
     direction: 'bottom',
     Content: BankTransferDrawer,
-    fullScreen: true,
   },
   'share-transfer': {
     title: '',
@@ -116,7 +115,7 @@ export function CustomDrawer() {
         onOpenChange={(open) => !open && closeDrawer()}
         direction={drawerDirection}
       >
-        <DrawerContent className="max-w-125 mx-auto bg-white rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[95vh]">
+        <DrawerContent className={`${config.type === 'bank-transfer' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80vh]`}>
           {/* Header */}
           <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
             <div className="w-9 h-9 flex items-center justify-center">
@@ -159,7 +158,7 @@ export function CustomDrawer() {
       onOpenChange={(open) => !open && closeDrawer()}
       direction={drawerDirection}
     >
-      <DrawerContent className="max-h-[85vh] max-w-125 mx-auto bg-[#F4F6F8]">
+      <DrawerContent className={`${config.type === 'bank-transfer' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80vh]`}>
         {/* Header */}
         <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
           <div className="w-9 h-9 flex items-center justify-center">
@@ -167,7 +166,19 @@ export function CustomDrawer() {
           </div>
 
           <DrawerTitle className="font-bold text-base text-black">
-            {title}
+            {config.type === 'bank-transfer' ? (
+              <>
+                <p className="text-[#00000080] text-xs font-medium text-center leading-none flex items-center justify-center gap-0.5">
+                  <Check size={16} color="#67CE67" />{' '}
+                  <span>Account number already copied!</span>
+                </p>
+                <span className="text-base font-bold text-black leading-none mt-1 block text-center">
+                  Open your bank app and paste
+                </span>
+              </>
+            ) : (
+              title
+            )}
           </DrawerTitle>
 
           <DrawerClose className="w-9 h-9 flex items-center justify-center">
