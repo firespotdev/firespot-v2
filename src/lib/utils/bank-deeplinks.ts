@@ -122,6 +122,33 @@ const BANK_APP_SCHEMES: Record<
   Piggyvest: {
     ios: 'https://apps.apple.com/ng/app/piggyvest/id1263117994',
     android: 'https://play.google.com/store/apps/details?id=com.piggybankng.piggy'
+  },
+  'Fairmoney MFB': {
+    ios: 'https://apps.apple.com/ng/app/fairmoney-microfinance-bank/id6456485223',
+    android: 'https://play.google.com/store/apps/details?id=ng.com.fairmoney.fairmoney&hl=en'
+  },
+  Bamboo: 'https://onelink.to/appsite',
+  Trove: {
+    ios: 'https://apps.apple.com/app/trove-investing-simplified/id1463057240',
+    android: 'https://play.google.com/store/apps/details?id=co.troveapp.android'
+  },
+  Chaka: {
+    ios: 'https://apps.apple.com/ng/app/chaka-invest-trade-globally/id1507169124',
+    android: 'https://play.google.com/store/apps/details?id=ng.chaka.android&hl=en&gl=US'
+  },
+  Risevest: 'https://risevest.onelink.me/gb0g?af_js_web=true&af_ss_ver=2_7_2&pid=direct&c=direct&af_channel=direct&af_ss_ui=true&web_referrer=https://www.google.com/',
+  Renmoney: 'https://renmoneyng.onelink.me/anA4/lqgpam49',
+  'Pocket App': {
+    ios: 'https://apps.apple.com/ng/app/abeg/id1532676793',
+    android: 'https://play.google.com/store/apps/details?id=com.abegapp'
+  },
+  'Jumia Pay': {
+    ios: 'https://apps.apple.com/us/app/jumiapay/id1294620379',
+    android: 'https://play.google.com/store/apps/details?id=com.jumia.one.android&hl=en'
+  },
+  'Konga Pay': {
+    ios: 'https://apps.apple.com/ng/app/kongapay/id1105457515',
+    android: 'https://play.google.com/store/apps/details?id=com.kongapay.android&hl=en'
   }
 }
 

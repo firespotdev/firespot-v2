@@ -81,6 +81,15 @@ const BANK_LOGO_MAP: Record<string, string> = {
   piggyvest: 'piggyvest.jpg',
   'airtel smartcash': 'airtel-smartcash-psb-ng.png',
   smartcash: 'airtel-smartcash-psb-ng.png',
+  'fairmoney mfb': 'fairmoney.webp',
+  'bamboo': 'bamboo.png',
+  'trove': 'trove.jpeg',
+  'chaka': 'chaka.png',
+  'risevest': 'risevest.jpg',
+  'renmoney': 'renmoney.png',
+  'pocket app': 'pocketapp.jpg',
+  'jumia pay': 'jumiapay.png',
+  'konga pay': 'kongapay.png',
 }
 
 /**

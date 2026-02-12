@@ -40,6 +40,15 @@ export const ALL_BANKS = [
   'Cowrywise',
   'Piggyvest',
   'Airtel Smartcash',
+  'Fairmoney MFB',
+  'Bamboo',
+  'Trove',
+  'Chaka',
+  'Risevest',
+  'Renmoney',
+  'Pocket App',
+  'Jumia Pay',
+  'Konga Pay',
 ] as const
 
 
