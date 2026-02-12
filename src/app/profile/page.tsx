@@ -191,7 +191,7 @@ export default function ProfilePage() {
                       height={16}
                       className="animate-pulse"
                     />
-                    Your QR kit is live and accepting payments
+                    Your QR kit is active
                     <ChevronRight className="w-4 h-4 text-[#24C166] mt-[1%]" />
                   </Link>
                 )
