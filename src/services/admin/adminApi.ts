@@ -1,6 +1,11 @@
 import { useMutation } from '@tanstack/react-query'
 import { adminApiClient } from '@/lib/utils/axios'
-import type { AdminLoginDto, AdminLoginResponse } from './interface'
+import type {
+  AdminLoginDto,
+  AdminLoginResponse,
+  ChangePasswordDto,
+  ChangePasswordResponse,
+} from './interface'
 
 // API functions
 export const adminAuthApi = {
@@ -8,6 +13,16 @@ export const adminAuthApi = {
     const response = await adminApiClient.post<AdminLoginResponse>(
       '/admin/auth/login',
       credentials,
+    )
+    return response.data
+  },
+
+  changePassword: async (
+    dto: ChangePasswordDto,
+  ): Promise<ChangePasswordResponse> => {
+    const response = await adminApiClient.patch<ChangePasswordResponse>(
+      '/admin/auth/change-password',
+      dto,
     )
     return response.data
   },
@@ -30,6 +45,12 @@ export const useAdminLogout = () => {
     localStorage.removeItem('admin_info')
     window.location.href = '/login'
   }
+}
+
+export const useChangePassword = () => {
+  return useMutation({
+    mutationFn: (dto: ChangePasswordDto) => adminAuthApi.changePassword(dto),
+  })
 }
 
 // Helpers

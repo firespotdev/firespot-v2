@@ -13,6 +13,7 @@ import AgentsList from './AgentsList'
 import AgentDetail from './AgentDetail'
 import CreateAgent from './CreateAgent'
 import MerchantsList from './MerchantsList'
+import ChangePasswordModal from './ChangePasswordModal'
 
 type Tab = 'dashboard' | 'create' | 'list' | 'agents' | 'create-agent' | 'merchants'
 
@@ -26,6 +27,7 @@ export default function AdminLayout() {
   const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null)
   const logout = useAdminLogout()
   const adminInfo = getAdminInfo()
+  const [showChangePassword, setShowChangePassword] = useState(false)
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     {
@@ -186,6 +188,15 @@ export default function AdminLayout() {
                 {adminInfo.name?.charAt(0) || 'A'}
               </div>
               <button
+                onClick={() => setShowChangePassword(true)}
+                title="Change Password"
+                className="rounded-xl border border-gray-200 bg-white p-2 text-gray-700 transition-colors hover:bg-gray-50"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+              </button>
+              <button
                 onClick={logout}
                 className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
               >
@@ -249,6 +260,10 @@ export default function AdminLayout() {
           agent={selectedAgent}
           onClose={() => setSelectedAgent(null)}
         />
+      )}
+
+      {showChangePassword && (
+        <ChangePasswordModal onClose={() => setShowChangePassword(false)} />
       )}
     </div>
   )
