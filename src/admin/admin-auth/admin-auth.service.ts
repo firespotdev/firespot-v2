@@ -11,6 +11,7 @@ import { Model } from "mongoose";
 import * as bcrypt from "bcrypt";
 import { Admin, AdminDocument } from "../schemas/admin.schema";
 import { AdminLoginDto } from "./dto/admin-login.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
 @Injectable()
 export class AdminAuthService {
@@ -53,6 +54,28 @@ export class AdminAuthService {
         role: admin.role,
       },
     };
+  }
+
+  async changePassword(adminId: string, dto: ChangePasswordDto) {
+    const admin = await this.adminModel.findOne({ adminId, isActive: true });
+
+    if (!admin) {
+      throw new HttpException("Admin not found", HttpStatus.NOT_FOUND);
+    }
+
+    const isCurrentValid = await bcrypt.compare(
+      dto.currentPassword,
+      admin.password,
+    );
+
+    if (!isCurrentValid) {
+      throw new UnauthorizedException("Current password is incorrect");
+    }
+
+    admin.password = await bcrypt.hash(dto.newPassword, 10);
+    await admin.save();
+
+    return { message: "Password changed successfully" };
   }
 
   async getAdminProfile(adminId: string) {

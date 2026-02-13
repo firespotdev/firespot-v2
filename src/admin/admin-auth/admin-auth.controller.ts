@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   UseGuards,
   Request,
@@ -14,6 +15,7 @@ import {
 } from "@nestjs/swagger";
 import { AdminAuthService } from "./admin-auth.service";
 import { AdminLoginDto } from "./dto/admin-login.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 import { AdminJwtAuthGuard } from "./guards/admin-jwt-auth.guard";
 
 @ApiTags("admin-auth")
@@ -57,5 +59,24 @@ export class AdminAuthController {
   @ApiResponse({ status: 401, description: "Unauthorized" })
   async getMe(@Request() req) {
     return this.adminAuthService.getAdminProfile(req.user.adminId);
+  }
+
+  @Patch("change-password")
+  @UseGuards(AdminJwtAuthGuard)
+  @ApiBearerAuth("admin-jwt")
+  @ApiOperation({ summary: "Change admin password" })
+  @ApiResponse({
+    status: 200,
+    description: "Password changed successfully",
+  })
+  @ApiResponse({ status: 401, description: "Current password is incorrect" })
+  async changePassword(
+    @Request() req,
+    @Body() changePasswordDto: ChangePasswordDto,
+  ) {
+    return this.adminAuthService.changePassword(
+      req.user.adminId,
+      changePasswordDto,
+    );
   }
 }
