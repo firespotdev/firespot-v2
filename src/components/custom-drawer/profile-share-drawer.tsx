@@ -32,7 +32,6 @@ export function ProfileShareDrawer({
     const svg = qrRef.current.querySelector('svg')
     if (!svg) return
 
-    // Inject gradient defs into the SVG
     const ns = 'http://www.w3.org/2000/svg'
     const existing = svg.querySelector('#qr-gradient')
     if (existing) return
@@ -57,7 +56,6 @@ export function ProfileShareDrawer({
     defs.appendChild(gradient)
     svg.insertBefore(defs, svg.firstChild)
 
-    // Replace all non-white fills with the gradient
     svg.querySelectorAll('path, rect').forEach((el) => {
       const fill = el.getAttribute('fill')
       if (fill && fill.toLowerCase() !== '#ffffff' && fill !== 'white') {
@@ -153,7 +151,6 @@ export function ProfileShareDrawer({
       <h2 className="text-xl leading-none font-bold text-black text-center mb-1 -tracking-[0.4px]">
         Share this transfer page
       </h2>
-
       <p className="text-sm text-[#00000080] font-medium text-center mb-6 max-w-70 leading-[1.3]">
         Share your transfer page link so anyone can send you money instantly.
       </p>
