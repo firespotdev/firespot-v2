@@ -75,6 +75,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       <div className="px-4 mb-4">
         <button
           type="button"
+          onClick={closeDrawer}
           className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
         >
           <div className="w-12 h-12 rounded-full bg-[#6366F1] flex items-center justify-center">

@@ -98,27 +98,23 @@ export default function ProfilePage() {
     e.target.value = ''
   }
 
-  const handleShareClick = async () => {
-      if (qrKitsData?.data[0].serialNumber) {
-        try {
-          await navigator.share({
-            title: `Share transfer link`,
-            url: `${process.env.NEXT_PUBLIC_APP_URL}/pay/${qrKitsData?.data[0].serialNumber}`,
-          })
-        } catch (error) {
-          navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_APP_URL}/pay/${qrKitsData?.data[0].serialNumber}`)
-            showNotificationToast({
-              message: 'Link copied to clipboard!',
-              duration: 2000,
-            })
-        }
-      } else {
-        showNotificationToast({
-          message: 'No QR kits found!',
-          duration: 2000,
-        })
-      }
+  const handleShareClick = () => {
+    if (qrKitsData?.data[0]?.serialNumber) {
+      openDrawer({
+        type: 'profile-share',
+        props: {
+          businessName: profile?.businessName || 'Your Business',
+          serialNumber: qrKitsData.data[0].serialNumber,
+          profilePhotoUrl: profile?.profilePhotoUrl,
+        },
+      })
+    } else {
+      showNotificationToast({
+        message: 'No QR kits found!',
+        duration: 2000,
+      })
     }
+  }
 
   if (isLoading) {
     return (

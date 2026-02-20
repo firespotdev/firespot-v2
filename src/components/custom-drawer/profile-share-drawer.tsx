@@ -1,72 +1,71 @@
 'use client'
 
+import { useRef, useEffect } from 'react'
 import { Copy, X } from 'lucide-react'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
-import { showNotificationToast, TagFooter } from '@/components/ui'
+import { showNotificationToast } from '@/components/ui'
 import { getInitials } from '@/lib/utils'
-import {useRef,useEffect} from 'react'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
 
-interface ShareTransferDrawerProps {
+interface ProfileShareDrawerProps {
   businessName: string
   serialNumber: string
   profilePhotoUrl?: string
   closeDrawer: () => void
 }
 
-export function ShareTransferDrawer({
+export function ProfileShareDrawer({
   businessName,
   serialNumber,
   profilePhotoUrl,
   closeDrawer,
-}: ShareTransferDrawerProps) {
+}: ProfileShareDrawerProps) {
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/pay/${serialNumber}`
+  const qrRef = useRef<HTMLDivElement>(null)
 
-    const qrRef = useRef<HTMLDivElement>(null)
-  
-    useEffect(() => {
-      if (!qrRef.current) return
-      const svg = qrRef.current.querySelector('svg')
-      if (!svg) return
-  
-      // Inject gradient defs into the SVG
-      const ns = 'http://www.w3.org/2000/svg'
-      const existing = svg.querySelector('#qr-gradient')
-      if (existing) return
-  
-      const defs = document.createElementNS(ns, 'defs')
-      const gradient = document.createElementNS(ns, 'linearGradient')
-      gradient.setAttribute('id', 'qr-gradient')
-      gradient.setAttribute('x1', '0%')
-      gradient.setAttribute('y1', '0%')
-      gradient.setAttribute('x2', '100%')
-      gradient.setAttribute('y2', '100%')
-  
-      const stop1 = document.createElementNS(ns, 'stop')
-      stop1.setAttribute('offset', '0%')
-      stop1.setAttribute('stop-color', GRADIENT_START)
-      const stop2 = document.createElementNS(ns, 'stop')
-      stop2.setAttribute('offset', '100%')
-      stop2.setAttribute('stop-color', GRADIENT_END)
-  
-      gradient.appendChild(stop1)
-      gradient.appendChild(stop2)
-      defs.appendChild(gradient)
-      svg.insertBefore(defs, svg.firstChild)
-  
-      // Replace all non-white fills with the gradient
-      svg.querySelectorAll('path, rect').forEach((el) => {
-        const fill = el.getAttribute('fill')
-        if (fill && fill.toLowerCase() !== '#ffffff' && fill !== 'white') {
-          el.setAttribute('fill', 'url(#qr-gradient)')
-        }
-      })
-    }, [shareUrl])
-    
+  useEffect(() => {
+    if (!qrRef.current) return
+    const svg = qrRef.current.querySelector('svg')
+    if (!svg) return
+
+    // Inject gradient defs into the SVG
+    const ns = 'http://www.w3.org/2000/svg'
+    const existing = svg.querySelector('#qr-gradient')
+    if (existing) return
+
+    const defs = document.createElementNS(ns, 'defs')
+    const gradient = document.createElementNS(ns, 'linearGradient')
+    gradient.setAttribute('id', 'qr-gradient')
+    gradient.setAttribute('x1', '0%')
+    gradient.setAttribute('y1', '0%')
+    gradient.setAttribute('x2', '100%')
+    gradient.setAttribute('y2', '100%')
+
+    const stop1 = document.createElementNS(ns, 'stop')
+    stop1.setAttribute('offset', '0%')
+    stop1.setAttribute('stop-color', GRADIENT_START)
+    const stop2 = document.createElementNS(ns, 'stop')
+    stop2.setAttribute('offset', '100%')
+    stop2.setAttribute('stop-color', GRADIENT_END)
+
+    gradient.appendChild(stop1)
+    gradient.appendChild(stop2)
+    defs.appendChild(gradient)
+    svg.insertBefore(defs, svg.firstChild)
+
+    // Replace all non-white fills with the gradient
+    svg.querySelectorAll('path, rect').forEach((el) => {
+      const fill = el.getAttribute('fill')
+      if (fill && fill.toLowerCase() !== '#ffffff' && fill !== 'white') {
+        el.setAttribute('fill', 'url(#qr-gradient)')
+      }
+    })
+  }, [shareUrl])
+
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl)
     showNotificationToast({ message: 'Link copied!' })
@@ -91,12 +90,11 @@ export function ShareTransferDrawer({
   }
 
   return (
-    <div className="flex flex-col items-center px-4 pb-6 pt-3">
-
+    <div className="flex flex-col items-center px-4 pt-3 pb-6">
       <div className="w-full flex items-center justify-between border-b border-[#F1F1F1] pb-3">
         <div className="w-9 h-9" />
         <span className="border border-black rounded-full text-base leading-none -tracking-[0.4px] font-medium py-1 px-2.5">
-          Pay4me
+          firespotID
         </span>
         <button
           type="button"
@@ -152,14 +150,12 @@ export function ShareTransferDrawer({
         </div>
       </div>
             </div>
-
       <h2 className="text-xl leading-none font-bold text-black text-center mb-1 -tracking-[0.4px]">
         Share this transfer page
       </h2>
 
       <p className="text-sm text-[#00000080] font-medium text-center mb-6 max-w-70 leading-[1.3]">
-        Can&apos;t pay now? Share this link for someone else to complete the
-        transfer.
+        Share your transfer page link so anyone can send you money instantly.
       </p>
 
       <div className="w-full flex items-center gap-2 bg-[#F1F1F1] rounded-xl p-2 mb-3">
@@ -177,7 +173,7 @@ export function ShareTransferDrawer({
       </div>
 
       <Button className="w-full" onClick={handleShare}>
-        Share transfer link
+        Share transfer page
       </Button>
     </div>
   )

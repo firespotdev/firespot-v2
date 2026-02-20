@@ -4,6 +4,7 @@ export type DrawerContentType =
   | 'select-bank'
   | 'bank-transfer'
   | 'share-transfer'
+  | 'profile-share'
   | 'receipt'
   | 'date-range-filter'
   | 'custom'

@@ -18,6 +18,7 @@ import { ProfileMenuDrawer } from './profile-menu-drawer'
 import { SelectBankDrawer } from './select-bank-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
 import { ShareTransferDrawer } from './share-transfer-drawer'
+import { ProfileShareDrawer } from './profile-share-drawer'
 import { ReceiptDrawer } from './receipt-drawer'
 import { DateRangeFilterDrawer } from './date-range-filter-drawer'
 
@@ -30,6 +31,7 @@ const DRAWER_CONFIG: Record<
     HeaderLeft?: React.ComponentType
     Content: React.ComponentType<any>
     fullScreen?: boolean
+    noHeader?: boolean
   }
 > = {
   'bank-accounts': {
@@ -58,6 +60,14 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     Content: ShareTransferDrawer,
     fullScreen: true,
+    noHeader: true
+  },
+  'profile-share': {
+    title: '',
+    direction: 'bottom',
+    Content: ProfileShareDrawer,
+    fullScreen: true,
+    noHeader: true,
   },
   receipt: {
     title: 'Receipt',
@@ -84,7 +94,7 @@ export function CustomDrawer() {
   const drawerConfig = DRAWER_CONFIG[config.type]
   if (!drawerConfig) return null
 
-  const { title, HeaderLeft, Content, direction, fullScreen } = drawerConfig
+  const { title, HeaderLeft, Content, direction, fullScreen, noHeader } = drawerConfig
   const drawerDirection = config.direction || direction || 'bottom'
 
   // For full screen left/right drawers, render content directly without header
@@ -99,7 +109,6 @@ export function CustomDrawer() {
         direction={drawerDirection}
       >
         <DrawerContent className="h-full w-full max-w-full bg-white">
-          {/* Hidden title for accessibility */}
           <DrawerTitle className="sr-only">{title || 'Menu'}</DrawerTitle>
           <Content {...(config.props || {})} closeDrawer={closeDrawer} />
         </DrawerContent>
@@ -115,38 +124,47 @@ export function CustomDrawer() {
         onOpenChange={(open) => !open && closeDrawer()}
         direction={drawerDirection}
       >
-        <DrawerContent className={`${config.type === 'bank-transfer' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80vh]`}>
-          {/* Header */}
-          <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
-            <div className="w-9 h-9 flex items-center justify-center">
-              {HeaderLeft && <HeaderLeft />}
-            </div>
+        <DrawerContent className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-3xl`}>
+          {noHeader ? (
+            <>
+              <DrawerTitle className="sr-only">{title || 'Share'}</DrawerTitle>
+              <Content {...(config.props || {})} closeDrawer={closeDrawer} />
+            </>
+          ) : (
+            <>
+              {/* Header */}
+              <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
+                <div className="w-9 h-9 flex items-center justify-center">
+                  {HeaderLeft && <HeaderLeft />}
+                </div>
 
-            <DrawerTitle className="font-bold text-base text-black">
-              {config.type === 'bank-transfer' ? (
-                <>
-                  <p className="text-[#00000080] text-xs font-medium text-center leading-none flex items-center justify-center gap-0.5">
-                    <Check size={16} color="#67CE67" />{' '}
-                    <span>Account number already copied!</span>
-                  </p>
-                  <span className="text-base font-bold text-black leading-none mt-1 block text-center">
-                    Open your bank app and paste
-                  </span>
-                </>
-              ) : (
-                <span className="text-base font-bold text-black leading-none mt-1 block text-center">
-                  {title}
-                </span>
-              )}
-            </DrawerTitle>
+                <DrawerTitle className="font-bold text-base text-black">
+                  {config.type === 'bank-transfer' ? (
+                    <>
+                      <p className="text-[#00000080] text-xs font-medium text-center leading-none flex items-center justify-center gap-0.5">
+                        <Check size={16} color="#67CE67" />{' '}
+                        <span>Account number already copied!</span>
+                      </p>
+                      <span className="text-base font-bold text-black leading-none mt-1 block text-center">
+                        Open your bank app and paste
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-base font-bold text-black leading-none mt-1 block text-center">
+                      {title}
+                    </span>
+                  )}
+                </DrawerTitle>
 
-            <DrawerClose className="w-9 h-9 flex items-center justify-center">
-              <X className="w-6 h-6 text-black" />
-            </DrawerClose>
-          </DrawerHeader>
+                <DrawerClose className="w-9 h-9 flex items-center justify-center">
+                  <X className="w-6 h-6 text-black" />
+                </DrawerClose>
+              </DrawerHeader>
 
-          {/* Content */}
-          <Content {...(config.props || {})} closeDrawer={closeDrawer} />
+              {/* Content */}
+              <Content {...(config.props || {})} closeDrawer={closeDrawer} />
+            </>
+          )}
         </DrawerContent>
       </DrawerPrimitive>
     )
