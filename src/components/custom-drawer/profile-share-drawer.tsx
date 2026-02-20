@@ -151,7 +151,6 @@ export function ProfileShareDrawer({
       <h2 className="text-xl leading-none font-bold text-black text-center mb-1 -tracking-[0.4px]">
         Share this transfer page
       </h2>
-
       <p className="text-sm text-[#00000080] font-medium text-center mb-6 max-w-70 leading-[1.3]">
         Share your transfer page link so anyone can send you money instantly.
       </p>
