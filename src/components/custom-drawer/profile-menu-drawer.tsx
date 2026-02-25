@@ -73,8 +73,8 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       </header>
 
       <div className="px-4 mb-4">
-        <button
-          type="button"
+        <Link
+          href="/profile"
           onClick={closeDrawer}
           className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
         >
@@ -101,7 +101,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
-        </button>
+        </Link>
       </div>
 
       {/* Menu Sections */}
