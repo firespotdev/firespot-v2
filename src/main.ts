@@ -13,7 +13,10 @@ async function bootstrap() {
   app.enableCors({
     origin: isDevelopment
       ? true
-      : [process.env.FRONTEND_URL || "http://localhost:3000"],
+      : [
+          process.env.FRONTEND_URL,
+          process.env.ADMIN_FRONTEND_URL,
+        ],
     credentials: true,
   });
 
