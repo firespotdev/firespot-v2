@@ -41,9 +41,13 @@ export class AuthService {
 
   async login(loginDto: RequestOtpDto) {
     const { phoneNumber, phoneCountryCode } = loginDto;
-    const fullPhoneNumber = `${phoneCountryCode}${phoneNumber}`;
+    const normalizedPhone = this.normalizePhoneNumber(
+      phoneNumber,
+      phoneCountryCode,
+    );
+    const fullPhoneNumber = `${phoneCountryCode}${normalizedPhone}`;
 
-    const user = await this.userModel.findOne({ phoneNumber });
+    const user = await this.userModel.findOne({ phoneNumber: normalizedPhone });
 
     if (!user) {
       throw new UnauthorizedException("User not found. Please sign up first.");
@@ -114,7 +118,14 @@ export class AuthService {
       referralCode,
     } = signupDto;
 
-    const existingUser = await this.userModel.findOne({ phoneNumber });
+    const normalizedPhone = this.normalizePhoneNumber(
+      phoneNumber,
+      phoneCountryCode,
+    );
+
+    const existingUser = await this.userModel.findOne({
+      phoneNumber: normalizedPhone,
+    });
     if (existingUser) {
       throw new BadRequestException(
         "User already exists. Please login instead.",
@@ -141,7 +152,7 @@ export class AuthService {
       }
     }
 
-    const fullPhoneNumber = `${phoneCountryCode}${phoneNumber}`;
+    const fullPhoneNumber = `${phoneCountryCode}${normalizedPhone}`;
     const termiiPhoneNumber = fullPhoneNumber.replace("+", "");
 
     const otpExpiryMinutes = this.configService.get<number>(
@@ -176,7 +187,7 @@ export class AuthService {
     // Create new user with all profile details
     // Store bank account in bankAccounts array (first account is primary)
     const user = await this.userModel.create({
-      phoneNumber,
+      phoneNumber: normalizedPhone,
       phoneCountryCode,
       fullPhoneNumber,
       businessName,
@@ -254,8 +265,9 @@ export class AuthService {
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
     const { phoneNumber, otpCode } = verifyOtpDto;
+    const normalizedPhone = this.normalizePhoneNumber(phoneNumber, "+234");
 
-    const user = await this.userModel.findOne({ phoneNumber });
+    const user = await this.userModel.findOne({ phoneNumber: normalizedPhone });
 
     if (!user || !user.otpPinId || !user.otpExpiresAt) {
       throw new UnauthorizedException("Invalid OTP request");
@@ -294,6 +306,17 @@ export class AuthService {
         businessName: user.businessName,
       },
     };
+  }
+
+  /**
+   * Normalize phone number by removing leading zero for Nigerian numbers
+   */
+  private normalizePhoneNumber(phone: string, countryCode: string): string {
+    const cleaned = phone.replace(/\D/g, "");
+    if (countryCode === "+234" && cleaned.startsWith("0")) {
+      return cleaned.substring(1);
+    }
+    return cleaned;
   }
 
   async validateUser(userId: string): Promise<User> {
