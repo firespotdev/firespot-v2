@@ -77,14 +77,12 @@ export function OtpVerification({
     
     setOtp(newOtp)
 
-    // Auto-focus next input
     if (value && index < 5) {
       setTimeout(() => {
         otpInputRefs.current[index + 1]?.focus()
       }, 0)
     }
 
-    // Auto-submit if 6th digit entered
     if (newOtp.length === 6 && index === 5 && value) {
       triggerVerify(newOtp)
     }
