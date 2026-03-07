@@ -26,10 +26,7 @@ export function OtpVerification({
   const [localError, setLocalError] = useState<string | undefined>(error)
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([])
 
-  // Sync local error with prop error
-  useEffect(() => {
-    setLocalError(error)
-  }, [error])
+  const isSubmittingRef = useRef(false)
 
   useEffect(() => {
     if (countdown > 0) {
@@ -38,64 +35,59 @@ export function OtpVerification({
     }
   }, [countdown])
 
-  // Reset countdown when component mounts
   useEffect(() => {
     setCountdown(59)
   }, [])
 
-  // Clear OTP inputs when there's an error
   useEffect(() => {
+    setLocalError(error)
     if (error) {
-      setOtp('')
-      // Focus the first input after clearing
-      setTimeout(() => {
-        otpInputRefs.current[0]?.focus()
-      }, 0)
+      isSubmittingRef.current = false
     }
   }, [error])
+
+  const triggerVerify = (code: string) => {
+    if (code.length === 6 && !isLoading && !isSubmittingRef.current) {
+      isSubmittingRef.current = true
+      onVerify(code)
+    }
+  }
 
   const handleChange = (index: number, value: string) => {
     if (localError) setLocalError(undefined)
 
-    // Handle auto-fill (when value is more than 1 character)
     if (value.length > 1) {
       const pastedData = value.slice(0, 6)
       if (/^\d+$/.test(pastedData)) {
         setOtp(pastedData)
-        // Focus last input
         const lastIndex = Math.min(pastedData.length - 1, 5)
         otpInputRefs.current[lastIndex]?.focus()
-        
-        // Auto-submit if 6 digits
-        if (pastedData.length === 6) {
-          onVerify(pastedData)
-        }
+
+        triggerVerify(pastedData)
         return
       }
     }
 
     if (!/^\d*$/.test(value)) return
 
-    setOtp((prev) => {
-      const newValue = prev.split('')
-      newValue[index] = value
-      const newOtp = newValue.join('').slice(0, 6)
+    const defaultValue = ' '.repeat(6)
+    const currentOtpArray = (otp || defaultValue).split('')
+    currentOtpArray[index] = value || ' '
+    const newOtp = currentOtpArray.join('').trim().slice(0, 6)
+    
+    setOtp(newOtp)
 
-      // Auto-focus next input
-      if (value && index < 5) {
-        // Need to wait for next tick or just focus directly
-        setTimeout(() => {
-          otpInputRefs.current[index + 1]?.focus()
-        }, 0)
-      }
+    // Auto-focus next input
+    if (value && index < 5) {
+      setTimeout(() => {
+        otpInputRefs.current[index + 1]?.focus()
+      }, 0)
+    }
 
-      // Auto-submit if 6th digit entered
-      if (newOtp.length === 6 && index === 5 && value) {
-        onVerify(newOtp)
-      }
-
-      return newOtp
-    })
+    // Auto-submit if 6th digit entered
+    if (newOtp.length === 6 && index === 5 && value) {
+      triggerVerify(newOtp)
+    }
   }
 
   const handleKeyDown = (
@@ -115,18 +107,14 @@ export function OtpVerification({
       // Focus last input or first empty
       const lastIndex = Math.min(pastedData.length - 1, 5)
       otpInputRefs.current[lastIndex]?.focus()
-      
-      if (pastedData.length === 6) {
-        onVerify(pastedData)
-      }
+
+      triggerVerify(pastedData)
     }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (otp.length === 6) {
-      onVerify(otp)
-    }
+    triggerVerify(otp)
   }
 
   const handleResend = () => {
