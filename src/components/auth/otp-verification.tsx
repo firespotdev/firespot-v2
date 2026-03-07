@@ -35,12 +35,10 @@ export function OtpVerification({
     }
   }, [countdown])
 
-  // Reset countdown when component mounts
   useEffect(() => {
     setCountdown(59)
   }, [])
 
-  // Sync local error with prop error
   useEffect(() => {
     setLocalError(error)
     if (error) {
@@ -58,16 +56,13 @@ export function OtpVerification({
   const handleChange = (index: number, value: string) => {
     if (localError) setLocalError(undefined)
 
-    // Handle auto-fill (when value is more than 1 character)
     if (value.length > 1) {
       const pastedData = value.slice(0, 6)
       if (/^\d+$/.test(pastedData)) {
         setOtp(pastedData)
-        // Focus last input
         const lastIndex = Math.min(pastedData.length - 1, 5)
         otpInputRefs.current[lastIndex]?.focus()
 
-        // Auto-submit if 6 digits
         triggerVerify(pastedData)
         return
       }
