@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +48,7 @@ export function PhoneInput({
   className,
   error,
 }: PhoneInputProps) {
+  const inputRef = useRef<HTMLInputElement>(null)
   const [phoneValue, setPhoneValue] = useState(() => {
     if (value) {
       const digits = value.replace(/\D/g, '')
@@ -60,14 +61,41 @@ export function PhoneInput({
   useEffect(() => {
     if (value !== undefined) {
       const digits = value.replace(/\D/g, '')
-      setPhoneValue(formatPhoneNumber(digits))
+      const formatted = formatPhoneNumber(digits)
+      if (formatted !== phoneValue) {
+        setPhoneValue(formatted)
+      }
     }
-  }, [value])
+  }, [value, phoneValue])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value
+    const selectionStart = e.target.selectionStart
     const formatted = formatPhoneNumber(input)
+    
+    // Calculate new selection start
+    let newSelectionStart = selectionStart || 0
+    if (selectionStart !== null) {
+      const digitsBefore = input.slice(0, selectionStart).replace(/\D/g, '').length
+      let digitsCount = 0
+      let i = 0
+      for (; i < formatted.length && digitsCount < digitsBefore; i++) {
+        if (/\d/.test(formatted[i])) {
+          digitsCount++
+        }
+      }
+      newSelectionStart = i
+    }
+
     setPhoneValue(formatted)
+    
+    // Restore cursor position in next frame
+    requestAnimationFrame(() => {
+      if (inputRef.current) {
+        inputRef.current.setSelectionRange(newSelectionStart, newSelectionStart)
+      }
+    })
+
     // Pass unformatted value to onChange
     const digits = input.replace(/\D/g, '')
     onChange?.(digits)
@@ -85,6 +113,7 @@ export function PhoneInput({
       </div>
 
       <Input
+        ref={inputRef}
         type="tel"
         value={phoneValue}
         onChange={handleChange}
