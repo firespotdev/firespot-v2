@@ -34,10 +34,9 @@ apiClient.interceptors.response.use(
         error.config?.url?.includes('/auth/verify-otp')
 
       if (!isAuthEndpoint) {
-        const token = localStorage.getItem('token')
-        if (!token) {
-          window.location.href = '/login'
-        }
+        localStorage.removeItem('token')
+        localStorage.removeItem('auth-storage')
+        window.location.href = '/login'
       }
     }
     return Promise.reject(error)

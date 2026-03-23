@@ -21,6 +21,8 @@ function SignupPageContent() {
   const [referralError, setReferralError] = useState<string | undefined>()
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const token = useAuthStore((state) => state.token)
+  const logout = useAuthStore((state) => state.logout)
   const signup = useSignup()
   const verifyOtp = useVerifyOtp()
 
@@ -42,10 +44,20 @@ function SignupPageContent() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          logout()
+          return
+        }
+      } catch (e) {
+        logout()
+        return
+      }
       router.replace(getRedirectUrl())
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, token, router, logout])
 
   const handleBankChange = (code: string, name: string) => {
     setSelectedBankCode(code)

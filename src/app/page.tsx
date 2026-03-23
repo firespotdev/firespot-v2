@@ -7,6 +7,7 @@ import { Zap } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { CTACarousel } from '@/components/ui/cta-carousel'
+import { useAuthStore } from '@/services/auth'
 
 export default function ScannerPage() {
   const router = useRouter()
@@ -17,6 +18,26 @@ export default function ScannerPage() {
   const [hasNavigated, setHasNavigated] = useState(false)
   const streamRef = useRef<MediaStream | null>(null)
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
+
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const token = useAuthStore((state) => state.token)
+  const logout = useAuthStore((state) => state.logout)
+
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          logout()
+          return
+        }
+      } catch (e) {
+        logout()
+        return
+      }
+      router.replace('/profile')
+    }
+  }, [isAuthenticated, token, router, logout])
 
   // Extract serial number from QR code content
   const extractSerialNumber = useCallback(
