@@ -13,6 +13,9 @@ import { SmsModule } from "./services/sms/sms.module";
 import { EmailModule } from "./services/email/email.module";
 import { NotificationModule } from "./services/notifications/notification.module";
 import { getDatabaseConfig } from "./config/database.config";
+import { SalesModule } from './sales/sales.module';
+import { OrdersModule } from './orders/orders.module';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -34,6 +37,9 @@ import { getDatabaseConfig } from "./config/database.config";
     SmsModule,
     EmailModule,
     NotificationModule,
+    SalesModule,
+    OrdersModule,
+    EventsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
