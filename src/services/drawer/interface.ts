@@ -8,6 +8,10 @@ export type DrawerContentType =
   | 'receipt'
   | 'date-range-filter'
   | 'custom'
+  | 'payment-method'
+  | 'record-success'
+  | 'obtain-kit'
+  | 'checkout'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 

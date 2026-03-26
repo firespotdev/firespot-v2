@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, ArrowUpRight } from 'lucide-react'
+import { ChevronRight, ArrowUpRight, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
@@ -12,9 +12,11 @@ import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantInsights } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
+import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
 import { sortBankAccounts } from '@/lib/utils/bank-account'
+import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -29,11 +31,13 @@ export default function ProfilePage() {
   const { data: profile, isLoading } = useUserProfile()
   const { data: insights } = useMerchantInsights({ preset: 'last_7_days' })
   const { data: qrKitsData } = useUserQRKits()
+  const { data: salesStats } = useSalesStats()
   const updateProfilePhoto = useUpdateProfilePhoto()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
+  const [isAmountHidden, setIsAmountHidden] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
@@ -109,9 +113,8 @@ export default function ProfilePage() {
         },
       })
     } else {
-      showNotificationToast({
-        message: 'No QR kits found!',
-        duration: 2000,
+      openDrawer({
+        type: 'obtain-kit',
       })
     }
   }
@@ -128,7 +131,7 @@ export default function ProfilePage() {
     <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
-          title="Bank accounts"
+          title={` ${sortedBankAccounts.length} bank account${sortedBankAccounts.length === 1 ? '' : 's'}`}
           showDropdown
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
           onTitleClick={() =>
@@ -154,27 +157,28 @@ export default function ProfilePage() {
 
           {/* Merchant Card Carousel */}
           {sortedBankAccounts.length > 0 && (
-            <MerchantCardCarousel
-              bankAccounts={sortedBankAccounts}
+            <MerchantInfoStat
               merchantInfo={{
                 profilePhotoUrl: profile?.profilePhotoUrl,
                 businessName: profile?.businessName || 'Your Business Name',
                 bankAccountCount: sortedBankAccounts.length,
               }}
-              initialIndex={selectedBankIndex}
-              onIndexChange={setSelectedBankIndex}
               showCameraButton={true}
               onCameraClick={handleCameraClick}
               isUploadingPhoto={updateProfilePhoto.isPending}
+              todaySalesAmount={salesStats?.todaySalesAmount ?? 0}
+              isAmountHidden={isAmountHidden}
+              onToggleVisibility={() => setIsAmountHidden((prev) => !prev)}
               qrKitStatus={
                 !hasQRKits ? (
-                  <Link
-                    href="/activate"
-                    className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1"
+                  <Button
+                    variant="link"
+                    onClick={() => openDrawer({ type: 'obtain-kit' })}
+                    className="text-sm text-[#00000080] h-6 font-medium p-0 flex items-center gap-1"
                   >
                     1 more step: Activate your QR kit{' '}
                     <ChevronRight className="w-4 h-4 text-[#747576]" />
-                  </Link>
+                  </Button>
                 ) : (
                   <Link
                     href="/qr-kits"
@@ -210,54 +214,74 @@ export default function ProfilePage() {
           )}
 
           {/* Stats Section - Link to Insights */}
-          <Link href="/insights" className="grid grid-cols-2 gap-3">
+          <Link href="/insights" className="grid grid-cols-3 gap-3">
             <div className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
                 {insights?.qrKitScans?.totalScans ?? 0}
               </p>
               <div className="flex items-center justify-center gap-0.5">
                 <p className="text-[13px] text-[#00000080] font-medium">
-                  Scans this week
+                  Scans today
                 </p>
-                <ChevronRight className="w-3 h-3 text-[#00000080] mt-[1%]" />
               </div>
             </div>
 
             <div className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
-                {insights?.traffic?.customerBreakdown?.returningCustomers ?? 0}
+                {salesStats?.todaySalesCount ?? 0}
               </p>
               <div className="flex items-center justify-center gap-0.5">
                 <p className="text-[13px] text-[#00000080] font-medium">
-                  Returning customers
+                  Sales recorded
                 </p>
-                <ChevronRight className="w-3 h-3 text-[#00000080] mt-[1%]" />
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className="text-xl font-bold text-[#BB8123] leading-none mb-1">
+                {salesStats?.pendingSalesCount ?? 0}
+              </p>
+              <div className="flex items-center justify-center gap-0.5">
+                <p className="text-[13px] text-[#BB8123] font-medium">
+                  Pending
+                </p>
+                <ChevronRight className="w-3 h-3 text-[#BB8123] mt-[1%]" />
               </div>
             </div>
           </Link>
         </div>
 
-        {/* QR Kit Button */}
+        {/* Record Button */}
         <div className="border-t border-[#F1F1F1] max-w-125 mx-auto  fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
           <div className="p-4 pb-6">
             <Button
               asChild
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
             >
-              {!hasQRKits ? (
-                <Link href="/activate">Activate your QR kit</Link>
-              ) : (
-                <Link href="/qr-kits">Manage QR kit</Link>
-              )}
+              <Link href="/record-sale">Record a sale</Link>
             </Button>
 
-            <Link
-              href="/preview"
-              className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
-            >
-              What my customers would see when they scan
-              <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
-            </Link>
+            {(salesStats?.pendingSalesCount ?? 0) > 0 && (
+              <Link
+                href="/preview"
+                className="w-full text-xs text-[#BB8123] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
+              >
+                <AlertCircle
+                  className="mr-[2px] mt-[0.5%]"
+                  color="#BB8123"
+                  size={14}
+                  strokeWidth={2}
+                />
+                <span className="font-medium">
+                  Confirm or cancel {salesStats?.pendingSalesCount} pending sale
+                  {(salesStats?.pendingSalesCount ?? 0) === 1 ? '' : 's'}
+                </span>
+                <ChevronRight
+                  strokeWidth={2}
+                  className="w-4 h-4 text-[#BB8123] mt-[1%]"
+                />
+              </Link>
+            )}
           </div>
         </div>
       </div>

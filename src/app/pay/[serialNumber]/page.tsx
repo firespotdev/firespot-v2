@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
+import { useCreatePendingSale } from '@/services/sales/hooks'
 import { sortBankAccounts } from '@/lib/utils/bank-account'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
@@ -28,6 +29,7 @@ export default function PaymentPage() {
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
+  const createPendingSale = useCreatePendingSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
@@ -71,6 +73,22 @@ export default function PaymentPage() {
         },
       },
     )
+
+    if (merchant) {
+      // Get or create a persistent fingerprint for this customer
+      let fingerprint = localStorage.getItem('firespot_customer_fingerprint');
+      if (!fingerprint) {
+        fingerprint = crypto.randomUUID?.() || `fs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem('firespot_customer_fingerprint', fingerprint);
+      }
+
+      createPendingSale.mutate({
+        merchantId: merchant.id,
+        customerFingerprint: fingerprint,
+        source: window.location.search.includes('shared=true') ? 'Link shared' : 'QR scan',
+        targetBankName: bankName,
+      })
+    }
   }
 
   if (isLoading) {

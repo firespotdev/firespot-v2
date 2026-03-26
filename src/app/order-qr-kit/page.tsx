@@ -1,0 +1,184 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
+import { ChevronRight } from 'lucide-react'
+import {
+  Button,
+  showNotificationToast,
+  PhoneInput,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Label,
+  Input,
+} from '@/components/ui'
+import { useDrawerStore } from '@/services/drawer'
+
+export default function OrderQRKitPage() {
+  const router = useRouter()
+  const { openDrawer } = useDrawerStore()
+
+  const [quantity, setQuantity] = useState<number | ''>('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [state, setState] = useState('')
+  const [address, setAddress] = useState('')
+
+  const clearForm = () => {
+    setQuantity('')
+    setPhoneNumber('')
+    setState('')
+    setAddress('')
+  }
+
+  const handleCheckout = () => {
+    if (!quantity || !phoneNumber || !state || !address) {
+      showNotificationToast({
+        message: 'All fields are required',
+        duration: 3000,
+      })
+      return
+    }
+
+    openDrawer({
+      type: 'checkout',
+      props: {
+        initialQuantity: Number(quantity),
+        phoneNumber,
+        state,
+        address,
+        clearForm,
+      },
+    })
+  }
+
+  return (
+    <div className="h-dvh bg-white overflow-y-auto pb-32">
+      <div className="max-w-[500px] mx-auto h-full pt-8 px-4 flex flex-col items-center font-satoshi relative">
+        {/* Logo */}
+        <Image
+          src="/icons/firespot_logo.svg"
+          alt="firespot logo"
+          width={48}
+          height={48}
+          className="mb-6"
+        />
+
+        {/* Text */}
+        <h1 className="font-bold text-xl text-black -tracking-[0.4px] text-center mb-1">
+          Get a QR kit for just NGN 2,500
+        </h1>
+        <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-8">
+          Same day delivery in Lagos state. 3-5 business days for every other
+          state in Nigeria.
+        </p>
+
+        {/* Form fields */}
+        <div className="w-full space-y-6">
+          {/* Quantity */}
+          <div>
+            <Label>Quantity</Label>
+            <Select
+              value={quantity.toString()}
+              onValueChange={(val) => setQuantity(Number(val))}
+            >
+              <SelectTrigger className="font-medium h-11">
+                <SelectValue placeholder="Select quantity" />
+              </SelectTrigger>
+              <SelectContent>
+                {[1, 2, 3, 4, 5, 10, 20].map((num) => (
+                  <SelectItem
+                    key={num}
+                    value={num.toString()}
+                    className="font-medium"
+                  >
+                    {num}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Phone number */}
+          <div>
+            <Label>Phone number</Label>
+            <PhoneInput
+              value={phoneNumber}
+              onChange={setPhoneNumber}
+              className="w-full"
+            />
+          </div>
+
+          {/* State */}
+          <div>
+            <Label>State</Label>
+            <Select onValueChange={setState} value={state}>
+              <SelectTrigger className="font-medium h-11">
+                <SelectValue placeholder="Select state" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {[
+                  'Lagos',
+                  'Abuja',
+                  'Ogun',
+                  'Oyo',
+                  'Kano',
+                  'Rivers',
+                  'Edo',
+                  'Delta',
+                  'Kaduna',
+                  'Enugu',
+                  'Anambra',
+                  'Other states...',
+                ].map((s) => (
+                  <SelectItem key={s} value={s} className="font-medium">
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Delivery address */}
+          <div>
+            <Label>Delivery address</Label>
+            <Input
+              type="text"
+              placeholder="Enter full address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="font-medium h-11"
+            />
+          </div>
+        </div>
+
+        {/* Sticky footer placed relative to the container but fixed to bottom */}
+        <div className="fixed bottom-0 left-0 right-0 w-full">
+          <div className="mx-auto bg-white border border-[#E5E7EB] rounded-t-[12px] shadow-[0px_-4px_24px_rgba(0,0,0,0.06)] p-4 flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-black leading-none mb-1">
+                {quantity || '0'} QR kits selected
+              </h3>
+              <button
+                onClick={handleCheckout}
+                className="text-[#888888] text-xs font-medium hover:text-black flex items-center gap-0.5"
+              >
+                View details <ChevronRight size={12} />
+              </button>
+            </div>
+            <Button
+              onClick={handleCheckout}
+              disabled={!quantity}
+              className="h-12 px-4 rounded-full text-base font-bold w-fit"
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
