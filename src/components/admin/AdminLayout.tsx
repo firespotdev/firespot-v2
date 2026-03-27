@@ -13,7 +13,7 @@ import AgentsList from './AgentsList'
 import AgentDetail from './AgentDetail'
 import CreateAgent from './CreateAgent'
 import MerchantsList from './MerchantsList'
-import OrdersList from './OrdersList'
+import QROrdersList from './QROrdersList'
 import ChangePasswordModal from './ChangePasswordModal'
 
 type Tab =
@@ -284,7 +284,7 @@ export default function AdminLayout() {
         {activeTab === 'merchants' && (
           <MerchantsList onSelectMerchant={handleSelectMerchant} />
         )}
-        {activeTab === 'orders' && <OrdersList />}
+        {activeTab === 'orders' && <QROrdersList />}
       </main>
 
       {selectedQRKit && (

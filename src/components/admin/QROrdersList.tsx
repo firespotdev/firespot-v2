@@ -2,16 +2,16 @@
 
 import { useState } from 'react'
 import {
-  useAdminOrders,
-  useUpdateOrderStatus,
-} from '@/services/orders/orderApi'
-import type { Order, OrderFilters } from '@/services/orders/interface'
+  useAdminQROrders,
+  useUpdateQROrderStatus,
+} from '@/services/qr-orders/qr-orderApi'
+import type { QROrder, QROrderFilters } from '@/services/qr-orders/interface'
 import { adminToast } from './AdminToast'
 
-export default function OrdersList() {
-  const [filters, setFilters] = useState<OrderFilters>({})
-  const { data: orders, isLoading, error, refetch } = useAdminOrders(filters)
-  const updateStatus = useUpdateOrderStatus()
+export default function QROrdersList() {
+  const [filters, setFilters] = useState<QROrderFilters>({})
+  const { data: orders, isLoading, error, refetch } = useAdminQROrders(filters)
+  const updateStatus = useUpdateQROrderStatus()
 
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {

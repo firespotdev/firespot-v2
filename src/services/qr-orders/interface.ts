@@ -1,6 +1,6 @@
 import { QRKit } from '../qr/interface';
 
-export interface Order {
+export interface QROrder {
   _id: string;
   merchantId: {
     _id: string;
@@ -24,7 +24,7 @@ export interface Order {
   updatedAt: string;
 }
 
-export interface OrderFilters {
+export interface QROrderFilters {
   orderStatus?: string;
   paymentStatus?: string;
 }
