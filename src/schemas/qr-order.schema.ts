@@ -1,61 +1,65 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Types } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Document, Types } from 'mongoose'
 
 @Schema({ timestamps: true })
 export class QROrder extends Document {
-  @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
-  merchantId: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  merchantId: Types.ObjectId
 
   @Prop({ required: true })
-  quantity: number;
+  quantity: number
 
   @Prop({ required: true })
-  phoneNumber: string;
+  phoneNumber: string
 
   @Prop({ required: true })
-  state: string;
+  state: string
 
   @Prop({ required: true })
-  deliveryAddress: string;
+  deliveryAddress: string
 
   @Prop({ required: true })
-  subtotal: number; // For e.g. 5000 for 2 kits at 2500 each 
+  subtotal: number
 
   @Prop({ required: true, default: 2000 })
-  deliveryFee: number; // Flat fee 2000
+  deliveryFee: number // Flat fee 2000
 
   @Prop({ required: true })
-  totalAmount: number;
+  totalAmount: number
 
   @Prop({
     enum: ['PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'],
     default: 'PENDING',
     index: true,
   })
-  orderStatus: string;
+  orderStatus: string
 
-  @Prop({ enum: ['PENDING', 'SUCCESSFUL', 'FAILED'], default: 'PENDING', index: true })
-  paymentStatus: string;
+  @Prop({
+    enum: ['PENDING', 'SUCCESSFUL', 'FAILED'],
+    default: 'PENDING',
+    index: true,
+  })
+  paymentStatus: string
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'QRKit' }] })
-  assignedKitIds: Types.ObjectId[];
+  assignedKitIds: Types.ObjectId[]
 
   @Prop({ unique: true, sparse: true, index: true })
-  paystackReference?: string;
+  paystackReference?: string
 
   @Prop()
-  paystackAccessCode?: string;
+  paystackAccessCode?: string
 
   @Prop()
-  paidAt?: Date;
+  paidAt?: Date
 
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Date
+  updatedAt?: Date
 }
 
-export const QROrderSchema = SchemaFactory.createForClass(QROrder);
-export type QROrderDocument = QROrder & Document;
+export const QROrderSchema = SchemaFactory.createForClass(QROrder)
+export type QROrderDocument = QROrder & Document
 
 // Indexes
-QROrderSchema.index({ merchantId: 1, createdAt: -1 });
-QROrderSchema.index({ paystackReference: 1 }, { sparse: true });
+QROrderSchema.index({ merchantId: 1, createdAt: -1 })
+QROrderSchema.index({ paystackReference: 1 }, { sparse: true })
