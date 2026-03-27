@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { ChevronDown, Trash2, Minus, Plus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
-import { useCreateOrder } from '@/services/orders/hooks'
+import { useCreateQROrder } from '@/services/qr-orders/qr-ordersHooks'
 import { useQRAvailability } from '@/services/qr/qrApi'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -28,7 +28,7 @@ export const CheckoutDrawer = ({
 }: CheckoutDrawerProps) => {
   const { closeDrawer } = useDrawerStore()
   const router = useRouter()
-  const createOrderMutation = useCreateOrder()
+  const createOrderMutation = useCreateQROrder()
   const { data: availability } = useQRAvailability()
   const [quantity, setQuantity] = useState(initialQuantity)
 

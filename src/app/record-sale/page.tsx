@@ -64,7 +64,8 @@ export default function RecordSalePage() {
       recordSaleMutation.mutate(
         { saleId: pendingSaleId, payload },
         {
-          onSuccess: () => {
+        onSuccess: (data) => {
+            setSuccessDetails(data)
             setStep('success')
           },
           onError: (error: any) => {
@@ -78,7 +79,8 @@ export default function RecordSalePage() {
       )
     } else {
       createManualSaleMutation.mutate(payload, {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          setSuccessDetails(data)
           setStep('success')
         },
         onError: (error: any) => {

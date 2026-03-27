@@ -123,7 +123,7 @@ export function MerchantInfoStat({
             <div className="flex items-end gap-1.5">
               <h3 className="font-bold text-xl leading-none">
                 {isAmountHidden
-                  ? '₦ ••••••'
+                  ? '₦ ••••••••'
                   : `₦ ${formatCurrency(todaySalesAmount)}`}
               </h3>
               <button onClick={onToggleVisibility}>

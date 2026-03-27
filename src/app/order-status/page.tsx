@@ -15,7 +15,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, TagFooter } from '@/components/ui'
-import { useVerifyOrderPayment } from '@/services/orders/hooks'
+import { useVerifyQROrderPayment } from '@/services/qr-orders/qr-ordersHooks'
 
 type PaymentStatus = 'loading' | 'success' | 'failed'
 
@@ -42,7 +42,7 @@ function OrderStatusContent() {
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [hasVerified, setHasVerified] = useState(false)
 
-  const verifyPayment = useVerifyOrderPayment(reference, {
+  const verifyPayment = useVerifyQROrderPayment(reference, {
     enabled: false,
   })
 

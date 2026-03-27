@@ -9,11 +9,7 @@ import Link from 'next/link'
 import { useDrawerStore } from '@/services/drawer'
 
 interface RecordSuccessDrawerProps {
-  successDetails: {
-    amount: number
-    paymentMethod: string
-    date: Date
-  }
+  successDetails: any
   status: 'saving' | 'success' | 'error'
   errorMessage?: string
   setStep: (step: 'amount' | 'saving' | 'success' | 'error') => void
@@ -95,6 +91,10 @@ const RecordSuccessDrawer = ({
   }
 
   // Success state
+  const displayDate = successDetails.date instanceof Date 
+    ? successDetails.date 
+    : new Date(successDetails.createdAt || successDetails.recordedAt || new Date())
+
   return (
     <div className="h-dvh w-full overflow-hidden bg-[#FEFEFE] flex flex-col items-center">
       <div className="w-full max-w-125 h-full flex flex-col font-satoshi">
@@ -142,14 +142,14 @@ const RecordSuccessDrawer = ({
           <p className="text-[14px] text-center text-[#878F98] max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
             {successDetails.paymentMethod} payment of NGN
             {successDetails.amount.toFixed(2)} on{' '}
-            {successDetails.date.toLocaleDateString('en-US', {
+            {displayDate.toLocaleDateString('en-US', {
               weekday: 'long',
               day: 'numeric',
               month: 'short',
               year: 'numeric',
             })}{' '}
             at{' '}
-            {successDetails.date.toLocaleTimeString('en-US', {
+            {displayDate.toLocaleTimeString('en-US', {
               hour: 'numeric',
               minute: '2-digit',
             })}
@@ -180,7 +180,7 @@ const RecordSuccessDrawer = ({
               openDrawer({
                 type: 'transaction-details',
                 props: {
-                  successDetails,
+                  sale: successDetails,
                   todaySalesAmount,
                 },
               })

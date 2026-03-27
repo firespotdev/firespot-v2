@@ -27,15 +27,16 @@ const TransactionDetailsDrawer = ({
     return new Intl.NumberFormat('en-NG').format(amount)
   }
 
-  const formatDate = (date: string) => {
+  const formatDate = (date: any) => {
+    if (!date) return 'N/A';
     try {
       return format(new Date(date), 'MMMM do, yyyy . h:mm a')
     } catch (e) {
-      return date
+      return String(date)
     }
   }
 
-  const isConfirmed = sale.status === 'CONFIRMED'
+  const isConfirmed = sale.status === 'CONFIRMED' || !sale.status // Treat as confirmed if status is missing but we're showing details
 
   return (
     <div className="flex flex-col h-full">
@@ -162,7 +163,7 @@ const TransactionDetailsDrawer = ({
                 Date and time
               </span>
               <span className="text-[14px] font-medium text-black">
-                {formatDate(sale.createdAt)}
+                {formatDate(sale.createdAt || sale.recordedAt || sale.date)}
               </span>
             </div>
 
