@@ -1,16 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Delete, PencilLine } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import Image from 'next/image'
-import { useCreateManualSale, useRecordSale } from '@/services/sales/hooks'
-import { useDrawerStore } from '@/services/drawer'
-import { RecordSuccessDrawer } from '@/components/custom-drawer'
-import Link from 'next/link'
+import { Suspense, useState } from 'react'
 
 export default function RecordSalePage() {
+  return (
+    <Suspense fallback={<div className="h-dvh bg-white" />}>
+      <RecordSaleContent />
+    </Suspense>
+  )
+}
+
+function RecordSaleContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const pendingSaleId = searchParams.get('id')
