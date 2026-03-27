@@ -213,9 +213,9 @@ export default function ProfilePage() {
             </p>
           )}
 
-          {/* Stats Section - Link to Insights */}
-          <Link href="/insights" className="grid grid-cols-3 gap-3">
-            <div className="text-center">
+          {/* Stats Section - Link to Insights and Recents */}
+          <div className="grid grid-cols-3 gap-3">
+            <Link href="/insights" className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
                 {insights?.qrKitScans?.totalScans ?? 0}
               </p>
@@ -224,9 +224,9 @@ export default function ProfilePage() {
                   Scans today
                 </p>
               </div>
-            </div>
+            </Link>
 
-            <div className="text-center">
+            <Link href="/insights" className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
                 {salesStats?.todaySalesCount ?? 0}
               </p>
@@ -235,9 +235,9 @@ export default function ProfilePage() {
                   Sales recorded
                 </p>
               </div>
-            </div>
+            </Link>
 
-            <div className="text-center">
+            <Link href="/recents" className="text-center">
               <p className="text-xl font-bold text-[#BB8123] leading-none mb-1">
                 {salesStats?.pendingSalesCount ?? 0}
               </p>
@@ -247,8 +247,8 @@ export default function ProfilePage() {
                 </p>
                 <ChevronRight className="w-3 h-3 text-[#BB8123] mt-[1%]" />
               </div>
-            </div>
-          </Link>
+            </Link>
+          </div>
         </div>
 
         {/* Record Button */}
@@ -263,7 +263,7 @@ export default function ProfilePage() {
 
             {(salesStats?.pendingSalesCount ?? 0) > 0 && (
               <Link
-                href="/preview"
+                href="/recents"
                 className="w-full text-xs text-[#BB8123] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
               >
                 <AlertCircle

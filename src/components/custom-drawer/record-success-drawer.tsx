@@ -6,6 +6,7 @@ import { LoaderCircle } from '../ui'
 import { useRouter } from 'next/navigation'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
+import { useDrawerStore } from '@/services/drawer'
 
 interface RecordSuccessDrawerProps {
   successDetails: {
@@ -36,6 +37,7 @@ const RecordSuccessDrawer = ({
   setDescription,
 }: RecordSuccessDrawerProps) => {
   const router = useRouter()
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: statsData } = useSalesStats()
 
   const todaySalesAmount = statsData?.todaySalesAmount ?? 0
@@ -174,6 +176,15 @@ const RecordSuccessDrawer = ({
 
           <Button
             variant="secondary"
+            onClick={() => {
+              openDrawer({
+                type: 'transaction-details',
+                props: {
+                  successDetails,
+                  todaySalesAmount,
+                },
+              })
+            }}
             className="py-[10px] w-fit px-[14px] h-9 gap-1 shadow-[0px_2px_4px_0px_#0000000A] border border-[#0000000A] shrink-0"
           >
             <svg
@@ -214,7 +225,7 @@ const RecordSuccessDrawer = ({
         </div>
 
         {/* Footer */}
-        <div className="w-full bg-white space-y-3 px-4 pb-8 pt-4 shrink-0 mt-auto border-t border-[#F1F1F1]">
+        <div className="w-full bg-white space-y-3 px-4 pb-4 pt-4 shrink-0 mt-auto border-t border-[#F1F1F1]">
           <Button
             onClick={() => {
               setAmount('')

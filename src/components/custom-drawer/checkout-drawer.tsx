@@ -6,7 +6,9 @@ import { ChevronDown, Trash2, Minus, Plus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { useCreateOrder } from '@/services/orders/hooks'
+import { useQRAvailability } from '@/services/qr/qrApi'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { showNotificationToast, LoaderCircle } from '@/components/ui'
 
 interface CheckoutDrawerProps {
@@ -27,12 +29,16 @@ export const CheckoutDrawer = ({
   const { closeDrawer } = useDrawerStore()
   const router = useRouter()
   const createOrderMutation = useCreateOrder()
+  const { data: availability } = useQRAvailability()
   const [quantity, setQuantity] = useState(initialQuantity)
 
   const pricePerKit = 2500
   const deliveryFee = 3000
   const subtotal = quantity * pricePerKit
   const total = subtotal + deliveryFee
+
+  const availableCount = availability?.availableCount ?? 0
+  const isOutOfStock = availableCount < quantity
 
   const handleIncrement = () => setQuantity((q) => q + 1)
   const handleDecrement = () => setQuantity((q) => (q > 1 ? q - 1 : 1))
@@ -55,42 +61,46 @@ export const CheckoutDrawer = ({
       return
     }
 
-    router.push('/order-status')
-
-    // createOrderMutation.mutate(
-    //   {
-    //     quantity,
-    //     phoneNumber,
-    //     state,
-    //     deliveryAddress: address,
-    //   },
-    //   {
-    //     onSuccess: (data) => {
-    //       if (data?.paymentUrl) {
-    //         // Redirect to Paystack
-    //         window.location.href = data.paymentUrl
-    //       } else {
-    //         showNotificationToast({
-    //           message: 'Error initializing payment',
-    //           duration: 3000,
-    //         })
-    //       }
-    //     },
-    //     onError: (error: any) => {
-    //       showNotificationToast({
-    //         message: error?.response?.data?.message || 'Failed to create order',
-    //         duration: 3000,
-    //       })
-    //     },
-    //   },
-    // )
+    createOrderMutation.mutate(
+      {
+        quantity,
+        phoneNumber,
+        state,
+        deliveryAddress: address,
+      },
+      {
+        onSuccess: (data) => {
+          if (data?.authorizationUrl) {
+            // Redirect to Paystack
+            window.location.href = data.authorizationUrl
+          } else {
+            showNotificationToast({
+              message: 'Error initializing payment',
+              duration: 3000,
+            })
+          }
+        },
+        onError: (error: any) => {
+          showNotificationToast({
+            message: error?.response?.data?.message || 'Failed to create order',
+            duration: 3000,
+          })
+        },
+      },
+    )
   }
 
   return (
     <div className="flex flex-col bg-white rounded-t-[12px] pb-4 font-satoshi">
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-[#F1F1F1]">
-        <ChevronDown color="black" strokeWidth={2.5} onClick={closeDrawer} />
+        {isOutOfStock ? (
+          <Link href="/profile" onClick={closeDrawer}>
+            <ChevronDown color="black" strokeWidth={2.5} />
+          </Link>
+        ) : (
+          <ChevronDown color="black" strokeWidth={2.5} onClick={closeDrawer} />
+        )}
         <div className="flex flex-col items-center">
           <h2 className="text-[16px] font-bold text-black">Checkout</h2>
 
@@ -106,12 +116,22 @@ export const CheckoutDrawer = ({
             />
           </div>
         </div>
-        <button
-          onClick={handleClear}
-          className="text-xs font-medium text-black underline underline-offset-3"
-        >
-          Clear
-        </button>
+        {isOutOfStock ? (
+          <Link
+            href="/profile"
+            onClick={handleClear}
+            className="text-xs font-medium text-black underline underline-offset-3"
+          >
+            Clear
+          </Link>
+        ) : (
+          <button
+            onClick={handleClear}
+            className="text-xs font-medium text-black underline underline-offset-3"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {/* Item Section */}
@@ -190,10 +210,14 @@ export const CheckoutDrawer = ({
       <div className="px-4 pt-4 border-t border-[#F1F1F1] rounded-t-[12px]">
         <Button
           onClick={handlePay}
-          disabled={createOrderMutation.isPending}
-          className="w-full bg-[#24C166] hover:bg-[#24C166] text-white text-base font-bold mb-4 shadow-sm"
+          disabled={createOrderMutation.isPending || isOutOfStock}
+          className={`w-full ${
+            isOutOfStock
+              ? 'bg-gray-400 hover:bg-gray-400'
+              : 'bg-[#24C166] hover:bg-[#24C166]'
+          } text-white text-base font-bold mb-4 shadow-sm`}
         >
-          Pay NGN {total.toLocaleString()}
+          {isOutOfStock ? 'OUT OF STOCK' : `Pay NGN ${total.toLocaleString()}`}
         </Button>
         <div className="flex items-start gap-2 text-[#6B7280]">
           <AlertCircle size={16} className="text-[#FBBF24] shrink-0 mt-0.5" />

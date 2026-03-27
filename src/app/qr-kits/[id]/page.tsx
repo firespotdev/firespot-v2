@@ -410,7 +410,7 @@ export default function QRKitDetailPage() {
                 </div>
                 <div className="flex gap-1 absolute right-4">
                   <span className="font-sofia-pro font-medium text-[#FFFFFF80] -tracking-[3%] text-[5.81px]">
-                    Powered by Firespot
+                    {qrKit.name || qrKit.serialNumber}
                   </span>
                 </div>
               </div>

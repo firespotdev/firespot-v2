@@ -11,6 +11,7 @@ export type DrawerContentType =
   | 'payment-method'
   | 'record-success'
   | 'obtain-kit'
+  | 'transaction-details'
   | 'checkout'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'

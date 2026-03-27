@@ -21,6 +21,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { LoaderCircle } from '@/components/ui'
 import { getBankLogo } from '@/lib/utils/bank-account'
+import { useDrawerStore } from '@/services/drawer'
 
 type TransactionStatus = 'CONFIRMED' | 'PENDING' | 'CANCELLED'
 
@@ -81,6 +82,7 @@ const getTitle = (sale: Sale) => {
 }
 
 export default function HistoryPage() {
+  const { openDrawer } = useDrawerStore()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<'ALL' | TransactionStatus>(
@@ -92,7 +94,7 @@ export default function HistoryPage() {
     status: activeFilter,
     limit: '100',
   })
-  const { data: salesStats } = useSalesStats()
+  const { data: salesStats, isLoading: isLoadingStats } = useSalesStats()
 
   const sales: Sale[] = salesData?.data ?? []
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
@@ -125,9 +127,16 @@ export default function HistoryPage() {
 
   const isEmpty = sales.length === 0 && !isLoading
 
+  const handleRecordClick = (sale: any) => {
+    openDrawer({
+      type: 'transaction-details',
+      props: { sale },
+    })
+  }
+
   return (
-    <div className="min-h-dvh bg-[#F4F6F8] flex flex-col font-satoshi">
-      <header className="bg-[#F4F6F8] flex items-center justify-between py-3 px-4">
+    <div className="h-dvh bg-[#F4F6F8] flex flex-col font-satoshi overflow-hidden">
+      <header className="shrink-0 bg-[#F4F6F8] flex items-center justify-between py-3 px-4">
         <ArrowLeft
           onClick={() => router.back()}
           size={24}
@@ -137,7 +146,7 @@ export default function HistoryPage() {
         <h1 className="text-lg font-bold text-black">History</h1>
         <Download size={24} color="black" />
       </header>
-      <div className="relative mb-4 px-4">
+      <div className="shrink-0 relative mb-4 px-4">
         <div className="absolute left-8 top-1/2 -translate-y-1/2">
           <Search size={16} color="#00000033" strokeWidth={2} />
         </div>
@@ -150,42 +159,57 @@ export default function HistoryPage() {
         />
       </div>
 
-      <main className="flex-1 flex flex-col px-4">
-        <div className="border-2 border-[#0000000A] rounded-[12px] w-full mb-6">
-          {!isEmpty && (
-            <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
-              <div>
-                <button className="flex items-center gap-1 mb-1">
-                  <span className="text-[#00000066] text-xs font-medium">
-                    Today
-                  </span>{' '}
-                  <ChevronDown size={14} strokeWidth={2} color="#00000066" />
-                </button>
-                <div className="flex items-end gap-1.5">
+      <main className="flex-1 flex flex-col overflow-hidden px-4">
+        <div className="shrink-0 border-2 border-[#0000000A] rounded-[12px] w-full mb-6">
+          <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
+            <div>
+              <button
+                className="flex items-center gap-1 mb-1"
+                onClick={() => {
+                  openDrawer({
+                    type: 'date-range-filter',
+                  })
+                }}
+              >
+                <span className="text-[#00000066] text-xs font-medium">
+                  Today
+                </span>{' '}
+                <ChevronDown size={14} strokeWidth={2} color="#00000066" />
+              </button>
+              <div className="flex items-end gap-1.5">
+                {isLoadingStats ? (
+                  <div className="h-5 w-28 bg-gray-200 animate-pulse rounded-[5px]" />
+                ) : (
                   <h3 className="font-bold text-xl leading-none">
                     {isAmountHidden
                       ? '₦ ••••••'
                       : `₦ ${formatCurrency(todaySalesAmount)}`}
                   </h3>
-                  <button onClick={() => setIsAmountHidden((p) => !p)}>
-                    {isAmountHidden ? (
-                      <EyeOff size={16} color="#00000066" strokeWidth={2} />
-                    ) : (
-                      <Eye size={16} color="#00000066" strokeWidth={2} />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex justify-center items-center p-2.5 rounded-full bg-[#E5E7EB]">
-                  <Clock size={20} strokeWidth={2} color="#6B7280" />
-                </div>
-                <div className="flex justify-center items-center p-2.5 rounded-full bg-[#26B2FF]">
-                  <PieChart size={20} strokeWidth={2} color="#ffffff" />
-                </div>
+                )}
+                <button onClick={() => setIsAmountHidden((p) => !p)}>
+                  {isAmountHidden ? (
+                    <EyeOff size={16} color="#00000066" strokeWidth={2} />
+                  ) : (
+                    <Eye size={16} color="#00000066" strokeWidth={2} />
+                  )}
+                </button>
               </div>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <Link
+                href="/recents"
+                className="flex justify-center items-center p-2.5 rounded-full bg-[#E5E7EB]"
+              >
+                <Clock size={20} strokeWidth={2} color="#6B7280" />
+              </Link>
+              <Link
+                href="/insights"
+                className="flex justify-center items-center p-2.5 rounded-full bg-[#26B2FF]"
+              >
+                <PieChart size={20} strokeWidth={2} color="#ffffff" />
+              </Link>
+            </div>
+          </div>
 
           <div className="flex items-center bg-[#f4f4f4] px-5 py-3 gap-2 rounded-[12px]">
             <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
@@ -197,12 +221,29 @@ export default function HistoryPage() {
           </div>
         </div>
 
+        <div className="shrink-0 flex gap-2 overflow-x-auto mb-6 no-scrollbar -mx-1 px-1">
+          {['ALL', 'CONFIRMED', 'PENDING', 'CANCELLED'].map((f) => (
+            <button
+              key={f}
+              onClick={() => setActiveFilter(f as any)}
+              className={cn(
+                'px-4 py-2.5 rounded-full text-[10px] font-bold whitespace-nowrap w-fit',
+                activeFilter === f
+                  ? 'bg-black text-white'
+                  : 'bg-[#E5E7EB99] text-[#111827]',
+              )}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center overflow-y-auto">
             <LoaderCircle innerBg="#F4F6F8" />
           </div>
         ) : isEmpty ? (
-          <div className="flex-1 flex flex-col items-center justify-center -mt-10 animate-in fade-in zoom-in duration-500">
+          <div className="flex-1 flex flex-col items-center justify-center -mt-10 animate-in fade-in zoom-in duration-500 overflow-y-auto">
             <div className="text-[64px] mb-10">😢</div>
             <h2 className="text-xl font-bold text-black mb-2 text-center leading-none -tracking-[0.4px]">
               No sales yet
@@ -222,24 +263,7 @@ export default function HistoryPage() {
             </Link>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col">
-            <div className="flex gap-2 overflow-x-auto mb-6 no-scrollbar -mx-1 px-1">
-              {['ALL', 'CONFIRMED', 'PENDING', 'CANCELLED'].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setActiveFilter(f as any)}
-                  className={cn(
-                    'px-4 py-2.5 rounded-full text-[10px] font-bold whitespace-nowrap w-fit',
-                    activeFilter === f
-                      ? 'bg-black text-white'
-                      : 'bg-[#E5E7EB99] text-[#111827]',
-                  )}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-
+          <div className="flex-1 overflow-y-auto pb-2 no-scrollbar">
             <div className="space-y-8">
               {Object.keys(groupedSales).length === 0 ? (
                 <div className="text-center py-12">
@@ -256,6 +280,7 @@ export default function HistoryPage() {
                     <div className="bg-white rounded-2xl shadow-[0px_4px_12px_0px_#00000008] border border-[#F4F6F8] overflow-hidden divide-y divide-[#F1F1F1]">
                       {monthSales.map((sale) => (
                         <div
+                          onClick={() => handleRecordClick(sale)}
                           key={sale._id}
                           className={cn(
                             'flex items-center gap-2 p-3 group',
@@ -294,9 +319,7 @@ export default function HistoryPage() {
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-[13px] font-bold text-black mb-1">
-                              {isAmountHidden && sale.amount
-                                ? '₦ •••'
-                                : getAmountLabel(sale)}
+                              {getAmountLabel(sale)}
                             </p>
                             <p
                               className={cn(

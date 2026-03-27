@@ -87,6 +87,7 @@ export default function PaymentPage() {
         customerFingerprint: fingerprint,
         source: window.location.search.includes('shared=true') ? 'Link shared' : 'QR scan',
         targetBankName: bankName,
+        serialNumber: serialNumber,
       })
     }
   }

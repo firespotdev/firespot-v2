@@ -22,6 +22,13 @@ export const publicQrApi = {
     )
     return response.data
   },
+
+  getAvailability: async (): Promise<{ availableCount: number }> => {
+    const response = await publicApiClient.get<{ availableCount: number }>(
+      '/qr-kits/availability',
+    )
+    return response.data
+  },
 }
 
 export const userQrApi = {
@@ -105,5 +112,13 @@ export const useUpdateQRKit = () => {
       queryClient.setQueryData(['user', 'qr-kit', id], data.qrKit)
       queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
     },
+  })
+}
+
+export const useQRAvailability = () => {
+  return useQuery({
+    queryKey: ['qr-kits', 'availability'],
+    queryFn: () => publicQrApi.getAvailability(),
+    refetchInterval: 30000, // Refresh every 30 seconds
   })
 }

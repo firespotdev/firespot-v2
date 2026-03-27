@@ -87,7 +87,7 @@ const ObtainKitDrawer = () => {
           </div>
         </div>
       </div>
-      <div className="flex items-center w-full gap-4 border-t border-[#F1F1F1] py-3 px-4">
+      <div className="flex items-center w-full gap-4 border-t border-[#F1F1F1] py-3 px-4 pb-4">
         <Link
           href="/order-qr-kit"
           onClick={closeDrawer}

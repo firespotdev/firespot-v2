@@ -46,8 +46,6 @@ export default function RecentsPage() {
     }
   }
 
-  const isLoading = statsLoading || pendingLoading || confirmedLoading
-
   return (
     <div className="h-dvh bg-[#f4f6f8] px-3 shadow-xl overflow-y-auto pb-10">
       <header className="py-3.5 px-1 flex justify-between items-center">
@@ -83,7 +81,7 @@ export default function RecentsPage() {
           </div>
           <div className="flex items-end gap-1.5">
             <h3 className="font-bold text-[22px] tracking-tight leading-none text-black">
-              ₦ {formatCurrency(stats?.totalSalesAmount ?? 0)}
+              ₦ {formatCurrency(stats?.todaySalesAmount ?? 0)}
             </h3>
           </div>
         </div>
@@ -106,7 +104,7 @@ export default function RecentsPage() {
                 onConfirm={() => handleConfirm(sale._id)}
                 onCancel={() => handleCancel(sale._id)}
               >
-                <div className="p-3 border-b border-[#F1F1F1] last:border-b-0 bg-white">
+                <div className="p-3 border-b border-[#F1F1F1] last:border-b-0 bg-white cursor-pointer">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="relative shrink-0">
@@ -183,7 +181,6 @@ export default function RecentsPage() {
             confirmedData.data.map((sale: any) => (
               <div
                 key={sale._id}
-                onClick={() => router.push(`/history`)}
                 className="cursor-pointer p-3 border-b border-[#F1F1F1] last:border-b-0 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">

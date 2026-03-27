@@ -6,6 +6,7 @@ export interface CreatePendingSalePayload {
   customerType?: 'New' | 'Repeat';
   source?: 'QR scan' | 'Link shared' | 'Manual';
   targetBankName?: string;
+  serialNumber?: string;
 }
 
 export interface RecordSalePayload {

@@ -25,6 +25,7 @@ import { PaymentMethodDrawer } from './payment-method-drawer'
 import { RecordSuccessDrawer } from './record-success-drawer'
 import { ObtainKitDrawer } from './obtain-kit-drawer'
 import { CheckoutDrawer } from './checkout-drawer'
+import { TransactionDetailsDrawer } from './transaction-details-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -103,6 +104,14 @@ const DRAWER_CONFIG: Record<
     noHeader: true,
     fullScreen: true,
     hideHandle: true,
+  },
+  'transaction-details': {
+    title: '',
+    Content: TransactionDetailsDrawer,
+    noHeader: true,
+    fullScreen: true,
+    hideHandle: true,
+    direction: 'right',
   },
   checkout: {
     title: '',
