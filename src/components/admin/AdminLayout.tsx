@@ -13,9 +13,17 @@ import AgentsList from './AgentsList'
 import AgentDetail from './AgentDetail'
 import CreateAgent from './CreateAgent'
 import MerchantsList from './MerchantsList'
+import OrdersList from './OrdersList'
 import ChangePasswordModal from './ChangePasswordModal'
 
-type Tab = 'dashboard' | 'create' | 'list' | 'agents' | 'create-agent' | 'merchants'
+type Tab =
+  | 'dashboard'
+  | 'create'
+  | 'list'
+  | 'agents'
+  | 'create-agent'
+  | 'merchants'
+  | 'orders'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -24,7 +32,9 @@ export default function AdminLayout() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [selectedQRKit, setSelectedQRKit] = useState<QRKit | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null)
-  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(null)
+  const [selectedMerchant, setSelectedMerchant] = useState<Merchant | null>(
+    null,
+  )
   const logout = useAdminLogout()
   const adminInfo = getAdminInfo()
   const [showChangePassword, setShowChangePassword] = useState(false)
@@ -125,6 +135,25 @@ export default function AdminLayout() {
         </svg>
       ),
     },
+    {
+      id: 'orders',
+      label: 'Orders',
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+          />
+        </svg>
+      ),
+    },
   ]
 
   const handleSelectQRKit = (qrKit: QRKit) => {
@@ -191,8 +220,18 @@ export default function AdminLayout() {
                 title="Change Password"
                 className="rounded-xl border border-gray-200 bg-white p-2 text-gray-700 transition-colors hover:bg-gray-50"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
+                  />
                 </svg>
               </button>
               <button
@@ -245,6 +284,7 @@ export default function AdminLayout() {
         {activeTab === 'merchants' && (
           <MerchantsList onSelectMerchant={handleSelectMerchant} />
         )}
+        {activeTab === 'orders' && <OrdersList />}
       </main>
 
       {selectedQRKit && (
