@@ -19,4 +19,8 @@ export class CreatePendingSaleDto {
   @IsOptional()
   @IsString()
   targetBankName?: string;
+
+  @IsOptional()
+  @IsString()
+  serialNumber?: string;
 }

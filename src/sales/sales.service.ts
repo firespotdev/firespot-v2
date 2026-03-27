@@ -3,35 +3,55 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Sale, SaleDocument } from '../schemas/sale.schema';
 import { User, UserDocument } from '../schemas/user.schema';
+import { QRKit, QRKitDocument } from '../schemas/qrkit.schema';
 import { EventsGateway } from '../events/events/events.gateway';
 import { CreatePendingSaleDto } from './dto/create-pending-sale.dto';
 import { RecordSaleDto } from './dto/record-sale.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
+import { nanoid } from 'nanoid';
 
 @Injectable()
 export class SalesService {
   constructor(
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     private eventsGateway: EventsGateway,
   ) {}
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
     // Check if this fingerprint has any confirmed sales for this merchant already
-    const existingConfirmedSale = await this.saleModel.findOne({
+    const confirmedSalesCount = await this.saleModel.countDocuments({
       merchantId: dto.merchantId,
       customerFingerprint: dto.customerFingerprint,
       status: 'CONFIRMED',
     });
 
-    const customerType = existingConfirmedSale ? 'Repeat' : 'New';
+    const customerType = confirmedSalesCount > 0 ? 'Repeat' : 'New';
+    const customerPurchaseCount = confirmedSalesCount + 1; // Including this potential sale
+
+    // Generate unique reference
+    const reference = `FS-${nanoid(8).toUpperCase()}`;
+
+    let qrKitName = undefined;
+    if (dto.serialNumber) {
+      const qrKit = await this.qrKitModel.findOne({
+        serialNumber: dto.serialNumber.toUpperCase(),
+      });
+      if (qrKit) {
+        qrKitName = qrKit.name || qrKit.serialNumber;
+      }
+    }
 
     const sale = new this.saleModel({
       ...dto,
       customerType,
+      customerPurchaseCount,
+      reference,
+      qrKitName,
       status: 'PENDING',
     });
-    
+
     await sale.save();
 
     // Emit event to the merchant's room
@@ -54,16 +74,25 @@ export class SalesService {
       }
     }
 
+    // Find the merchant's first activated QR kit to attribute this manual sale to
+    const firstKit = await this.qrKitModel.findOne({
+      merchantId: new Types.ObjectId(merchantId),
+      activationStatus: 'activated'
+    }).sort({ createdAt: 1 }).exec();
+
     const sale = new this.saleModel({
       merchantId,
       amount: dto.amount,
       description: dto.description,
-      paymentMethod: dto.paymentMethod,
+      paymentMethod: dto.paymentMethod || 'Other',
       targetBankName,
       status: 'CONFIRMED',
       recordedAt: new Date(),
       customerType: 'New', // Default for manual as per request
       source: 'Manual',
+      reference: `FS-${nanoid(8).toUpperCase()}`,
+      serialNumber: firstKit?.serialNumber,
+      qrKitName: firstKit?.name || firstKit?.serialNumber,
     });
     
     return sale.save();
@@ -140,8 +169,21 @@ export class SalesService {
     sale.status = 'CONFIRMED';
     sale.amount = dto.amount;
     sale.description = dto.description;
-    sale.paymentMethod = dto.paymentMethod;
+    sale.paymentMethod = dto.paymentMethod || 'Other';
     sale.recordedAt = new Date();
+
+    // If no QR kit is linked (e.g., manual entry confirmed later or link share), attribute to first kit
+    if (!sale.serialNumber) {
+      const firstKit = await this.qrKitModel.findOne({
+        merchantId: new Types.ObjectId(merchantId),
+        activationStatus: 'activated'
+      }).sort({ createdAt: 1 }).exec();
+
+      if (firstKit) {
+        sale.serialNumber = firstKit.serialNumber;
+        sale.qrKitName = firstKit.name || firstKit.serialNumber;
+      }
+    }
 
     return sale.save();
   }

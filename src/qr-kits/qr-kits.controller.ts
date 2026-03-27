@@ -24,6 +24,25 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 export class QRKitsController {
   constructor(private readonly qrKitsService: QRKitsService) {}
 
+  @Get("availability")
+  @ApiOperation({
+    summary: "Check QR kit inventory availability",
+    description: "Returns the count of unassigned QR kits available for online orders.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Availability count retrieved",
+    schema: {
+      type: "object",
+      properties: {
+        availableCount: { type: "number", example: 10 },
+      },
+    },
+  })
+  async getAvailability() {
+    return this.qrKitsService.checkAvailability();
+  }
+
   @Get(":serialNumber/check")
   @ApiOperation({
     summary: "Check QR kit serial number availability",

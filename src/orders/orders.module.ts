@@ -1,10 +1,11 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { OrdersController } from './orders.controller';
-import { OrdersService } from './orders.service';
-import { Order, OrderSchema } from '../schemas/order.schema';
-import { User, UserSchema } from '../schemas/user.schema';
-import { UsersModule } from '../users/users.module';
+import { Module, forwardRef } from '@nestjs/common'
+import { MongooseModule } from '@nestjs/mongoose'
+import { OrdersController } from './orders.controller'
+import { OrdersService } from './orders.service'
+import { Order, OrderSchema } from '../schemas/order.schema'
+import { User, UserSchema } from '../schemas/user.schema'
+import { UsersModule } from '../users/users.module'
+import { QRKitsModule } from '../qr-kits/qr-kits.module'
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { UsersModule } from '../users/users.module';
       { name: User.name, schema: UserSchema },
     ]),
     forwardRef(() => UsersModule),
+    QRKitsModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

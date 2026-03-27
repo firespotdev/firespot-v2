@@ -27,8 +27,18 @@ export class Order extends Document {
   @Prop({ required: true })
   totalAmount: number;
 
+  @Prop({
+    enum: ['PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED', 'CANCELLED'],
+    default: 'PENDING',
+    index: true,
+  })
+  orderStatus: string;
+
   @Prop({ enum: ['PENDING', 'SUCCESSFUL', 'FAILED'], default: 'PENDING', index: true })
   paymentStatus: string;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'QRKit' }] })
+  assignedKitIds: Types.ObjectId[];
 
   @Prop({ unique: true, sparse: true, index: true })
   paystackReference?: string;

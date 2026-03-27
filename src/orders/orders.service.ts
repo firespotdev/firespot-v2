@@ -10,6 +10,7 @@ import { User } from '../schemas/user.schema'
 import { CreateOrderDto } from './dto/create-order.dto'
 import { PaystackService } from '../users/services/paystack.service'
 import { ConfigService } from '@nestjs/config'
+import { QRKitsService } from '../qr-kits/qr-kits.service'
 
 @Injectable()
 export class OrdersService {
@@ -18,6 +19,7 @@ export class OrdersService {
     @InjectModel(User.name) private userModel: Model<User>,
     private paystackService: PaystackService,
     private configService: ConfigService,
+    private qrKitsService: QRKitsService,
   ) {}
 
   async createOrder(merchantId: string, dto: CreateOrderDto) {
@@ -28,9 +30,9 @@ export class OrdersService {
       throw new NotFoundException('User not found')
     }
 
-    const email = `${user.phoneNumber}@firespot.co`
+    const email = `${user.fullPhoneNumber.replace('+', '')}@firespot.co`
     const KIT_PRICE = 2500
-    const DELIVERY_FEE = 2000
+    const DELIVERY_FEE = 3000
 
     const subtotal = dto.quantity * KIT_PRICE
     const totalAmount = subtotal + DELIVERY_FEE
@@ -89,10 +91,29 @@ export class OrdersService {
         { paystackReference: reference },
         {
           paymentStatus: 'SUCCESSFUL',
+          orderStatus: 'PROCESSING',
           paidAt: new Date(verification.paidAt),
         },
         { new: true },
       )
+
+      if (order && order.paymentStatus === 'SUCCESSFUL') {
+        try {
+          // Assign available kits to the merchant
+          const assignedKitIds = await this.qrKitsService.assignKitsToMerchant(
+            order.merchantId.toString(),
+            order.quantity,
+          )
+
+          // Link assigned kits to the order
+          order.assignedKitIds = assignedKitIds
+          await order.save()
+        } catch (error) {
+          console.error('Failed to auto-assign kits to order:', error.message)
+          // We don't throw here to avoid failing the payment verification
+          // An admin can manually assign kits if auto-assignment fails
+        }
+      }
 
       return order
     }

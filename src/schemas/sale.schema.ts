@@ -17,6 +17,9 @@ export class Sale extends Document {
 
   @Prop({ enum: ['PENDING', 'CONFIRMED', 'CANCELLED'], default: 'PENDING', index: true })
   status: string;
+  
+  @Prop({ index: true, unique: true, sparse: true })
+  reference?: string;
 
   @Prop()
   amount?: number; // In kobo, consistent with Nigerian context if app does so, but here we can keep as raw number
@@ -29,6 +32,15 @@ export class Sale extends Document {
 
   @Prop()
   targetBankName?: string;
+
+  @Prop()
+  serialNumber?: string;
+
+  @Prop()
+  qrKitName?: string;
+
+  @Prop({ default: 1 })
+  customerPurchaseCount?: number;
 
   @Prop()
   recordedAt?: Date;
