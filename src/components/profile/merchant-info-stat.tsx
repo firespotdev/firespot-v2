@@ -74,7 +74,6 @@ export function MerchantInfoStat({
             </div>
           )}
 
-          {/* Upload overlay when uploading */}
           {isUploadingPhoto && (
             <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
               <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
