@@ -3,7 +3,7 @@ import { AdminAuthModule } from "./admin-auth/admin-auth.module";
 import { AdminQRKitsModule } from "./qr-kits/admin-qr-kits.module";
 import { AdminAgentsModule } from "./agents/admin-agents.module";
 import { AdminMerchantsModule } from "./merchants/admin-merchants.module";
-import { AdminOrdersModule } from "./orders/admin-orders.module";
+import { AdminQROrdersModule } from "./qr-orders/admin-qr-orders.module";
 
 @Module({
   imports: [
@@ -11,7 +11,7 @@ import { AdminOrdersModule } from "./orders/admin-orders.module";
     AdminQRKitsModule,
     AdminAgentsModule,
     AdminMerchantsModule,
-    AdminOrdersModule,
+    AdminQROrdersModule,
   ],
   exports: [],
 })

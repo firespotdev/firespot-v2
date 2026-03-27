@@ -5,24 +5,24 @@ import {
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
-import { Order, OrderDocument } from '../schemas/order.schema'
+import { QROrder, QROrderDocument } from '../schemas/qr-order.schema'
 import { User } from '../schemas/user.schema'
-import { CreateOrderDto } from './dto/create-order.dto'
+import { CreateQROrderDto } from './dto/create-qr-order.dto'
 import { PaystackService } from '../users/services/paystack.service'
 import { ConfigService } from '@nestjs/config'
 import { QRKitsService } from '../qr-kits/qr-kits.service'
 
 @Injectable()
-export class OrdersService {
+export class QROrdersService {
   constructor(
-    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(QROrder.name) private orderModel: Model<QROrderDocument>,
     @InjectModel(User.name) private userModel: Model<User>,
     private paystackService: PaystackService,
     private configService: ConfigService,
     private qrKitsService: QRKitsService,
   ) {}
 
-  async createOrder(merchantId: string, dto: CreateOrderDto) {
+  async createOrder(merchantId: string, dto: CreateQROrderDto) {
     const user = await this.userModel
       .findById(merchantId)
       .select('fullPhoneNumber')

@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Order, OrderDocument } from '../../schemas/order.schema';
+import { QROrder, QROrderDocument } from '../../schemas/qr-order.schema';
 
 @Injectable()
-export class AdminOrdersService {
+export class AdminQROrdersService {
   constructor(
-    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(QROrder.name) private orderModel: Model<QROrderDocument>,
   ) {}
 
   async listOrders(filters: { orderStatus?: string; paymentStatus?: string } = {}) {

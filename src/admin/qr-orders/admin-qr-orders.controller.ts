@@ -8,12 +8,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AdminJwtAuthGuard } from '../admin-auth/guards/admin-jwt-auth.guard';
-import { AdminOrdersService } from './admin-orders.service';
+import { AdminQROrdersService } from './admin-qr-orders.service';
 
-@Controller('admin/orders')
+@Controller('admin/qr-orders')
 @UseGuards(AdminJwtAuthGuard)
-export class AdminOrdersController {
-  constructor(private adminOrdersService: AdminOrdersService) {}
+export class AdminQROrdersController {
+  constructor(private adminOrdersService: AdminQROrdersService) {}
 
   @Get()
   async listOrders(

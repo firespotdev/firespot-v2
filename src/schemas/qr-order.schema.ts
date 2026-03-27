@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
 @Schema({ timestamps: true })
-export class Order extends Document {
+export class QROrder extends Document {
   @Prop({ type: Types.ObjectId, ref: "User", required: true, index: true })
   merchantId: Types.ObjectId;
 
@@ -53,9 +53,9 @@ export class Order extends Document {
   updatedAt?: Date;
 }
 
-export const OrderSchema = SchemaFactory.createForClass(Order);
-export type OrderDocument = Order & Document;
+export const QROrderSchema = SchemaFactory.createForClass(QROrder);
+export type QROrderDocument = QROrder & Document;
 
 // Indexes
-OrderSchema.index({ merchantId: 1, createdAt: -1 });
-OrderSchema.index({ paystackReference: 1 }, { sparse: true });
+QROrderSchema.index({ merchantId: 1, createdAt: -1 });
+QROrderSchema.index({ paystackReference: 1 }, { sparse: true });

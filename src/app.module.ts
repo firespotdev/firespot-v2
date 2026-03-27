@@ -14,7 +14,7 @@ import { EmailModule } from "./services/email/email.module";
 import { NotificationModule } from "./services/notifications/notification.module";
 import { getDatabaseConfig } from "./config/database.config";
 import { SalesModule } from './sales/sales.module';
-import { OrdersModule } from './orders/orders.module';
+import { QROrdersModule } from './qr-orders/qr-orders.module';
 import { EventsModule } from './events/events.module';
 
 @Module({
@@ -38,7 +38,7 @@ import { EventsModule } from './events/events.module';
     EmailModule,
     NotificationModule,
     SalesModule,
-    OrdersModule,
+    QROrdersModule,
     EventsModule,
   ],
   controllers: [AppController],

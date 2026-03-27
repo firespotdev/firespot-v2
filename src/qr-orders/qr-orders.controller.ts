@@ -1,21 +1,21 @@
 import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { OrdersService } from './orders.service';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { QROrdersService } from './qr-orders.service';
+import { CreateQROrderDto } from './dto/create-qr-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '../schemas/user.schema';
 
-@ApiTags('orders')
-@Controller('orders')
-export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+@ApiTags('qr-orders')
+@Controller('qr-orders')
+export class QROrdersController {
+  constructor(private readonly ordersService: QROrdersService) {}
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Create new QR kit order and initialize payment' })
   @Post()
-  async createOrder(@GetUser() user: User, @Body() dto: CreateOrderDto) {
+  async createOrder(@GetUser() user: User, @Body() dto: CreateQROrderDto) {
     return this.ordersService.createOrder((user as any).userId, dto);
   }
 

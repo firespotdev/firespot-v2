@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
 
-export class CreateOrderDto {
+export class CreateQROrderDto {
   @IsNotEmpty()
   @IsNumber()
   @Min(1)

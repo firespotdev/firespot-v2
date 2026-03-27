@@ -1,14 +1,14 @@
 import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
 import { PaystackService } from "../users/services/paystack.service";
 import { QRKitsService } from "../qr-kits/qr-kits.service";
-import { OrdersService } from "../orders/orders.service";
+import { QROrdersService } from "../qr-orders/qr-orders.service";
 
 @Injectable()
 export class PaymentsService {
   constructor(
     private paystackService: PaystackService,
     private qrKitsService: QRKitsService,
-    private ordersService: OrdersService,
+    private ordersService: QROrdersService,
   ) {}
 
   async handleWebhook(payload: any, signature: string, rawBody: string) {
