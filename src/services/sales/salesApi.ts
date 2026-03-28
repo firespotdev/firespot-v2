@@ -39,8 +39,8 @@ export const SalesApi = {
     return data;
   },
 
-  getSalesStats: async () => {
-    const { data } = await apiClient.get('/sales/stats');
+  getSalesStats: async (params?: Record<string, any>) => {
+    const { data } = await apiClient.get('/sales/stats', { params });
     return data;
   },
 

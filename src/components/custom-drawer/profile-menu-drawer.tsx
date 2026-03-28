@@ -160,11 +160,17 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                 <Copy className="w-4 h-4" />
               </button>
               <button
-                onClick={() =>
-                  showNotificationToast({
-                    message: 'Expanding view is coming soon!',
+                onClick={() => {
+                  closeDrawer()
+                  openDrawer({
+                    type: 'profile-share',
+                    props: {
+                      businessName,
+                      profilePhotoUrl: profile?.profilePhotoUrl,
+                      serialNumber: qrKitsData?.data?.[0]?.serialNumber,
+                    },
                   })
-                }
+                }}
                 className="w-9 h-9 rounded-full bg-[#F4F6F8] flex items-center justify-center text-black border border-white/50 active:scale-95 transition-transform"
               >
                 <Maximize2 className="w-4 h-4" />

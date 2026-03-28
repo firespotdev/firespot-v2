@@ -14,6 +14,9 @@ import {
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { format } from 'date-fns'
+import { useDrawerStore } from '@/services/drawer'
+import { type InsightsQuery, DATE_RANGE_LABELS, type DateRangePreset } from '@/services/insights'
 
 interface MerchantInfo {
   profilePhotoUrl?: string
@@ -31,6 +34,8 @@ interface MerchantInfoStatProps {
   todaySalesAmount?: number
   isAmountHidden?: boolean
   onToggleVisibility?: () => void
+  currentFilter?: InsightsQuery
+  onFilterChange?: (filter: InsightsQuery) => void
 }
 
 const formatCurrency = (value: number) => {
@@ -50,7 +55,34 @@ export function MerchantInfoStat({
   todaySalesAmount = 0,
   isAmountHidden = false,
   onToggleVisibility,
+  currentFilter,
+  onFilterChange,
 }: MerchantInfoStatProps) {
+  const { openDrawer } = useDrawerStore()
+
+  const handleOpenDrawer = () => {
+    openDrawer({
+      type: 'date-range-filter',
+      props: {
+        currentFilter,
+        onApply: onFilterChange,
+      },
+    })
+  }
+
+  const filterLabel = (() => {
+    if (currentFilter?.preset === 'custom' && currentFilter.startDate && currentFilter.endDate) {
+      try {
+        const start = format(new Date(currentFilter.startDate), 'MMM d')
+        const end = format(new Date(currentFilter.endDate), 'MMM d')
+        return `${start} - ${end}`
+      } catch (e) {
+        return 'Custom'
+      }
+    }
+    return DATE_RANGE_LABELS[currentFilter?.preset as DateRangePreset] || 'Today'
+  })()
+
   return (
     <div className={cn('w-full flex flex-col items-center gap-6', className)}>
       <div className="flex flex-col items-center px-4">
@@ -113,9 +145,12 @@ export function MerchantInfoStat({
       <div className="border-2 border-[#0000000A] rounded-[12px] w-full">
         <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
           <div className="">
-            <button className="flex items-center gap-1 mb-1">
+            <button
+              onClick={handleOpenDrawer}
+              className="flex items-center gap-1 mb-1"
+            >
               <span className="text-[#00000066] text-xs font-medium">
-                Today
+                {filterLabel}
               </span>{' '}
               <ChevronDown size={14} strokeWidth={2} color="#00000066" />
             </button>

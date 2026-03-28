@@ -25,10 +25,10 @@ export const useSales = (params?: Record<string, any>) => {
   });
 };
 
-export const useSalesStats = () => {
+export const useSalesStats = (params?: Record<string, any>) => {
   return useQuery({
-    queryKey: ['sales-stats'],
-    queryFn: () => SalesApi.getSalesStats(),
+    queryKey: ['sales-stats', params],
+    queryFn: () => SalesApi.getSalesStats(params),
   });
 };
 

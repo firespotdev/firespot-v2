@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   ArrowLeft,
   Download,
@@ -17,11 +17,13 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { format } from 'date-fns'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { LoaderCircle } from '@/components/ui'
 import { getBankLogo } from '@/lib/utils/bank-account'
 import { useDrawerStore } from '@/services/drawer'
+import { type InsightsQuery, DATE_RANGE_LABELS, type DateRangePreset } from '@/services/insights'
 
 type TransactionStatus = 'CONFIRMED' | 'PENDING' | 'CANCELLED'
 
@@ -85,16 +87,28 @@ export default function HistoryPage() {
   const { openDrawer } = useDrawerStore()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<'ALL' | TransactionStatus>(
     'ALL',
   )
   const [isAmountHidden, setIsAmountHidden] = useState(false)
+  const [dateFilter, setDateFilter] = useState<InsightsQuery>({
+    preset: 'today',
+  })
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const { data: salesData, isLoading } = useSales({
     status: activeFilter,
     limit: '100',
+    ...(debouncedSearch && { search: debouncedSearch }),
   })
-  const { data: salesStats, isLoading: isLoadingStats } = useSalesStats()
+  const { data: salesStats, isLoading: isLoadingStats } = useSalesStats(dateFilter)
 
   const sales: Sale[] = salesData?.data ?? []
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
@@ -168,11 +182,20 @@ export default function HistoryPage() {
                 onClick={() => {
                   openDrawer({
                     type: 'date-range-filter',
+                    props: {
+                      currentFilter: dateFilter,
+                      onApply: (newFilter: InsightsQuery) =>
+                        setDateFilter(newFilter),
+                    },
                   })
                 }}
               >
                 <span className="text-[#00000066] text-xs font-medium">
-                  Today
+                  {dateFilter.preset === 'custom' && dateFilter.startDate && dateFilter.endDate
+                    ? `${format(new Date(dateFilter.startDate), 'MMM d')} - ${format(new Date(dateFilter.endDate), 'MMM d')}`
+                    : DATE_RANGE_LABELS[
+                        dateFilter.preset as DateRangePreset
+                      ] || 'Today'}
                 </span>{' '}
                 <ChevronDown size={14} strokeWidth={2} color="#00000066" />
               </button>

@@ -10,7 +10,7 @@ import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
-import { useMerchantInsights } from '@/services/insights'
+import { useMerchantInsights, type InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
@@ -28,10 +28,13 @@ const ALLOWED_FILE_TYPES = [
 
 export default function ProfilePage() {
   const router = useRouter()
+  const [filter, setFilter] = useState<InsightsQuery>({
+    preset: 'today',
+  })
   const { data: profile, isLoading } = useUserProfile()
   const { data: insights } = useMerchantInsights({ preset: 'last_7_days' })
   const { data: qrKitsData } = useUserQRKits()
-  const { data: salesStats } = useSalesStats()
+  const { data: salesStats } = useSalesStats(filter)
   const updateProfilePhoto = useUpdateProfilePhoto()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -169,6 +172,8 @@ export default function ProfilePage() {
               todaySalesAmount={salesStats?.todaySalesAmount ?? 0}
               isAmountHidden={isAmountHidden}
               onToggleVisibility={() => setIsAmountHidden((prev) => !prev)}
+              currentFilter={filter}
+              onFilterChange={setFilter}
               qrKitStatus={
                 !hasQRKits ? (
                   <Button
