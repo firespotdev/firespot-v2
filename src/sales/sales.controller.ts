@@ -42,8 +42,8 @@ export class SalesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get merchant sales statistics' })
   @Get('stats')
-  async getSalesStats(@GetUser() user: User) {
-    return this.salesService.getSalesStats((user as any).userId);
+  async getSalesStats(@GetUser() user: User, @Query() query: SalesQueryDto) {
+    return this.salesService.getSalesStats((user as any).userId, query);
   }
 
   @ApiBearerAuth('JWT-auth')

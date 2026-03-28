@@ -99,13 +99,20 @@ export class SalesService {
   }
 
   async getSales(merchantId: string, query: SalesQueryDto) {
-    const { status, startDate, endDate, page = '1', limit = '10' } = query;
+    const { status, startDate, endDate, search, page = '1', limit = '10' } = query;
     const skip = (Number(page) - 1) * Number(limit);
 
     const filter: any = { merchantId };
 
     if (status && status !== 'ALL') {
       filter.status = status;
+    }
+
+    if (search) {
+      filter.$or = [
+        { description: { $regex: search, $options: 'i' } },
+        { paymentMethod: { $regex: search, $options: 'i' } },
+      ];
     }
 
     if (startDate || endDate) {
@@ -138,24 +145,83 @@ export class SalesService {
     };
   }
 
-  async getSalesStats(merchantId: string) {
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
+  /**
+   * Calculate date range from preset or custom dates
+   */
+  private calculateDateRange(query: SalesQueryDto): {
+    startDate: Date | null;
+    endDate: Date | null;
+  } {
+    const now = new Date();
+    const preset = query.preset || 'all_time';
 
-    const [pendingCount, todayConfirmed, totalConfirmed] = await Promise.all([
-      this.saleModel.countDocuments({ merchantId, status: 'PENDING' }),
-      this.saleModel.find({ merchantId, status: 'CONFIRMED', createdAt: { $gte: startOfDay } }).select('amount').lean(),
-      this.saleModel.find({ merchantId, status: 'CONFIRMED' }).select('amount').lean(),
-    ]);
+    switch (preset) {
+      case 'all_time':
+        return { startDate: null, endDate: null };
+      case 'today': {
+        const startOfDay = new Date(now);
+        startOfDay.setHours(0, 0, 0, 0);
+        return { startDate: startOfDay, endDate: now };
+      }
+      case 'this_week': {
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        return { startDate: startOfWeek, endDate: now };
+      }
+      case 'last_7_days': {
+        const last7 = new Date(now);
+        last7.setDate(now.getDate() - 7);
+        last7.setHours(0, 0, 0, 0);
+        return { startDate: last7, endDate: now };
+      }
+      case 'last_30_days': {
+        const last30 = new Date(now);
+        last30.setDate(now.getDate() - 30);
+        last30.setHours(0, 0, 0, 0);
+        return { startDate: last30, endDate: now };
+      }
+      case 'last_90_days': {
+        const last90 = new Date(now);
+        last90.setDate(now.getDate() - 90);
+        last90.setHours(0, 0, 0, 0);
+        return { startDate: last90, endDate: now };
+      }
+      case 'custom': {
+        return {
+          startDate: query.startDate ? new Date(query.startDate) : null,
+          endDate: query.endDate ? new Date(query.endDate) : null,
+        };
+      }
+      default:
+        return { startDate: null, endDate: null };
+    }
+  }
 
-    const todaySalesCount = todayConfirmed.length;
-    const todaySalesAmount = todayConfirmed.reduce((sum, sale) => sum + (sale.amount || 0), 0);
+  async getSalesStats(merchantId: string, query?: SalesQueryDto) {
+    const pendingCount = await this.saleModel.countDocuments({ merchantId, status: 'PENDING' });
+
+    // For filtered stats
+    const dateRange = query ? this.calculateDateRange(query) : { startDate: new Date(new Date().setHours(0, 0, 0, 0)), endDate: new Date() };
+    
+    const filter: any = { merchantId, status: 'CONFIRMED' };
+    if (dateRange.startDate) {
+      filter.createdAt = { $gte: dateRange.startDate };
+      if (dateRange.endDate) {
+        filter.createdAt.$lte = dateRange.endDate;
+      }
+    }
+
+    const filteredConfirmed = await this.saleModel.find(filter).select('amount').lean();
+    const totalConfirmed = await this.saleModel.find({ merchantId, status: 'CONFIRMED' }).select('amount').lean();
+
+    const statsAmount = filteredConfirmed.reduce((sum, sale) => sum + (sale.amount || 0), 0);
     const totalSalesAmount = totalConfirmed.reduce((sum, sale) => sum + (sale.amount || 0), 0);
 
     return {
       pendingSalesCount: pendingCount,
-      todaySalesCount,
-      todaySalesAmount,
+      todaySalesCount: filteredConfirmed.length, // This now reflects filtered count
+      todaySalesAmount: statsAmount, // This now reflects filtered amount
       totalSalesAmount,
     };
   }

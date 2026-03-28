@@ -14,6 +14,14 @@ export class SalesQueryDto {
   endDate?: string;
 
   @IsOptional()
+  @IsString()
+  preset?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
   @IsNumberString()
   page?: string;
 
@@ -21,3 +29,4 @@ export class SalesQueryDto {
   @IsNumberString()
   limit?: string;
 }
+
