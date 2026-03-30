@@ -9,10 +9,12 @@ import {
 } from 'lucide-react'
 import { Button, TagFooter } from '../ui'
 import { format } from 'date-fns'
+import Link from 'next/link'
 import { useDrawerStore } from '@/services/drawer'
+import { Sale } from '@/services/sales/interface'
 
 interface TransactionDetailsDrawerProps {
-  sale: any
+  sale: Sale
   onClose: () => void
 }
 
@@ -20,15 +22,15 @@ const TransactionDetailsDrawer = ({
   sale,
   onClose,
 }: TransactionDetailsDrawerProps) => {
-  const { closeDrawer } = useDrawerStore()
+  const { closeDrawer, openDrawer } = useDrawerStore()
   if (!sale) return null
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG').format(amount)
   }
 
-  const formatDate = (date: any) => {
-    if (!date) return 'N/A';
+  const formatDate = (date: string | Date | undefined) => {
+    if (!date) return 'N/A'
     try {
       return format(new Date(date), 'MMMM do, yyyy . h:mm a')
     } catch (e) {
@@ -37,6 +39,13 @@ const TransactionDetailsDrawer = ({
   }
 
   const isConfirmed = sale.status === 'CONFIRMED' || !sale.status // Treat as confirmed if status is missing but we're showing details
+
+  const creationDate = new Date(
+    sale.createdAt || sale.recordedAt || Date.now(),
+  ).getTime()
+  const isEditWindowOpen =
+    !sale.hasBeenEdited && Date.now() - creationDate <= 24 * 60 * 60 * 1000
+  const isEditable = isConfirmed && isEditWindowOpen
 
   return (
     <div className="flex flex-col h-full">
@@ -48,9 +57,19 @@ const TransactionDetailsDrawer = ({
           <ArrowLeft size={24} />
         </button>
         <h2 className="text-base font-bold">Transaction details</h2>
-        <button className="w-6 h-6 flex items-center justify-center rounded-full active:bg-gray-100 transition-colors">
-          <PencilLine size={20} />
-        </button>
+        {isEditable ? (
+          <Link
+            href={`/record-sale?id=${sale._id}&edit=true`}
+            onClick={closeDrawer}
+            className="w-6 h-6 flex items-center justify-center rounded-full transition-colors text-black"
+          >
+            <PencilLine size={20} />
+          </Link>
+        ) : (
+          <div className="w-6 h-6 flex items-center justify-center rounded-full text-[#D1D5DB] cursor-not-allowed">
+            <PencilLine size={20} />
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -67,7 +86,7 @@ const TransactionDetailsDrawer = ({
           {/* Amount and Status Message */}
           <div className="mb-6 text-center">
             <h3 className="mb-1 text-[20px] font-bold text-black -tracking-[0.4px] leading-[100%]">
-              {isConfirmed ? '+ ' : ''}NGN {formatCurrency(sale.amount)}
+              {isConfirmed ? '+ ' : ''}NGN {formatCurrency(sale.amount || 0)}
             </h3>
             <p className="text-[14px] text-[#898A8D] font-medium">
               Sale recorded successfully
@@ -129,7 +148,7 @@ const TransactionDetailsDrawer = ({
                 Amount
               </span>
               <span className="text-[14px] font-medium text-black">
-                NGN {formatCurrency(sale.amount)}
+                NGN {formatCurrency(sale.amount || 0)}
               </span>
             </div>
 
@@ -138,7 +157,7 @@ const TransactionDetailsDrawer = ({
               <span className="text-[14px] text-[#00000080] font-normal">
                 Description
               </span>
-              <span className="text-[14px] font-medium text-black truncate max-w-[200px]">
+              <span className="text-[14px] font-medium text-black truncate max-w-[200px] capitalize">
                 {sale.description || 'No description'}
               </span>
             </div>
@@ -163,7 +182,9 @@ const TransactionDetailsDrawer = ({
                 Date and time
               </span>
               <span className="text-[14px] font-medium text-black">
-                {formatDate(sale.createdAt || sale.recordedAt || sale.date)}
+                {formatDate(
+                  sale.createdAt || sale.recordedAt || (sale as any).date,
+                )}
               </span>
             </div>
 

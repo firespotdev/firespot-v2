@@ -10,6 +10,7 @@ import { getBankLogo } from '@/lib/utils/bank-account'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { formatCurrency, cn } from '@/lib/utils'
+import { Sale } from '@/services/sales/interface'
 
 export default function RecentsPage() {
   const router = useRouter()
@@ -37,12 +38,12 @@ export default function RecentsPage() {
     router.push(`/record-sale?id=${saleId}`)
   }
 
-  const formatDate = (dateString?: string) => {
+  const formatDate = (dateString?: string | Date) => {
     if (!dateString) return ''
     try {
-      return format(new Date(dateString), "MMM d, yyyy '·' h:mm a")
+      return format(new Date(dateString), "MMM d, yyyy '.' h:mm a")
     } catch (e) {
-      return dateString
+      return String(dateString)
     }
   }
 
@@ -98,7 +99,7 @@ export default function RecentsPage() {
 
         <div className="bg-white rounded-xl mb-4 overflow-hidden border border-[#F1F1F1]">
           {pendingData?.data && pendingData.data.length > 0 ? (
-            pendingData.data.map((sale: any) => (
+            pendingData.data.map((sale: Sale) => (
               <SwipeableItem
                 key={sale._id}
                 onConfirm={() => handleConfirm(sale._id)}
@@ -178,7 +179,7 @@ export default function RecentsPage() {
 
         <div className="bg-white rounded-xl mb-4 overflow-hidden border border-[#F1F1F1]">
           {confirmedData?.data && confirmedData.data.length > 0 ? (
-            confirmedData.data.map((sale: any) => (
+            confirmedData.data.map((sale: Sale) => (
               <div
                 key={sale._id}
                 className="cursor-pointer p-3 border-b border-[#F1F1F1] last:border-b-0 hover:bg-gray-50 transition-colors"
@@ -205,8 +206,8 @@ export default function RecentsPage() {
                       </div>
                     </div>
                     <div>
-                      <h4 className="text-[13px] font-bold text-[#111827] mb-0.5">
-                        {sale.customerType || 'New'} customer
+                      <h4 className="text-[13px] font-bold text-[#111827] mb-0.5 capitalize">
+                        {sale.description}
                       </h4>
                       <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
                         {formatDate(sale.createdAt)}

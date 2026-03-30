@@ -8,6 +8,7 @@ import {
   Share,
   Copy,
   Maximize2,
+  AudioLines,
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import Image from 'next/image'
@@ -17,7 +18,9 @@ import { useDrawerStore } from '@/services/drawer'
 import { useUserQRKits } from '@/services/qr'
 import { useUserProfile } from '@/services/users'
 import { useSalesStats } from '@/services/sales/hooks'
-import { showNotificationToast } from '@/components/ui'
+import { showNotificationToast, Switch } from '@/components/ui'
+import { usePreference } from '@/hooks/usePreference'
+import { cn } from '@/lib/utils'
 
 interface ProfileMenuDrawerProps {
   closeDrawer: () => void
@@ -29,13 +32,14 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const logout = useAuthStore((state) => state.logout)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: salesStats } = useSalesStats()
+  const [soundEnabled, setSoundEnabled] = usePreference('soundEnabled', true)
 
   const pendingSalesCount = salesStats?.pendingSalesCount || 0
 
   const businessName = profile?.businessName || 'Your Business'
   const initials = businessName
     .split(' ')
-    .map((word) => word[0])
+    .map((word: string) => word[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
@@ -414,6 +418,38 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             </span>
             <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
           </Link>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 py-2.5 px-4 border-b border-[#F1F1F1]"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <path
+                d="M2 10v4c0 2 1 3 3 3h1.43c.37 0 .74.11 1.06.3l2.92 1.83c2.52 1.58 4.59.43 4.59-2.54V7.41c0-2.98-2.07-4.12-4.59-2.54L7.49 6.7c-.32.19-.69.3-1.06.3H5c-2 0-3 1-3 3Z"
+                stroke="#000000"
+                strokeWidth="1.5"
+              ></path>
+              <path
+                d="M18 8a6.66 6.66 0 0 1 0 8M19.83 5.5a10.83 10.83 0 0 1 0 13"
+                stroke="#000000"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              ></path>
+            </svg>
+            <span className="flex-1 text-left text-base font-medium text-black">
+              Play sound for pending sales
+            </span>
+            <Switch checked={soundEnabled} onCheckedChange={setSoundEnabled} />
+          </button>
         </div>
 
         {/* Section 2: Support */}

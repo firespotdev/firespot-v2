@@ -27,8 +27,8 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
 
   const startX = useRef(0)
   const currentX = useRef(0)
-  const threshold = 80 // Threshold to show the action button fully
-  const maxSwipe = 100 // Max distance the item can be swiped
+  const threshold = 10 // Threshold to show the action button fully and trigger action
+  const maxSwipe = 40 // Max distance the item can be swiped
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (actionTriggered) return

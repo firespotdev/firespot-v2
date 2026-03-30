@@ -23,23 +23,15 @@ import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { LoaderCircle } from '@/components/ui'
 import { getBankLogo } from '@/lib/utils/bank-account'
 import { useDrawerStore } from '@/services/drawer'
-import { type InsightsQuery, DATE_RANGE_LABELS, type DateRangePreset } from '@/services/insights'
+import {
+  type InsightsQuery,
+  DATE_RANGE_LABELS,
+  type DateRangePreset,
+} from '@/services/insights'
+import { Sale } from '@/services/sales/interface'
+import { formatDate } from '@/lib/utils/constants'
 
-type TransactionStatus = 'CONFIRMED' | 'PENDING' | 'CANCELLED'
-
-interface Sale {
-  _id: string
-  amount?: number
-  description?: string
-  paymentMethod?: string
-  targetBankName?: string
-  status: string
-  source?: string
-  customerType?: string
-  createdAt: string
-}
-
-const formatDate = (dateStr: string) => {
+const formatDateStr = (dateStr: string | Date) => {
   const date = new Date(dateStr)
   return date.toLocaleDateString('en-US', {
     month: 'short',
@@ -48,7 +40,7 @@ const formatDate = (dateStr: string) => {
   })
 }
 
-const getMonthYearKey = (dateStr: string) => {
+const getMonthYearKey = (dateStr: string | Date) => {
   const date = new Date(dateStr)
   return `${date.toLocaleString('en-US', { month: 'long' })} ${date.getFullYear()}`
 }
@@ -79,16 +71,16 @@ const getAmountLabel = (sale: Sale) => {
   return 'Enter amount'
 }
 
-const getTitle = (sale: Sale) => {
-  return `${sale.customerType || 'New'} customer`
-}
+// const getTitle = (sale: Sale) => {
+//   return `${sale.customerType || 'New'} customer`
+// }
 
 export default function HistoryPage() {
   const { openDrawer } = useDrawerStore()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [activeFilter, setActiveFilter] = useState<'ALL' | TransactionStatus>(
+  const [activeFilter, setActiveFilter] = useState<'ALL' | Sale['status']>(
     'ALL',
   )
   const [isAmountHidden, setIsAmountHidden] = useState(false)
@@ -108,7 +100,8 @@ export default function HistoryPage() {
     limit: '100',
     ...(debouncedSearch && { search: debouncedSearch }),
   })
-  const { data: salesStats, isLoading: isLoadingStats } = useSalesStats(dateFilter)
+  const { data: salesStats, isLoading: isLoadingStats } =
+    useSalesStats(dateFilter)
 
   const sales: Sale[] = salesData?.data ?? []
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
@@ -141,7 +134,7 @@ export default function HistoryPage() {
 
   const isEmpty = sales.length === 0 && !isLoading
 
-  const handleRecordClick = (sale: any) => {
+  const handleRecordClick = (sale: Sale) => {
     openDrawer({
       type: 'transaction-details',
       props: { sale },
@@ -191,11 +184,12 @@ export default function HistoryPage() {
                 }}
               >
                 <span className="text-[#00000066] text-xs font-medium">
-                  {dateFilter.preset === 'custom' && dateFilter.startDate && dateFilter.endDate
+                  {dateFilter.preset === 'custom' &&
+                  dateFilter.startDate &&
+                  dateFilter.endDate
                     ? `${format(new Date(dateFilter.startDate), 'MMM d')} - ${format(new Date(dateFilter.endDate), 'MMM d')}`
-                    : DATE_RANGE_LABELS[
-                        dateFilter.preset as DateRangePreset
-                      ] || 'Today'}
+                    : DATE_RANGE_LABELS[dateFilter.preset as DateRangePreset] ||
+                      'Today'}
                 </span>{' '}
                 <ChevronDown size={14} strokeWidth={2} color="#00000066" />
               </button>
@@ -333,8 +327,8 @@ export default function HistoryPage() {
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h5 className="text-[13px] font-bold text-black truncate mb-1">
-                              {getTitle(sale)}
+                            <h5 className="text-[13px] font-bold text-black truncate mb-1 capitalize">
+                              {sale.description}
                             </h5>
                             <p className="text-[12px] text-[#6B7280] font-medium">
                               {formatDate(sale.createdAt)}

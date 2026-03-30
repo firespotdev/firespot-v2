@@ -16,7 +16,12 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
-import { type InsightsQuery, DATE_RANGE_LABELS, type DateRangePreset } from '@/services/insights'
+import {
+  type InsightsQuery,
+  DATE_RANGE_LABELS,
+  type DateRangePreset,
+} from '@/services/insights'
+import { useSalesStats } from '@/services/sales/hooks'
 
 interface MerchantInfo {
   profilePhotoUrl?: string
@@ -59,6 +64,7 @@ export function MerchantInfoStat({
   onFilterChange,
 }: MerchantInfoStatProps) {
   const { openDrawer } = useDrawerStore()
+  const { data: salesStats } = useSalesStats()
 
   const handleOpenDrawer = () => {
     openDrawer({
@@ -71,7 +77,11 @@ export function MerchantInfoStat({
   }
 
   const filterLabel = (() => {
-    if (currentFilter?.preset === 'custom' && currentFilter.startDate && currentFilter.endDate) {
+    if (
+      currentFilter?.preset === 'custom' &&
+      currentFilter.startDate &&
+      currentFilter.endDate
+    ) {
       try {
         const start = format(new Date(currentFilter.startDate), 'MMM d')
         const end = format(new Date(currentFilter.endDate), 'MMM d')
@@ -80,12 +90,14 @@ export function MerchantInfoStat({
         return 'Custom'
       }
     }
-    return DATE_RANGE_LABELS[currentFilter?.preset as DateRangePreset] || 'Today'
+    return (
+      DATE_RANGE_LABELS[currentFilter?.preset as DateRangePreset] || 'Today'
+    )
   })()
 
   return (
-    <div className={cn('w-full flex flex-col items-center gap-6', className)}>
-      <div className="flex flex-col items-center px-4">
+    <div className={cn('w-full flex flex-col items-center', className)}>
+      <div className="flex flex-col items-center px-4 mb-6">
         <div className="relative">
           {merchantInfo.profilePhotoUrl ? (
             <Image
@@ -141,6 +153,27 @@ export function MerchantInfoStat({
           </span>
         )}
       </div>
+
+      <Link
+        href="/recents"
+        className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
+      >
+        <Image
+          src="/icons/history_brown.svg"
+          alt="Recent"
+          width={24}
+          height={24}
+        />
+        <div className="flex-1">
+          <p className="leading-none text-left text-base font-medium text-[#6B4200]">
+            Recent sales
+          </p>
+          <span className="text-[13px] text-[#BB8123] font-medium">
+            {salesStats?.pendingSalesCount ?? 0} pending confirmations
+          </span>
+        </div>
+        <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
+      </Link>
 
       <div className="border-2 border-[#0000000A] rounded-[12px] w-full">
         <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">

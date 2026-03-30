@@ -137,7 +137,7 @@ const RecordSuccessDrawer = ({
           </div>
 
           <h1 className="text-[20px] font-bold text-black -tracking-[0.4px] mb-1.5 text-center shrink-0">
-            Payment recorded successfully
+            {successDetails?.isEdit ? 'Sale updated successfully' : 'Payment recorded successfully'}
           </h1>
           <p className="text-[14px] text-center text-[#878F98] max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
             {successDetails.paymentMethod} payment of NGN

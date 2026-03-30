@@ -1,11 +1,11 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Delete, PencilLine } from 'lucide-react'
+import { ArrowLeft, Delete, PencilLine, CircleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-import { useCreateManualSale, useRecordSale } from '@/services/sales/hooks'
+import { useCreateManualSale, useRecordSale, useSale, useEditSale } from '@/services/sales/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import { RecordSuccessDrawer } from '@/components/custom-drawer'
 import Link from 'next/link'
@@ -21,19 +21,33 @@ export default function RecordSalePage() {
 function RecordSaleContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const pendingSaleId = searchParams.get('id')
+  const editId = searchParams.get('id')
+  const isEditMode = searchParams.get('edit') === 'true'
+
+  const { data: editSaleData, isLoading: isLoadingSale } = useSale(isEditMode ? editId || undefined : undefined)
 
   const createManualSaleMutation = useCreateManualSale()
   const recordSaleMutation = useRecordSale()
+  const editSaleMutation = useEditSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [hasPrefilled, setHasPrefilled] = useState(false)
+
   const [step, setStep] = useState<'amount' | 'saving' | 'success' | 'error'>(
     'amount',
   )
   const [successDetails, setSuccessDetails] = useState<any>(null)
   const [errorMessage, setErrorMessage] = useState('')
+
+  useEffect(() => {
+    if (isEditMode && editSaleData && !hasPrefilled) {
+      setAmount(editSaleData.amount?.toString() || '')
+      setDescription(editSaleData.description || '')
+      setHasPrefilled(true)
+    }
+  }, [editSaleData, isEditMode, hasPrefilled])
 
   const handleKeyPress = (key: string) => {
     if (key === 'backspace') {
@@ -60,19 +74,32 @@ function RecordSaleContent() {
       date: new Date(),
     })
     setStep('saving')
-
-    const mutation = pendingSaleId ? recordSaleMutation : createManualSaleMutation
+    
     const payload = {
       amount: Number(amount),
       description,
       paymentMethod: method,
     }
 
-    if (pendingSaleId) {
-      recordSaleMutation.mutate(
-        { saleId: pendingSaleId, payload },
+    if (isEditMode && editId) {
+      editSaleMutation.mutate(
+        { saleId: editId, payload },
         {
-        onSuccess: (data) => {
+          onSuccess: (data) => {
+            setSuccessDetails({ ...data, isEdit: true })
+            setStep('success')
+          },
+          onError: (error: any) => {
+            setErrorMessage(error?.response?.data?.message || 'Failed to update sale.')
+            setStep('error')
+          }
+        }
+      )
+    } else if (editId) { // Existing pending sale record logic (renamed from pendingSaleId)
+      recordSaleMutation.mutate(
+        { saleId: editId, payload },
+        {
+          onSuccess: (data) => {
             setSuccessDetails(data)
             setStep('success')
           },
@@ -183,6 +210,14 @@ function RecordSaleContent() {
         {/* Input and Keypad Container */}
         <div className="w-full flex flex-col pb-3">
           <div className="px-3 mb-3 w-full mx-auto">
+            {isEditMode && (
+              <div className="flex bg-[#FFF9E6] p-3 rounded-xl gap-2 items-start border border-[#FDE68A] mb-3">
+                <CircleAlert size={18} className="text-[#D97706] mt-0.5 shrink-0" />
+                <p className="text-xs text-[#92400E] font-medium leading-tight">
+                  A recorded sale can only be edited once. Edits must be made within 24 hours of creation.
+                </p>
+              </div>
+            )}
             <div className="relative flex items-center justify-center w-full border border-[#E9EBED] rounded-[10px] px-4 py-3.5 focus-within:border-gray-400 transition-colors overflow-hidden">
               {description === '' && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -231,14 +266,14 @@ function RecordSaleContent() {
           <div className="w-full p-3 pb-0 bg-white shrink-0">
             <Button
               onClick={handleRecordSaleClick}
-              disabled={!isRecording}
+              disabled={!isRecording || isLoadingSale}
               className={`w-full h-14 rounded-full font-bold text-base transition-colors ${
                 isRecording
                   ? 'bg-black text-white hover:bg-black/90 active:scale-[0.98]'
                   : 'bg-[#F4F6F8] text-[#9CA3AF] hover:bg-[#F4F6F8]'
               }`}
             >
-              Record sale
+              {isLoadingSale ? 'Loading details...' : isEditMode ? 'Save changes' : 'Record sale'}
             </Button>
           </div>
         </div>

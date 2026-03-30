@@ -77,7 +77,7 @@ const formatAmountInWords = (amount: number): string => {
   return `${nairaWords} Naira ${koboWords} Kobo`
 }
 
-const formatDate = (dateString?: string): string => {
+const formatDate = (dateString?: string | Date): string => {
   if (!dateString) {
     const now = new Date()
     return now.toLocaleDateString('en-GB', {

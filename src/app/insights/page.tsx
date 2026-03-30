@@ -7,11 +7,7 @@ import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
   ArrowLeft,
-  ArrowUp,
-  ChevronDown,
   Clock,
-  Eye,
-  EyeOff,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
@@ -30,6 +26,10 @@ import { DonutChart, DonutChartLegend } from '@/components/ui/donut-chart'
 import { StatCard, BreakdownItem, CustomChart } from '@/components/insights'
 import { formatCurrency } from '@/lib/utils'
 import { useSalesStats } from '@/services/sales/hooks'
+import {
+  generateMockSalesStats,
+  generateMockMerchantInsights,
+} from '@/lib/mock-data'
 
 const QR_KIT_COLORS = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6']
 
@@ -41,14 +41,15 @@ export default function InsightsPage() {
     preset: 'today',
   })
 
-  const { data: salesStats } = useSalesStats(filter)
+  // const { data: salesStats } = useSalesStats(filter)
 
-  const { data: insights, isLoading, error } = useMerchantInsights(filter)
+  // const { data: insights, isLoading, error } = useMerchantInsights(filter)
 
-  // const salesStats = generateMockSalesStats(filter)
-  // const insights = generateMockMerchantInsights(filter)
-  // const isLoading = false
-  // const error = null
+  //Dummy data for testing
+  const salesStats = generateMockSalesStats(filter)
+  const insights = generateMockMerchantInsights(filter)
+  const isLoading = false
+  const error = null
 
   const { data: bankAccountsData } = useBankAccounts()
 

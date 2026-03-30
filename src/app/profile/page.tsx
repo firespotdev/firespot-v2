@@ -264,7 +264,7 @@ export default function ProfilePage() {
               <Link href="/record-sale">Record a sale</Link>
             </Button>
 
-            {(salesStats?.pendingSalesCount ?? 0) > 0 && (
+            {/* {(salesStats?.pendingSalesCount ?? 0) > 0 && (
               <Link
                 href="/recents"
                 className="w-full text-xs text-[#BB8123] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
@@ -284,7 +284,7 @@ export default function ProfilePage() {
                   className="w-4 h-4 text-[#BB8123] mt-[1%]"
                 />
               </Link>
-            )}
+            )} */}
           </div>
         </div>
       </div>
