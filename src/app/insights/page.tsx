@@ -1,5 +1,7 @@
 'use client'
 
+import { format } from 'date-fns'
+
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
@@ -10,9 +12,10 @@ import {
   Clock,
   Eye,
   EyeOff,
-  Link,
+  TrendingDown,
   TrendingUp,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import {
@@ -34,15 +37,19 @@ export default function InsightsPage() {
   const router = useRouter()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-  const [isAmountHidden, setIsAmountHidden] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { data: salesStats } = useSalesStats()
-
   const [filter, setFilter] = useState<InsightsQuery>({
-    preset: 'all_time',
+    preset: 'today',
   })
 
+  const { data: salesStats } = useSalesStats(filter)
+
   const { data: insights, isLoading, error } = useMerchantInsights(filter)
+
+  // const salesStats = generateMockSalesStats(filter)
+  // const insights = generateMockMerchantInsights(filter)
+  // const isLoading = false
+  // const error = null
+
   const { data: bankAccountsData } = useBankAccounts()
 
   // Redirect to login if not authenticated
@@ -79,10 +86,15 @@ export default function InsightsPage() {
     router.push('/qr-kits')
   }
 
-  const filterLabel =
-    filter.preset === 'custom'
-      ? 'Custom'
-      : DATE_RANGE_LABELS[filter.preset as DateRangePreset] || 'All time'
+  let filterLabel =
+    DATE_RANGE_LABELS[filter.preset as DateRangePreset] || 'All time'
+  if (filter.preset === 'custom' && filter.startDate && filter.endDate) {
+    const startStr = format(new Date(filter.startDate), 'MMM d')
+    const endStr = format(new Date(filter.endDate), 'MMM d')
+    filterLabel = `${startStr} - ${endStr}`
+  } else if (filter.preset === 'custom') {
+    filterLabel = 'Custom'
+  }
 
   const trafficSegments = insights
     ? [
@@ -181,7 +193,7 @@ export default function InsightsPage() {
                     </button>
                     <div className="flex items-end gap-1.5">
                       <h3 className="font-bold text-xl leading-none">
-                        {`₦ ${formatCurrency(salesStats?.totalSalesAmount || 0)}`}
+                        {`₦ ${formatCurrency(salesStats?.todaySalesAmount || 0)}`}
                       </h3>
                     </div>
                   </div>
@@ -206,18 +218,41 @@ export default function InsightsPage() {
 
               <div className="my-4">
                 <div className="flex justify-between items-center">
-                  <p className="text-xs font-medium text-[#00000066]">Today</p>
+                  <p className="text-xs font-medium text-[#00000066] capitalize">
+                    {filterLabel}
+                  </p>
                   <div className="flex items-center gap-0.5">
-                    <TrendingUp size={14} strokeWidth={2} color="#22C55E" />
-                    <p className="text-xs text-[#22C55E] font-semibold">
-                      +20% from yesterday
-                    </p>
+                    {salesStats?.percentageChange !== undefined && (
+                      <>
+                        {salesStats.percentageChange >= 0 ? (
+                          <TrendingUp
+                            size={14}
+                            strokeWidth={2}
+                            color="#22C55E"
+                          />
+                        ) : (
+                          <TrendingDown
+                            size={14}
+                            strokeWidth={2}
+                            color="#EF4444"
+                          />
+                        )}
+                        <p
+                          className={`text-xs font-semibold ${salesStats.percentageChange >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}
+                        >
+                          {salesStats.percentageChange >= 0 ? '+' : ''}
+                          {salesStats.percentageChange}% from{' '}
+                          {salesStats.previousPeriodLabel || 'yesterday'}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
                 <p className="text-[15px] text-black font-bold mt-1 mb-3">
-                  2 recorded sales
+                  {salesStats?.todaySalesCount || 0} recorded sale
+                  {salesStats?.todaySalesCount !== 1 ? 's' : ''}
                 </p>
-                <CustomChart />
+                <CustomChart data={salesStats?.trend || []} />
               </div>
 
               {/* Traffic Section with Donut Chart */}

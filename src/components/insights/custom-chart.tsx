@@ -1,40 +1,59 @@
 'use client'
 
-import { Bar, BarChart } from 'recharts'
+import { Bar, BarChart, Tooltip, XAxis, YAxis } from 'recharts'
 
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart'
 
-const chartData = [
-  { month: 'January', desktop: 186, mobile: 80 },
-  { month: 'February', desktop: 305, mobile: 200 },
-  { month: 'March', desktop: 237, mobile: 120 },
-  { month: 'April', desktop: 73, mobile: 190 },
-  { month: 'May', desktop: 209, mobile: 130 },
-  { month: 'June', desktop: 214, mobile: 140 },
-  { month: 'July', desktop: 73, mobile: 190 },
-  { month: 'August', desktop: 209, mobile: 130 },
-  { month: 'September', desktop: 214, mobile: 140 },
-  { month: 'October', desktop: 73, mobile: 190 },
-  { month: 'November', desktop: 209, mobile: 130 },
-  { month: 'December', desktop: 214, mobile: 140 },
-]
-
 const chartConfig = {
-  mobile: {
-    label: 'Mobile',
+  amount: {
+    label: 'Sales Amount',
     color: '#26B2FF33',
   },
 } satisfies ChartConfig
 
-const CustomChart = () => {
+interface CustomChartProps {
+  data?: { label: string; amount: number; count: number }[]
+}
+
+const CustomChart = ({ data = [] }: CustomChartProps) => {
+  const activeData = data.filter(item => item.amount > 0 || item.count > 0)
+
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-      <BarChart accessibilityLayer data={chartData}>
+      <BarChart accessibilityLayer data={activeData}>
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          tickMargin={10}
+          axisLine={false}
+        />
+        <Tooltip
+          cursor={false}
+          content={({ active, payload }) => {
+            if (active && payload && payload.length) {
+              return (
+                <div className="rounded-lg border bg-white p-2 shadow-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] uppercase text-gray-500">
+                        Amount
+                      </span>
+                      <span className="font-bold text-gray-900">
+                        ₦ {payload[0].value?.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            }
+            return null
+          }}
+        />
         <Bar
-          dataKey="mobile"
-          fill="var(--color-mobile)"
+          dataKey="amount"
+          fill="var(--color-amount)"
           radius={8}
-          width={10.458333969116211}
+          maxBarSize={60}
         />
       </BarChart>
     </ChartContainer>

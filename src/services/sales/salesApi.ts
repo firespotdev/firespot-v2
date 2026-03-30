@@ -21,6 +21,9 @@ export interface SalesStats {
   todaySalesCount: number;
   todaySalesAmount: number;
   totalSalesAmount: number;
+  trend?: Array<{ label: string; amount: number; count: number }>;
+  percentageChange?: number;
+  previousPeriodLabel?: string;
 }
 
 export const SalesApi = {

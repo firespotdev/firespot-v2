@@ -42,3 +42,4 @@ pnpm-debug.log*
 *.temp
 .vercel
 changes.txt
+/src/lib/mock-data.ts
