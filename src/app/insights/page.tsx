@@ -1,8 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowUp,
+  ChevronDown,
+  Clock,
+  Eye,
+  EyeOff,
+  Link,
+  TrendingUp,
+} from 'lucide-react'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import {
@@ -14,8 +24,9 @@ import {
 import { useBankAccounts } from '@/services/users'
 import { LoaderCircle, TagFooter } from '@/components/ui'
 import { DonutChart, DonutChartLegend } from '@/components/ui/donut-chart'
-import { StatCard, BreakdownItem } from '@/components/insights'
-import Image from 'next/image'
+import { StatCard, BreakdownItem, CustomChart } from '@/components/insights'
+import { formatCurrency } from '@/lib/utils'
+import { useSalesStats } from '@/services/sales/hooks'
 
 const QR_KIT_COLORS = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6']
 
@@ -23,6 +34,9 @@ export default function InsightsPage() {
   const router = useRouter()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const [isAmountHidden, setIsAmountHidden] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { data: salesStats } = useSalesStats()
 
   const [filter, setFilter] = useState<InsightsQuery>({
     preset: 'all_time',
@@ -70,7 +84,6 @@ export default function InsightsPage() {
       ? 'Custom'
       : DATE_RANGE_LABELS[filter.preset as DateRangePreset] || 'All time'
 
-  
   const trafficSegments = insights
     ? [
         {
@@ -158,15 +171,61 @@ export default function InsightsPage() {
 
           {insights && (
             <>
-              {/* Traffic Section with Donut Chart */}
-              <div className="bg-white pt-4 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[15px] font-bold text-black">Traffic</h3>
-                  <span className="text-sm font-medium text-black">
-                    {insights.traffic.totalCustomers}
-                  </span>
+              <div className="border-2 border-[#0000000A] rounded-[12px] w-full">
+                <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
+                  <div className="">
+                    <button className="flex items-center gap-1 mb-1">
+                      <span className="text-[#00000066] text-xs font-medium">
+                        Total
+                      </span>
+                    </button>
+                    <div className="flex items-end gap-1.5">
+                      <h3 className="font-bold text-xl leading-none">
+                        {`₦ ${formatCurrency(salesStats?.totalSalesAmount || 0)}`}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Link
+                      href="/history"
+                      className="flex justify-center items-center p-2.5 rounded-full bg-[#E5E7EB]"
+                    >
+                      <Clock size={20} strokeWidth={2} color="#6B7280" />
+                    </Link>
+                  </div>
                 </div>
+                <div className="flex items-center bg-[#f4f4f4] px-5 py-3 gap-2 rounded-[12px]">
+                  <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
+                  <p className="text-xs text-[#00000066] font-medium">
+                    You will not receive a payout for these transactions.
+                    <br />
+                    Sales are recorded for accounting purposes only.
+                  </p>
+                </div>
+              </div>
 
+              <div className="my-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-xs font-medium text-[#00000066]">Today</p>
+                  <div className="flex items-center gap-0.5">
+                    <TrendingUp size={14} strokeWidth={2} color="#22C55E" />
+                    <p className="text-xs text-[#22C55E] font-semibold">
+                      +20% from yesterday
+                    </p>
+                  </div>
+                </div>
+                <p className="text-[15px] text-black font-bold mt-1 mb-3">
+                  2 recorded sales
+                </p>
+                <CustomChart />
+              </div>
+
+              {/* Traffic Section with Donut Chart */}
+              <StatCard
+                title="Traffic"
+                value={insights.traffic.totalCustomers}
+                expandable={true}
+              >
                 {insights.traffic.totalCustomers > 0 ? (
                   <div className="flex flex-col items-center">
                     <DonutChart
@@ -183,7 +242,7 @@ export default function InsightsPage() {
                     No traffic data for this period
                   </p>
                 )}
-              </div>
+              </StatCard>
 
               {/* Stats Section */}
               <StatCard

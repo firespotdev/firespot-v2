@@ -2,19 +2,18 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronRight, ArrowUpRight, AlertCircle } from 'lucide-react'
+import { ChevronRight, AlertCircle } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle, showNotificationToast } from '@/components/ui'
+import { LoaderCircle } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantInsights, type InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
-import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
 import { sortBankAccounts } from '@/lib/utils/bank-account'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
 
@@ -32,14 +31,13 @@ export default function ProfilePage() {
     preset: 'today',
   })
   const { data: profile, isLoading } = useUserProfile()
-  const { data: insights } = useMerchantInsights({ preset: 'last_7_days' })
+  const { data: insights } = useMerchantInsights({ preset: 'today' })
   const { data: qrKitsData } = useUserQRKits()
   const { data: salesStats } = useSalesStats(filter)
   const updateProfilePhoto = useUpdateProfilePhoto()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
-  const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const [isAmountHidden, setIsAmountHidden] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
