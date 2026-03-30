@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SalesService } from './sales.service';
 import { CreatePendingSaleDto } from './dto/create-pending-sale.dto';
 import { RecordSaleDto } from './dto/record-sale.dto';
+import { EditSaleDto } from './dto/edit-sale.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -48,6 +49,14 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get a single sale' })
+  @Get(':id')
+  async getSale(@GetUser() user: User, @Param('id') id: string) {
+    return this.salesService.getSaleById((user as any).userId, id);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Record/confirm a pending sale' })
   @Patch(':id/record')
   async recordSale(
@@ -56,6 +65,18 @@ export class SalesController {
     @Body() dto: RecordSaleDto,
   ) {
     return this.salesService.recordSale((user as any).userId, saleId, dto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Edit a confirmed sale' })
+  @Patch(':id/edit')
+  async editSale(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+    @Body() dto: EditSaleDto,
+  ) {
+    return this.salesService.editSale((user as any).userId, saleId, dto);
   }
 
   @ApiBearerAuth('JWT-auth')

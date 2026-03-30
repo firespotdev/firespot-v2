@@ -45,6 +45,9 @@ export class Sale extends Document {
   @Prop()
   recordedAt?: Date;
 
+  @Prop({ default: false })
+  hasBeenEdited?: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -54,4 +57,5 @@ export type SaleDocument = Sale & Document;
 
 // Indexes
 SaleSchema.index({ merchantId: 1, createdAt: -1 });
+SaleSchema.index({ merchantId: 1, recordedAt: -1 });
 SaleSchema.index({ status: 1 });
