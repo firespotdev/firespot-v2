@@ -71,10 +71,6 @@ const getAmountLabel = (sale: Sale) => {
   return 'Enter amount'
 }
 
-// const getTitle = (sale: Sale) => {
-//   return `${sale.customerType || 'New'} customer`
-// }
-
 export default function HistoryPage() {
   const { openDrawer } = useDrawerStore()
   const router = useRouter()
