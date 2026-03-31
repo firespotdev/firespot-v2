@@ -16,8 +16,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { LoaderCircle } from '@/components/ui'
@@ -80,8 +80,10 @@ export default function HistoryPage() {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
+  const searchParams = useSearchParams()
+  const initialStatus = searchParams.get('status')
   const [activeFilter, setActiveFilter] = useState<'ALL' | Sale['status']>(
-    'ALL',
+    (initialStatus as any) || 'ALL',
   )
   const [isAmountHidden, setIsAmountHidden] = useState(false)
   const [dateFilter, setDateFilter] = useState<InsightsQuery>({

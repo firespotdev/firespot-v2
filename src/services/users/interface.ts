@@ -13,6 +13,7 @@ export interface BankAccount {
 export interface UserProfile extends User {
   bankAccounts: BankAccount[]
   merchantSlug?: string
+  availableKitEntitlements?: number
   createdAt: string
   updatedAt: string
 }
@@ -22,8 +23,9 @@ export interface QRKitActivationResponse {
   serialNumber: string
   activationAmount: number
   qrKitId: string
-  authorizationUrl: string
-  reference: string
+  authorizationUrl?: string
+  reference?: string
+  isAutoActivated?: boolean
 }
 
 export interface SerialCheckResponse {

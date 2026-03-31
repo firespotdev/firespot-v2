@@ -122,3 +122,23 @@ export const useQRAvailability = () => {
     refetchInterval: 30000, // Refresh every 30 seconds
   })
 }
+
+export const useClaimDigitalKit = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<{
+      message: string
+      qrKit: QRKit
+    }> => {
+      const response = await apiClient.post<{
+        message: string
+        qrKit: QRKit
+      }>('/qr-kits/claim-digital')
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}

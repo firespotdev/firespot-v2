@@ -6,7 +6,6 @@ import { ChevronDown, Trash2, Minus, Plus, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { useCreateQROrder } from '@/services/qr-orders/qr-ordersHooks'
-import { useQRAvailability } from '@/services/qr/qrApi'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { showNotificationToast, LoaderCircle } from '@/components/ui'
@@ -15,6 +14,7 @@ interface CheckoutDrawerProps {
   initialQuantity: number
   phoneNumber: string
   state: string
+  lga: string
   address: string
   clearForm: () => void
 }
@@ -23,22 +23,19 @@ export const CheckoutDrawer = ({
   initialQuantity,
   phoneNumber,
   state,
+  lga,
   address,
   clearForm,
 }: CheckoutDrawerProps) => {
   const { closeDrawer } = useDrawerStore()
   const router = useRouter()
   const createOrderMutation = useCreateQROrder()
-  const { data: availability } = useQRAvailability()
   const [quantity, setQuantity] = useState(initialQuantity)
 
   const pricePerKit = 2500
   const deliveryFee = 3000
   const subtotal = quantity * pricePerKit
   const total = subtotal + deliveryFee
-
-  const availableCount = availability?.availableCount ?? 0
-  const isOutOfStock = availableCount < quantity
 
   const handleIncrement = () => setQuantity((q) => q + 1)
   const handleDecrement = () => setQuantity((q) => (q > 1 ? q - 1 : 1))
@@ -66,6 +63,7 @@ export const CheckoutDrawer = ({
         quantity,
         phoneNumber,
         state,
+        lga,
         deliveryAddress: address,
       },
       {
@@ -94,13 +92,7 @@ export const CheckoutDrawer = ({
     <div className="flex flex-col bg-white rounded-t-[12px] pb-4 font-satoshi">
       {/* Header */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-[#F1F1F1]">
-        {isOutOfStock ? (
-          <Link href="/profile" onClick={closeDrawer}>
-            <ChevronDown color="black" strokeWidth={2.5} />
-          </Link>
-        ) : (
-          <ChevronDown color="black" strokeWidth={2.5} onClick={closeDrawer} />
-        )}
+        <ChevronDown color="black" strokeWidth={2.5} onClick={closeDrawer} />
         <div className="flex flex-col items-center">
           <h2 className="text-[16px] font-bold text-black">Checkout</h2>
 
@@ -116,22 +108,12 @@ export const CheckoutDrawer = ({
             />
           </div>
         </div>
-        {isOutOfStock ? (
-          <Link
-            href="/profile"
-            onClick={handleClear}
-            className="text-xs font-medium text-black underline underline-offset-3"
-          >
-            Clear
-          </Link>
-        ) : (
-          <button
-            onClick={handleClear}
-            className="text-xs font-medium text-black underline underline-offset-3"
-          >
-            Clear
-          </button>
-        )}
+        <button
+          onClick={handleClear}
+          className="text-xs font-medium text-black underline underline-offset-3"
+        >
+          Clear
+        </button>
       </div>
 
       {/* Item Section */}
@@ -210,19 +192,14 @@ export const CheckoutDrawer = ({
       <div className="px-4 pt-4 border-t border-[#F1F1F1] rounded-t-[12px]">
         <Button
           onClick={handlePay}
-          disabled={createOrderMutation.isPending || isOutOfStock}
-          className={`w-full ${
-            isOutOfStock
-              ? 'bg-gray-400 hover:bg-gray-400'
-              : 'bg-[#24C166] hover:bg-[#24C166]'
-          } text-white text-base font-bold mb-4 shadow-sm`}
+          disabled={createOrderMutation.isPending}
+          className="w-full bg-[#24C166] hover:bg-[#24C166] text-white text-base font-bold mb-4 shadow-sm"
         >
-          {isOutOfStock ? 'OUT OF STOCK' : `Pay NGN ${total.toLocaleString()}`}
+          Pay NGN {total.toLocaleString()}
         </Button>
         <div className="flex items-start gap-2 text-[#6B7280]">
-          <AlertCircle size={16} className="text-[#FBBF24] shrink-0 mt-0.5" />
-          <p className="text-[13px] font-medium leading-tight">
-            Important: No one should collect activation fees on behalf of
+          <p className="text-[12px] font-medium leading-tight text-center">
+            ⚠️ Important: No one should collect activation fees on behalf of
             Firespot. Payment happens only inside the app.
           </p>
         </div>

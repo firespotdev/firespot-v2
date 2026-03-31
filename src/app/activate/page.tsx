@@ -10,7 +10,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label, LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
-import { useCheckSerialNumber, useInitiateActivation } from '@/services/users'
+import {
+  useCheckSerialNumber,
+  useInitiateActivation,
+  useUserProfile,
+} from '@/services/users'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 
@@ -62,6 +66,7 @@ function ActivatePageContent() {
   const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
 
   // API hooks
+  const { data: user } = useUserProfile()
   const checkSerial = useCheckSerialNumber()
   const initiateActivation = useInitiateActivation()
 
@@ -271,6 +276,15 @@ function ActivatePageContent() {
   const handlePayment = () => {
     initiateActivation.mutate(validatedSerial, {
       onSuccess: (data) => {
+        if (data.isAutoActivated || !data.authorizationUrl) {
+          showNotificationToast({
+            message: data.message || 'QR kit activated!',
+          })
+          //router.push('/profile')
+          window.location.href = '/profile'
+          return
+        }
+
         // Paystack Redirect
         window.location.href = data.authorizationUrl
       },
@@ -735,11 +749,18 @@ function ActivatePageContent() {
             >
               {initiateActivation.isPending
                 ? 'Processing...'
-                : `Pay NGN ${ACTIVATION_AMOUNT.toLocaleString()} to activate this QR kit`}
+                : user &&
+                    user.availableKitEntitlements &&
+                    user.availableKitEntitlements > 0
+                  ? 'Activate this QR kit'
+                  : `Pay NGN ${ACTIVATION_AMOUNT.toLocaleString()} to activate this QR kit`}
             </Button>
             <p className="text-[#545F6CB2] text-[11px] font-medium text-center mt-4">
-              ⚠️ Important: No one should collect activation fees on behalf of
-              Firespot. Payment happens only inside the app.
+              {user &&
+              user.availableKitEntitlements &&
+              user.availableKitEntitlements > 0
+                ? 'You have a pre-paid QR kit entitlement. Activating this kit will not require additional payment.'
+                : '⚠️ Important: No one should collect activation fees on behalf of Firespot. Payment happens only inside the app.'}
             </p>
           </div>
         </div>

@@ -17,6 +17,10 @@ import {
   Input,
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
+import {
+  NIGERIAN_STATES,
+  STATE_LGA_MAP,
+} from '@/lib/utils/nigerian-states-lgas'
 
 export default function OrderQRKitPage() {
   const router = useRouter()
@@ -25,17 +29,19 @@ export default function OrderQRKitPage() {
   const [quantity, setQuantity] = useState<number | ''>('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [state, setState] = useState('')
+  const [lga, setLga] = useState('')
   const [address, setAddress] = useState('')
 
   const clearForm = () => {
     setQuantity('')
     setPhoneNumber('')
     setState('')
+    setLga('')
     setAddress('')
   }
 
   const handleCheckout = () => {
-    if (!quantity || !phoneNumber || !state || !address) {
+    if (!quantity || !phoneNumber || !state || !lga || !address) {
       showNotificationToast({
         message: 'All fields are required',
         duration: 3000,
@@ -49,6 +55,7 @@ export default function OrderQRKitPage() {
         initialQuantity: Number(quantity),
         phoneNumber,
         state,
+        lga,
         address,
         clearForm,
       },
@@ -115,27 +122,40 @@ export default function OrderQRKitPage() {
           {/* State */}
           <div>
             <Label>State</Label>
-            <Select onValueChange={setState} value={state}>
-              <SelectTrigger className="font-medium h-11">
+            <Select
+              onValueChange={(val) => {
+                setState(val)
+                setLga('') // Reset LGA when state changes
+              }}
+              value={state}
+            >
+              <SelectTrigger className="font-medium h-11 text-black">
                 <SelectValue placeholder="Select state" />
               </SelectTrigger>
               <SelectContent className="max-h-[300px]">
-                {[
-                  'Lagos',
-                  'Abuja',
-                  'Ogun',
-                  'Oyo',
-                  'Kano',
-                  'Rivers',
-                  'Edo',
-                  'Delta',
-                  'Kaduna',
-                  'Enugu',
-                  'Anambra',
-                  'Other states...',
-                ].map((s) => (
+                {NIGERIAN_STATES.map((s) => (
                   <SelectItem key={s} value={s} className="font-medium">
                     {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* LGA */}
+          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+            <Label>LGA (Local Government Area)</Label>
+            <Select onValueChange={setLga} value={lga}>
+              <SelectTrigger
+                disabled={!state}
+                className="font-medium h-11 text-black"
+              >
+                <SelectValue placeholder="Select LGA" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[300px]">
+                {STATE_LGA_MAP[state]?.map((l) => (
+                  <SelectItem key={l} value={l} className="font-medium">
+                    {l}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -171,7 +191,7 @@ export default function OrderQRKitPage() {
             </div>
             <Button
               onClick={handleCheckout}
-              disabled={!quantity}
+              disabled={!quantity || !state || !lga || !phoneNumber || !address}
               className="h-12 px-4 rounded-full text-base font-bold w-fit"
             >
               Continue

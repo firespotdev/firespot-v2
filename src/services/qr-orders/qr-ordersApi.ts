@@ -4,6 +4,7 @@ export interface CreateQROrderPayload {
   quantity: number;
   phoneNumber: string;
   state: string;
+  lga: string;
   deliveryAddress: string;
 }
 

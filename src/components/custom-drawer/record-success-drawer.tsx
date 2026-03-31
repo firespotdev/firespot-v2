@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
 import { useDrawerStore } from '@/services/drawer'
+import { cn } from '@/lib/utils'
 
 interface RecordSuccessDrawerProps {
   successDetails: any
@@ -33,7 +34,7 @@ const RecordSuccessDrawer = ({
   setDescription,
 }: RecordSuccessDrawerProps) => {
   const router = useRouter()
-  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const { openDrawer, closeDrawer } = useDrawerStore()
   const { data: statsData } = useSalesStats()
 
   const todaySalesAmount = statsData?.todaySalesAmount ?? 0
@@ -73,16 +74,17 @@ const RecordSuccessDrawer = ({
               Failed to record sale
             </h1>
             <p className="text-[#00000066] text-sm font-medium text-center max-w-75 leading-[125%]">
-              Something went wrong, Please try again later.
+              {errorMessage || 'Something went wrong, Please try again later.'}
             </p>
           </div>
 
           <div className="p-4 pb-6">
             <Link
               href="/record-sale"
+              onClick={closeDrawer}
               className="flex items-center justify-center w-full bg-black text-white font-bold h-12 rounded-full hover:bg-black"
             >
-              Try again
+              {errorMessage ? 'Record new' : 'Try again'}
             </Link>
           </div>
         </div>
@@ -91,9 +93,12 @@ const RecordSuccessDrawer = ({
   }
 
   // Success state
-  const displayDate = successDetails.date instanceof Date 
-    ? successDetails.date 
-    : new Date(successDetails.createdAt || successDetails.recordedAt || new Date())
+  const displayDate =
+    successDetails.date instanceof Date
+      ? successDetails.date
+      : new Date(
+          successDetails.createdAt || successDetails.recordedAt || new Date(),
+        )
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-[#FEFEFE] flex flex-col items-center">
@@ -101,8 +106,17 @@ const RecordSuccessDrawer = ({
         {/* Header */}
         <div className="flex justify-between items-center px-4 py-3 shrink-0">
           <button
-            onClick={() => setStep('amount')}
-            className="p-2 -ml-2 hover:bg-gray-50 rounded-full transition-colors shrink-0"
+            onClick={() =>
+              !(successDetails?.hasBeenEdited || successDetails?.isEdit) &&
+              setStep('amount')
+            }
+            disabled={successDetails?.hasBeenEdited || successDetails?.isEdit}
+            className={cn(
+              'p-2 -ml-2 rounded-full transition-colors shrink-0',
+              successDetails?.hasBeenEdited || successDetails?.isEdit
+                ? 'opacity-30 cursor-not-allowed'
+                : 'hover:bg-gray-50 cursor-pointer',
+            )}
           >
             <svg
               width="24"
@@ -137,7 +151,9 @@ const RecordSuccessDrawer = ({
           </div>
 
           <h1 className="text-[20px] font-bold text-black -tracking-[0.4px] mb-1.5 text-center shrink-0">
-            {successDetails?.isEdit ? 'Sale updated successfully' : 'Payment recorded successfully'}
+            {successDetails?.isEdit
+              ? 'Sale updated successfully'
+              : 'Payment recorded successfully'}
           </h1>
           <p className="text-[14px] text-center text-[#878F98] max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
             {successDetails.paymentMethod} payment of NGN

@@ -2,17 +2,8 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import {
-  Check,
-  Receipt,
-  QrCode,
-  MessageSquareMore,
-  ChevronRight,
-  X,
-  MessageCircleHeart,
-} from 'lucide-react'
+import { Check, ChevronRight, X, MessageCircleHeart } from 'lucide-react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, TagFooter } from '@/components/ui'
 import { useVerifyQROrderPayment } from '@/services/qr-orders/qr-ordersHooks'

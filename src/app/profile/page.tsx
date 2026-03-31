@@ -229,7 +229,7 @@ export default function ProfilePage() {
               </div>
             </Link>
 
-            <Link href="/insights" className="text-center">
+            <Link href="/history?status=CONFIRMED" className="text-center">
               <p className="text-xl font-bold text-black leading-none mb-1">
                 {salesStats?.todaySalesCount ?? 0}
               </p>
