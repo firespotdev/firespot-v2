@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, Suspense } from 'react'
 import {
   ArrowLeft,
   Download,
@@ -71,7 +71,7 @@ const getAmountLabel = (sale: Sale) => {
   return 'Enter amount'
 }
 
-export default function HistoryPage() {
+function HistoryContent() {
   const { openDrawer } = useDrawerStore()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
@@ -366,5 +366,19 @@ export default function HistoryPage() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function HistoryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-dvh bg-[#F4F6F8] flex items-center justify-center">
+          <LoaderCircle innerBg="#F4F6F8" />
+        </div>
+      }
+    >
+      <HistoryContent />
+    </Suspense>
   )
 }
