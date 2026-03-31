@@ -92,6 +92,12 @@ export class AdminQRKitsController {
     type: Boolean,
     description: "Filter only unassigned QRKits",
   })
+  @ApiQuery({
+    name: "isDigital",
+    required: false,
+    type: Boolean,
+    description: "Filter by digital/physical type",
+  })
   @ApiResponse({
     status: 200,
     description: "QRKits retrieved successfully",
@@ -105,6 +111,7 @@ export class AdminQRKitsController {
     @Query("limit") limit?: number,
     @Query("agentId") agentId?: string,
     @Query("unassigned") unassigned?: string,
+    @Query("isDigital") isDigital?: string,
   ) {
     return this.adminQRKitsService.listQRKits(
       {
@@ -113,6 +120,7 @@ export class AdminQRKitsController {
         search,
         agentId,
         unassigned: unassigned === "true",
+        isDigital: isDigital === "true" ? true : isDigital === "false" ? false : undefined,
       },
       {
         page: page ? Number(page) : undefined,

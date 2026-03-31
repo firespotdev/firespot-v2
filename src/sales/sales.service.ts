@@ -171,7 +171,11 @@ export class SalesService {
   }
 
   async getSaleById(merchantId: string, saleId: string): Promise<Sale> {
-    const sale = await this.saleModel.findOne({ _id: saleId, merchantId }).exec()
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const sale = await this.saleModel
+      .findOne({ _id: saleId, merchantId: merchantObjectId })
+      .exec()
+
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }

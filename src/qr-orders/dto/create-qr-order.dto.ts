@@ -16,5 +16,9 @@ export class CreateQROrderDto {
 
   @IsNotEmpty()
   @IsString()
+  lga: string;
+
+  @IsNotEmpty()
+  @IsString()
   deliveryAddress: string;
 }

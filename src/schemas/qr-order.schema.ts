@@ -16,6 +16,9 @@ export class QROrder extends Document {
   state: string
 
   @Prop({ required: true })
+  lga: string
+
+  @Prop({ required: true })
   deliveryAddress: string
 
   @Prop({ required: true })

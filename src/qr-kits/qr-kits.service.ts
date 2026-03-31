@@ -13,6 +13,13 @@ import {
   detectDeviceType,
   detectBrowserType,
 } from '../scans/utils/device-detector'
+import { QRCodeService } from '../services/qr-code.service'
+import { customAlphabet } from 'nanoid'
+
+const generateDigitalSerial = customAlphabet(
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+  8,
+)
 
 @Injectable()
 export class QRKitsService {
@@ -24,6 +31,7 @@ export class QRKitsService {
     private configService: ConfigService,
     private scansService: ScansService,
     private smsService: SmsService,
+    private qrCodeService: QRCodeService,
   ) {}
 
   async checkSerialNumber(serialNumber: string) {
@@ -213,6 +221,44 @@ export class QRKitsService {
         userId: userId,
       },
     })
+
+    // Check for entitlements (skip payment if merchant has pre-paid)
+    if (user.availableKitEntitlements && user.availableKitEntitlements > 0) {
+      user.availableKitEntitlements -= 1
+      await user.save()
+
+      qrKit.merchantId = user._id as any
+      qrKit.paymentStatus = 'successful'
+      qrKit.activationStatus = 'activated'
+      qrKit.paidAt = new Date()
+      qrKit.activatedAt = new Date()
+      qrKit.paystackReference = reference // Store the reference anyway for tracking
+      await qrKit.save()
+
+      // Notify agent who earned the commission (if any)
+      const earningAgentId = qrKit.agentId || user.referredByAgent
+      if (earningAgentId) {
+        await this.notifyAgentOnCommission(
+          earningAgentId.toString(),
+          user.businessName || 'a merchant',
+          qrKit.serialNumber,
+        )
+      }
+
+      // Update user's merchantSlug if not set
+      if (!user.merchantSlug) {
+        user.merchantSlug = nanoid(6).toUpperCase()
+        await user.save()
+      }
+
+      return {
+        message: 'QR kit activated',
+        serialNumber: qrKit.serialNumber,
+        activationAmount: 0,
+        qrKitId: qrKit._id,
+        isAutoActivated: true,
+      }
+    }
 
     // Link QR kit to merchant (pending payment)
     qrKit.merchantId = user._id as any
@@ -433,5 +479,121 @@ export class QRKitsService {
     }
 
     return assignedIds
+  }
+
+  /**
+   * Process a successful online order
+   */
+  async processOnlineOrder(merchantId: string, quantity: number) {
+    const user = await this.userModel.findById(merchantId)
+    if (!user) {
+      throw new HttpException('Merchant not found', HttpStatus.NOT_FOUND)
+    }
+
+    // Give entitlements for physical kits
+    user.availableKitEntitlements =
+      (user.availableKitEntitlements || 0) + quantity
+    await user.save()
+
+    // Check if user already has a kit (including digital)
+    const existingKit = await this.qrKitModel.findOne({ merchantId: user._id })
+    const assignedIds: Types.ObjectId[] = []
+
+    if (!existingKit) {
+      // First time order - provide ONE digital kit
+      const digitalKit = await this.createDigitalKit(merchantId)
+      assignedIds.push(digitalKit._id as Types.ObjectId)
+    }
+
+    // Note: We don't return physical kits here anymore. Use entitlements.
+    return assignedIds
+  }
+
+  /**
+   * Claim a digital QR kit if the user has entitlements but no kits yet (Recovery)
+   */
+  async claimDigitalKit(merchantId: string) {
+    const user = await this.userModel.findById(merchantId)
+    if (!user) {
+      throw new HttpException('Merchant not found', HttpStatus.NOT_FOUND)
+    }
+
+    // Check if user has any kits (digital or physical)
+    const existingKit = await this.qrKitModel.findOne({ merchantId: user._id })
+    if (existingKit) {
+      throw new HttpException(
+        'Merchant already has a QR kit',
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    // Check if user has entitlements
+    if (!user.availableKitEntitlements || user.availableKitEntitlements <= 0) {
+      throw new HttpException(
+        'No available kit entitlements found. Please order a kit first.',
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    // Create a digital kit (does not consume an entitlement)
+    return this.createDigitalKit(merchantId)
+  }
+
+  /**
+   * Create a digital QR kit for immediate use
+   */
+  private async createDigitalKit(merchantId: string): Promise<QRKitDocument> {
+    const user = await this.userModel.findById(merchantId)
+    const serialNumber = await this.generateUniqueDigitalSerialNumber()
+
+    // Generate and upload QR code
+    const svgString = await this.qrCodeService.generateQRCodeSVG(serialNumber)
+    const { url, publicId } = await this.qrCodeService.uploadQRCodeSVG(
+      svgString,
+      serialNumber,
+    )
+
+    const digitalKit = new this.qrKitModel({
+      serialNumber,
+      merchantId: user?._id,
+      isDigital: true,
+      activationStatus: 'activated',
+      paymentStatus: 'successful',
+      qrCodeSvgUrl: url,
+      qrCodeSvgPublicId: publicId,
+      paidAt: new Date(),
+      activatedAt: new Date(),
+      activationAmount: 0, // Digital kit is free with order
+    })
+
+    await digitalKit.save()
+
+    // Ensure user has merchantSlug
+    if (user && !user.merchantSlug) {
+      user.merchantSlug = nanoid(6).toUpperCase()
+      await user.save()
+    }
+
+    return digitalKit
+  }
+
+  /**
+   * Generate unique serial number with FSD- prefix
+   */
+  private async generateUniqueDigitalSerialNumber(): Promise<string> {
+    let attempts = 0
+    const maxAttempts = 10
+
+    while (attempts < maxAttempts) {
+      const serialNumber = `FSD-${generateDigitalSerial()}`
+      const existing = await this.qrKitModel.findOne({ serialNumber })
+      if (!existing) return serialNumber
+      attempts++
+    }
+
+    throw new HttpException(
+      'Failed to generate unique digital serial number',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    )
   }
 }

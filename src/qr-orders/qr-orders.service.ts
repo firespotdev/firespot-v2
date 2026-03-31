@@ -43,6 +43,7 @@ export class QROrdersService {
       quantity: dto.quantity,
       phoneNumber: dto.phoneNumber,
       state: dto.state,
+      lga: dto.lga,
       deliveryAddress: dto.deliveryAddress,
       subtotal,
       deliveryFee: DELIVERY_FEE,
@@ -99,8 +100,8 @@ export class QROrdersService {
 
       if (order && order.paymentStatus === 'SUCCESSFUL') {
         try {
-          // Assign available kits to the merchant
-          const assignedKitIds = await this.qrKitsService.assignKitsToMerchant(
+          // Process online order (digital kit and physical entitlements)
+          const assignedKitIds = await this.qrKitsService.processOnlineOrder(
             order.merchantId.toString(),
             order.quantity,
           )

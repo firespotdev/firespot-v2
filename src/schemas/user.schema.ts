@@ -56,6 +56,9 @@ export class User extends Document {
   @Prop({ type: Types.ObjectId, ref: "Agent" })
   referredByAgent?: Types.ObjectId;
 
+  @Prop({ default: 0 })
+  availableKitEntitlements?: number;
+
   @Prop()
   lastLoginAt?: Date;
 
@@ -68,6 +71,5 @@ export const UserSchema = SchemaFactory.createForClass(User);
 export type UserDocument = User & Document;
 
 // Indexes
-UserSchema.index({ phoneNumber: 1 });
-UserSchema.index({ fullPhoneNumber: 1 });
-UserSchema.index({ merchantSlug: 1 }, { sparse: true });
+// Standard indexes are handled by @Prop annotations.
+// Custom composite indexes or options would go here.

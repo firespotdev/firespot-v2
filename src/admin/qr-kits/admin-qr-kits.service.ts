@@ -159,10 +159,11 @@ export class AdminQRKitsService {
       search?: string;
       agentId?: string;
       unassigned?: boolean;
+      isDigital?: boolean;
     } = {},
     pagination: { page?: number; limit?: number } = {},
   ) {
-    const { activationStatus, paymentStatus, search, agentId, unassigned } =
+    const { activationStatus, paymentStatus, search, agentId, unassigned, isDigital } =
       filters;
     const page = pagination.page || 1;
     const limit = pagination.limit || 50;
@@ -188,6 +189,10 @@ export class AdminQRKitsService {
 
     if (unassigned) {
       query.agentId = null;
+    }
+
+    if (isDigital !== undefined) {
+      query.isDigital = isDigital;
     }
 
     // Execute query with pagination
@@ -283,6 +288,14 @@ export class AdminQRKitsService {
               },
             },
           ],
+          byType: [
+            {
+              $group: {
+                _id: "$isDigital",
+                count: { $sum: 1 },
+              },
+            },
+          ],
         },
       },
     ]);
@@ -300,6 +313,11 @@ export class AdminQRKitsService {
       pending: 0,
       successful: 0,
       failed: 0,
+    };
+
+    const byType = {
+      digital: 0,
+      physical: 0,
     };
 
     // Map activation status counts
@@ -326,10 +344,20 @@ export class AdminQRKitsService {
       }
     });
 
+    // Map type counts
+    result.byType.forEach((item: { _id: boolean; count: number }) => {
+      if (item._id === true) {
+        byType.digital = item.count;
+      } else {
+        byType.physical = item.count;
+      }
+    });
+
     return {
       total: result.total[0]?.count || 0,
       byActivationStatus,
       byPaymentStatus,
+      byType,
     };
   }
 

@@ -225,4 +225,24 @@ export class QRKitsController {
   async verifyPayment(@Param("reference") reference: string) {
     return this.qrKitsService.completeActivationByReference(reference);
   }
+
+  @Post("claim-digital")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Claim first digital kit",
+    description:
+      "Allows a merchant to claim their first digital kit if they have entitlements but no kits yet (Recovery mechanism).",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Digital kit claimed successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Merchant already has a kit or no entitlements found",
+  })
+  async claimDigital(@Request() req) {
+    return this.qrKitsService.claimDigitalKit(req.user.userId);
+  }
 }

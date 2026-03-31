@@ -406,6 +406,7 @@ export class UsersService {
       fullPhoneNumber: user.fullPhoneNumber,
       businessName: user.businessName,
       merchantSlug: user.merchantSlug,
+      availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],
       profilePhotoUrl: user.profilePhotoUrl,
       createdAt: user.createdAt,

@@ -7,6 +7,7 @@ import { User, UserSchema } from "../schemas/user.schema";
 import { Agent, AgentSchema } from "../admin/schemas/agent.schema";
 import { UsersModule } from "../users/users.module";
 import { ScansModule } from "../scans/scans.module";
+import { QRCodeService } from "../services/qr-code.service";
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { ScansModule } from "../scans/scans.module";
     ScansModule,
   ],
   controllers: [QRKitsController],
-  providers: [QRKitsService],
+  providers: [QRKitsService, QRCodeService],
   exports: [QRKitsService],
 })
 export class QRKitsModule {}
