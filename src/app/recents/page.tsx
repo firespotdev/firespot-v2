@@ -61,7 +61,6 @@ export default function RecentsPage() {
         Recent
       </h2>
 
-      {/* Stats Card */}
       <div className="border border-[#F4F6F8] px-4 py-4 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] w-full flex justify-between items-center mb-6 shrink-0">
         <div className="w-full">
           <div className="flex items-center gap-1 mb-2 justify-between w-full">
