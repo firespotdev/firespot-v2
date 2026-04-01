@@ -250,29 +250,31 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         </div>
       </div>
 
-      <div className="px-4 mb-3">
-        <Link
-          href="/recents"
-          onClick={closeDrawer}
-          className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D]"
-        >
-          <Image
-            src="/icons/history_brown.svg"
-            alt="Recent"
-            width={24}
-            height={24}
-          />
-          <div className="flex-1">
-            <p className="leading-none text-left text-base font-medium text-[#6B4200]">
-              Recent sales
-            </p>
-            <span className="text-[13px] text-[#BB8123] font-medium">
-              {pendingSalesCount} pending confirmations
-            </span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
-        </Link>
-      </div>
+      {salesStats?.pendingSalesCount && salesStats?.pendingSalesCount > 0 ? (
+        <div className="px-4 mb-3">
+          <Link
+            href="/recents"
+            onClick={closeDrawer}
+            className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D]"
+          >
+            <Image
+              src="/icons/history_brown.svg"
+              alt="Recent"
+              width={24}
+              height={24}
+            />
+            <div className="flex-1">
+              <p className="leading-none text-left text-base font-medium text-[#6B4200]">
+                Recent sales
+              </p>
+              <span className="text-[13px] text-[#BB8123] font-medium">
+                {pendingSalesCount} pending confirmations
+              </span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
+          </Link>
+        </div>
+      ) : null}
 
       {/* Menu Sections */}
       <div className="flex-1 px-4 space-y-3">

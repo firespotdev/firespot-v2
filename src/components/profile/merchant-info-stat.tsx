@@ -154,26 +154,28 @@ export function MerchantInfoStat({
         )}
       </div>
 
-      <Link
-        href="/recents"
-        className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
-      >
-        <Image
-          src="/icons/history_brown.svg"
-          alt="Recent"
-          width={24}
-          height={24}
-        />
-        <div className="flex-1">
-          <p className="leading-none text-left text-base font-medium text-[#6B4200]">
-            Recent sales
-          </p>
-          <span className="text-[13px] text-[#BB8123] font-medium">
-            {salesStats?.pendingSalesCount ?? 0} pending confirmations
-          </span>
-        </div>
-        <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
-      </Link>
+      {salesStats?.pendingSalesCount && salesStats?.pendingSalesCount > 0 ? (
+        <Link
+          href="/recents"
+          className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
+        >
+          <Image
+            src="/icons/history_brown.svg"
+            alt="Recent"
+            width={24}
+            height={24}
+          />
+          <div className="flex-1">
+            <p className="leading-none text-left text-base font-medium text-[#6B4200]">
+              Recent sales
+            </p>
+            <span className="text-[13px] text-[#BB8123] font-medium">
+              {salesStats?.pendingSalesCount ?? 0} pending confirmations
+            </span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
+        </Link>
+      ) : null}
 
       <div className="border-2 border-[#0000000A] rounded-[12px] w-full">
         <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">

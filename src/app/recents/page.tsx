@@ -129,7 +129,7 @@ export default function RecentsPage() {
                       </div>
                       <div>
                         <h4 className="text-[13px] font-bold text-[#111827] mb-0.5">
-                          {sale.customerType || 'New'} customer
+                          {sale.description || 'New'} sale
                         </h4>
                         <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
                           {formatDate(sale.createdAt)}

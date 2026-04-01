@@ -133,6 +133,7 @@ function HistoryContent() {
   const isEmpty = sales.length === 0 && !isLoading
 
   const handleRecordClick = (sale: Sale) => {
+    if (sale.status !== 'CONFIRMED') return
     openDrawer({
       type: 'transaction-details',
       props: { sale },
@@ -326,7 +327,9 @@ function HistoryContent() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <h5 className="text-[13px] font-bold text-black truncate mb-1 capitalize">
-                              {sale.description}
+                              {sale.status === 'CANCELLED'
+                                ? 'Cancelled'
+                                : sale.description}
                             </h5>
                             <p className="text-[12px] text-[#6B7280] font-medium">
                               {formatDate(sale.createdAt)}

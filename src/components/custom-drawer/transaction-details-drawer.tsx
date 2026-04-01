@@ -85,9 +85,21 @@ const TransactionDetailsDrawer = ({
 
           {/* Amount and Status Message */}
           <div className="mb-6 text-center">
-            <h3 className="mb-1 text-[20px] font-bold text-black -tracking-[0.4px] leading-[100%]">
-              {isConfirmed ? '+ ' : ''}NGN {formatCurrency(sale.amount || 0)}
-            </h3>
+            {isEditable ? (
+              <h3 className="text-[20px] font-bold text-black -tracking-[0.4px] leading-[100%]">
+                {isConfirmed ? '+ ' : ''}NGN {formatCurrency(sale.amount || 0)}
+              </h3>
+            ) : (
+              <div className="flex items-center gap-1.5 mb-1">
+                <h3 className="text-[20px] font-bold text-black -tracking-[0.4px] leading-[100%]">
+                  {isConfirmed ? '+ ' : ''}NGN{' '}
+                  {formatCurrency(sale.amount || 0)}
+                </h3>
+                <span className="text-[10px] font-bold rounded-[10px] bg-[#00000040] text-white py-0.5 px-2">
+                  Edited
+                </span>
+              </div>
+            )}
             <p className="text-[14px] text-[#898A8D] font-medium">
               Sale recorded successfully
             </p>
