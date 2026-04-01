@@ -14,7 +14,7 @@ import { useMerchantInsights, type InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
-import { sortBankAccounts } from '@/lib/utils/bank-account'
+import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB

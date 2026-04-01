@@ -21,7 +21,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { LoaderCircle } from '@/components/ui'
-import { getBankLogo } from '@/lib/utils/bank-account'
+import { getBankLogo } from '@/lib/utils/bank-registry'
 import { useDrawerStore } from '@/services/drawer'
 import {
   type InsightsQuery,

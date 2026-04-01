@@ -1,8 +1,7 @@
 'use client'
 
 import { BankLogo } from '@/components/ui/bank-logo'
-import { ALL_BANKS, sortBanksByPopularity } from '@/lib/utils/banks'
-import { openBankingApp } from '@/lib/utils/bank-deeplinks'
+import { ALL_BANK_NAMES, sortBanksByPopularity, openBankingApp } from '@/lib/utils/bank-registry'
 
 export function BankTransferDrawer() {
   const handleBankClick = (bankName: string) => {
@@ -10,7 +9,7 @@ export function BankTransferDrawer() {
   }
 
   // Sort banks with popular ones first
-  const sortedBanks = sortBanksByPopularity([...ALL_BANKS])
+  const sortedBanks = sortBanksByPopularity([...ALL_BANK_NAMES])
 
   return (
     <div className="flex flex-col overflow-hidden bg-white">

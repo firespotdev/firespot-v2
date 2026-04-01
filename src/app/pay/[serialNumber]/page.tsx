@@ -14,7 +14,7 @@ import { useDrawerStore } from '@/services/drawer'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
 import { useCreatePendingSale } from '@/services/sales/hooks'
-import { sortBankAccounts } from '@/lib/utils/bank-account'
+import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 

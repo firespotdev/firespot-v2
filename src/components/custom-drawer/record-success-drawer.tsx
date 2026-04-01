@@ -134,7 +134,13 @@ const RecordSuccessDrawer = ({
             </svg>
           </button>
           <button
-            onClick={() => router.push('/profile')}
+            onClick={() => {
+              if (statsData?.pendingSalesCount! > 0) {
+                router.push('/recents')
+              } else {
+                router.push('/profile')
+              }
+            }}
             className="p-2 -mr-2 hover:bg-gray-50 rounded-full transition-colors shrink-0"
           >
             <X className="w-6 h-6 text-black stroke-[2.5px]" />
@@ -254,7 +260,13 @@ const RecordSuccessDrawer = ({
           </Button>
           <Button
             variant="ghost"
-            onClick={() => router.push('/profile')}
+            onClick={() => {
+              if (statsData?.pendingSalesCount! > 0) {
+                router.push('/recents')
+              } else {
+                router.push('/profile')
+              }
+            }}
             className="w-full hover:bg-gray-50 bg-transparent text-black h-14 rounded-full font-bold text-[15px] transition-colors"
           >
             Dismiss
