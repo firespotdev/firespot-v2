@@ -254,7 +254,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Record Button */}
+        {/* Record */}
         <div className="border-t border-[#F1F1F1] mx-auto fixed bottom-0 left-0 right-0 bg-white rounded-t-[12px]">
           <div className="p-4 pb-6">
             <Button
