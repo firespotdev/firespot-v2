@@ -144,11 +144,12 @@ function LoginPageContent() {
     )
   }
 
-  // Build signup URL with preserved params
+  // Build signup URL with preserved params + phone prefill
   const getSignupUrl = () => {
     const params = new URLSearchParams()
     if (redirectPath) params.set('redirect', redirectPath)
     if (serialNumber) params.set('serial', serialNumber)
+    if (phoneNumber) params.set('phone', phoneNumber)
     const queryString = params.toString()
     return queryString ? `/signup?${queryString}` : '/signup'
   }

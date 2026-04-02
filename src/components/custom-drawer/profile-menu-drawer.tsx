@@ -115,7 +115,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           onClick={closeDrawer}
           className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
         >
-          <div className="w-12 h-12 rounded-full bg-[#6366F1] flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-[#ced7e1] flex items-center justify-center">
             {profile?.profilePhotoUrl ? (
               <Image
                 src={profile.profilePhotoUrl}
@@ -125,7 +125,12 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                 className="w-12 h-12 rounded-full object-cover"
               />
             ) : (
-              <span className="text-white font-bold text-lg">{initials}</span>
+              <Image
+                src="/icons/store_solid.svg"
+                alt="store icon"
+                width={32}
+                height={32}
+              />
             )}
           </div>
           <div className="flex-1 text-left">
@@ -218,7 +223,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                 />
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <div className="relative">
-                    <div className="w-[48px] h-[48px] rounded-full border-2 border-white bg-white overflow-hidden shadow-sm">
+                    <div className="w-[48px] h-[48px] rounded-full border-2 border-white bg-[#ced7e1] overflow-hidden shadow-sm flex justify-center items-center">
                       {profile?.profilePhotoUrl ? (
                         <Image
                           src={profile.profilePhotoUrl}
@@ -228,9 +233,12 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full bg-[#6366F1] flex items-center justify-center text-white font-bold text-[8px]">
-                          {initials}
-                        </div>
+                        <Image
+                          src="/icons/store_solid.svg"
+                          alt="store icon"
+                          width={30}
+                          height={30}
+                        />
                       )}
                     </div>
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-[5.5px] bg-white border-2 border-[#F4F6F8]">

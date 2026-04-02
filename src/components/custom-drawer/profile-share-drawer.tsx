@@ -103,51 +103,59 @@ export function ProfileShareDrawer({
         </button>
       </div>
       <div className="px-12 w-full py-6">
-      <div
-        className="rounded-[24px] p-1 w-full max-w-[280px] mx-auto aspect-square"
-        style={{
-          background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
-        }}
-      >
-        <div className="bg-white p-4 rounded-[21px] relative">
-          <div ref={qrRef} className="rounded-[10px] overflow-hidden">
-            <QRCodeSVG
-              value={shareUrl}
-              size={240}
-              level="H"
-              fgColor="#000000"
-              includeMargin={false}
-              style={{ width: '100%', height: 'auto' }}
-            />
-          </div>
+        <div
+          className="rounded-[24px] p-1 w-full max-w-[280px] mx-auto aspect-square"
+          style={{
+            background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
+          }}
+        >
+          <div className="bg-white p-4 rounded-[21px] relative">
+            <div ref={qrRef} className="rounded-[10px] overflow-hidden">
+              <QRCodeSVG
+                value={shareUrl}
+                size={240}
+                level="H"
+                fgColor="#000000"
+                includeMargin={false}
+                style={{ width: '100%', height: 'auto' }}
+              />
+            </div>
 
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-            <div className="relative w-24 h-24">
-              <div className="w-full h-full rounded-full overflow-hidden border-4 shadow-lg border-white bg-white">
-                {profilePhotoUrl ? (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
+              <div className="relative w-24 h-24">
+                <div className="w-full h-full rounded-full overflow-hidden border-4 shadow-lg border-white bg-white">
+                  {profilePhotoUrl ? (
+                    <Image
+                      src={profilePhotoUrl}
+                      alt="Business Logo"
+                      width={96}
+                      height={96}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="bg-[#ced7e1] w-full h-full flex items-center justify-center">
+                      <Image
+                        src="/icons/store_solid.svg"
+                        alt="store icon"
+                        width={48}
+                        height={48}
+                      />
+                    </div>
+                  )}
+                </div>
+                <div className="absolute bottom-0 right-0 border-4 border-white rounded-[10.5px]">
                   <Image
-                    src={profilePhotoUrl}
-                    alt="Business Logo"
-                    width={96}
-                    height={96}
-                    className="w-full h-full object-cover"
+                    src="/images/firespot_logo.png"
+                    alt="Firespot Logo"
+                    width={24}
+                    height={24}
                   />
-                ) : (
-                  <div className="bg-[#FF6B35] w-full h-full flex items-center justify-center">
-                    <span className="text-2xl font-bold text-white">
-                      {getInitials(businessName)}
-                    </span>
-                  </div>
-                )}
-              </div>
-              <div className="absolute bottom-0 right-0 border-4 border-white rounded-[10.5px]">
-                <Image src="/images/firespot_logo.png" alt="Firespot Logo" width={24} height={24} />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-            </div>
       <h2 className="text-xl leading-none font-bold text-black text-center mb-1 -tracking-[0.4px]">
         Share this transfer page
       </h2>

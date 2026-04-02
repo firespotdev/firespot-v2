@@ -31,15 +31,6 @@ import {
 import { Sale } from '@/services/sales/interface'
 import { formatDate } from '@/lib/utils/constants'
 
-const formatDateStr = (dateStr: string | Date) => {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
-
 const getMonthYearKey = (dateStr: string | Date) => {
   const date = new Date(dateStr)
   return `${date.toLocaleString('en-US', { month: 'long' })} ${date.getFullYear()}`
@@ -329,7 +320,9 @@ function HistoryContent() {
                             <h5 className="text-[13px] font-bold text-black truncate mb-1 capitalize">
                               {sale.status === 'CANCELLED'
                                 ? 'Cancelled'
-                                : sale.description}
+                                : sale.status === 'PENDING'
+                                  ? 'New sale'
+                                  : sale.description}
                             </h5>
                             <p className="text-[12px] text-[#6B7280] font-medium">
                               {formatDate(sale.createdAt)}
