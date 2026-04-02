@@ -246,7 +246,6 @@ const RecordSuccessDrawer = ({
           </Button>
         </div>
 
-        {/* Footer */}
         <div className="w-full bg-white space-y-3 px-4 pb-4 pt-4 shrink-0 mt-auto border-t border-[#F1F1F1]">
           <Button
             onClick={() => {
