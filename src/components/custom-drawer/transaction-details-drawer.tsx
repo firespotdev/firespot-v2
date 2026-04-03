@@ -12,6 +12,7 @@ import { format } from 'date-fns'
 import Link from 'next/link'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
+import { formatCurrency } from '@/lib/utils'
 
 interface TransactionDetailsDrawerProps {
   sale: Sale
@@ -24,10 +25,6 @@ const TransactionDetailsDrawer = ({
 }: TransactionDetailsDrawerProps) => {
   const { closeDrawer, openDrawer } = useDrawerStore()
   if (!sale) return null
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG').format(amount)
-  }
 
   const formatDate = (date: string | Date | undefined) => {
     if (!date) return 'N/A'

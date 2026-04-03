@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
 import { useDrawerStore } from '@/services/drawer'
-import { cn } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 
 interface RecordSuccessDrawerProps {
   successDetails: any
@@ -18,12 +18,6 @@ interface RecordSuccessDrawerProps {
   setDescription: (description: string) => void
 }
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('en-NG', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
-}
 
 const RecordSuccessDrawer = ({
   successDetails,
@@ -162,8 +156,8 @@ const RecordSuccessDrawer = ({
               : 'Payment recorded successfully'}
           </h1>
           <p className="text-[14px] text-center text-[#878F98] max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
-            {successDetails.paymentMethod} payment of NGN
-            {successDetails.amount.toFixed(2)} on{' '}
+            {successDetails.paymentMethod} payment of NGN{' '}
+            {formatCurrency(successDetails.amount ?? 0)} on{' '}
             {displayDate.toLocaleDateString('en-US', {
               weekday: 'long',
               day: 'numeric',

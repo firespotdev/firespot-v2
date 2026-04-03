@@ -159,9 +159,16 @@ function RecordSaleContent() {
     ['.', '0', 'backspace'],
   ]
 
+  const formatDisplayAmount = (val: string) => {
+    if (!val) return '0'
+    const [int, dec] = val.split('.')
+    const formattedInt = new Intl.NumberFormat('en-NG').format(Number(int))
+    return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt
+  }
+
   const isRecording =
     amount.length > 0 && amount !== '0' && amount !== '0.' && amount !== '.'
-  const displayAmount = amount === '' ? '0' : amount
+  const displayAmount = formatDisplayAmount(amount)
 
   return (
     <div className="h-dvh bg-white flex flex-col items-center">

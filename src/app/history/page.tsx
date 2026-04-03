@@ -291,12 +291,10 @@ function HistoryContent() {
                           key={sale._id}
                           className={cn(
                             'flex items-center gap-2 p-3 group',
-                            sale.status === 'CANCELLED' && 'relative',
+                            sale.status === 'CANCELLED' &&
+                              'grayscale opacity-70',
                           )}
                         >
-                          {sale.status === 'CANCELLED' && (
-                            <div className="absolute inset-0 bg-[#FAFAFA]/60" />
-                          )}
                           <div className="relative shrink-0">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-transform">
                               <Image
@@ -322,7 +320,9 @@ function HistoryContent() {
                                 ? 'Cancelled'
                                 : sale.status === 'PENDING'
                                   ? 'New sale'
-                                  : sale.description}
+                                  : !sale.description
+                                    ? 'New sale'
+                                    : sale.description}
                             </h5>
                             <p className="text-[12px] text-[#6B7280] font-medium">
                               {formatDate(sale.createdAt)}
