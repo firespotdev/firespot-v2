@@ -31,7 +31,13 @@ import {
   generateMockMerchantInsights,
 } from '@/lib/mock-data'
 
-const QR_KIT_COLORS = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6']
+const PAY_METHOD_COLORS = [
+  '#E74C3C',
+  '#3498DB',
+  '#2ECC71',
+  '#F39C12',
+  '#9B59B6',
+]
 
 export default function InsightsPage() {
   const router = useRouter()
@@ -280,6 +286,26 @@ export default function InsightsPage() {
                 )}
               </StatCard>
 
+              {/* Payment Methods Section */}
+              <StatCard
+                title="Payment methods"
+                description="How your customers pay you (based on your recorded sales)."
+                value={insights.paymentMethods?.totalSales}
+                expandable={
+                  (insights.paymentMethods?.breakdown.length || 0) > 0
+                }
+              >
+                {insights.paymentMethods?.breakdown.map((item, index) => (
+                  <BreakdownItem
+                    key={item.method}
+                    label={item.method}
+                    count={item.count}
+                    total={insights.paymentMethods.totalSales}
+                    color={PAY_METHOD_COLORS[index % PAY_METHOD_COLORS.length]}
+                  />
+                ))}
+              </StatCard>
+
               {/* Stats Section */}
               <StatCard
                 title="QR kit scans"
@@ -293,7 +319,7 @@ export default function InsightsPage() {
                     label={kit.serialNumber}
                     count={kit.scanCount}
                     total={insights.qrKitScans.totalScans}
-                    color={QR_KIT_COLORS[index % QR_KIT_COLORS.length]}
+                    color="linear-gradient(to bottom right, #FB5012, #D72483)"
                   />
                 ))}
               </StatCard>

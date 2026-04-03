@@ -120,6 +120,15 @@ export const generateMockMerchantInsights = (filter: InsightsQuery) => {
         { bankName: 'GTBank', count: Math.floor(totalCustomers * 0.1) }
       ]
     },
+    paymentMethods: {
+      totalSales: 10 * scale,
+      breakdown: [
+        { method: 'Bank Transfer', count: 6 * scale },
+        { method: 'POS', count: 2 * scale },
+        { method: 'Cash', count: 1 * scale },
+        { method: 'Other', count: 1 * scale }
+      ]
+    },
     linkedCounts: {
       bankAccounts: 3,
       qrKits: 2

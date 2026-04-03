@@ -47,7 +47,7 @@ export function StatCard({
         <div className="flex flex-col items-start">
           <h3 className="text-[15px] font-bold text-black">{title}</h3>
           {description && (
-            <p className="text-[13px] font-medium text-[#00000099] mt-0.5">
+            <p className="text-[13px] font-medium text-left text-[#00000099] mt-0.5 max-w-[270px]">
               {description}
             </p>
           )}
