@@ -16,6 +16,7 @@ import { getDatabaseConfig } from "./config/database.config";
 import { SalesModule } from './sales/sales.module';
 import { QROrdersModule } from './qr-orders/qr-orders.module';
 import { EventsModule } from './events/events.module';
+import { FirebaseModule } from './services/firebase/firebase.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { EventsModule } from './events/events.module';
     SalesModule,
     QROrdersModule,
     EventsModule,
+    FirebaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],

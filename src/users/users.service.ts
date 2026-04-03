@@ -398,6 +398,25 @@ export class UsersService {
     };
   }
 
+  async registerFcmToken(userId: string, token: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (!user.fcmTokens) {
+      user.fcmTokens = [];
+    }
+
+    // Add token if it doesn't already exist
+    if (!user.fcmTokens.includes(token)) {
+      user.fcmTokens.push(token);
+      await user.save();
+    }
+
+    return { message: "FCM token registered successfully" };
+  }
+
   private sanitizeUser(user: UserDocument) {
     return {
       id: user._id,

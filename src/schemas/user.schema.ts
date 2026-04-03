@@ -62,6 +62,9 @@ export class User extends Document {
   @Prop()
   lastLoginAt?: Date;
 
+  @Prop({ type: [String], default: [] })
+  fcmTokens?: string[];
+
   // Timestamps (automatically added by Mongoose)
   createdAt?: Date;
   updatedAt?: Date;

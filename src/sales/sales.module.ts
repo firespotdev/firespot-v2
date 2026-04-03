@@ -6,6 +6,7 @@ import { Sale, SaleSchema } from '../schemas/sale.schema';
 import { User, UserSchema } from '../schemas/user.schema';
 import { QRKit, QRKitSchema } from '../schemas/qrkit.schema';
 import { EventsModule } from '../events/events.module';
+import { FirebaseModule } from '../services/firebase/firebase.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { EventsModule } from '../events/events.module';
       { name: QRKit.name, schema: QRKitSchema },
     ]),
     EventsModule,
+    FirebaseModule,
   ],
   controllers: [SalesController],
   providers: [SalesService]

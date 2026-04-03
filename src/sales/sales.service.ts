@@ -9,6 +9,7 @@ import { Sale, SaleDocument } from '../schemas/sale.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { EventsGateway } from '../events/events/events.gateway'
+import { FirebaseService } from '../services/firebase/firebase.service'
 import { CreatePendingSaleDto } from './dto/create-pending-sale.dto'
 import { RecordSaleDto } from './dto/record-sale.dto'
 import { EditSaleDto } from './dto/edit-sale.dto'
@@ -22,6 +23,7 @@ export class SalesService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     private eventsGateway: EventsGateway,
+    private firebaseService: FirebaseService,
   ) {}
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
@@ -63,6 +65,29 @@ export class SalesService {
 
     // Emit event to the merchant's room
     this.eventsGateway.server.to(dto.merchantId).emit('sale.pending', sale)
+
+    // Send Firebase push notification
+    try {
+      const merchant = await this.userModel.findById(dto.merchantId).select('fcmTokens businessName').exec();
+      if (merchant?.fcmTokens?.length) {
+        const title = 'New Pending Sale 💰';
+        const body = `You have a new pending sale ${sale.amount ? `of ₦${sale.amount.toLocaleString()}` : ''} at ${sale.qrKitName || 'your terminal'}.`;
+        
+        await this.firebaseService.sendPushNotification(
+          merchant.fcmTokens,
+          title,
+          body,
+          {
+            saleId: sale._id.toString(),
+            type: 'sale.pending',
+            click_action: '/history', // Link to history page or relevant drawer
+          },
+        );
+      }
+    } catch (error) {
+      // Don't fail the request if notification fails
+      console.error('Failed to send push notification:', error);
+    }
 
     return sale
   }
