@@ -204,7 +204,6 @@ export default function MerchantDetail({
                 )}
               </section>
 
-              {/* Pending QR Orders */}
               {!isLoading && stats && stats.pendingOrders.length > 0 && (
                 <section className="space-y-4">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
