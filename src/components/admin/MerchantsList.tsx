@@ -59,7 +59,7 @@ export default function MerchantsList({
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Merchants</h2>
           <p className="mt-1 text-gray-500">
-            {data?.pagination.total || 0} total merchants
+            {(data?.pagination.total || 0).toLocaleString('en-NG')} total merchants
           </p>
         </div>
         <div className="flex gap-2">

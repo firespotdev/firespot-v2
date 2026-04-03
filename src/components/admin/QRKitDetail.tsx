@@ -10,6 +10,7 @@ import {
 import type { QRKit } from '@/services/qr'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
+import { formatCurrency } from '@/lib/utils'
 import AgentSelect from './AgentSelect'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminToast } from './AdminToast'
@@ -119,13 +120,6 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
     })
   }
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-    }).format(amount / 100) // assuming amount is in kobo
-  }
-
   const handleUnassign = async () => {
     try {
       await unassignQRKits.mutateAsync({
@@ -179,12 +173,17 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/10 backdrop-blur-sm transition-opacity">
+        <div
+          className="h-full w-full max-w-3xl animate-in slide-in-from-right bg-white shadow-2xl duration-300 overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900">QR Kit Details</h2>
+              <h2 className="text-xl font-bold text-gray-900">
+                QR Kit Details
+              </h2>
               <p className="font-mono text-sm text-gray-500">
                 {qrKit.serialNumber}
               </p>
@@ -240,7 +239,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                       </p>
 
                       <div className="rounded-xl relative mb-4">
-                        <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+                        <svg
+                          style={{ position: 'absolute', width: 0, height: 0 }}
+                        >
                           <defs>
                             <linearGradient
                               id="qrGradient"
@@ -431,18 +432,18 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                   )}
 
                   <button
-                      onClick={handleDownloadPDF}
-                      disabled={isDownloading || !brandedSvg}
-                      className="mt-4 w-full rounded-2xl bg-black text-center px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isDownloading ? (
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                      ) : (
-                        <span className='inline-block font-medium'>
-                          Download PDF
-                        </span>
-                      )}
-                    </button>
+                    onClick={handleDownloadPDF}
+                    disabled={isDownloading || !brandedSvg}
+                    className="mt-4 w-full rounded-2xl bg-black text-center px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isDownloading ? (
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    ) : (
+                      <span className="inline-block font-medium">
+                        Download PDF
+                      </span>
+                    )}
+                  </button>
                 </div>
 
                 <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
@@ -454,7 +455,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                     <div className="space-y-3">
                       <div>
                         <label className="mb-1 block text-xs font-medium text-gray-700">
-                          {currentAgentId ? 'Reassign to Agent' : 'Assign to Agent'}
+                          {currentAgentId
+                            ? 'Reassign to Agent'
+                            : 'Assign to Agent'}
                         </label>
                         <AgentSelect
                           value={selectedAgentId}
@@ -494,7 +497,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         <dl className="space-y-2">
                           {typeof qrKit.agentId === 'string' ? (
                             <div>
-                              <dt className="text-xs text-gray-400">Agent ID</dt>
+                              <dt className="text-xs text-gray-400">
+                                Agent ID
+                              </dt>
                               <dd className="font-mono text-sm text-gray-900">
                                 {qrKit.agentId}
                               </dd>
@@ -508,7 +513,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                                 </dd>
                               </div>
                               <div>
-                                <dt className="text-xs text-gray-400">Agent ID</dt>
+                                <dt className="text-xs text-gray-400">
+                                  Agent ID
+                                </dt>
                                 <dd className="font-mono text-sm text-gray-900">
                                   {qrKit.agentId.agentId}
                                 </dd>
@@ -523,7 +530,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                                 qrKit.agentId.lga ||
                                 qrKit.agentId.bustop) && (
                                 <div>
-                                  <dt className="text-xs text-gray-400">Location</dt>
+                                  <dt className="text-xs text-gray-400">
+                                    Location
+                                  </dt>
                                   <dd className="text-sm text-gray-900">
                                     {[
                                       qrKit.agentId.state,
@@ -539,7 +548,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                           )}
                           {qrKit.assignedToAgentAt && (
                             <div>
-                              <dt className="text-xs text-gray-400">Assigned At</dt>
+                              <dt className="text-xs text-gray-400">
+                                Assigned At
+                              </dt>
                               <dd className="text-sm text-gray-900">
                                 {formatDate(qrKit.assignedToAgentAt)}
                               </dd>
@@ -547,7 +558,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                           )}
                         </dl>
                       ) : (
-                        <p className="text-sm text-gray-500">No agent assigned</p>
+                        <p className="text-sm text-gray-500">
+                          No agent assigned
+                        </p>
                       )}
 
                       {!showAssignSection && (
@@ -601,7 +614,10 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                     </div>
                     <div>
                       <p className="mb-1 text-xs text-gray-400">Payment</p>
-                      <StatusBadge status={qrKit.paymentStatus} type="payment" />
+                      <StatusBadge
+                        status={qrKit.paymentStatus}
+                        type="payment"
+                      />
                     </div>
                   </div>
                 </div>
@@ -618,9 +634,11 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                       </dd>
                     </div>
                     <div>
-                      <dt className="text-xs text-gray-400">Activation Amount</dt>
+                      <dt className="text-xs text-gray-400">
+                        Activation Amount
+                      </dt>
                       <dd className="text-sm font-medium text-gray-900">
-                        {formatCurrency(qrKit.activationAmount)}
+                        ₦{formatCurrency(qrKit.activationAmount / 100)}
                       </dd>
                     </div>
                     {qrKit.merchantId && (
@@ -628,7 +646,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         <dt className="text-xs text-gray-400">Merchant</dt>
                         <dd className="text-sm text-gray-900">
                           {typeof qrKit.merchantId === 'string' ? (
-                            <span className="font-mono">{qrKit.merchantId}</span>
+                            <span className="font-mono">
+                              {qrKit.merchantId}
+                            </span>
                           ) : (
                             <div className="space-y-1">
                               {qrKit.merchantId.businessName && (

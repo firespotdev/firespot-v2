@@ -293,7 +293,7 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">QR Kits</h2>
           <p className="mt-1 text-gray-500">
-            {data?.pagination.total || 0} total QR kits
+            {(data?.pagination.total || 0).toLocaleString('en-NG')} total QR kits
           </p>
         </div>
         <button

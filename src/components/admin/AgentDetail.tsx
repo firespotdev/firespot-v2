@@ -147,7 +147,9 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
       setConfirmDialog(null)
     } catch (error) {
       adminToast.error(
-        error instanceof Error ? error.message : 'Failed to update agent status',
+        error instanceof Error
+          ? error.message
+          : 'Failed to update agent status',
       )
     }
   }
@@ -172,8 +174,11 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+      <div className="fixed inset-0 z-50 flex justify-end bg-black/10 backdrop-blur-sm transition-opacity">
+        <div
+          className="h-full w-full max-w-3xl animate-in slide-in-from-right bg-white shadow-2xl duration-300 overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-6 py-4">
             <div className="flex items-center gap-3">
@@ -310,7 +315,9 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                       </code>
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(currentAgent.referralCode || '')
+                          navigator.clipboard.writeText(
+                            currentAgent.referralCode || '',
+                          )
                           adminToast.success('Referral code copied!')
                         }}
                         className="rounded-lg bg-black px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800"
@@ -319,7 +326,8 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                       </button>
                     </div>
                     <p className="mt-2 text-xs text-gray-500">
-                      Merchants can use this code during signup to be linked to this agent.
+                      Merchants can use this code during signup to be linked to
+                      this agent.
                     </p>
                   </div>
                 )}
@@ -340,7 +348,7 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                       QR Kit Statistics
                     </h3>
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-                      <StatCard title="Total Assigned" value={stats.total} />
+                      <StatCard title="Assigned" value={stats.total} />
                       <StatCard
                         title="Activated"
                         value={stats.byActivationStatus.activated}
@@ -356,7 +364,7 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                         value={stats.byActivationStatus.deactivated}
                         color="gray"
                       />
-                      <StatCard title="Total Referrals" value={stats.referralCount} />
+                      <StatCard title="Referrals" value={stats.referralCount} />
                     </div>
                   </div>
                 ) : (
@@ -405,8 +413,16 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                     </h3>
                     {currentAgent.subaccountCode && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-700 border border-blue-100">
-                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        <svg
+                          className="h-3 w-3"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                         Paystack Verified
                       </span>
@@ -421,7 +437,9 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <dt className="text-xs text-gray-400">Account Number</dt>
+                        <dt className="text-xs text-gray-400">
+                          Account Number
+                        </dt>
                         <dd className="text-sm font-medium text-gray-900 font-mono">
                           {currentAgent.accountNumber || 'N/A'}
                         </dd>
@@ -435,18 +453,22 @@ export default function AgentDetail({ agent, onClose }: AgentDetailProps) {
                     </div>
                     {currentAgent.subaccountCode && (
                       <div>
-                        <dt className="text-xs text-gray-400">Paystack Subaccount</dt>
+                        <dt className="text-xs text-gray-400">
+                          Paystack Subaccount
+                        </dt>
                         <dd className="text-sm font-medium text-gray-900 font-mono">
                           {currentAgent.subaccountCode}
                         </dd>
                       </div>
                     )}
                   </dl>
-                  {!currentAgent.subaccountCode && currentAgent.accountNumber && (
-                    <p className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100">
-                      Subaccount is being registered. This agent will receive their split once registration is complete.
-                    </p>
-                  )}
+                  {!currentAgent.subaccountCode &&
+                    currentAgent.accountNumber && (
+                      <p className="mt-2 text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100">
+                        Subaccount is being registered. This agent will receive
+                        their split once registration is complete.
+                      </p>
+                    )}
                 </div>
 
                 {/* Location */}

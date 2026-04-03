@@ -7,6 +7,7 @@ import type {
   MerchantWithDetails,
   MerchantListResponse,
   MerchantFilters,
+  MerchantSpecificStats,
 } from './interface'
 
 // API functions
@@ -25,6 +26,13 @@ export const merchantsApi = {
 
   getStats: async (): Promise<MerchantStats> => {
     const response = await adminApiClient.get<MerchantStats>('/admin/merchants/stats')
+    return response.data
+  },
+
+  getMerchantSpecificStats: async (id: string, params?: any): Promise<MerchantSpecificStats> => {
+    const response = await adminApiClient.get<MerchantSpecificStats>(`/admin/merchants/${id}/stats`, {
+      params,
+    })
     return response.data
   },
 }
@@ -50,10 +58,21 @@ export const useMerchant = (id: string | null) => {
   })
 }
 
-export const useMerchantStats = () => {
+export const useMerchantOverviewStats = () => {
   return useQuery({
-    queryKey: ['merchant-stats'],
+    queryKey: ['merchant-overview-stats'],
     queryFn: () => merchantsApi.getStats(),
+  })
+}
+
+export const useMerchantSpecificStats = (id: string | null, params?: any) => {
+  return useQuery({
+    queryKey: ['merchant-specific-stats', id, params],
+    queryFn: () => {
+      if (!id) throw new Error('Merchant ID is required')
+      return merchantsApi.getMerchantSpecificStats(id, params)
+    },
+    enabled: !!id,
   })
 }
 
