@@ -6,10 +6,14 @@ import { useQueryClient } from '@tanstack/react-query'
 import { showNotificationToast } from '@/components/ui'
 import { usePreference } from '@/hooks/usePreference'
 import { Sale } from '@/services/sales/interface'
+import { requestForToken, onForegroundMessage } from '@/lib/firebase'
+import { useAuthStore } from '@/services/auth'
+import { userApi } from '@/services/users/userApi'
 
 export function GlobalSocket() {
   const { socket } = useSocket()
   const queryClient = useQueryClient()
+  const { isAuthenticated, user } = useAuthStore()
   const [soundEnabled] = usePreference('soundEnabled', true)
   const soundEnabledRef = useRef(soundEnabled)
 
@@ -17,6 +21,41 @@ export function GlobalSocket() {
   useEffect(() => {
     soundEnabledRef.current = soundEnabled
   }, [soundEnabled])
+
+  // Register for push notifications on login
+  useEffect(() => {
+    if (isAuthenticated && typeof window !== 'undefined') {
+      const registerPush = async () => {
+        const token = await requestForToken()
+        if (token) {
+          await userApi.registerFcmToken(token)
+        }
+      }
+      registerPush()
+    }
+  }, [isAuthenticated, user?.id])
+
+  // Foreground push message listener — persistent, fires for every message
+  useEffect(() => {
+    const unsubscribe = onForegroundMessage(async (payload) => {
+      if (!payload?.notification) return
+      // Use the SW registration to show a real OS-level notification
+      // even when the tab is focused (new Notification() is unreliable in some browsers)
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready
+        registration.showNotification(payload.notification.title, {
+          body: payload.notification.body,
+          icon: '/favicon.ico',
+          data: payload.data,
+        })
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
+    })
+
+    return () => unsubscribe?.()
+  }, [queryClient])
 
   useEffect(() => {
     if (!socket) return

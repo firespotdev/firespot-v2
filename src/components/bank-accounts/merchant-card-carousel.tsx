@@ -99,72 +99,10 @@ export function MerchantCardCarousel({
   }
 
   const isCentered = variant === 'payment-centered'
-  const showProfileInternal = !isCentered
+  const showProfileInternal = true // Always show inside carousel now
 
   return (
     <div className={cn('w-full flex flex-col items-center gap-4', className)}>
-      {isCentered && (
-        <div className="flex flex-col items-center px-4 w-full">
-          <div className="relative">
-            {merchantInfo.profilePhotoUrl ? (
-              <Image
-                src={merchantInfo.profilePhotoUrl}
-                alt={merchantInfo.businessName}
-                width={96}
-                height={96}
-                className="w-24 h-24 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full bg-[#CED7E1] flex items-center justify-center">
-                <Image
-                  src="/icons/store_solid.svg"
-                  alt="store icon"
-                  width={57}
-                  height={57}
-                />
-              </div>
-            )}
-
-            {isUploadingPhoto && (
-              <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-
-            {showCameraButton && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCameraClick?.()
-                }}
-                disabled={isUploadingPhoto}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-[#E5E7EB] rounded-full flex items-center justify-center border-2 border-white disabled:opacity-50"
-              >
-                <Camera className="w-4 h-4 text-black" />
-              </button>
-            )}
-          </div>
-
-          <h1 className="font-bold text-xl text-black mt-4 text-center leading-none">
-            {merchantInfo.businessName}
-          </h1>
-
-          {qrKitStatus ? (
-            qrKitStatus
-          ) : (
-            <span
-              onClick={onBankAccountsClick}
-              className="mt-1 text-sm text-[#00000080] font-medium flex items-center gap-1 cursor-pointer"
-            >
-              {merchantInfo.bankAccountCount} linked bank account
-              {merchantInfo.bankAccountCount === 1 ? '' : 's'}
-              <ChevronRight className="w-4 h-4 text-[#747576]" />
-            </span>
-          )}
-        </div>
-      )}
-
       <Carousel
         setApi={setApi}
         className={cn('w-full', isCentered && '-mx-4 w-[calc(100%+2rem)]')}
@@ -185,7 +123,7 @@ export function MerchantCardCarousel({
               <div>
                 {/* Profile Section - Internal */}
                 {showProfileInternal && (
-                  <div className="flex flex-col items-center px-4">
+                  <div className="flex flex-col items-center px-4 pt-6">
                     <div className="relative">
                       {merchantInfo.profilePhotoUrl ? (
                         <Image
@@ -303,14 +241,21 @@ export function MerchantCardCarousel({
                   </div>
                 </div>
 
-                {/* Disclaimer Section - Internal */}
+                {/* Disclaimer Section - Internal
                 {disclaimer && showProfileInternal && (
                   <div className="mt-4 px-4">
                     <p className="text-xs text-[#00000066] text-center">
                       {disclaimer}
                     </p>
                   </div>
-                )}
+                )} */}
+                {/* Static Disclaimer */}
+                <div className="mt-4 px-4">
+                  <p className="text-xs text-[#00000066] text-center leading-relaxed font-medium">
+                    Review the details carefully before proceeding. <br />
+                    Please note that successful transfers cannot be reversed.
+                  </p>
+                </div>
               </div>
             </CarouselItem>
           ))}

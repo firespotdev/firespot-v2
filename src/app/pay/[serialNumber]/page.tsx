@@ -516,14 +516,6 @@ export default function PaymentPage() {
               }}
             />
           )}
-
-          {/* Static Disclaimer */}
-          <div className="mt-8 px-4">
-            <p className="text-xs text-[#00000066] text-center leading-relaxed font-medium">
-              Review the details carefully before proceeding. <br />
-              Please note that successful transfers cannot be reversed.
-            </p>
-          </div>
         </div>
 
         <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-2xl">

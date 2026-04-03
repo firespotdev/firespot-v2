@@ -122,6 +122,14 @@ export const userApi = {
     )
     return response.data
   },
+
+  registerFcmToken: async (token: string): Promise<{ message: string }> => {
+    const response = await apiClient.post<{ message: string }>(
+      '/users/fcm-token',
+      { token },
+    )
+    return response.data
+  },
 }
 
 // Hooks
