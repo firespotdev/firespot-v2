@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import { AdminMerchantsService } from "./admin-merchants.service";
 import { AdminJwtAuthGuard } from "../admin-auth/guards/admin-jwt-auth.guard";
+import { InsightsQueryDto } from "../../scans/dto/insights-query.dto";
 
 @Controller("admin/merchants")
 @UseGuards(AdminJwtAuthGuard)
@@ -30,5 +31,13 @@ export class AdminMerchantsController {
   @Get(":id")
   async getMerchantById(@Param("id") id: string) {
     return this.merchantsService.getMerchantById(id);
+  }
+
+  @Get(":id/stats")
+  getMerchantStats(
+    @Param("id") id: string,
+    @Query() query: InsightsQueryDto,
+  ) {
+    return this.merchantsService.getMerchantStats(id, query);
   }
 }
