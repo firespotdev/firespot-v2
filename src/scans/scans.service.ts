@@ -4,6 +4,7 @@ import { Model, Types } from "mongoose";
 import { Scan, ScanDocument } from "../schemas/scan.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { User, UserDocument } from "../schemas/user.schema";
+import { Sale, SaleDocument } from "../schemas/sale.schema";
 import {
   InsightsQueryDto,
   DateRangePreset,
@@ -26,6 +27,7 @@ export class ScansService {
     @InjectModel(Scan.name) private scanModel: Model<ScanDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
   ) {}
 
   async createScan(dto: CreateScanDto) {
@@ -369,6 +371,37 @@ export class ScansService {
       },
     ]);
 
+    // 2. Aggregate Sales for Payment Methods Breakdown
+    const salesMatchStage: Record<string, unknown> = {
+      merchantId: new Types.ObjectId(merchantId),
+      status: 'CONFIRMED',
+    };
+
+    if (dateRange.startDate) {
+      salesMatchStage.createdAt = {
+        $gte: dateRange.startDate,
+        ...(dateRange.endDate && { $lte: dateRange.endDate }),
+      };
+    }
+
+    const salesResult = await this.saleModel.aggregate([
+      { $match: salesMatchStage },
+      {
+        $group: {
+          _id: "$paymentMethod",
+          count: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          method: { $ifNull: ["$_id", "Other"] },
+          count: 1,
+          _id: 0,
+        },
+      },
+      { $sort: { count: -1 } },
+    ]);
+
     // Get linked counts from User and QRKit collections
     const [user, qrKitsCount] = await Promise.all([
       this.userModel.findById(merchantId).select("bankAccounts"),
@@ -388,6 +421,10 @@ export class ScansService {
       (sum: number, bank: { count: number }) => sum + bank.count,
       0,
     );
+    const totalSales = salesResult.reduce(
+      (sum: number, item: { count: number }) => sum + item.count,
+      0,
+    );
 
     return {
       traffic: {
@@ -405,6 +442,10 @@ export class ScansService {
       accountCopies: {
         totalCopies,
         bankBreakdown: result.accountCopies,
+      },
+      paymentMethods: {
+        totalSales,
+        breakdown: salesResult,
       },
       linkedCounts: {
         bankAccounts: user?.bankAccounts?.length || 0,

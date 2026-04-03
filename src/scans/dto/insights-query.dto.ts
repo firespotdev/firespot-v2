@@ -58,6 +58,11 @@ export interface CustomerBreakdown {
   totalCustomers: number;
 }
 
+export interface PaymentMethodBreakdown {
+  method: string;
+  count: number;
+}
+
 export interface MerchantInsightsResponse {
   traffic: {
     totalCustomers: number;
@@ -70,6 +75,10 @@ export interface MerchantInsightsResponse {
   accountCopies: {
     totalCopies: number;
     bankBreakdown: BankBreakdown[];
+  };
+  paymentMethods: {
+    totalSales: number;
+    breakdown: PaymentMethodBreakdown[];
   };
   linkedCounts: {
     bankAccounts: number;

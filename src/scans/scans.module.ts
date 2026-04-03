@@ -5,6 +5,7 @@ import { ScansService } from "./scans.service";
 import { Scan, ScanSchema } from "../schemas/scan.schema";
 import { QRKit, QRKitSchema } from "../schemas/qrkit.schema";
 import { User, UserSchema } from "../schemas/user.schema";
+import { Sale, SaleSchema } from "../schemas/sale.schema";
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { User, UserSchema } from "../schemas/user.schema";
       { name: Scan.name, schema: ScanSchema },
       { name: QRKit.name, schema: QRKitSchema },
       { name: User.name, schema: UserSchema },
+      { name: Sale.name, schema: SaleSchema },
     ]),
   ],
   controllers: [ScansController],
