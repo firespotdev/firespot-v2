@@ -22,6 +22,13 @@ export const publicQrApi = {
     )
     return response.data
   },
+
+  getAvailability: async (): Promise<{ availableCount: number }> => {
+    const response = await publicApiClient.get<{ availableCount: number }>(
+      '/qr-kits/availability',
+    )
+    return response.data
+  },
 }
 
 export const userQrApi = {
@@ -104,6 +111,34 @@ export const useUpdateQRKit = () => {
     onSuccess: (data, { id }) => {
       queryClient.setQueryData(['user', 'qr-kit', id], data.qrKit)
       queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
+    },
+  })
+}
+
+export const useQRAvailability = () => {
+  return useQuery({
+    queryKey: ['qr-kits', 'availability'],
+    queryFn: () => publicQrApi.getAvailability(),
+    refetchInterval: 30000, // Refresh every 30 seconds
+  })
+}
+
+export const useClaimDigitalKit = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (): Promise<{
+      message: string
+      qrKit: QRKit
+    }> => {
+      const response = await apiClient.post<{
+        message: string
+        qrKit: QRKit
+      }>('/qr-kits/claim-digital')
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
     },
   })
 }

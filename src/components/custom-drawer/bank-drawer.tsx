@@ -93,7 +93,6 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const setPrimaryBankAccount = useSetPrimaryBankAccount()
 
-  // Local state for reordering
   const [accounts, setAccounts] = useState<BankAccount[]>([])
 
   // Configure sensors for both mouse/touch

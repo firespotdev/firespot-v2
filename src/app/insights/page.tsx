@@ -1,8 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { format } from 'date-fns'
+
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Clock,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react'
+import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import {
@@ -14,21 +23,40 @@ import {
 import { useBankAccounts } from '@/services/users'
 import { LoaderCircle, TagFooter } from '@/components/ui'
 import { DonutChart, DonutChartLegend } from '@/components/ui/donut-chart'
-import { StatCard, BreakdownItem } from '@/components/insights'
-import Image from 'next/image'
+import { StatCard, BreakdownItem, CustomChart } from '@/components/insights'
+import { formatCurrency } from '@/lib/utils'
+import { useSalesStats } from '@/services/sales/hooks'
+import {
+  generateMockSalesStats,
+  generateMockMerchantInsights,
+} from '@/lib/mock-data'
 
-const QR_KIT_COLORS = ['#E74C3C', '#3498DB', '#2ECC71', '#F39C12', '#9B59B6']
+const PAY_METHOD_COLORS = [
+  '#E74C3C',
+  '#3498DB',
+  '#2ECC71',
+  '#F39C12',
+  '#9B59B6',
+]
 
 export default function InsightsPage() {
   const router = useRouter()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-
   const [filter, setFilter] = useState<InsightsQuery>({
-    preset: 'all_time',
+    preset: 'today',
   })
 
-  const { data: insights, isLoading, error } = useMerchantInsights(filter)
+  // const { data: salesStats } = useSalesStats(filter)
+
+  // const { data: insights, isLoading, error } = useMerchantInsights(filter)
+
+  //Dummy data for testing
+  const salesStats = generateMockSalesStats(filter)
+  const insights = generateMockMerchantInsights(filter)
+  const isLoading = false
+  const error = null
+
   const { data: bankAccountsData } = useBankAccounts()
 
   // Redirect to login if not authenticated
@@ -65,12 +93,16 @@ export default function InsightsPage() {
     router.push('/qr-kits')
   }
 
-  const filterLabel =
-    filter.preset === 'custom'
-      ? 'Custom'
-      : DATE_RANGE_LABELS[filter.preset as DateRangePreset] || 'All time'
+  let filterLabel =
+    DATE_RANGE_LABELS[filter.preset as DateRangePreset] || 'All time'
+  if (filter.preset === 'custom' && filter.startDate && filter.endDate) {
+    const startStr = format(new Date(filter.startDate), 'MMM d')
+    const endStr = format(new Date(filter.endDate), 'MMM d')
+    filterLabel = `${startStr} - ${endStr}`
+  } else if (filter.preset === 'custom') {
+    filterLabel = 'Custom'
+  }
 
-  
   const trafficSegments = insights
     ? [
         {
@@ -158,15 +190,84 @@ export default function InsightsPage() {
 
           {insights && (
             <>
-              {/* Traffic Section with Donut Chart */}
-              <div className="bg-white pt-4 mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-[15px] font-bold text-black">Traffic</h3>
-                  <span className="text-sm font-medium text-black">
-                    {insights.traffic.totalCustomers}
-                  </span>
+              <div className="border-2 border-[#0000000A] rounded-[12px] w-full">
+                <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
+                  <div className="">
+                    <button className="flex items-center gap-1 mb-1">
+                      <span className="text-[#00000066] text-xs font-medium">
+                        Total
+                      </span>
+                    </button>
+                    <div className="flex items-end gap-1.5">
+                      <h3 className="font-bold text-xl leading-none">
+                        {`₦ ${formatCurrency(salesStats?.todaySalesAmount || 0)}`}
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <Link
+                      href="/history"
+                      className="flex justify-center items-center p-2.5 rounded-full bg-[#E5E7EB]"
+                    >
+                      <Clock size={20} strokeWidth={2} color="#6B7280" />
+                    </Link>
+                  </div>
                 </div>
+                <div className="flex items-center bg-[#f4f4f4] px-5 py-3 gap-2 rounded-[12px]">
+                  <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
+                  <p className="text-xs text-[#00000066] font-medium">
+                    You will not receive a payout for these transactions.
+                    <br />
+                    Sales are recorded for accounting purposes only.
+                  </p>
+                </div>
+              </div>
 
+              <div className="my-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-xs font-medium text-[#00000066] capitalize">
+                    {filterLabel}
+                  </p>
+                  <div className="flex items-center gap-0.5">
+                    {salesStats?.percentageChange !== undefined && (
+                      <>
+                        {salesStats.percentageChange >= 0 ? (
+                          <TrendingUp
+                            size={14}
+                            strokeWidth={2}
+                            color="#22C55E"
+                          />
+                        ) : (
+                          <TrendingDown
+                            size={14}
+                            strokeWidth={2}
+                            color="#EF4444"
+                          />
+                        )}
+                        <p
+                          className={`text-xs font-semibold ${salesStats.percentageChange >= 0 ? 'text-[#22C55E]' : 'text-[#EF4444]'}`}
+                        >
+                          {salesStats.percentageChange >= 0 ? '+' : ''}
+                          {salesStats.percentageChange}% from{' '}
+                          {salesStats.previousPeriodLabel || 'yesterday'}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <p className="text-[15px] text-black font-bold mt-1 mb-3">
+                  {salesStats?.todaySalesCount || 0} recorded sale
+                  {salesStats?.todaySalesCount !== 1 ? 's' : ''}
+                </p>
+                <CustomChart data={salesStats?.trend || []} />
+              </div>
+
+              {/* Traffic Section with Donut Chart */}
+              <StatCard
+                title="Traffic"
+                value={insights.traffic.totalCustomers}
+                expandable={true}
+              >
                 {insights.traffic.totalCustomers > 0 ? (
                   <div className="flex flex-col items-center">
                     <DonutChart
@@ -183,7 +284,27 @@ export default function InsightsPage() {
                     No traffic data for this period
                   </p>
                 )}
-              </div>
+              </StatCard>
+
+              {/* Payment Methods Section */}
+              <StatCard
+                title="Payment methods"
+                description="How your customers pay you (based on your recorded sales)."
+                value={insights.paymentMethods?.totalSales}
+                expandable={
+                  (insights.paymentMethods?.breakdown.length || 0) > 0
+                }
+              >
+                {insights.paymentMethods?.breakdown.map((item, index) => (
+                  <BreakdownItem
+                    key={item.method}
+                    label={item.method}
+                    count={item.count}
+                    total={insights.paymentMethods.totalSales}
+                    color={PAY_METHOD_COLORS[index % PAY_METHOD_COLORS.length]}
+                  />
+                ))}
+              </StatCard>
 
               {/* Stats Section */}
               <StatCard
@@ -198,7 +319,7 @@ export default function InsightsPage() {
                     label={kit.serialNumber}
                     count={kit.scanCount}
                     total={insights.qrKitScans.totalScans}
-                    color={QR_KIT_COLORS[index % QR_KIT_COLORS.length]}
+                    color="linear-gradient(to bottom right, #FB5012, #D72483)"
                   />
                 ))}
               </StatCard>

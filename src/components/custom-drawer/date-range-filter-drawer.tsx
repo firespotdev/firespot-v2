@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Calendar } from 'lucide-react'
+import { Calendar as CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
 import type { DateRangePreset, InsightsQuery } from '@/services/insights'
 import { DATE_RANGE_LABELS } from '@/services/insights'
 import { Input } from '@/components/ui'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 
 interface DateRangeFilterDrawerProps {
   currentFilter?: InsightsQuery
@@ -27,10 +30,12 @@ export function DateRangeFilterDrawer({
   closeDrawer,
 }: DateRangeFilterDrawerProps) {
   const [selectedPreset, setSelectedPreset] = useState<DateRangePreset>(
-    (currentFilter?.preset as DateRangePreset) || 'all_time'
+    (currentFilter?.preset as DateRangePreset) || 'all_time',
   )
   const [startDate, setStartDate] = useState(currentFilter?.startDate || '')
   const [endDate, setEndDate] = useState(currentFilter?.endDate || '')
+  const [openStart, setOpenStart] = useState(false)
+  const [openEnd, setOpenEnd] = useState(false)
 
   const handlePresetSelect = (preset: DateRangePreset) => {
     setSelectedPreset(preset)
@@ -66,7 +71,6 @@ export function DateRangeFilterDrawer({
       setSelectedPreset('custom')
     }
   }
-
 
   return (
     <div className="px-4 pb-6 pt-2">
@@ -108,32 +112,69 @@ export function DateRangeFilterDrawer({
         </p>
         <div className="flex gap-3">
           <div className="flex-1">
-            <div className="relative">
-              <Input
-                type={startDate ? 'date' : 'text'}
-                onFocus={(e) => (e.currentTarget.type = 'date')}
-                onBlur={(e) => !startDate && (e.currentTarget.type = 'text')}
-                placeholder="From"
-                value={startDate}
-                onChange={(e) => handleCustomDateChange('start', e.target.value)}
-                className="pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none" />
-            </div>
+            <Popover open={openStart} onOpenChange={setOpenStart}>
+              <PopoverTrigger asChild>
+                <button className="relative w-full text-left cursor-pointer">
+                  <Input
+                    type="text"
+                    placeholder="From"
+                    value={startDate ? format(new Date(startDate), 'yyyy-MM-dd') : ''}
+                    readOnly
+                    className="pr-10 cursor-pointer pointer-events-none"
+                  />
+                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={startDate ? new Date(startDate) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      handleCustomDateChange('start', format(date, 'yyyy-MM-dd'))
+                      setOpenStart(false)
+                    }
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <div className="flex-1">
-            <div className="relative">
-              <Input
-                type={endDate ? 'date' : 'text'}
-                onFocus={(e) => (e.currentTarget.type = 'date')}
-                onBlur={(e) => !endDate && (e.currentTarget.type = 'text')}
-                placeholder="To"
-                value={endDate}
-                onChange={(e) => handleCustomDateChange('end', e.target.value)}
-                className="pr-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none" />
-            </div>
+            <Popover open={openEnd} onOpenChange={setOpenEnd}>
+              <PopoverTrigger asChild disabled={!startDate}>
+                <button className="relative w-full text-left cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={!startDate}>
+                  <Input
+                    type="text"
+                    placeholder="To"
+                    value={endDate ? format(new Date(endDate), 'yyyy-MM-dd') : ''}
+                    readOnly
+                    disabled={!startDate}
+                    className="pr-10 cursor-pointer pointer-events-none"
+                  />
+                  <CalendarIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF] pointer-events-none" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={endDate ? new Date(endDate) : undefined}
+                  onSelect={(date) => {
+                    if (date) {
+                      handleCustomDateChange('end', format(date, 'yyyy-MM-dd'))
+                      setOpenEnd(false)
+                    }
+                  }}
+                  disabled={(date) => {
+                    if (!startDate) return true
+                    const start = new Date(startDate)
+                    start.setHours(0, 0, 0, 0)
+                    return date < start
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>

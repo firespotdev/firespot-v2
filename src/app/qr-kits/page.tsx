@@ -5,14 +5,22 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronRight, CirclePlus, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
-import { LoaderCircle } from '@/components/ui'
-import { useUserQRKits } from '@/services/qr'
+import { Button, LoaderCircle } from '@/components/ui'
+import { useUserQRKits, useClaimDigitalKit } from '@/services/qr'
 import Image from 'next/image'
+import { useDrawerStore } from '@/services/drawer'
+import { useUserProfile } from '@/services/users'
 
 export default function QRKitsPage() {
   const router = useRouter()
+  const { openDrawer } = useDrawerStore()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const { data: qrKitsData, isLoading } = useUserQRKits()
+  const { data: user } = useUserProfile()
+  const { data: qrKitsData, isLoading: isLoadingKits } = useUserQRKits()
+  const { mutate: claimDigital, isPending: isClaiming } = useClaimDigitalKit()
+
+  const qrKits = qrKitsData?.data || []
+  const hasEntitlements = (user?.availableKitEntitlements || 0) > 0
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -20,19 +28,33 @@ export default function QRKitsPage() {
     }
   }, [isAuthenticated, router])
 
+  useEffect(() => {
+    if (
+      !isLoadingKits &&
+      qrKits.length === 0 &&
+      hasEntitlements &&
+      !isClaiming
+    ) {
+      claimDigital()
+    }
+  }, [isLoadingKits, qrKits.length, hasEntitlements, isClaiming, claimDigital])
+
   if (!isAuthenticated) {
     return null
   }
 
-  if (isLoading) {
+  if (isLoadingKits || isClaiming) {
     return (
-      <div className="min-h-dvh bg-[#F4F6F8] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#F4F6F8] flex flex-col items-center justify-center gap-4">
         <LoaderCircle innerBg="#F4F6F8" />
+        {isClaiming && (
+          <p className="text-sm font-medium text-black/60 animate-pulse">
+            Setting up your digital QR kit...
+          </p>
+        )}
       </div>
     )
   }
-
-  const qrKits = qrKitsData?.data || []
 
   return (
     <div className="min-h-dvh bg-[#F4F6F8]">
@@ -44,9 +66,12 @@ export default function QRKitsPage() {
           <h1 className="flex-1 text-center text-base font-bold text-black">
             Manage QR kits
           </h1>
-          <Link href="/activate" className="w-10 flex justify-end">
+          <div
+            onClick={() => openDrawer({ type: 'obtain-kit' })}
+            className="w-10 flex justify-end"
+          >
             <Plus className="w-6 h-6 text-black" />
-          </Link>
+          </div>
         </header>
 
         {/* QR Kits List */}
@@ -90,7 +115,9 @@ export default function QRKitsPage() {
 
                     <div className="flex-1 text-left min-w-0">
                       <p className="text-[13px] font-bold text-[#111827]">
-                        {qrKit.name || qrKit.serialNumber || `QR kit ${index + 1}`}
+                        {qrKit.name ||
+                          qrKit.serialNumber ||
+                          `QR kit ${index + 1}`}
                       </p>
                       <p className="text-xs font-medium text-[#6B7280] mt-0.5">
                         {statusText}
@@ -101,8 +128,10 @@ export default function QRKitsPage() {
                   </Link>
                 )
               })}
-              <Link
-                href="/activate"
+              <div
+                aria-label="Setup another QR kit"
+                role="button"
+                onClick={() => openDrawer({ type: 'obtain-kit' })}
                 className="flex items-center gap-3 px-4 py-3"
               >
                 <CirclePlus
@@ -112,9 +141,9 @@ export default function QRKitsPage() {
                   size={24}
                 />
                 <span className="text-sm text-[#0075FF] font-bold">
-                  Activate another QR kit
+                  Setup another QR kit
                 </span>
-              </Link>
+              </div>
             </div>
           )}
         </div>

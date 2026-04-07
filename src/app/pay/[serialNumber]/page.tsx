@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
-import { sortBankAccounts } from '@/lib/utils/bank-account'
+import { useCreatePendingSale } from '@/services/sales/hooks'
+import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 
@@ -28,6 +29,7 @@ export default function PaymentPage() {
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
+  const createPendingSale = useCreatePendingSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
@@ -71,6 +73,27 @@ export default function PaymentPage() {
         },
       },
     )
+
+    if (merchant) {
+      // Get or create a persistent fingerprint for this customer
+      let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
+      if (!fingerprint) {
+        fingerprint =
+          crypto.randomUUID?.() ||
+          `fs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+      }
+
+      createPendingSale.mutate({
+        merchantId: merchant.id,
+        customerFingerprint: fingerprint,
+        source: window.location.search.includes('shared=true')
+          ? 'Link shared'
+          : 'QR scan',
+        targetBankName: bankName,
+        serialNumber: serialNumber,
+      })
+    }
   }
 
   if (isLoading) {
@@ -85,7 +108,6 @@ export default function PaymentPage() {
     return (
       <div className="h-dvh bg-white overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi overflow-y-auto relative">
-       
           <header className="sticky top-0 w-full z-50 mb-1 bg-white flex items-center justify-between px-4 py-2">
             <div className="flex-1" />
             <div className="flex flex-col items-center">
@@ -369,21 +391,23 @@ export default function PaymentPage() {
 
           <div className="fixed bottom-0 left-0 right-0 border-t border-[#F1F1F1] bg-white p-4 pb-6 rounded-t-[32px]">
             <div className="max-w-125 mx-auto">
-            <Button asChild className="w-full">
-              <Link href={`/signup?redirect=/activate&serial=${serialNumber}`}>
-                Login and activate this QR kit
-              </Link>
-            </Button>
+              <Button asChild className="w-full">
+                <Link
+                  href={`/signup?redirect=/activate&serial=${serialNumber}`}
+                >
+                  Login and activate this QR kit
+                </Link>
+              </Button>
 
-            <a
-              href=""
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
-            >
-              Learn more about Firespot QR kits
-              <ArrowUpRight className="w-3 h-3 text-[#878F98]" />
-            </a>
+              <a
+                href=""
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
+              >
+                Learn more about Firespot QR kits
+                <ArrowUpRight className="w-3 h-3 text-[#878F98]" />
+              </a>
             </div>
           </div>
         </div>
@@ -464,7 +488,6 @@ export default function PaymentPage() {
         />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
-      
           {sortedBankAccounts.length > 0 && (
             <MerchantCardCarousel
               bankAccounts={sortedBankAccounts}
@@ -473,7 +496,7 @@ export default function PaymentPage() {
                 businessName: merchant.businessName,
                 bankAccountCount: merchant.bankAccounts?.length || 0,
               }}
-              disclaimer="Review the details carefully before proceeding. Please note that successful transfers cannot be reversed."
+              variant="payment-centered"
               initialIndex={selectedBankIndex}
               onIndexChange={setSelectedBankIndex}
               clickableCard={true}

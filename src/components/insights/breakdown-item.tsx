@@ -34,7 +34,7 @@ export function BreakdownItem({
       return (
         <div
           className="w-4 h-4 rounded-[4.4px] shrink-0"
-          style={{ backgroundColor: color }}
+          style={{ background: color }}
         />
       )
     }
@@ -43,7 +43,7 @@ export function BreakdownItem({
   }
 
   return (
-    <div className="flex items-center justify-between mb-1.5 last:mb-0">
+    <div className="flex items-center justify-between mb-2.5 last:mb-0">
       <div className="flex items-center gap-2">
         {renderIcon()}
         <span className="text-[13px] text-[#4C5563] font-medium">{label}</span>

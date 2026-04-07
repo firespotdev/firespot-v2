@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ProgressProvider } from '@bprogress/next/app'
 import { useState } from 'react'
+import { GlobalSocket } from './global-socket'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -25,6 +26,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         options={{ showSpinner: false }}
         shallowRouting
       >
+        <GlobalSocket />
         {children}
       </ProgressProvider>
     </QueryClientProvider>

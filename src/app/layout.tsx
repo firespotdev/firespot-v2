@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Toaster } from '@/components/ui/sonner'
 import { Providers } from '@/components/providers'
 import { CustomDrawer } from '@/components/custom-drawer'
@@ -34,8 +34,22 @@ export const metadata: Metadata = {
     creator: '@firespot',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icons/android-chrome-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/android-chrome-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({

@@ -9,8 +9,14 @@ import { useSignup, useVerifyOtp, useAuthStore } from '@/services/auth'
 function SignupPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Get redirect params (must be before useState so we can use them as initial values)
+  const redirectPath = searchParams.get('redirect')
+  const serialNumber = searchParams.get('serial')
+  const prefillPhone = searchParams.get('phone') ?? ''
+
   const [step, setStep] = useState<1 | 2>(1)
-  const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState(prefillPhone)
   const [selectedBankCode, setSelectedBankCode] = useState<string>('')
   const [selectedBankName, setSelectedBankName] = useState<string>('')
   const [accountNumber, setAccountNumber] = useState('')
@@ -26,9 +32,6 @@ function SignupPageContent() {
   const signup = useSignup()
   const verifyOtp = useVerifyOtp()
 
-  // Get redirect params
-  const redirectPath = searchParams.get('redirect')
-  const serialNumber = searchParams.get('serial')
 
   // Build redirect URL after signup
   const getRedirectUrl = () => {

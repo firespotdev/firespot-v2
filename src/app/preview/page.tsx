@@ -11,7 +11,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
-import { sortBankAccounts } from '@/lib/utils/bank-account'
+import { sortBankAccounts } from '@/lib/utils/bank-registry'
 
 export default function PreviewPage() {
   const router = useRouter()

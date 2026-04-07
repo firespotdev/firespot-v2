@@ -13,4 +13,11 @@ export function cn(...inputs: ClassValue[]) {
     return name.charAt(0).toUpperCase()
   }
 
-  export { getInitials }
+export function formatCurrency(value: number) {
+  return new Intl.NumberFormat('en-NG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
+export { getInitials }

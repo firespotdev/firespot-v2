@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { X, Check, Download } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import {formatAmountInWords, formatDate} from '@/lib/utils/constants'
+import { formatAmountInWords, formatDate } from '@/lib/utils/constants'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
 import { showNotificationToast } from '@/components/ui'
 
@@ -84,11 +84,10 @@ export function ReceiptDrawer({
       </header>
 
       <div className="flex-1 px-4 pb-4 overflow-auto">
-        <div 
+        <div
           ref={receiptRef}
           className="bg-white rounded-[6px] p-5 shadow-[0px_4.11px_8.21px_0px_#0000000A]"
         >
-         
           <div className="flex items-start justify-between mb-6">
             <Image
               src="/icons/firespot_logo.svg"
@@ -97,8 +96,12 @@ export function ReceiptDrawer({
               height={24}
             />
             <div className="text-right leading-none">
-              <p className="text-[9px] font-bold text-[#0F172A] mb-1.5">Receipt</p>
-              <p className="text-[8px] font-medium text-[#4C5563]">{formatDate(date)}</p>
+              <p className="text-[9px] font-bold text-[#0F172A] mb-1.5">
+                Receipt
+              </p>
+              <p className="text-[8px] font-medium text-[#4C5563]">
+                {formatDate(date)}
+              </p>
             </div>
           </div>
 
@@ -115,7 +118,8 @@ export function ReceiptDrawer({
             </p>
             <div className="flex items-center gap-1.5 mt-2">
               <div className="w-3 h-3 bg-[#24C166] rounded-full flex items-center justify-center">
-              <Check className="w-1.5 h-1.5 text-white" /></div>
+                <Check className="w-1.5 h-1.5 text-white" />
+              </div>
               <span className="text-[10px] font-bold text-[#24C166]">Paid</span>
             </div>
           </div>
@@ -132,15 +136,21 @@ export function ReceiptDrawer({
             </div>
 
             <div>
-              <p className="text-[10px] text-[#64748B] font-medium">Reference number</p>
+              <p className="text-[10px] text-[#64748B] font-medium">
+                Reference number
+              </p>
               <p className="text-[11px] font-bold text-[#0F172A] break-all">
                 {referenceNumber}
               </p>
             </div>
 
             <div>
-              <p className="text-[10px] text-[#64748B] font-medium">Description</p>
-              <p className="text-[11px] font-bold text-[#0F172A]">{description}</p>
+              <p className="text-[10px] text-[#64748B] font-medium">
+                Description
+              </p>
+              <p className="text-[11px] font-bold text-[#0F172A]">
+                {description}
+              </p>
             </div>
           </div>
         </div>
