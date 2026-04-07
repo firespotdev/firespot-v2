@@ -47,7 +47,7 @@ export function ConfirmCancelDrawer({ onConfirm }: ConfirmCancelDrawerProps) {
           onClick={handleConfirm}
           disabled={isLoading}
         >
-          {isLoading ? 'Cancelling...' : 'Ok, cancel'}
+          {isLoading ? 'Cancelling...' : 'Yes, cancel'}
         </Button>
       </div>
     </div>
