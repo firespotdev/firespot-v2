@@ -56,9 +56,5 @@ export const AgentSchema = SchemaFactory.createForClass(Agent);
 export type AgentDocument = Agent & Document;
 
 // Indexes
-AgentSchema.index({ agentId: 1 });
-AgentSchema.index({ phoneNumber: 1 });
-AgentSchema.index({ status: 1 });
-AgentSchema.index({ state: 1 });
-AgentSchema.index({ lga: 1 });
-AgentSchema.index({ referralCode: 1 }, { sparse: true });
+// Standard indexes are handled by @Prop annotations.
+// Custom composite indexes or options would go here.

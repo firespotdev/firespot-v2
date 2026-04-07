@@ -28,6 +28,9 @@ export class QRKit extends Document {
   @Prop({ default: "pending", index: true })
   paymentStatus: string; // 'pending' | 'successful' | 'failed'
 
+  @Prop({ default: false, index: true })
+  isDigital: boolean;
+
   @Prop()
   paidAt?: Date;
 
@@ -59,9 +62,5 @@ export const QRKitSchema = SchemaFactory.createForClass(QRKit);
 export type QRKitDocument = QRKit & Document;
 
 // Indexes
-QRKitSchema.index({ serialNumber: 1 });
-QRKitSchema.index({ merchantId: 1 });
-QRKitSchema.index({ paystackReference: 1 }, { sparse: true });
-QRKitSchema.index({ paymentStatus: 1 });
-QRKitSchema.index({ activationStatus: 1 });
-QRKitSchema.index({ agentId: 1 });
+// Standard indexes are handled by @Prop annotations.
+// Custom composite indexes or options would go here.

@@ -31,6 +31,7 @@ import { AddBankAccountDto } from "./dto/add-bank-account.dto";
 import { UpdateMerchantSlugDto } from "./dto/update-merchant-slug.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
+import { RegisterFcmTokenDto } from "./dto/register-fcm-token.dto";
 
 @ApiTags("users")
 @Controller("users")
@@ -315,6 +316,25 @@ export class UsersController {
     file: Express.Multer.File,
   ) {
     return this.usersService.updateProfilePhoto(req.user.userId, file);
+  }
+
+  @Post("fcm-token")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Register FCM token",
+    description: "Registers a browser/device FCM token for the authenticated user to receive push notifications.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "FCM token registered successfully",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized",
+  })
+  async registerFcmToken(@Request() req, @Body() dto: RegisterFcmTokenDto) {
+    return this.usersService.registerFcmToken(req.user.userId, dto.token);
   }
 
   @Get("me")

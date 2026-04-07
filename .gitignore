@@ -37,3 +37,4 @@ pnpm-debug.log*
 *.temp
 
 src/admin/README.md
+changes.txt

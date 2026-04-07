@@ -24,6 +24,25 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 export class QRKitsController {
   constructor(private readonly qrKitsService: QRKitsService) {}
 
+  @Get("availability")
+  @ApiOperation({
+    summary: "Check QR kit inventory availability",
+    description: "Returns the count of unassigned QR kits available for online orders.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Availability count retrieved",
+    schema: {
+      type: "object",
+      properties: {
+        availableCount: { type: "number", example: 10 },
+      },
+    },
+  })
+  async getAvailability() {
+    return this.qrKitsService.checkAvailability();
+  }
+
   @Get(":serialNumber/check")
   @ApiOperation({
     summary: "Check QR kit serial number availability",
@@ -205,5 +224,25 @@ export class QRKitsController {
   })
   async verifyPayment(@Param("reference") reference: string) {
     return this.qrKitsService.completeActivationByReference(reference);
+  }
+
+  @Post("claim-digital")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Claim first digital kit",
+    description:
+      "Allows a merchant to claim their first digital kit if they have entitlements but no kits yet (Recovery mechanism).",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Digital kit claimed successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Merchant already has a kit or no entitlements found",
+  })
+  async claimDigital(@Request() req) {
+    return this.qrKitsService.claimDigitalKit(req.user.userId);
   }
 }

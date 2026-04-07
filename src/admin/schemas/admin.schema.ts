@@ -26,4 +26,4 @@ export const AdminSchema = SchemaFactory.createForClass(Admin);
 export type AdminDocument = Admin & Document;
 
 // Indexes
-AdminSchema.index({ adminId: 1 });
+// Standard indexes are handled by @Prop annotations.

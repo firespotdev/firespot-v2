@@ -1,0 +1,24 @@
+import { IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+
+export class CreateQROrderDto {
+  @IsNotEmpty()
+  @IsNumber()
+  @Min(1)
+  quantity: number;
+
+  @IsNotEmpty()
+  @IsString()
+  phoneNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  state: string;
+
+  @IsNotEmpty()
+  @IsString()
+  lga: string;
+
+  @IsNotEmpty()
+  @IsString()
+  deliveryAddress: string;
+}

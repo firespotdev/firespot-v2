@@ -13,6 +13,10 @@ import { SmsModule } from "./services/sms/sms.module";
 import { EmailModule } from "./services/email/email.module";
 import { NotificationModule } from "./services/notifications/notification.module";
 import { getDatabaseConfig } from "./config/database.config";
+import { SalesModule } from './sales/sales.module';
+import { QROrdersModule } from './qr-orders/qr-orders.module';
+import { EventsModule } from './events/events.module';
+import { FirebaseModule } from './services/firebase/firebase.module';
 
 @Module({
   imports: [
@@ -34,6 +38,10 @@ import { getDatabaseConfig } from "./config/database.config";
     SmsModule,
     EmailModule,
     NotificationModule,
+    SalesModule,
+    QROrdersModule,
+    EventsModule,
+    FirebaseModule,
   ],
   controllers: [AppController],
   providers: [AppService],
