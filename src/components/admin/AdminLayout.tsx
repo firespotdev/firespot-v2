@@ -13,6 +13,7 @@ import AgentsList from './AgentsList'
 import AgentDetail from './AgentDetail'
 import CreateAgent from './CreateAgent'
 import MerchantsList from './MerchantsList'
+import MerchantDetail from './MerchantDetail'
 import QROrdersList from './QROrdersList'
 import ChangePasswordModal from './ChangePasswordModal'
 
@@ -298,6 +299,13 @@ export default function AdminLayout() {
         <AgentDetail
           agent={selectedAgent}
           onClose={() => setSelectedAgent(null)}
+        />
+      )}
+
+      {selectedMerchant && (
+        <MerchantDetail
+          merchant={selectedMerchant}
+          onClose={() => setSelectedMerchant(null)}
         />
       )}
 

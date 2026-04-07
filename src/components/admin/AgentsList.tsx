@@ -78,7 +78,7 @@ export default function AgentsList({
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Agents</h2>
           <p className="mt-1 text-gray-500">
-            {data?.pagination.total || 0} total agents
+            {(data?.pagination.total || 0).toLocaleString('en-NG')} total agents
           </p>
         </div>
         <div className="flex gap-2">

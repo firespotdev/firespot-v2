@@ -161,10 +161,10 @@ export default function QROrdersList() {
                 >
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900">
-                      {order.merchantId.businessName}
+                      {order.merchantId?.businessName || 'Unknown Merchant'}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {order.merchantId.fullPhoneNumber}
+                      {order.merchantId?.fullPhoneNumber || 'No phone'}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-900 font-bold">

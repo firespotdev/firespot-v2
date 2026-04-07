@@ -1,7 +1,7 @@
 'use client'
 
 import { useQRKitStats } from '@/services/qr'
-import { useMerchantStats } from '@/services/merchants'
+import { useMerchantOverviewStats } from '@/services/merchants'
 
 interface StatCardProps {
   title: string
@@ -31,7 +31,7 @@ function StatCard({ title, value, subtitle, gradient }: StatCardProps) {
           gradient ? 'text-white' : 'text-gray-900'
         }`}
       >
-        {value.toLocaleString()}
+        {value.toLocaleString('en-NG')}
       </p>
       {subtitle && (
         <p
@@ -48,7 +48,7 @@ function StatCard({ title, value, subtitle, gradient }: StatCardProps) {
 
 export default function AdminDashboard() {
   const { data: qrStats, isLoading: qrLoading, error: qrError } = useQRKitStats()
-  const { data: merchantStats, isLoading: merchantLoading, error: merchantError } = useMerchantStats()
+  const { data: merchantStats, isLoading: merchantLoading, error: merchantError } = useMerchantOverviewStats()
 
   const isLoading = qrLoading || merchantLoading
   const error = qrError || merchantError

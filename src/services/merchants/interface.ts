@@ -61,3 +61,27 @@ export interface MerchantFilters {
   status?: 'active' | 'inactive'
 }
 
+export interface PendingQROrder {
+  _id: string
+  quantity: number
+  totalAmount: number
+  deliveryAddress: string
+  createdAt: string
+}
+
+export interface MerchantSpecificStats {
+  scans: number
+  uniqueCustomers: number
+  sales: {
+    confirmedAmount: number
+    confirmedCount: number
+    pendingCount: number
+  }
+  qrKits: number
+  pendingOrders: PendingQROrder[]
+  dateRange: {
+    startDate: string | null
+    endDate: string | null
+    preset: string
+  }
+}

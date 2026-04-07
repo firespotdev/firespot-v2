@@ -59,7 +59,7 @@ export default function MerchantsList({
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Merchants</h2>
           <p className="mt-1 text-gray-500">
-            {data?.pagination.total || 0} total merchants
+            {(data?.pagination.total || 0).toLocaleString('en-NG')} total merchants
           </p>
         </div>
         <div className="flex gap-2">
@@ -85,7 +85,6 @@ export default function MerchantsList({
         </div>
       </div>
 
-      {/* Filters */}
       <div className="rounded-xl border border-gray-100 bg-white p-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
           {/* Search */}
@@ -118,7 +117,12 @@ export default function MerchantsList({
             <div className="relative">
               <select
                 value={filters.status || ''}
-                onChange={(e) => handleFilterChange('status', e.target.value as 'active' | 'inactive' | undefined)}
+                onChange={(e) =>
+                  handleFilterChange(
+                    'status',
+                    e.target.value as 'active' | 'inactive' | undefined,
+                  )
+                }
                 className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-4 py-2 pr-10 text-sm focus:border-[#FB5012] focus:outline-none focus:ring-1 focus:ring-[#FB5012]"
               >
                 <option value="">All</option>
@@ -126,8 +130,18 @@ export default function MerchantsList({
                 <option value="inactive">Inactive</option>
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </div>
             </div>
@@ -180,7 +194,9 @@ export default function MerchantsList({
               />
             </svg>
           </div>
-          <h3 className="text-lg font-medium text-gray-900">No merchants found</h3>
+          <h3 className="text-lg font-medium text-gray-900">
+            No merchants found
+          </h3>
           <p className="mt-1 text-gray-500">
             {filters.search || filters.status
               ? 'Try adjusting your filters'
