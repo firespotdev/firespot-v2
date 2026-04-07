@@ -10,6 +10,7 @@ interface SwipeableItemProps {
   onCancel?: () => void
   confirmText?: string
   cancelText?: string
+  className?: string
 }
 
 export const SwipeableItem: React.FC<SwipeableItemProps> = ({
@@ -18,27 +19,24 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
   onCancel,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
+  className,
 }) => {
   const [offsetX, setOffsetX] = useState(0)
   const [isSwiping, setIsSwiping] = useState(false)
-  const [actionTriggered, setActionTriggered] = useState<
-    'confirm' | 'cancel' | null
-  >(null)
 
   const startX = useRef(0)
   const currentX = useRef(0)
-  const threshold = 10 // Threshold to show the action button fully and trigger action
-  const maxSwipe = 40 // Max distance the item can be swiped
+  const threshold = 60 // Threshold to trigger action
+  const maxSwipe = 100 // Max distance the item can be swiped
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (actionTriggered) return
     startX.current = e.touches[0].clientX
     currentX.current = e.touches[0].clientX
     setIsSwiping(true)
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isSwiping || actionTriggered) return
+    if (!isSwiping) return
     currentX.current = e.touches[0].clientX
     const diff = currentX.current - startX.current
 
@@ -55,42 +53,37 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
   }
 
   const handleTouchEnd = () => {
-    if (!isSwiping || actionTriggered) return
+    if (!isSwiping) return
     setIsSwiping(false)
 
     if (offsetX > threshold) {
       // Swiped right -> Confirm
-      setActionTriggered('confirm')
-      setOffsetX(window.innerWidth) // Slide off screen
-      setTimeout(() => onConfirm?.(), 300)
+      onConfirm?.()
     } else if (offsetX < -threshold) {
       // Swiped left -> Cancel
-      setActionTriggered('cancel')
-      setOffsetX(-window.innerWidth) // Slide off screen
-      setTimeout(() => onCancel?.(), 300)
-    } else {
-      // Reset
-      setOffsetX(0)
+      onCancel?.()
     }
+    
+    // Always reset
+    setOffsetX(0)
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[12px] select-none touch-pan-y">
+    <div className={cn('relative overflow-hidden select-none touch-pan-y', className)}>
       {/* Background Actions */}
       <div className="absolute inset-0 flex items-center justify-between">
         {/* Confirm Action (Left side, revealed when swiping right) */}
         <div
           className={cn(
-            'h-full bg-[#24C166] flex flex-col items-center justify-center transition-all duration-200 overflow-hidden',
+            'h-full bg-[#24C166] flex items-center justify-start overflow-hidden shrink-0 transition-opacity duration-200',
+            !isSwiping && 'transition-all duration-300',
             offsetX > 0 ? 'opacity-100' : 'opacity-0',
           )}
-          style={{
-            width: Math.max(0, offsetX),
-          }}
+          style={{ width: Math.max(0, offsetX) }}
         >
-          <div className="flex flex-col items-center gap-1 min-w-[80px]">
-            <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center">
-              <Check size={13} className="text-[#24C166]" strokeWidth={3} />
+          <div className="pl-5 flex flex-col items-center gap-1 min-w-[80px]">
+            <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center">
+              <Check size={14} className="text-[#24C166]" strokeWidth={3} />
             </div>
             <span className="text-white text-[12px] font-bold">
               {confirmText}
@@ -101,14 +94,15 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
         {/* Cancel Action (Right side, revealed when swiping left) */}
         <div
           className={cn(
-            'h-full bg-[#6B7280] flex flex-col items-center justify-center transition-all duration-200 overflow-hidden ml-auto',
+            'h-full bg-[#6B7280] flex items-center justify-end overflow-hidden shrink-0 transition-opacity duration-200 ml-auto',
+            !isSwiping && 'transition-all duration-300',
             offsetX < 0 ? 'opacity-100' : 'opacity-0',
           )}
           style={{ width: Math.max(0, -offsetX) }}
         >
-          <div className="flex flex-col items-center gap-1 min-w-[80px]">
-            <div className="w-4 h-4 rounded-full bg-[#E5E7EB] flex items-center justify-center">
-              <X size={13} className="text-[#6B7280]" strokeWidth={3} />
+          <div className="pr-5 flex flex-col items-center gap-1 min-w-[80px]">
+            <div className="w-5 h-5 rounded-full bg-[#E5E7EB] flex items-center justify-center">
+              <X size={14} className="text-[#6B7280]" strokeWidth={3} />
             </div>
             <span className="text-white text-[12px] font-bold">
               {cancelText}
@@ -120,8 +114,8 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
       {/* Main Content (The Item) */}
       <div
         className={cn(
-          'relative bg-white transition-transform duration-200 ease-out',
-          !isSwiping && 'duration-300',
+          'relative bg-white ease-out',
+          !isSwiping && 'transition-transform duration-300',
         )}
         style={{ transform: `translateX(${offsetX}px)` }}
         onTouchStart={handleTouchStart}

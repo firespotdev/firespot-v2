@@ -26,6 +26,7 @@ import { RecordSuccessDrawer } from './record-success-drawer'
 import { ObtainKitDrawer } from './obtain-kit-drawer'
 import { CheckoutDrawer } from './checkout-drawer'
 import { TransactionDetailsDrawer } from './transaction-details-drawer'
+import { ConfirmCancelDrawer } from './confirm-cancel-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -116,6 +117,12 @@ const DRAWER_CONFIG: Record<
   checkout: {
     title: '',
     Content: CheckoutDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'confirm-cancel': {
+    title: '',
+    Content: ConfirmCancelDrawer,
     noHeader: true,
     direction: 'bottom',
   },

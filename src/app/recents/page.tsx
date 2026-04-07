@@ -8,9 +8,10 @@ import { useSales, useSalesStats, useCancelSale } from '@/services/sales/hooks'
 import { SwipeableItem } from '@/components/recents/SwipeableItem'
 import { getBankLogo } from '@/lib/utils/bank-registry'
 import { format } from 'date-fns'
-import { toast } from 'sonner'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Sale } from '@/services/sales/interface'
+import { useDrawerStore } from '@/services/drawer'
+import { showNotificationToast } from '@/components/ui'
 
 export default function RecentsPage() {
   const router = useRouter()
@@ -26,11 +27,23 @@ export default function RecentsPage() {
 
   const cancelSaleMutation = useCancelSale()
 
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+
   const handleCancel = (saleId: string) => {
-    toast.promise(cancelSaleMutation.mutateAsync(saleId), {
-      loading: 'Cancelling record...',
-      success: 'Record cancelled',
-      error: 'Failed to cancel record',
+    openDrawer({
+      type: 'confirm-cancel',
+      props: {
+        onConfirm: async () => {
+          try {
+            await cancelSaleMutation.mutateAsync(saleId)
+            showNotificationToast({
+              message: 'Sale cancelled',
+            })
+          } catch (error) {
+            throw error // Re-throw to let drawer handle loading state if needed
+          }
+        },
+      },
     })
   }
 
@@ -98,60 +111,71 @@ export default function RecentsPage() {
 
         <div className="bg-white rounded-xl mb-4 overflow-hidden border border-[#F1F1F1]">
           {pendingData?.data && pendingData.data.length > 0 ? (
-            pendingData.data.map((sale: Sale) => (
-              <SwipeableItem
-                key={sale._id}
-                onConfirm={() => handleConfirm(sale._id)}
-                onCancel={() => handleCancel(sale._id)}
-              >
-                <div className="p-3 border-b border-[#F1F1F1] last:border-b-0 bg-white cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="relative shrink-0">
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-transform">
-                          <Image
-                            src="/images/default_avatar.png"
-                            alt="user"
-                            width={36}
-                            height={36}
-                          />
+            pendingData.data.map((sale: Sale, index: number) => {
+              const isFirst = index === 0
+              const isLast = index === pendingData.data.length - 1
+              const roundingClass = cn(
+                isFirst && 'rounded-t-xl',
+                isLast && 'rounded-b-xl',
+                isFirst && isLast && 'rounded-xl',
+              )
+
+              return (
+                <SwipeableItem
+                  key={sale._id}
+                  onConfirm={() => handleConfirm(sale._id)}
+                  onCancel={() => handleCancel(sale._id)}
+                  className={roundingClass}
+                >
+                  <div className="p-3 border-b border-[#F1F1F1] last:border-b-0 bg-white cursor-pointer">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="relative shrink-0">
+                          <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-transform">
+                            <Image
+                              src="/images/default_avatar.png"
+                              alt="user"
+                              width={36}
+                              height={36}
+                            />
+                          </div>
+                          <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 translate-y-1/2 w-4 h-4 rounded-[4.4px] border border-white bg-white">
+                            <Image
+                              src={getBankLogo(sale.targetBankName)}
+                              alt="bank"
+                              className="rounded-[4.4px] object-cover"
+                              width={16}
+                              height={16}
+                            />
+                          </div>
                         </div>
-                        <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 translate-y-1/2 w-4 h-4 rounded-[4.4px] border border-white bg-white">
-                          <Image
-                            src={getBankLogo(sale.targetBankName)}
-                            alt="bank"
-                            className="rounded-[4.4px] object-cover"
-                            width={16}
-                            height={16}
-                          />
+                        <div>
+                          <h4 className="text-[13px] font-bold text-[#111827] mb-0.5 capitalize">
+                            {sale.description || 'New sale'}
+                          </h4>
+                          <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
+                            {formatDate(sale.createdAt)}
+                          </p>
                         </div>
                       </div>
-                      <div>
-                        <h4 className="text-[13px] font-bold text-[#111827] mb-0.5 capitalize">
-                          {sale.description || 'New sale'}
-                        </h4>
-                        <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
-                          {formatDate(sale.createdAt)}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end">
+                          <p className="text-[14px] font-bold text-[#111827] mb-0.5">
+                            {sale.amount
+                              ? `₦${formatCurrency(sale.amount)}`
+                              : 'Enter amount'}
+                          </p>
+                          <span className="text-[11px] font-medium text-[#D97706]">
+                            From {sale.source || 'QR kit scan'}
+                          </span>
+                        </div>
+                        <ChevronRight className="text-[#9CA3AF]" size={18} />
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col items-end">
-                        <p className="text-[14px] font-bold text-[#111827] mb-0.5">
-                          {sale.amount
-                            ? `₦${formatCurrency(sale.amount)}`
-                            : 'Enter amount'}
-                        </p>
-                        <span className="text-[11px] font-medium text-[#D97706]">
-                          From {sale.source || 'QR kit scan'}
-                        </span>
-                      </div>
-                      <ChevronRight className="text-[#9CA3AF]" size={18} />
                     </div>
                   </div>
-                </div>
-              </SwipeableItem>
-            ))
+                </SwipeableItem>
+              )
+            })
           ) : (
             <div className="p-8 text-center text-[#6B7280] text-sm font-medium">
               {pendingLoading ? (
