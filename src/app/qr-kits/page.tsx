@@ -10,6 +10,7 @@ import { useUserQRKits, useClaimDigitalKit } from '@/services/qr'
 import Image from 'next/image'
 import { useDrawerStore } from '@/services/drawer'
 import { useUserProfile } from '@/services/users'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 
 export default function QRKitsPage() {
   const router = useRouter()
@@ -45,14 +46,9 @@ export default function QRKitsPage() {
 
   if (isLoadingKits || isClaiming) {
     return (
-      <div className="min-h-dvh bg-[#F4F6F8] flex flex-col items-center justify-center gap-4">
-        <LoaderCircle innerBg="#F4F6F8" />
-        {isClaiming && (
-          <p className="text-sm font-medium text-black/60 animate-pulse">
-            Setting up your digital QR kit...
-          </p>
-        )}
-      </div>
+      <LoadingPage 
+        message={isClaiming ? "Setting up your digital QR kit..." : undefined} 
+      />
     )
   }
 

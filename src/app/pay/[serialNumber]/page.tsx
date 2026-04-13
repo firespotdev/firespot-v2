@@ -9,6 +9,7 @@ import { useMerchantBySerial } from '@/services/qr'
 import { useRecordAccountCopy } from '@/services/scans'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import type { MerchantProfile } from '@/services/qr/interface'
@@ -97,11 +98,7 @@ export default function PaymentPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-dvh bg-white flex items-center justify-center">
-        <LoaderCircle innerBg="#FFFFFF" />
-      </div>
-    )
+    return <LoadingPage innerBg="#FFFFFF" />
   }
 
   if (error || !merchant) {

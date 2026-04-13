@@ -1,4 +1,6 @@
 onlyBuiltDependencies:
+  - '@firebase/util'
   - core-js
+  - protobufjs
   - sharp
   - unrs-resolver

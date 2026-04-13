@@ -1,3 +1,4 @@
+import { format } from 'date-fns'
 const formatAmountInWords = (amount: number): string => {
   const ones = [
     '',
@@ -78,28 +79,12 @@ const formatAmountInWords = (amount: number): string => {
 }
 
 const formatDate = (dateString?: string | Date): string => {
-  if (!dateString) {
-    const now = new Date()
-    return now.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }) + ' . ' + now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    })
+  if (!dateString) return ''
+  try {
+    return format(new Date(dateString), "MMM d, yyyy '.' h:mm a")
+  } catch (e) {
+    return String(dateString)
   }
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }) + ' . ' + date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  })
 }
 
 export { formatAmountInWords, formatDate }

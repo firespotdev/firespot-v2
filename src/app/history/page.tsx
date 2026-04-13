@@ -6,7 +6,6 @@ import {
   Download,
   Search,
   ChevronDown,
-  ChevronRight,
   Eye,
   EyeOff,
   Clock,
@@ -15,13 +14,10 @@ import {
   Plus,
 } from 'lucide-react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { format } from 'date-fns'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
-import { LoaderCircle } from '@/components/ui'
-import { getBankLogo } from '@/lib/utils/bank-registry'
 import { useDrawerStore } from '@/services/drawer'
 import {
   type InsightsQuery,
@@ -29,37 +25,12 @@ import {
   type DateRangePreset,
 } from '@/services/insights'
 import { Sale } from '@/services/sales/interface'
-import { formatDate } from '@/lib/utils/constants'
+import { SaleItem } from '@/components/sales/SaleItem'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 
 const getMonthYearKey = (dateStr: string | Date) => {
   const date = new Date(dateStr)
   return `${date.toLocaleString('en-US', { month: 'long' })} ${date.getFullYear()}`
-}
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'CONFIRMED':
-      return 'text-[#24C166]'
-    case 'PENDING':
-      return 'text-[#BB8123]'
-    case 'CANCELLED':
-      return 'text-[#9CA3AF]'
-    default:
-      return 'text-[#6B7280]'
-  }
-}
-
-const getStatusLabel = (sale: Sale) => {
-  if (sale.status === 'CONFIRMED') return 'Confirmed'
-  if (sale.status === 'CANCELLED') return 'Cancelled'
-  if (sale.source) return `From ${sale.source}`
-  return 'Pending'
-}
-
-const getAmountLabel = (sale: Sale) => {
-  if (sale.status === 'CANCELLED') return 'No sale'
-  if (sale.amount) return `₦${formatCurrency(sale.amount)}`
-  return 'Enter amount'
 }
 
 function HistoryContent() {
@@ -247,7 +218,7 @@ function HistoryContent() {
 
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center overflow-y-auto">
-            <LoaderCircle innerBg="#F4F6F8" />
+            <LoadingPage innerBg="transparent" />
           </div>
         ) : isEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center -mt-10 animate-in fade-in zoom-in duration-500 overflow-y-auto">
@@ -286,68 +257,11 @@ function HistoryContent() {
                     </h4>
                     <div className="bg-white rounded-2xl shadow-[0px_4px_12px_0px_#00000008] border border-[#F4F6F8] overflow-hidden divide-y divide-[#F1F1F1]">
                       {monthSales.map((sale) => (
-                        <div
-                          onClick={() => handleRecordClick(sale)}
+                        <SaleItem 
                           key={sale._id}
-                          className={cn(
-                            'flex items-center gap-2 p-3 group',
-                            sale.status === 'CANCELLED' &&
-                              'grayscale opacity-70',
-                          )}
-                        >
-                          <div className="relative shrink-0">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-transform">
-                              <Image
-                                src="/images/default_avatar.png"
-                                alt="user"
-                                width={36}
-                                height={36}
-                              />
-                            </div>
-                            <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 translate-y-1/2 w-4 h-4 rounded-[4.4px] border border-white">
-                              <Image
-                                src={getBankLogo(sale.targetBankName)}
-                                alt="bank"
-                                className="rounded-[4.4px] object-cover"
-                                width={16}
-                                height={16}
-                              />
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h5 className="text-[13px] font-bold text-black truncate mb-1 capitalize">
-                              {sale.status === 'CANCELLED'
-                                ? 'Cancelled'
-                                : sale.status === 'PENDING'
-                                  ? 'New sale'
-                                  : !sale.description
-                                    ? 'New sale'
-                                    : sale.description}
-                            </h5>
-                            <p className="text-[12px] text-[#6B7280] font-medium">
-                              {formatDate(sale.createdAt)}
-                            </p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-[13px] font-bold text-black mb-1">
-                              {getAmountLabel(sale)}
-                            </p>
-                            <p
-                              className={cn(
-                                'text-[12px] font-medium',
-                                getStatusColor(sale.status),
-                                sale.status === 'CANCELLED' && 'font-bold',
-                              )}
-                            >
-                              {getStatusLabel(sale)}
-                            </p>
-                          </div>
-                          <ChevronRight
-                            size={18}
-                            color="#9CA3AF"
-                            className="shrink-0 group-hover:translate-x-0.5 transition-transform"
-                          />
-                        </div>
+                          sale={sale}
+                          onClick={() => handleRecordClick(sale)}
+                        />
                       ))}
                     </div>
                   </div>
@@ -368,11 +282,7 @@ function HistoryContent() {
 export default function HistoryPage() {
   return (
     <Suspense
-      fallback={
-        <div className="h-dvh bg-[#F4F6F8] flex items-center justify-center">
-          <LoaderCircle innerBg="#F4F6F8" />
-        </div>
-      }
+      fallback={<LoadingPage />}
     >
       <HistoryContent />
     </Suspense>

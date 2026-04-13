@@ -1,13 +1,10 @@
 'use client'
 
-import { ArrowLeft, ChevronRight, Loader2 } from 'lucide-react'
-import Image from 'next/image'
+import { ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSales, useSalesStats, useCancelSale } from '@/services/sales/hooks'
-import { SwipeableItem } from '@/components/recents/SwipeableItem'
-import { getBankLogo } from '@/lib/utils/bank-registry'
-import { format } from 'date-fns'
+import { SaleItem } from '@/components/sales/SaleItem'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Sale } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
@@ -26,7 +23,6 @@ export default function RecentsPage() {
   })
 
   const cancelSaleMutation = useCancelSale()
-
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const handleCancel = (saleId: string) => {
@@ -40,7 +36,7 @@ export default function RecentsPage() {
               message: 'Sale cancelled',
             })
           } catch (error) {
-            throw error // Re-throw to let drawer handle loading state if needed
+            throw error 
           }
         },
       },
@@ -51,23 +47,12 @@ export default function RecentsPage() {
     router.push(`/record-sale?id=${saleId}`)
   }
 
-  const formatDate = (dateString?: string | Date) => {
-    if (!dateString) return ''
-    try {
-      return format(new Date(dateString), "MMM d, yyyy '.' h:mm a")
-    } catch (e) {
-      return String(dateString)
-    }
-  }
-
   return (
     <div className="h-dvh bg-[#f4f6f8] px-3 shadow-xl overflow-y-auto pb-10">
       <header className="py-3.5 px-1 flex justify-between items-center">
         <Link href="/profile" className="p-1">
           <ArrowLeft color="black" strokeWidth={2} size={24} />
         </Link>
-        <div className="w-6"></div>
-        <div className="w-6"></div>
       </header>
 
       <h2 className="text-[32px] leading-none font-bold text-black -tracking-[0.4px] mb-6 mt-2">
@@ -112,68 +97,22 @@ export default function RecentsPage() {
         <div className="bg-white rounded-xl mb-4 overflow-hidden border border-[#F1F1F1]">
           {pendingData?.data && pendingData.data.length > 0 ? (
             pendingData.data.map((sale: Sale, index: number) => {
-              const isFirst = index === 0
-              const isLast = index === pendingData.data.length - 1
               const roundingClass = cn(
-                isFirst && 'rounded-t-xl',
-                isLast && 'rounded-b-xl',
-                isFirst && isLast && 'rounded-xl',
+                index === 0 && 'rounded-t-xl',
+                index === pendingData.data.length - 1 && 'rounded-b-xl',
+                pendingData.data.length === 1 && 'rounded-xl',
               )
 
               return (
-                <SwipeableItem
+                <SaleItem
                   key={sale._id}
+                  sale={sale}
+                  isSwipeable={true}
                   onConfirm={() => handleConfirm(sale._id)}
                   onCancel={() => handleCancel(sale._id)}
+                  onClick={() => handleConfirm(sale._id)}
                   className={roundingClass}
-                >
-                  <div className="p-3 border-b border-[#F1F1F1] last:border-b-0 bg-white cursor-pointer">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="relative shrink-0">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-transform">
-                            <Image
-                              src="/images/default_avatar.png"
-                              alt="user"
-                              width={36}
-                              height={36}
-                            />
-                          </div>
-                          <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 translate-y-1/2 w-4 h-4 rounded-[4.4px] border border-white bg-white">
-                            <Image
-                              src={getBankLogo(sale.targetBankName)}
-                              alt="bank"
-                              className="rounded-[4.4px] object-cover"
-                              width={16}
-                              height={16}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-[13px] font-bold text-[#111827] mb-0.5 capitalize">
-                            {sale.description || 'New sale'}
-                          </h4>
-                          <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
-                            {formatDate(sale.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-end">
-                          <p className="text-[14px] font-bold text-[#111827] mb-0.5">
-                            {sale.amount
-                              ? `₦${formatCurrency(sale.amount)}`
-                              : 'Enter amount'}
-                          </p>
-                          <span className="text-[11px] font-medium text-[#D97706]">
-                            From {sale.source || 'QR kit scan'}
-                          </span>
-                        </div>
-                        <ChevronRight className="text-[#9CA3AF]" size={18} />
-                      </div>
-                    </div>
-                  </div>
-                </SwipeableItem>
+                />
               )
             })
           ) : (
@@ -203,53 +142,11 @@ export default function RecentsPage() {
         <div className="bg-white rounded-xl mb-4 overflow-hidden border border-[#F1F1F1]">
           {confirmedData?.data && confirmedData.data.length > 0 ? (
             confirmedData.data.map((sale: Sale) => (
-              <div
+              <SaleItem 
                 key={sale._id}
-                className="cursor-pointer p-3 border-b border-[#F1F1F1] last:border-b-0 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="relative shrink-0">
-                      <div className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden transition-transform">
-                        <Image
-                          src="/images/default_avatar.png"
-                          alt="user"
-                          width={36}
-                          height={36}
-                        />
-                      </div>
-                      <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 translate-y-1/2 w-4 h-4 rounded-[4.4px] border border-white bg-white">
-                        <Image
-                          src={getBankLogo(sale.targetBankName)}
-                          alt="bank"
-                          className="rounded-[4.4px] object-cover"
-                          width={16}
-                          height={16}
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="text-[13px] font-bold text-[#111827] mb-0.5 capitalize">
-                        {sale.description || 'New sale'}
-                      </h4>
-                      <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
-                        {formatDate(sale.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-end">
-                      <p className="text-[14px] font-bold text-[#111827] mb-0.5">
-                        ₦{formatCurrency(sale.amount || 0)}
-                      </p>
-                      <span className="text-[11px] font-medium text-[#24C166]">
-                        {sale.paymentMethod || 'Paid'}
-                      </span>
-                    </div>
-                    <ChevronRight className="text-[#9CA3AF]" size={18} />
-                  </div>
-                </div>
-              </div>
+                sale={sale}
+                onClick={() => {}}
+              />
             ))
           ) : (
             <div className="p-8 text-center text-[#6B7280] text-sm font-medium">
