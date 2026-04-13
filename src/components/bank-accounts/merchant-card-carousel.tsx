@@ -171,7 +171,6 @@ export function MerchantCardCarousel({
                       {merchantInfo.businessName}
                     </h1>
 
-                    {/* QR Kit Status (profile page) or linked accounts (pay page) */}
                     {qrKitStatus ? (
                       qrKitStatus
                     ) : (
