@@ -47,15 +47,9 @@ export default function InsightsPage() {
     preset: 'today',
   })
 
-  // const { data: salesStats } = useSalesStats(filter)
+  const { data: salesStats } = useSalesStats(filter)
 
-  // const { data: insights, isLoading, error } = useMerchantInsights(filter)
-
-  //Dummy data for testing
-  const salesStats = generateMockSalesStats(filter)
-  const insights = generateMockMerchantInsights(filter)
-  const isLoading = false
-  const error = null
+  const { data: insights, isLoading, error } = useMerchantInsights(filter)
 
   const { data: bankAccountsData } = useBankAccounts()
 
@@ -259,7 +253,21 @@ export default function InsightsPage() {
                   {salesStats?.todaySalesCount || 0} recorded sale
                   {salesStats?.todaySalesCount !== 1 ? 's' : ''}
                 </p>
-                <CustomChart data={salesStats?.trend || []} />
+                {salesStats?.todaySalesCount &&
+                salesStats.todaySalesCount > 0 ? (
+                  <CustomChart data={salesStats?.trend || []} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 bg-[#f4f4f4] rounded-[12px] mt-4">
+                    <div className="text-3xl mb-2">😢</div>
+                    <p className="text-[13px] font-semibold mb-1 text-[#111827]">
+                      No sales yet
+                    </p>
+                    <p className="text-xs text-[#00000066] font-medium px-8 text-center">
+                      When you record sales, your performance trends will appear
+                      here.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Traffic Section with Donut Chart */}

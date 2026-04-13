@@ -204,7 +204,7 @@ export function MerchantCardCarousel({
                         size={24}
                         className="rounded-[6.67px]"
                       />
-                      <p className="text-base font-bold text-black">
+                      <p className="text-base font-bold text-black line-clamp-1">
                         {account.bankName}
                       </p>
                     </div>
