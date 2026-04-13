@@ -187,7 +187,6 @@ export function MerchantCardCarousel({
                   </div>
                 )}
 
-                {/* Bank Details Section */}
                 <div
                   className={cn(
                     'bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] mx-0.5',
@@ -204,7 +203,7 @@ export function MerchantCardCarousel({
                         size={24}
                         className="rounded-[6.67px]"
                       />
-                      <p className="text-base font-bold text-black">
+                      <p className="text-base font-bold text-black line-clamp-1">
                         {account.bankName}
                       </p>
                     </div>
