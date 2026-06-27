@@ -106,10 +106,12 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@firebase/util",
       "@nestjs/core",
       "@scarf/scarf",
       "@swc/core",
       "bcrypt",
+      "protobufjs",
       "sharp"
     ]
   }
