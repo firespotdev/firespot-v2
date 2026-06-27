@@ -2,7 +2,7 @@
 
 > **Internal admin portal for managing QR kits, agents, and merchants on the Firespot Lite platform.**
 
-This project was extracted from the main [firespot-transfer-page](../firespot-transfer-page) codebase into a standalone admin dashboard.
+This project was extracted from the main [firespot-two](../firespot-two) codebase into a standalone admin dashboard.
 
 ---
 
@@ -65,7 +65,7 @@ Firespot Admin is an internal dashboard for platform administrators to manage th
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd firespot-transfer-page-admin
+cd firespot-two-admin
 
 # Install dependencies
 pnpm install
@@ -94,7 +94,7 @@ Open [http://localhost:3002](http://localhost:3002) to view the dashboard.
 ## Project Structure
 
 ```
-firespot-transfer-page-admin/
+firespot-two-admin/
 ├── public/                        # Static assets
 │   ├── bank_logos/                 #   Bank logo images
 │   ├── fonts/                     #   Custom fonts (Satoshi, Sofia Pro)
@@ -272,7 +272,7 @@ The React Compiler is enabled (`reactCompiler: true`) for automatic memoization 
 
 ## Relationship to Main Project
 
-This admin portal shares the same backend API as [firespot-transfer-page](../firespot-transfer-page) (the merchant/customer-facing frontend). It was extracted into a separate project to:
+This admin portal shares the same backend API as [firespot-two](../firespot-two) (the merchant/customer-facing frontend). It was extracted into a separate project to:
 
 - Separate admin and customer concerns
 - Allow independent deployment and access control
