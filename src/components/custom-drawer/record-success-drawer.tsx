@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, X, AlertCircle } from 'lucide-react'
+import { Check, X, AlertCircle, Clock } from 'lucide-react'
 import { Button } from '../ui'
 import { LoaderCircle } from '../ui'
 import { useRouter } from 'next/navigation'
@@ -13,11 +13,10 @@ interface RecordSuccessDrawerProps {
   successDetails: any
   status: 'saving' | 'success' | 'error'
   errorMessage?: string
-  setStep: (step: 'amount' | 'saving' | 'success' | 'error') => void
+  setStep: (step: 'input' | 'saving' | 'success' | 'error') => void
   setAmount: (amount: string) => void
   setDescription: (description: string) => void
 }
-
 
 const RecordSuccessDrawer = ({
   successDetails,
@@ -32,6 +31,36 @@ const RecordSuccessDrawer = ({
   const { data: statsData } = useSalesStats()
 
   const todaySalesAmount = statsData?.todaySalesAmount ?? 0
+
+  const formatDueDate = (dateInput: any) => {
+    if (!dateInput) return ''
+    const date = new Date(dateInput)
+    if (isNaN(date.getTime())) return ''
+    const day = date.getDate()
+    const monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ]
+    const month = monthNames[date.getMonth()]
+    const year = date.getFullYear()
+
+    let suffix = 'th'
+    if (day === 1 || day === 21 || day === 31) suffix = 'st'
+    else if (day === 2 || day === 22) suffix = 'nd'
+    else if (day === 3 || day === 23) suffix = 'rd'
+
+    return `${day}${suffix} ${month}, ${year}`
+  }
 
   if (status === 'saving') {
     return (
@@ -56,7 +85,7 @@ const RecordSuccessDrawer = ({
           <header className="sticky top-0 z-50 flex items-center justify-between p-4 bg-white">
             <div className="w-8" />
             <div className="w-8" />
-            <Link href="/profile">
+            <Link href="/profile" onClick={closeDrawer}>
               <X className="w-6 h-6 text-black" />
             </Link>
           </header>
@@ -100,10 +129,12 @@ const RecordSuccessDrawer = ({
         {/* Header */}
         <div className="flex justify-between items-center px-4 py-3 shrink-0">
           <button
-            onClick={() =>
-              !(successDetails?.hasBeenEdited || successDetails?.isEdit) &&
-              setStep('amount')
-            }
+            onClick={() => {
+              if (!(successDetails?.hasBeenEdited || successDetails?.isEdit)) {
+                setStep('input')
+                closeDrawer()
+              }
+            }}
             disabled={successDetails?.hasBeenEdited || successDetails?.isEdit}
             className={cn(
               'p-2 -ml-2 rounded-full transition-colors shrink-0',
@@ -143,33 +174,102 @@ const RecordSuccessDrawer = ({
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col items-center justify-center px-6 pb-4">
-          <div className="w-[64px] h-[64px] rounded-full border-4 border-[#24C166] flex items-center justify-center mb-5 shrink-0">
-            <Check
-              className="w-[32px] h-[32px] text-[#24C166]"
-              strokeWidth={3}
-            />
-          </div>
+          {successDetails?.isPaidInFull === false ||
+          (successDetails?.balanceOwed && successDetails.balanceOwed > 0) ? (
+            <div className="flex items-center justify-center mb-4.5 shrink-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="76"
+                height="76"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <path
+                  d="M22 12c0 5.52-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2s10 4.48 10 10Z"
+                  stroke="#bb8123"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                ></path>
+                <path
+                  d="m15.71 15.18-3.1-1.85c-.54-.32-.98-1.09-.98-1.72v-4.1"
+                  stroke="#bb8123"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                ></path>
+              </svg>
+            </div>
+          ) : (
+            <div className="w-[64px] h-[64px] rounded-full border-4 border-[#24C166] flex items-center justify-center mb-5 shrink-0">
+              <Check
+                className="w-[32px] h-[32px] text-[#24C166]"
+                strokeWidth={3}
+              />
+            </div>
+          )}
 
-          <h1 className="text-[20px] font-bold text-black -tracking-[0.4px] mb-1.5 text-center shrink-0">
-            {successDetails?.isEdit
-              ? 'Sale updated successfully'
-              : 'Payment recorded successfully'}
+          <h1 className="text-[20px] font-bold text-black -tracking-[0.4px] mb-1.5 text-center leading-[140%]">
+            {successDetails?.isEdit ? (
+              'Sale updated successfully'
+            ) : successDetails?.isPaidInFull === false ||
+              (successDetails?.balanceOwed &&
+                successDetails.balanceOwed > 0) ? (
+              <>
+                Partial payment
+                <br />
+                recorded successfully
+              </>
+            ) : (
+              <>
+                Full payment
+                <br />
+                recorded successfully
+              </>
+            )}
           </h1>
-          <p className="text-[14px] text-center text-[#878F98] max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
-            {successDetails.paymentMethod} payment of NGN{' '}
-            {formatCurrency(successDetails.amount ?? 0)} on{' '}
-            {displayDate.toLocaleDateString('en-US', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'short',
-              year: 'numeric',
-            })}{' '}
-            at{' '}
-            {displayDate.toLocaleTimeString('en-US', {
-              hour: 'numeric',
-              minute: '2-digit',
-            })}
-            .
+          <p className="text-[14px] text-center font-medium text-[#00000080] max-w-[350px] mb-8 leading-[135%] shrink-0">
+            {successDetails?.isPaidInFull === false ||
+            (successDetails?.balanceOwed && successDetails.balanceOwed > 0) ? (
+              <>
+                {successDetails.paymentMethod} payment of NGN{' '}
+                {formatCurrency(successDetails.amountPaid ?? 0)} on{' '}
+                {displayDate.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}{' '}
+                at{' '}
+                {displayDate.toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+                . NGN {formatCurrency(successDetails.balanceOwed ?? 0)}{' '}
+                outstanding balance due
+                {successDetails?.dueDate
+                  ? ` by ${formatDueDate(successDetails.dueDate)}`
+                  : ''}
+                .
+              </>
+            ) : (
+              <>
+                {successDetails.paymentMethod} payment of NGN{' '}
+                {formatCurrency(successDetails.amount ?? 0)} on{' '}
+                {displayDate.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}{' '}
+                at{' '}
+                {displayDate.toLocaleTimeString('en-US', {
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
+                .
+              </>
+            )}
           </p>
 
           <div className="border border-[#F4F6F8] px-4 py-4 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] w-full flex justify-between items-center mb-8 shrink-0">
@@ -245,7 +345,8 @@ const RecordSuccessDrawer = ({
             onClick={() => {
               setAmount('')
               setDescription('')
-              setStep('amount')
+              setStep('input')
+              closeDrawer()
             }}
             className="w-full bg-black text-white h-14 rounded-full font-bold text-[15px] hover:bg-black/90 transition-all active:scale-[0.98]"
           >
@@ -254,6 +355,7 @@ const RecordSuccessDrawer = ({
           <Button
             variant="ghost"
             onClick={() => {
+              closeDrawer()
               if (statsData?.pendingSalesCount! > 0) {
                 router.push('/recents')
               } else {

@@ -8,6 +8,14 @@ export interface CreatePendingSalePayload {
   source?: 'QR scan' | 'Link shared' | 'Manual';
   targetBankName?: string;
   serialNumber?: string;
+  amount?: number;
+  description?: string;
+  items?: any[];
+  isPaidInFull?: boolean;
+  amountPaid?: number;
+  totalDue?: number;
+  balanceOwed?: number;
+  customerId?: string;
 }
 
 export interface RecordSalePayload {
@@ -15,6 +23,12 @@ export interface RecordSalePayload {
   description?: string;
   paymentMethod: string;
   targetBankName?: string;
+  isPaidInFull?: boolean;
+  amountPaid?: number;
+  totalDue?: number;
+  balanceOwed?: number;
+  customerId?: string;
+  items?: any[];
 }
 
 export interface EditSalePayload {
@@ -23,11 +37,14 @@ export interface EditSalePayload {
   paymentMethod?: string;
 }
 
-
-
 export const SalesApi = {
   createPendingSale: async (payload: CreatePendingSalePayload): Promise<Sale> => {
     const { data } = await publicApiClient.post('/sales/pending', payload);
+    return data;
+  },
+
+  createPendingCollectSale: async (payload: CreatePendingSalePayload): Promise<Sale> => {
+    const { data } = await apiClient.post('/sales/collect', payload);
     return data;
   },
 
@@ -63,6 +80,20 @@ export const SalesApi = {
 
   editSale: async (saleId: string, payload: EditSalePayload): Promise<Sale> => {
     const { data } = await apiClient.patch(`/sales/${saleId}/edit`, payload);
+    return data;
+  },
+
+  archiveSale: async (saleId: string): Promise<Sale> => {
+    const { data } = await apiClient.patch(`/sales/${saleId}/archive`);
+    return data;
+  },
+
+  uploadReceipt: async (saleId: string, file: File): Promise<Sale> => {
+    const formData = new FormData();
+    formData.append('receipt', file);
+    const { data } = await publicApiClient.post(`/sales/${saleId}/receipt`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return data;
   },
 };

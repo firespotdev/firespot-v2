@@ -13,7 +13,13 @@ export type DrawerContentType =
   | 'obtain-kit'
   | 'transaction-details'
   | 'checkout'
+  | 'checkout-sale'
   | 'confirm-cancel'
+  | 'variant-selector'
+  | 'split-payment'
+  | 'customer-select'
+  | 'collect-payment'
+  | 'customer-checkout'
 
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'

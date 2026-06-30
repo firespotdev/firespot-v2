@@ -2,17 +2,42 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, Delete, PencilLine, CircleAlert } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-import { useCreateManualSale, useRecordSale, useSale, useEditSale } from '@/services/sales/hooks'
+import {
+  useCreateManualSale,
+  useSale,
+  useEditSale,
+  useCreatePendingCollectSale,
+} from '@/services/sales/hooks'
+import { useProducts } from '@/services/products/hooks'
 import { useDrawerStore } from '@/services/drawer'
-import { RecordSuccessDrawer } from '@/components/custom-drawer'
+import { useUserProfile } from '@/services/users'
 import Link from 'next/link'
+import { AmountTab } from '@/components/sales/AmountTab'
+import { ItemsTab } from '@/components/sales/ItemsTab'
+
+interface CartItem {
+  id: string
+  name: string
+  price: number
+  quantity: number
+  selectedVariant?: {
+    size?: string
+    color?: string
+  }
+}
 
 export default function RecordSalePage() {
   return (
-    <Suspense fallback={<div className="h-dvh bg-white" />}>
+    <Suspense
+      fallback={
+        <div className="h-dvh bg-white flex items-center justify-center font-satoshi font-bold">
+          Loading...
+        </div>
+      }
+    >
       <RecordSaleContent />
     </Suspense>
   )
@@ -24,23 +49,55 @@ function RecordSaleContent() {
   const editId = searchParams.get('id')
   const isEditMode = searchParams.get('edit') === 'true'
 
-  const { data: editSaleData, isLoading: isLoadingSale } = useSale(isEditMode ? editId || undefined : undefined)
+  const { data: editSaleData } = useSale(
+    isEditMode ? editId || undefined : undefined,
+  )
 
+  const { data: profile } = useUserProfile()
+
+  // API mutations & queries
   const createManualSaleMutation = useCreateManualSale()
-  const recordSaleMutation = useRecordSale()
   const editSaleMutation = useEditSale()
-  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const collectSaleMutation = useCreatePendingCollectSale()
 
+  const [activeCategory, setActiveCategory] = useState('All')
+  const [searchQuery, setSearchQuery] = useState('')
+  const { data: products = [] } = useProducts({
+    search: searchQuery,
+    category: activeCategory,
+  })
+
+  const { openDrawer, closeDrawer } = useDrawerStore()
+
+  // Keypad & sale state
+  const [activeTab, setActiveTab] = useState<'amount' | 'items'>('amount')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [hasPrefilled, setHasPrefilled] = useState(false)
+  const [cartItems, setCartItems] = useState<CartItem[]>([])
 
-  const [step, setStep] = useState<'amount' | 'saving' | 'success' | 'error'>(
-    'amount',
+  // Final confirmation states
+  const [step, setStep] = useState<'input' | 'saving' | 'success' | 'error'>(
+    'input',
   )
-  const [successDetails, setSuccessDetails] = useState<any>(null)
-  const [errorMessage, setErrorMessage] = useState('')
 
+  // Checkout summary states
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] =
+    useState<string>('Bank Transfer')
+  const [checkoutInstallmentType, setCheckoutInstallmentType] = useState<
+    'full' | 'part'
+  >('full')
+  const [checkoutAmountPaid, setCheckoutAmountPaid] = useState<number>(0)
+  const [checkoutCustomer, setCheckoutCustomer] = useState<any>(null)
+  const [checkoutDueDate, setCheckoutDueDate] = useState<string>('')
+
+  useEffect(() => {
+    if (checkoutInstallmentType === 'full') {
+      setCheckoutAmountPaid(getTotal())
+    }
+  }, [cartItems, amount, checkoutInstallmentType, activeTab])
+
+  // Prefill in edit mode
   useEffect(() => {
     if (isEditMode && editSaleData && !hasPrefilled) {
       setAmount(editSaleData.amount?.toString() || '')
@@ -49,6 +106,7 @@ function RecordSaleContent() {
     }
   }, [editSaleData, isEditMode, hasPrefilled])
 
+  // Keypad keys handler
   const handleKeyPress = (key: string) => {
     if (key === 'backspace') {
       setAmount((prev) => prev.slice(0, -1))
@@ -65,20 +123,214 @@ function RecordSaleContent() {
     })
   }
 
-  const submitSale = (method: string = 'Other') => {
-    // Close drawer and show saving state immediately
-    useDrawerStore.getState().closeDrawer()
-    setSuccessDetails({
-      amount: Number(amount),
-      paymentMethod: method,
-      date: new Date(),
+  // Calculations
+  const getSubtotal = () => {
+    return cartItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0)
+  }
+
+  const getVAT = () => {
+    return Math.round(getSubtotal() * 0.075)
+  }
+
+  const getTotal = () => {
+    if (activeTab === 'amount') {
+      return Number(amount) || 0
+    }
+    return getSubtotal() + getVAT()
+  }
+
+  const calculateTotal = (items: CartItem[]) => {
+    const subtotal = items.reduce(
+      (acc, curr) => acc + curr.price * curr.quantity,
+      0,
+    )
+    const vat = Math.round(subtotal * 0.075)
+    return subtotal + vat
+  }
+
+  const updateCartQtyAndSyncDrawer = (id: string, delta: number) => {
+    setCartItems((prev) => {
+      const updated = prev
+        .map((item) =>
+          item.id === id
+            ? { ...item, quantity: Math.max(0, item.quantity + delta) }
+            : item,
+        )
+        .filter((item) => item.quantity > 0)
+
+      const newTotal = calculateTotal(updated)
+      const nextAmountPaid =
+        checkoutInstallmentType === 'full'
+          ? newTotal
+          : Math.min(checkoutAmountPaid, newTotal)
+      setCheckoutAmountPaid(nextAmountPaid)
+
+      openCheckoutSaleDrawer(
+        checkoutPaymentMethod,
+        checkoutInstallmentType,
+        nextAmountPaid,
+        checkoutCustomer,
+        updated,
+        newTotal,
+      )
+
+      return updated
     })
-    setStep('saving')
-    
+  }
+
+  const getProductCartQuantity = (productId: string) => {
+    return cartItems
+      .filter((item) => item.id.startsWith(productId))
+      .reduce((sum, item) => sum + item.quantity, 0)
+  }
+
+  const getGroupedProducts = () => {
+    const groups: Record<string, typeof products> = {}
+    products.forEach((prod: any) => {
+      const cat = prod.category || 'General'
+      if (!groups[cat]) {
+        groups[cat] = []
+      }
+      groups[cat].push(prod)
+    })
+    return groups
+  }
+
+  const addCustomAmountToCart = () => {
+    const val = Number(amount)
+    if (!val) return
+
+    const newItem: CartItem = {
+      id: `custom-${Date.now()}`,
+      name: description || 'Custom amount',
+      price: val,
+      quantity: 1,
+    }
+    setCartItems((prev) => [...prev, newItem])
+    setAmount('')
+    setDescription('')
+  }
+
+  const addProductToCart = (
+    prod: any,
+    size?: string,
+    color?: string,
+    qty: number = 1,
+  ) => {
+    const id = `${prod._id}-${size || ''}-${color || ''}`
+    const existingIndex = cartItems.findIndex((item) => item.id === id)
+
+    if (existingIndex > -1) {
+      setCartItems((prev) =>
+        prev.map((item, idx) =>
+          idx === existingIndex
+            ? { ...item, quantity: item.quantity + qty }
+            : item,
+        ),
+      )
+    } else {
+      const newItem: CartItem = {
+        id,
+        name: prod.name,
+        price: prod.price,
+        quantity: qty,
+        selectedVariant: size || color ? { size, color } : undefined,
+      }
+      setCartItems((prev) => [...prev, newItem])
+    }
+  }
+
+  const clearCart = () => {
+    setCartItems([])
+    setActiveTab('amount')
+    setCheckoutDueDate('')
+  }
+
+  const handleProductAddTapped = (product: any) => {
+    if (product.variants && product.variants.length > 0) {
+      openDrawer({
+        type: 'variant-selector',
+        props: {
+          product,
+          onAdd: (size: string, color: string, qty: number) => {
+            addProductToCart(product, size, color, qty)
+          },
+        },
+      })
+    } else {
+      addProductToCart(product, undefined, undefined, 1)
+    }
+  }
+
+  const autoConvertKeypadToCartItem = () => {
+    const val = Number(amount)
+    if (activeTab === 'amount' && val > 0) {
+      const newItem: CartItem = {
+        id: `custom-auto-${Date.now()}`,
+        name: description || 'Item 1',
+        price: val,
+        quantity: 1,
+      }
+      const updatedCart = [...cartItems, newItem]
+      setCartItems(updatedCart)
+      setAmount('')
+      setDescription('')
+      return updatedCart
+    }
+    return null
+  }
+
+  const submitConfirmedSale = (
+    paymentMethod: string,
+    installmentType: 'full' | 'part',
+    paidVal: number,
+    customer: any,
+    dueDateVal?: string,
+  ) => {
+    openDrawer({
+      type: 'record-success',
+      props: {
+        successDetails: null,
+        status: 'saving',
+        errorMessage: '',
+        setStep,
+        setAmount,
+        setDescription,
+      },
+    })
+
+    const totalVal = getTotal()
     const payload = {
-      amount: Number(amount),
-      description,
-      paymentMethod: method,
+      amount: totalVal,
+      description:
+        activeTab === 'amount'
+          ? description || 'Manual sale'
+          : cartItems.map((i) => `${i.name} x${i.quantity}`).join(', '),
+      paymentMethod,
+      isPaidInFull: installmentType === 'full',
+      amountPaid: paidVal,
+      totalDue: totalVal,
+      balanceOwed: totalVal - paidVal,
+      customerId: customer?._id,
+      dueDate: dueDateVal || undefined,
+      items:
+        activeTab === 'amount'
+          ? [
+              {
+                productName: description || 'Manual sale',
+                price: totalVal,
+                quantity: 1,
+              },
+            ]
+          : cartItems.map((item) => ({
+              productId: item.id.startsWith('custom')
+                ? undefined
+                : item.id.split('-')[0],
+              productName: item.name,
+              price: item.price,
+              quantity: item.quantity,
+              selectedVariant: item.selectedVariant,
+            })),
     }
 
     if (isEditMode && editId) {
@@ -86,78 +338,376 @@ function RecordSaleContent() {
         { saleId: editId, payload },
         {
           onSuccess: (data) => {
-            setSuccessDetails({ ...data, isEdit: true })
-            setStep('success')
+            openDrawer({
+              type: 'record-success',
+              props: {
+                successDetails: data,
+                status: 'success',
+                setStep,
+                setAmount,
+                setDescription,
+              },
+            })
+            clearCart()
           },
           onError: (error: any) => {
-            setErrorMessage(error?.response?.data?.message || 'Failed to update sale.')
-            setStep('error')
-          }
-        }
-      )
-    } else if (editId) { // Existing pending sale record logic (renamed from pendingSaleId)
-      recordSaleMutation.mutate(
-        { saleId: editId, payload },
-        {
-          onSuccess: (data) => {
-            setSuccessDetails(data)
-            setStep('success')
-          },
-          onError: (error: any) => {
-            setErrorMessage(
-              error?.response?.data?.message ||
-                'Failed to record sale. Please try again.',
-            )
-            setStep('error')
+            const msg =
+              error?.response?.data?.message || 'Failed to update transaction.'
+            openDrawer({
+              type: 'record-success',
+              props: {
+                successDetails: null,
+                status: 'error',
+                errorMessage: msg,
+                setStep,
+                setAmount,
+                setDescription,
+              },
+            })
           },
         },
       )
     } else {
       createManualSaleMutation.mutate(payload, {
         onSuccess: (data) => {
-          setSuccessDetails(data)
-          setStep('success')
+          openDrawer({
+            type: 'record-success',
+            props: {
+              successDetails: data,
+              status: 'success',
+              setStep,
+              setAmount,
+              setDescription,
+            },
+          })
+          clearCart()
         },
         onError: (error: any) => {
-          setErrorMessage(
-            error?.response?.data?.message ||
-              'Failed to record sale. Please try again.',
-          )
-          setStep('error')
+          const msg =
+            error?.response?.data?.message || 'Failed to record transaction.'
+          openDrawer({
+            type: 'record-success',
+            props: {
+              successDetails: null,
+              status: 'error',
+              errorMessage: msg,
+              setStep,
+              setAmount,
+              setDescription,
+            },
+          })
         },
       })
     }
   }
 
-  const handleRecordSaleClick = () => {
+  const openPaymentMethodStep = (
+    method = checkoutPaymentMethod,
+    instType = checkoutInstallmentType,
+    amountPaidVal = checkoutAmountPaid,
+    cust = checkoutCustomer,
+    itemsList = cartItems,
+    totVal = getTotal(),
+  ) => {
     openDrawer({
       type: 'payment-method',
-      props: { onSubmit: submitSale },
+      props: {
+        onSubmit: (newMethod: string) => {
+          setCheckoutPaymentMethod(newMethod)
+          openSplitPaymentStep(
+            newMethod,
+            instType,
+            amountPaidVal,
+            cust,
+            itemsList,
+            totVal,
+          )
+        },
+      },
     })
   }
 
-  if (
-    (step === 'saving' || step === 'success' || step === 'error') &&
-    successDetails
-  ) {
-    return (
-      <RecordSuccessDrawer
-        successDetails={successDetails}
-        status={step}
-        errorMessage={errorMessage}
-        setStep={setStep}
-        setAmount={setAmount}
-        setDescription={setDescription}
-      />
+  const openSplitPaymentStep = (
+    method = checkoutPaymentMethod,
+    instType = checkoutInstallmentType,
+    amountPaidVal = checkoutAmountPaid,
+    cust = checkoutCustomer,
+    itemsList = cartItems,
+    totVal = getTotal(),
+  ) => {
+    openDrawer({
+      type: 'split-payment',
+      props: {
+        totalAmount: totVal,
+        onBack: () =>
+          openPaymentMethodStep(
+            method,
+            instType,
+            amountPaidVal,
+            cust,
+            itemsList,
+            totVal,
+          ),
+        onContinue: (newInstType: 'full' | 'part', newAmountPaid: number) => {
+          setCheckoutInstallmentType(newInstType)
+          setCheckoutAmountPaid(newAmountPaid)
+          openCustomerSelectStep(
+            method,
+            newInstType,
+            newAmountPaid,
+            cust,
+            itemsList,
+            totVal,
+          )
+        },
+      },
+    })
+  }
+
+  const openCustomerSelectStep = (
+    method = checkoutPaymentMethod,
+    instType = checkoutInstallmentType,
+    amountPaidVal = checkoutAmountPaid,
+    cust = checkoutCustomer,
+    itemsList = cartItems,
+    totVal = getTotal(),
+  ) => {
+    openDrawer({
+      type: 'customer-select',
+      props: {
+        onBack: () =>
+          openSplitPaymentStep(
+            method,
+            instType,
+            amountPaidVal,
+            cust,
+            itemsList,
+            totVal,
+          ),
+        onSelect: (newCust: any) => {
+          setCheckoutCustomer(newCust)
+          openCheckoutSaleDrawer(
+            method,
+            instType,
+            amountPaidVal,
+            newCust,
+            itemsList,
+            totVal,
+          )
+        },
+      },
+    })
+  }
+
+  const openCheckoutSaleDrawer = (
+    method = checkoutPaymentMethod,
+    instType = checkoutInstallmentType,
+    amountPaidVal = checkoutAmountPaid,
+    cust = checkoutCustomer,
+    itemsList = cartItems,
+    totVal = getTotal(),
+    dueDateVal = checkoutDueDate,
+  ) => {
+    openDrawer({
+      type: 'checkout-sale',
+      props: {
+        cartItems: itemsList,
+        onClear: () => {
+          clearCart()
+          closeDrawer()
+        },
+        onUpdateQty: updateCartQtyAndSyncDrawer,
+        paymentMethod: method,
+        installmentType: instType,
+        amountPaid: amountPaidVal,
+        customer: cust,
+        totalAmount: totVal,
+        dueDate: dueDateVal,
+        onEditDueDate: (newDueDate: string) => {
+          setCheckoutDueDate(newDueDate)
+          openCheckoutSaleDrawer(
+            method,
+            instType,
+            amountPaidVal,
+            cust,
+            itemsList,
+            totVal,
+            newDueDate,
+          )
+        },
+        onEditPaymentMethod: () => {
+          openDrawer({
+            type: 'payment-method',
+            props: {
+              onSubmit: (newMethod: string) => {
+                setCheckoutPaymentMethod(newMethod)
+                openCheckoutSaleDrawer(
+                  newMethod,
+                  instType,
+                  amountPaidVal,
+                  cust,
+                  itemsList,
+                  totVal,
+                  dueDateVal,
+                )
+              },
+            },
+          })
+        },
+        onEditInstallment: () => {
+          openDrawer({
+            type: 'split-payment',
+            props: {
+              totalAmount: totVal,
+              onBack: () =>
+                openCheckoutSaleDrawer(
+                  method,
+                  instType,
+                  amountPaidVal,
+                  cust,
+                  itemsList,
+                  totVal,
+                  dueDateVal,
+                ),
+              onContinue: (
+                newInstType: 'full' | 'part',
+                newAmountPaid: number,
+              ) => {
+                setCheckoutInstallmentType(newInstType)
+                setCheckoutAmountPaid(newAmountPaid)
+                const finalDueDate = newInstType === 'full' ? '' : dueDateVal
+                if (newInstType === 'full') {
+                  setCheckoutDueDate('')
+                }
+                openCheckoutSaleDrawer(
+                  method,
+                  newInstType,
+                  newAmountPaid,
+                  cust,
+                  itemsList,
+                  totVal,
+                  finalDueDate,
+                )
+              },
+            },
+          })
+        },
+        onEditCustomer: () => {
+          openDrawer({
+            type: 'customer-select',
+            props: {
+              onBack: () =>
+                openCheckoutSaleDrawer(
+                  method,
+                  instType,
+                  amountPaidVal,
+                  cust,
+                  itemsList,
+                  totVal,
+                  dueDateVal,
+                ),
+              onSelect: (newCust: any) => {
+                setCheckoutCustomer(newCust)
+                openCheckoutSaleDrawer(
+                  method,
+                  instType,
+                  amountPaidVal,
+                  newCust,
+                  itemsList,
+                  totVal,
+                  dueDateVal,
+                )
+              },
+            },
+          })
+        },
+        onConfirmRecord: () => {
+          submitConfirmedSale(method, instType, amountPaidVal, cust, dueDateVal)
+        },
+      },
+    })
+  }
+
+  const handleRecordTapped = () => {
+    const updatedCart = autoConvertKeypadToCartItem() || cartItems
+    const subtotal = updatedCart.reduce(
+      (acc, curr) => acc + curr.price * curr.quantity,
+      0,
+    )
+    const vat = Math.round(subtotal * 0.075)
+    const totVal = subtotal + vat
+
+    setCheckoutAmountPaid(totVal)
+    openPaymentMethodStep(
+      checkoutPaymentMethod,
+      checkoutInstallmentType,
+      totVal,
+      checkoutCustomer,
+      updatedCart,
+      totVal,
     )
   }
 
-  const keypadRows = [
-    ['1', '2', '3'],
-    ['4', '5', '6'],
-    ['7', '8', '9'],
-    ['.', '0', 'backspace'],
-  ]
+  const handleCollectTapped = () => {
+    const updatedCart = autoConvertKeypadToCartItem() || cartItems
+    const subtotal = updatedCart.reduce(
+      (acc, curr) => acc + curr.price * curr.quantity,
+      0,
+    )
+    const vat = Math.round(subtotal * 0.075)
+    const totalVal = subtotal + vat
+
+    const payload = {
+      merchantId: profile?.id || '',
+      amount: totalVal,
+      description: updatedCart
+        .map((i) => `${i.name} x${i.quantity}`)
+        .join(', '),
+      isPaidInFull: true,
+      amountPaid: 0,
+      totalDue: totalVal,
+      balanceOwed: totalVal,
+      items: updatedCart.map((item) => ({
+        productId: item.id.startsWith('custom')
+          ? undefined
+          : item.id.split('-')[0],
+        productName: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        selectedVariant: item.selectedVariant,
+      })),
+    }
+
+    collectSaleMutation.mutate(payload, {
+      onSuccess: (data) => {
+        openDrawer({
+          type: 'collect-payment',
+          props: {
+            sale: data,
+            onRecordConfirm: (recordedSale: any) => {
+              openDrawer({
+                type: 'record-success',
+                props: {
+                  successDetails: recordedSale,
+                  status: 'success',
+                  setStep,
+                  setAmount,
+                  setDescription,
+                },
+              })
+              clearCart()
+            },
+          },
+        })
+      },
+      onError: (error: any) => {
+        alert(
+          error?.response?.data?.message ||
+            'Failed to initiate collect payment.',
+        )
+      },
+    })
+  }
 
   const formatDisplayAmount = (val: string) => {
     if (!val) return '0'
@@ -166,24 +716,46 @@ function RecordSaleContent() {
     return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt
   }
 
-  const isRecording =
-    amount.length > 0 && amount !== '0' && amount !== '0.' && amount !== '.'
-  const displayAmount = formatDisplayAmount(amount)
+  const showNotificationToast = ({ message }: { message: string }) => {
+    alert(message)
+  }
 
   return (
-    <div className="h-dvh bg-white flex flex-col items-center">
-      <div className="relative w-full max-w-125 bg-white h-dvh flex flex-col font-satoshi shadow-sm">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center px-4 py-1.5">
+    <div className="h-dvh bg-[#F4F6F8] flex flex-col items-center overflow-hidden">
+      <div className="relative w-full max-w-125 bg-white h-full flex flex-col font-satoshi shadow-sm">
+        {/* Top Header */}
+        <div className="flex justify-between items-center px-4 py-2">
           <button
             onClick={() => router.back()}
             className="p-2 -ml-2 hover:bg-gray-50 rounded-full transition-colors text-black shrink-0"
           >
             <ArrowLeft className="w-6 h-6 stroke-[2.5px]" />
           </button>
-          <h1 className="text-[17px] font-bold text-black flex-1 text-center shrink-0">
-            Enter amount received
-          </h1>
+
+          {/* Tab switch replacing 'Enter amount' title */}
+          <div className="flex bg-[#F4F6F8] rounded-full p-[3px] select-none flex-1 max-w-[178px] mx-3">
+            <button
+              onClick={() => setActiveTab('amount')}
+              className={`flex-1 text-center py-2 w-fit text-[10px] tracking-[1px] font-bold rounded-full transition-all duration-200 ${
+                activeTab === 'amount'
+                  ? 'bg-white text-black shadow-[0px_4px_8px_0px_#0000000A] font-bold'
+                  : 'text-black font-medium'
+              }`}
+            >
+              AMOUNT
+            </button>
+            <button
+              onClick={() => setActiveTab('items')}
+              className={`flex-1 text-center py-2 w-fit text-[10px] tracking-[1px] font-bold rounded-full transition-all duration-200 ${
+                activeTab === 'items'
+                  ? 'bg-white text-black shadow-[0px_4px_8px_0px_#0000000A] font-bold'
+                  : 'text-black font-medium'
+              }`}
+            >
+              ITEMS
+            </button>
+          </div>
+
           <Link href="/recents" className="p-2 -mr-2 rounded-full shrink-0">
             <Image
               src="/icons/history.svg"
@@ -194,96 +766,112 @@ function RecordSaleContent() {
           </Link>
         </div>
 
-        {/* Dynamic Amount Display */}
-        <div className="flex-1 flex flex-col justify-center items-center px-4">
-          <div className="flex items-center justify-center leading-none">
-            <span className="text-[62px] font-medium text-black font-sofia-pro -tracking-[4px] leading-none mr-1">
-              ₦
-            </span>
-            {amount === '' && (
-              <div className="w-[2px] h-[52px] bg-[#0085FF] mx-1 rounded-full shrink-0" />
-            )}
-            <span
-              className={`text-[62px] font-medium -tracking-[4px] font-sofia-pro leading-none ${amount === '' ? 'text-[#9CA3AF]' : 'text-black'}`}
-            >
-              {displayAmount}
-            </span>
-            {amount !== '' && (
-              <div className="w-[2px] h-[52px] bg-[#0085FF] mx-1 rounded-full animate-caret-blink shrink-0" />
-            )}
-          </div>
-        </div>
+        {/* AMOUNT TAB */}
+        {activeTab === 'amount' && (
+          <AmountTab
+            amount={amount}
+            description={description}
+            setDescription={setDescription}
+            formatDisplayAmount={formatDisplayAmount}
+            addCustomAmountToCart={addCustomAmountToCart}
+            handleKeyPress={handleKeyPress}
+          />
+        )}
 
-        {/* Input and Keypad Container */}
-        <div className="w-full flex flex-col pb-3">
-          <div className="px-3 mb-3 w-full mx-auto">
-            {isEditMode && (
-              <div className="flex bg-[#FFF9E6] p-3 rounded-xl gap-2 items-start border border-[#FDE68A] mb-3">
-                <CircleAlert size={18} className="text-[#D97706] mt-0.5 shrink-0" />
-                <p className="text-xs text-[#92400E] font-medium leading-tight">
-                  A recorded sale can only be edited once. Edits must be made within 24 hours of creation.
-                </p>
-              </div>
-            )}
-            <div className="relative flex items-center justify-center w-full border border-[#E9EBED] rounded-[10px] px-4 py-3.5 focus-within:border-gray-400 transition-colors overflow-hidden">
-              {description === '' && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <PencilLine size={16} color="#9CA3AF" className="mr-1.5" />
-                  <span className="text-[15px] font-medium text-[#9CA3AF]">
-                    What's this payment for?
-                  </span>
-                </div>
-              )}
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full text-center text-[15px] font-medium text-black focus:outline-none bg-transparent relative z-10"
-              />
+        {/* ITEMS TAB */}
+        {activeTab === 'items' && (
+          <ItemsTab
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            activeCategory={activeCategory}
+            setActiveCategory={setActiveCategory}
+            products={products}
+            getProductCartQuantity={getProductCartQuantity}
+            handleProductAddTapped={handleProductAddTapped}
+            getGroupedProducts={getGroupedProducts}
+            openDrawer={openDrawer}
+          />
+        )}
+
+        {/* BOTTOM ACTIVE BAR */}
+        {true && (
+          <div className="absolute bottom-0 left-0 right-0 bg-white border-t border-[#F4F6F8] px-4 py-3 shadow-[0px_-2px_10px_rgba(0,0,0,0.03)] z-20 flex justify-between items-center h-20">
+            {/* Left Column: Selection text */}
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-bold text-black">
+                {cartItems.length === 1
+                  ? '1 item selected'
+                  : `${cartItems.length} items selected`}
+              </span>
+              <button
+                onClick={() => openCheckoutSaleDrawer()}
+                className="text-[13px] font-medium flex items-center gap-0.5"
+              >
+                <span className="text-[#9CA3AF] leading-none">
+                  View selection
+                </span>
+                <ChevronRight className="text-black mt-[2.5%]" size={12} />
+              </button>
+            </div>
+
+            {/* Right Column: Buttons */}
+            <div className="flex gap-2">
+              {/* Record Button */}
+              <button
+                disabled={
+                  !(
+                    (activeTab === 'amount' &&
+                      amount &&
+                      amount !== '0' &&
+                      amount !== '.' &&
+                      amount !== '0.') ||
+                    cartItems.length > 0
+                  )
+                }
+                onClick={handleRecordTapped}
+                className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 ${
+                  (activeTab === 'amount' &&
+                    amount &&
+                    amount !== '0' &&
+                    amount !== '.' &&
+                    amount !== '0.') ||
+                  cartItems.length > 0
+                    ? 'bg-[#F4F6F8] text-black border border-[#E9EBED] hover:bg-gray-100 active:bg-gray-250'
+                    : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
+                }`}
+              >
+                Record
+              </button>
+
+              {/* Collect Button */}
+              <button
+                disabled={
+                  !(
+                    (activeTab === 'amount' &&
+                      amount &&
+                      amount !== '0' &&
+                      amount !== '.' &&
+                      amount !== '0.') ||
+                    cartItems.length > 0
+                  )
+                }
+                onClick={handleCollectTapped}
+                className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 ${
+                  (activeTab === 'amount' &&
+                    amount &&
+                    amount !== '0' &&
+                    amount !== '.' &&
+                    amount !== '0.') ||
+                  cartItems.length > 0
+                    ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
+                    : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
+                }`}
+              >
+                Collect
+              </button>
             </div>
           </div>
-
-          <div className="w-full border-t border-[#F4F6F8]">
-            {keypadRows.map((row, i) => (
-              <div key={i} className="flex border-b border-[#F4F6F8] h-[72px]">
-                {row.map((key, j) => (
-                  <button
-                    key={key}
-                    onClick={() => handleKeyPress(key)}
-                    className={`flex-1 flex items-center justify-center transition-colors active:bg-gray-50 flex-col
-                      ${j === 1 ? 'border-x border-[#F4F6F8]' : ''}
-                    `}
-                  >
-                    {key === 'backspace' ? (
-                      <Delete
-                        className="w-6 h-6 text-black"
-                        strokeWidth={2.5}
-                      />
-                    ) : (
-                      <span className="text-[28px] font-medium text-black">
-                        {key}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          <div className="w-full p-3 pb-0 bg-white shrink-0">
-            <Button
-              onClick={handleRecordSaleClick}
-              disabled={!isRecording || isLoadingSale}
-              className={`w-full h-14 rounded-full font-bold text-base transition-colors ${
-                isRecording
-                  ? 'bg-black text-white hover:bg-black/90 active:scale-[0.98]'
-                  : 'bg-[#F4F6F8] text-[#9CA3AF] hover:bg-[#F4F6F8]'
-              }`}
-            >
-              {isLoadingSale ? 'Loading details...' : isEditMode ? 'Save changes' : 'Record sale'}
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   )

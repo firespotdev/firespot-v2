@@ -25,8 +25,14 @@ import { PaymentMethodDrawer } from './payment-method-drawer'
 import { RecordSuccessDrawer } from './record-success-drawer'
 import { ObtainKitDrawer } from './obtain-kit-drawer'
 import { CheckoutDrawer } from './checkout-drawer'
+import { CurrentSaleDrawer } from './current-sale-drawer'
 import { TransactionDetailsDrawer } from './transaction-details-drawer'
 import { ConfirmCancelDrawer } from './confirm-cancel-drawer'
+import { VariantSelectorDrawer } from './variant-selector-drawer'
+import { SplitPaymentDrawer } from './split-payment-drawer'
+import { CustomerSelectDrawer } from './customer-select-drawer'
+import { CollectPaymentDrawer } from './collect-drawer'
+import { CustomerCheckoutDrawer } from './customer-checkout-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -98,6 +104,8 @@ const DRAWER_CONFIG: Record<
     Content: RecordSuccessDrawer,
     noHeader: true,
     fullScreen: true,
+    direction: 'right',
+    hideHandle: true,
   },
   'obtain-kit': {
     title: '',
@@ -120,9 +128,45 @@ const DRAWER_CONFIG: Record<
     noHeader: true,
     direction: 'bottom',
   },
+  'checkout-sale': {
+    title: '',
+    Content: CurrentSaleDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
   'confirm-cancel': {
     title: '',
     Content: ConfirmCancelDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'variant-selector': {
+    title: '',
+    Content: VariantSelectorDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'split-payment': {
+    title: '',
+    Content: SplitPaymentDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'customer-select': {
+    title: '',
+    Content: CustomerSelectDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'collect-payment': {
+    title: '',
+    Content: CollectPaymentDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'customer-checkout': {
+    title: '',
+    Content: CustomerCheckoutDrawer,
     noHeader: true,
     direction: 'bottom',
   },
@@ -238,7 +282,17 @@ export function CustomDrawer() {
     >
       <DrawerContent
         hideHandle={hideHandle}
-        className={`${config.type === 'bank-transfer' || config.type === 'checkout' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80vh]`}
+        className={`${
+          [
+            'bank-transfer',
+            'checkout',
+            'checkout-sale',
+            'collect-payment',
+            'variant-selector',
+          ].includes(config.type)
+            ? 'bg-white'
+            : 'bg-[#f4f6f8]'
+        } max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80vh]`}
       >
         {noHeader ? (
           <>

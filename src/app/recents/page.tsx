@@ -36,7 +36,7 @@ export default function RecentsPage() {
               message: 'Sale cancelled',
             })
           } catch (error) {
-            throw error 
+            throw error
           }
         },
       },
@@ -99,7 +99,6 @@ export default function RecentsPage() {
             pendingData.data.map((sale: Sale, index: number) => {
               const roundingClass = cn(
                 index === 0 && 'rounded-t-xl',
-                index === pendingData.data.length - 1 && 'rounded-b-xl',
                 pendingData.data.length === 1 && 'rounded-xl',
               )
 
@@ -126,7 +125,7 @@ export default function RecentsPage() {
           )}
           <Link
             href="/history?status=PENDING"
-            className="text-[#6B7280] text-[14px] font-medium w-full text-center py-3 hover:text-black transition-colors block border-t border-[#F1F1F1]"
+            className="text-[#6B7280] text-[14px] font-medium w-full text-center py-3 hover:text-black transition-colors block"
           >
             View all pending records
           </Link>
@@ -142,11 +141,7 @@ export default function RecentsPage() {
         <div className="bg-white rounded-xl mb-4 overflow-hidden border border-[#F1F1F1]">
           {confirmedData?.data && confirmedData.data.length > 0 ? (
             confirmedData.data.map((sale: Sale) => (
-              <SaleItem 
-                key={sale._id}
-                sale={sale}
-                onClick={() => {}}
-              />
+              <SaleItem key={sale._id} sale={sale} onClick={() => {}} />
             ))
           ) : (
             <div className="p-8 text-center text-[#6B7280] text-sm font-medium">

@@ -261,7 +261,7 @@ export default function ProfilePage() {
               asChild
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
             >
-              <Link href="/record-sale">Record a sale</Link>
+              <Link href="/record-sale">New Sale</Link>
             </Button>
 
             {/* {(salesStats?.pendingSalesCount ?? 0) > 0 && (

@@ -73,3 +73,32 @@ export const useEditSale = () => {
     },
   });
 };
+
+export const useCreatePendingCollectSale = () => {
+  return useMutation({
+    mutationFn: (payload: CreatePendingSalePayload) => SalesApi.createPendingCollectSale(payload),
+  });
+};
+
+export const useArchiveSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.archiveSale(saleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useUploadReceipt = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ saleId, file }: { saleId: string; file: File }) =>
+      SalesApi.uploadReceipt(saleId, file),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};

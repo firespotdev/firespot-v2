@@ -27,6 +27,14 @@ export const authApi = {
     return response.data
   },
 
+  customerSignup: async (payload: { phoneNumber: string; phoneCountryCode: string }): Promise<SignupResponse> => {
+    const response = await apiClient.post<SignupResponse>(
+      '/auth/customer/signup',
+      payload,
+    )
+    return response.data
+  },
+
   verifyOtp: async (payload: VerifyOtpPayload): Promise<VerifyOtpResponse> => {
     const response = await apiClient.post<VerifyOtpResponse>(
       '/auth/verify-otp',
@@ -46,6 +54,12 @@ export function useLogin() {
 export function useSignup() {
   return useMutation({
     mutationFn: authApi.signup,
+  })
+}
+
+export function useCustomerSignup() {
+  return useMutation({
+    mutationFn: authApi.customerSignup,
   })
 }
 

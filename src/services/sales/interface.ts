@@ -5,7 +5,7 @@ export type PaymentMethod = 'Bank Transfer' | 'Cash' | 'POS' | 'Other';
 
 export interface Sale {
   _id: string;
-  merchantId: string;
+  merchantId: any;
   customerFingerprint?: string;
   customerType?: CustomerType;
   source?: SaleSource;
