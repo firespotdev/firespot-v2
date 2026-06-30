@@ -1,5 +1,6 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SalesService } from './sales.service';
 import { CreatePendingSaleDto } from './dto/create-pending-sale.dto';
 import { RecordSaleDto } from './dto/record-sale.dto';
@@ -22,6 +23,17 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create a dynamic pending collect sale' })
+  @Post('collect')
+  async createPendingCollectSale(
+    @GetUser() user: User,
+    @Body() dto: CreatePendingSaleDto,
+  ) {
+    return this.salesService.createPendingCollectSale((user as any).userId, dto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Create a manual confirmed sale' })
   @Post()
   async createManualSale(
@@ -37,6 +49,14 @@ export class SalesController {
   @Get()
   async getSales(@GetUser() user: User, @Query() query: SalesQueryDto) {
     return this.salesService.getSales((user as any).userId, query);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get customer payment history' })
+  @Get('customer/history')
+  async getCustomerHistory(@GetUser() user: User) {
+    return this.salesService.getCustomerSalesHistory(user.phoneNumber);
   }
 
   @ApiBearerAuth('JWT-auth')
@@ -81,6 +101,17 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Archive a sale' })
+  @Patch(':id/archive')
+  async archiveSale(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+  ) {
+    return this.salesService.archiveSale((user as any).userId, saleId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Cancel a pending sale' })
   @Patch(':id/cancel')
   async cancelSale(
@@ -88,6 +119,16 @@ export class SalesController {
     @Param('id') saleId: string,
   ) {
     return this.salesService.cancelSale((user as any).userId, saleId);
+  }
+
+  @ApiOperation({ summary: 'Upload customer payment receipt screenshot' })
+  @Post(':id/receipt')
+  @UseInterceptors(FileInterceptor('receipt'))
+  async uploadReceipt(
+    @Param('id') saleId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.salesService.uploadReceipt(saleId, file.buffer);
   }
 }
 

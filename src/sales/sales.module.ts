@@ -8,15 +8,22 @@ import { QRKit, QRKitSchema } from '../schemas/qrkit.schema';
 import { EventsModule } from '../events/events.module';
 import { FirebaseModule } from '../services/firebase/firebase.module';
 
+import { Customer, CustomerSchema } from '../schemas/customer.schema';
+import { Product, ProductSchema } from '../schemas/product.schema';
+import { UsersModule } from '../users/users.module';
+
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Sale.name, schema: SaleSchema },
       { name: User.name, schema: UserSchema },
       { name: QRKit.name, schema: QRKitSchema },
+      { name: Customer.name, schema: CustomerSchema },
+      { name: Product.name, schema: ProductSchema },
     ]),
     EventsModule,
     FirebaseModule,
+    UsersModule,
   ],
   controllers: [SalesController],
   providers: [SalesService]

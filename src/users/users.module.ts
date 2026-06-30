@@ -20,6 +20,6 @@ import { AuthModule } from "../auth/auth.module";
   ],
   controllers: [UsersController],
   providers: [UsersService, PaystackService, CloudinaryService],
-  exports: [UsersService, PaystackService],
+  exports: [UsersService, PaystackService, CloudinaryService],
 })
 export class UsersModule {}

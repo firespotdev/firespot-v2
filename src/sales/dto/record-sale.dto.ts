@@ -17,4 +17,30 @@ export class RecordSaleDto {
   @IsOptional()
   @IsString()
   targetBankName?: string;
+
+  @IsOptional()
+  isPaidInFull?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  amountPaid?: number;
+
+  @IsOptional()
+  @IsNumber()
+  totalDue?: number;
+
+  @IsOptional()
+  @IsNumber()
+  balanceOwed?: number;
+
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  items?: any[];
+
+  @IsOptional()
+  @IsString()
+  dueDate?: string;
 }

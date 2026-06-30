@@ -15,6 +15,8 @@ import { RecordSaleDto } from './dto/record-sale.dto'
 import { EditSaleDto } from './dto/edit-sale.dto'
 import { SalesQueryDto } from './dto/sales-query.dto'
 import { nanoid } from 'nanoid'
+import { Customer, CustomerDocument } from '../schemas/customer.schema'
+import { CloudinaryService } from '../users/services/cloudinary.service'
 
 @Injectable()
 export class SalesService {
@@ -22,8 +24,10 @@ export class SalesService {
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
+    @InjectModel(Customer.name) private customerModel: Model<CustomerDocument>,
     private eventsGateway: EventsGateway,
     private firebaseService: FirebaseService,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
@@ -68,11 +72,14 @@ export class SalesService {
 
     // Send Firebase push notification
     try {
-      const merchant = await this.userModel.findById(dto.merchantId).select('fcmTokens businessName').exec();
+      const merchant = await this.userModel
+        .findById(dto.merchantId)
+        .select('fcmTokens businessName')
+        .exec()
       if (merchant?.fcmTokens?.length) {
-        const title = 'New Pending Sale 💰';
-        const body = `You have a new pending sale ${sale.amount ? `of ₦${sale.amount.toLocaleString()}` : ''} at ${sale.qrKitName || 'your terminal'}.`;
-        
+        const title = 'New Pending Sale 💰'
+        const body = `You have a new pending sale ${sale.amount ? `of ₦${sale.amount.toLocaleString()}` : ''} at ${sale.qrKitName || 'your terminal'}.`
+
         await this.firebaseService.sendPushNotification(
           merchant.fcmTokens,
           title,
@@ -82,13 +89,52 @@ export class SalesService {
             type: 'sale.pending',
             click_action: '/history', // Link to history page or relevant drawer
           },
-        );
+        )
       }
     } catch (error) {
       // Don't fail the request if notification fails
-      console.error('Failed to send push notification:', error);
+      console.error('Failed to send push notification:', error)
     }
 
+    return sale
+  }
+
+  //RANDOM REF?
+  async createPendingCollectSale(
+    merchantId: string,
+    dto: CreatePendingSaleDto,
+  ): Promise<Sale> {
+    const firstKit = await this.qrKitModel
+      .findOne({
+        merchantId: new Types.ObjectId(merchantId),
+        activationStatus: 'activated',
+      })
+      .sort({ createdAt: 1 })
+      .exec()
+
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const sale = new this.saleModel({
+      ...dto,
+      merchantId: merchantObjectId,
+      status: 'PENDING',
+      source: 'QR scan',
+      reference: `FS-${nanoid(8).toUpperCase()}`,
+      serialNumber: firstKit?.serialNumber,
+      qrKitName: firstKit?.name || firstKit?.serialNumber,
+      isPaidInFull: dto.isPaidInFull,
+      amountPaid: dto.amountPaid,
+      totalDue: dto.totalDue,
+      balanceOwed: dto.balanceOwed,
+      customerId: dto.customerId
+        ? new Types.ObjectId(dto.customerId)
+        : undefined,
+      items: dto.items || [],
+    })
+
+    await sale.save()
+
+    // Emit event to merchant room
+    this.eventsGateway.server.to(merchantId).emit('sale.pending', sale)
     return sale
   }
 
@@ -136,6 +182,15 @@ export class SalesService {
       reference: `FS-${nanoid(8).toUpperCase()}`,
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
+      isPaidInFull: dto.isPaidInFull,
+      amountPaid: dto.amountPaid,
+      totalDue: dto.totalDue,
+      balanceOwed: dto.balanceOwed,
+      customerId: dto.customerId
+        ? new Types.ObjectId(dto.customerId)
+        : undefined,
+      items: dto.items || [],
+      dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
     })
 
     return sale.save()
@@ -266,15 +321,18 @@ export class SalesService {
     // For filtered stats
     const dateRange = this.calculateDateRange(query || {})
 
-    const filter: Record<string, any> = { merchantId: merchantObjectId, status: 'CONFIRMED' }
+    const filter: Record<string, any> = {
+      merchantId: merchantObjectId,
+      status: 'CONFIRMED',
+    }
     if (dateRange.startDate) {
       const end = dateRange.endDate || new Date()
       filter.$or = [
         { recordedAt: { $gte: dateRange.startDate, $lte: end } },
-        { 
-          recordedAt: { $exists: false }, 
-          createdAt: { $gte: dateRange.startDate, $lte: end } 
-        }
+        {
+          recordedAt: { $exists: false },
+          createdAt: { $gte: dateRange.startDate, $lte: end },
+        },
       ]
     }
 
@@ -301,7 +359,7 @@ export class SalesService {
       filteredConfirmed,
       preset,
       dateRange.startDate,
-      dateRange.endDate
+      dateRange.endDate,
     )
 
     const response: any = {
@@ -330,14 +388,16 @@ export class SalesService {
         .lean()
       previousStatsAmount = prevSales.reduce(
         (sum, sale) => sum + (sale.amount || 0),
-        0
+        0,
       )
 
       if (preset === 'today') previousPeriodLabel = 'yesterday'
       else if (preset === 'this_week') previousPeriodLabel = 'last week'
       else if (preset === 'last_7_days') previousPeriodLabel = 'previous 7 days'
-      else if (preset === 'last_30_days') previousPeriodLabel = 'previous 30 days'
-      else if (preset === 'last_90_days') previousPeriodLabel = 'previous 90 days'
+      else if (preset === 'last_30_days')
+        previousPeriodLabel = 'previous 30 days'
+      else if (preset === 'last_90_days')
+        previousPeriodLabel = 'previous 90 days'
       else if (preset === 'custom') previousPeriodLabel = 'previous period'
 
       let percentageChange = 0
@@ -345,7 +405,7 @@ export class SalesService {
         if (statsAmount > 0) percentageChange = 100
       } else {
         percentageChange = Math.round(
-          ((statsAmount - previousStatsAmount) / previousStatsAmount) * 100
+          ((statsAmount - previousStatsAmount) / previousStatsAmount) * 100,
         )
       }
 
@@ -358,7 +418,10 @@ export class SalesService {
 
   async recordSale(merchantId: string, saleId: string, dto: RecordSaleDto) {
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const sale = await this.saleModel.findOne({ _id: saleId, merchantId: merchantObjectId })
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      merchantId: merchantObjectId,
+    })
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
@@ -385,23 +448,35 @@ export class SalesService {
       }
     }
 
-    return sale.save()
+    const savedSale = await sale.save()
+    this.eventsGateway.server.to(sale.merchantId.toString()).emit('sale.confirmed', savedSale)
+    this.eventsGateway.server.to(`sale-${sale._id.toString()}`).emit('sale.confirmed', savedSale)
+    return savedSale
   }
 
   async cancelSale(merchantId: string, saleId: string) {
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const sale = await this.saleModel.findOne({ _id: saleId, merchantId: merchantObjectId })
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      merchantId: merchantObjectId,
+    })
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
 
     sale.status = 'CANCELLED'
-    return sale.save()
+    const savedSale = await sale.save()
+    this.eventsGateway.server.to(sale.merchantId.toString()).emit('sale.cancelled', savedSale)
+    this.eventsGateway.server.to(`sale-${sale._id.toString()}`).emit('sale.cancelled', savedSale)
+    return savedSale
   }
 
   async editSale(merchantId: string, saleId: string, dto: EditSaleDto) {
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const sale = await this.saleModel.findOne({ _id: saleId, merchantId: merchantObjectId })
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      merchantId: merchantObjectId,
+    })
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
@@ -438,11 +513,63 @@ export class SalesService {
     return sale.save()
   }
 
+  async archiveSale(merchantId: string, saleId: string): Promise<Sale> {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      merchantId: merchantObjectId,
+    })
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    sale.isArchived = true
+    return sale.save()
+  }
+
+  async uploadReceipt(saleId: string, fileBuffer: Buffer): Promise<Sale> {
+    const sale = await this.saleModel.findById(saleId)
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    const upload = await this.cloudinaryService.uploadImage(fileBuffer)
+    sale.receiptUrl = upload.url
+    sale.receiptPublicId = upload.publicId
+    const savedSale = await sale.save()
+
+    // Emit event to merchant room and sale room
+    this.eventsGateway.server.to(sale.merchantId.toString()).emit('receipt.uploaded', savedSale)
+    this.eventsGateway.server.to(`sale-${sale._id.toString()}`).emit('receipt.uploaded', savedSale)
+    return savedSale
+  }
+
+  async getCustomerSalesHistory(customerPhoneNumber: string): Promise<Sale[]> {
+    const cleanPhone = customerPhoneNumber.replace(/\D/g, "")
+    // Strip leading zero for Nigerian format if present
+    const phoneToFind = cleanPhone.startsWith("0") ? cleanPhone.substring(1) : cleanPhone;
+
+    const customers = await this.customerModel
+      .find({ phoneNumber: { $regex: phoneToFind } })
+      .select('_id')
+      .exec()
+    const customerIds = customers.map(c => c._id)
+
+    return this.saleModel
+      .find({
+        $or: [
+          { customerId: { $in: customerIds } },
+        ],
+        status: 'CONFIRMED',
+      })
+      .sort({ createdAt: -1 })
+      .populate('merchantId', 'businessName profilePhotoUrl')
+      .exec()
+  }
+
   private calculateTrendData(
     sales: any[],
     preset: string,
     startDate: Date | null,
-    endDate: Date | null
+    endDate: Date | null,
   ) {
     const now = new Date()
     const trend: { label: string; amount: number; count: number }[] = []

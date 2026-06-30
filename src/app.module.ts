@@ -17,6 +17,9 @@ import { SalesModule } from './sales/sales.module';
 import { QROrdersModule } from './qr-orders/qr-orders.module';
 import { EventsModule } from './events/events.module';
 import { FirebaseModule } from './services/firebase/firebase.module';
+import { CustomersModule } from './customers/customers.module';
+import { ProductsModule } from './products/products.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -42,6 +45,9 @@ import { FirebaseModule } from './services/firebase/firebase.module';
     QROrdersModule,
     EventsModule,
     FirebaseModule,
+    CustomersModule,
+    ProductsModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

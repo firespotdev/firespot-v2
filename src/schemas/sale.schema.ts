@@ -48,6 +48,57 @@ export class Sale extends Document {
   @Prop({ default: false })
   hasBeenEdited?: boolean;
 
+  @Prop({ default: false, index: true })
+  isArchived?: boolean;
+
+  @Prop()
+  isPaidInFull?: boolean;
+
+  @Prop()
+  amountPaid?: number;
+
+  @Prop()
+  totalDue?: number;
+
+  @Prop()
+  balanceOwed?: number;
+
+  @Prop({ type: Types.ObjectId, ref: "Customer", index: true })
+  customerId?: Types.ObjectId;
+
+  @Prop({
+    type: [{
+      productId: String,
+      productName: String,
+      price: Number,
+      quantity: Number,
+      selectedVariant: {
+        size: String,
+        color: String,
+      },
+    }],
+    default: [],
+  })
+  items?: Array<{
+    productId: string;
+    productName: string;
+    price: number;
+    quantity: number;
+    selectedVariant?: {
+      size?: string;
+      color?: string;
+    };
+  }>;
+
+  @Prop()
+  receiptUrl?: string;
+
+  @Prop()
+  receiptPublicId?: string;
+
+  @Prop()
+  dueDate?: Date;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

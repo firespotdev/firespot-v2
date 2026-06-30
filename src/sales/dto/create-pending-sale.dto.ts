@@ -23,4 +23,32 @@ export class CreatePendingSaleDto {
   @IsOptional()
   @IsString()
   serialNumber?: string;
+
+  @IsOptional()
+  amount?: number;
+
+  @IsOptional()
+  description?: string;
+
+  @IsOptional()
+  items?: any[];
+
+  @IsOptional()
+  isPaidInFull?: boolean;
+
+  @IsOptional()
+  amountPaid?: number;
+
+  @IsOptional()
+  totalDue?: number;
+
+  @IsOptional()
+  balanceOwed?: number;
+
+  @IsOptional()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  dueDate?: string;
 }

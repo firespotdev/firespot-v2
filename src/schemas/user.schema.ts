@@ -7,6 +7,9 @@ export class User extends Document {
   @Prop({ required: true, unique: true, index: true })
   phoneNumber: string;
 
+  @Prop({ required: true, enum: ["merchant", "customer"], default: "merchant", index: true })
+  role: string;
+
   @Prop({ required: true, default: "+234" })
   phoneCountryCode: string;
 

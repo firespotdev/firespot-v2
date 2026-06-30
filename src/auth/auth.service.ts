@@ -217,6 +217,60 @@ export class AuthService {
     };
   }
 
+  async customerSignup(phoneNumber: string, phoneCountryCode: string) {
+    const normalizedPhone = this.normalizePhoneNumber(
+      phoneNumber,
+      phoneCountryCode,
+    );
+
+    const existingUser = await this.userModel.findOne({
+      phoneNumber: normalizedPhone,
+    });
+    if (existingUser) {
+      throw new BadRequestException(
+        "User already exists. Please login instead.",
+      );
+    }
+
+    const fullPhoneNumber = `${phoneCountryCode}${normalizedPhone}`;
+    const termiiPhoneNumber = fullPhoneNumber.replace("+", "");
+
+    const otpExpiryMinutes = this.configService.get<number>(
+      "OTP_EXPIRY_MINUTES",
+      10,
+    );
+    const otpLength = this.configService.get<number>("OTP_LENGTH", 6);
+
+    const pinId = await this.smsService.sendOtp(
+      termiiPhoneNumber,
+      otpExpiryMinutes,
+      otpLength,
+      `Your Firespot OTP is {{pin}}. Valid for ${otpExpiryMinutes} minutes. Do not share this code with anyone.`,
+    );
+
+    const otpExpiresAt = new Date(Date.now() + otpExpiryMinutes * 60 * 1000);
+    const now = new Date();
+
+    const user = await this.userModel.create({
+      phoneNumber: normalizedPhone,
+      phoneCountryCode,
+      fullPhoneNumber,
+      role: "customer",
+      otpPinId: pinId,
+      otpExpiresAt,
+      otpRequestCount: 1,
+      otpRequestWindowStart: now,
+      lastOtpRequestAt: now,
+    });
+
+    return {
+      success: true,
+      message: "Account created successfully. OTP sent to your phone number.",
+      expiresIn: otpExpiryMinutes * 60,
+      cooldownSeconds: OTP_COOLDOWN_SECONDS,
+    };
+  }
+
   /**
    * Check rate limits and cooldown for OTP requests
    */
@@ -304,6 +358,7 @@ export class AuthService {
         phoneNumber: user.phoneNumber,
         fullPhoneNumber: user.fullPhoneNumber,
         businessName: user.businessName,
+        role: (user as any).role || "merchant",
       },
     };
   }

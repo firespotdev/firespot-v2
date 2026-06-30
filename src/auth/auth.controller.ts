@@ -56,6 +56,16 @@ export class AuthController {
     return this.authService.signup(signupDto);
   }
 
+  @Post("customer/signup")
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: "Customer Sign up",
+    description: "Creates a new customer account using only phone number and triggers Termii OTP validation.",
+  })
+  async customerSignup(@Body() dto: RequestOtpDto) {
+    return this.authService.customerSignup(dto.phoneNumber, dto.phoneCountryCode);
+  }
+
   @Post("login")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
