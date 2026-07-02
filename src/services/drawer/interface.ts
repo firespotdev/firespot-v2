@@ -20,6 +20,8 @@ export type DrawerContentType =
   | 'customer-select'
   | 'collect-payment'
   | 'customer-checkout'
+  | 'transaction-options'
+  | 'confirm-archive'
 
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
@@ -33,6 +35,8 @@ export interface DrawerConfig {
 export interface DrawerState {
   isOpen: boolean
   config: DrawerConfig | null
+  configs: DrawerConfig[]
   openDrawer: (config: DrawerConfig) => void
-  closeDrawer: () => void
+  closeDrawer: (type?: DrawerContentType | unknown) => void
+  closeAllDrawers?: () => void
 }

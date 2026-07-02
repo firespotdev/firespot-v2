@@ -19,6 +19,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { useDrawerStore } from '@/services/drawer'
+import { useUserQRKits } from '@/services/qr'
 import {
   type InsightsQuery,
   DATE_RANGE_LABELS,
@@ -27,6 +28,7 @@ import {
 import { Sale } from '@/services/sales/interface'
 import { SaleItem } from '@/components/sales/SaleItem'
 import { LoadingPage } from '@/components/layout/LoadingPage'
+import { LoaderCircle, TabSwitch } from '@/components/ui'
 
 const getMonthYearKey = (dateStr: string | Date) => {
   const date = new Date(dateStr)
@@ -40,13 +42,31 @@ function HistoryContent() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchParams = useSearchParams()
   const initialStatus = searchParams.get('status')
-  const [activeFilter, setActiveFilter] = useState<'ALL' | Sale['status']>(
-    (initialStatus as any) || 'ALL',
+
+  // Top tab switch state
+  const [activeTab, setActiveTab] = useState<'collected' | 'recorded'>(
+    'collected',
   )
+
+  // Filter dropdown states
+  const [selectedStatus, setSelectedStatus] = useState<string>(
+    initialStatus || 'ALL',
+  )
+  const [selectedMethod, setSelectedMethod] = useState<string>('ALL')
+  const [selectedQrKit, setSelectedQrKit] = useState<string>('ALL')
+  const [selectedLocation, setSelectedLocation] = useState<string>('ALL')
+
+  const [openDropdown, setOpenDropdown] = useState<
+    'status' | 'method' | 'qrKit' | 'location' | null
+  >(null)
   const [isAmountHidden, setIsAmountHidden] = useState(false)
   const [dateFilter, setDateFilter] = useState<InsightsQuery>({
     preset: 'today',
   })
+
+  // Fetch QR kits for the Qr kit dropdown options
+  const { data: qrKitsData } = useUserQRKits()
+  const qrKits = qrKitsData?.data || []
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -55,13 +75,24 @@ function HistoryContent() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
+  // Fetch sales and statistics with active tab (mode) and dropdown filters applied
   const { data: salesData, isLoading } = useSales({
-    status: activeFilter,
+    mode: activeTab,
+    status: selectedStatus,
+    paymentMethod: selectedMethod,
+    qrKitName: selectedQrKit,
+    location: selectedLocation,
     limit: '100',
     ...(debouncedSearch && { search: debouncedSearch }),
   })
-  const { data: salesStats, isLoading: isLoadingStats } =
-    useSalesStats(dateFilter)
+
+  const { data: salesStats, isLoading: isLoadingStats } = useSalesStats({
+    ...dateFilter,
+    mode: activeTab,
+    paymentMethod: selectedMethod,
+    qrKitName: selectedQrKit,
+    location: selectedLocation,
+  })
 
   const sales: Sale[] = salesData?.data ?? []
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
@@ -102,19 +133,76 @@ function HistoryContent() {
     })
   }
 
+  const filterCapsules = [
+    {
+      id: 'status' as const,
+      label: selectedStatus === 'ALL' ? 'STATUS' : selectedStatus,
+      isActive: selectedStatus !== 'ALL',
+      options: ['ALL', 'CONFIRMED', 'PENDING', 'CANCELLED'],
+      value: selectedStatus,
+      onChange: setSelectedStatus,
+    },
+    {
+      id: 'method' as const,
+      label: selectedMethod === 'ALL' ? 'METHOD' : selectedMethod,
+      isActive: selectedMethod !== 'ALL',
+      options: ['ALL', 'Bank Transfer', 'Cash', 'POS', 'Other'],
+      value: selectedMethod,
+      onChange: setSelectedMethod,
+    },
+    {
+      id: 'qrKit' as const,
+      label: selectedQrKit === 'ALL' ? 'QR KIT' : selectedQrKit,
+      isActive: selectedQrKit !== 'ALL',
+      options: ['ALL', ...qrKits.map((kit) => kit.name || kit.serialNumber)],
+      value: selectedQrKit,
+      onChange: setSelectedQrKit,
+    },
+    {
+      id: 'location' as const,
+      label: selectedLocation === 'ALL' ? 'LOCATION' : selectedLocation,
+      isActive: selectedLocation !== 'ALL',
+      options: ['ALL'],
+      value: selectedLocation,
+      onChange: setSelectedLocation,
+      disabled: true,
+    },
+  ]
+
   return (
-    <div className="h-dvh bg-[#F4F6F8] flex flex-col font-satoshi overflow-hidden">
-      <header className="shrink-0 bg-[#F4F6F8] flex items-center justify-between py-3 px-4">
+    <div className="h-dvh bg-[#F4F6F8] flex flex-col font-satoshi overflow-hidden relative">
+      {/* Click outside overlay to close dropdowns */}
+      {openDropdown && (
+        <div
+          className="fixed inset-0 z-10"
+          onClick={() => setOpenDropdown(null)}
+        />
+      )}
+
+      <header className="shrink-0 bg-[#F4F6F8] flex items-center justify-between py-3 px-4 z-20">
         <ArrowLeft
           onClick={() => router.back()}
           size={24}
           color="black"
           className="cursor-pointer"
         />
-        <h1 className="text-lg font-bold text-black">History</h1>
+
+        {/* Similar toggle tab to Record Sale page (COLLECTED / RECORDED) */}
+        <TabSwitch
+          value={activeTab}
+          onChange={setActiveTab}
+          options={[
+            { label: 'COLLECTED', value: 'collected' },
+            { label: 'RECORDED', value: 'recorded' },
+          ]}
+          bgClassName="bg-[#E6E8EB]"
+          maxW="max-w-[190px]"
+        />
+
         <Download size={24} color="black" />
       </header>
-      <div className="shrink-0 relative mb-4 px-4">
+
+      <div className="shrink-0 relative mb-4 px-4 z-20">
         <div className="absolute left-8 top-1/2 -translate-y-1/2">
           <Search size={16} color="#00000033" strokeWidth={2} />
         </div>
@@ -127,7 +215,7 @@ function HistoryContent() {
         />
       </div>
 
-      <main className="flex-1 flex flex-col overflow-hidden px-4">
+      <main className="flex-1 flex flex-col overflow-hidden px-4 z-20">
         <div className="shrink-0 border-2 border-[#0000000A] rounded-[12px] w-full mb-6">
           <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
             <div>
@@ -199,26 +287,62 @@ function HistoryContent() {
           </div>
         </div>
 
-        <div className="shrink-0 flex gap-2 overflow-x-auto mb-6 no-scrollbar -mx-1 px-1">
-          {['ALL', 'CONFIRMED', 'PENDING', 'CANCELLED'].map((f) => (
-            <button
-              key={f}
-              onClick={() => setActiveFilter(f as any)}
-              className={cn(
-                'px-4 py-2.5 rounded-full text-[10px] font-bold whitespace-nowrap w-fit',
-                activeFilter === f
-                  ? 'bg-black text-white'
-                  : 'bg-[#E5E7EB99] text-[#111827]',
-              )}
-            >
-              {f}
-            </button>
-          ))}
+        {/* Dropdown Filters capsule layout */}
+        <div className="shrink-0 flex gap-2 mb-6 -mx-1 px-1 relative z-20">
+          {filterCapsules.map((capsule) => {
+            const isOpen = openDropdown === capsule.id
+            return (
+              <div key={capsule.id} className="relative">
+                <button
+                  disabled={capsule.disabled}
+                  onClick={() => setOpenDropdown(isOpen ? null : capsule.id)}
+                  className={cn(
+                    'px-4 py-2.5 rounded-full text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-all',
+                    capsule.isActive || isOpen
+                      ? 'bg-black text-white'
+                      : 'bg-[#E5E7EB99] text-[#111827]',
+                    capsule.disabled && 'opacity-50 cursor-not-allowed',
+                  )}
+                >
+                  <span>{capsule.label}</span>
+                  <ChevronDown
+                    className={cn(
+                      'w-3 h-3 transition-transform duration-200',
+                      isOpen && 'rotate-180',
+                    )}
+                    strokeWidth={2.5}
+                  />
+                </button>
+
+                {isOpen && !capsule.disabled && (
+                  <div className="absolute left-0 mt-1.5 w-40 bg-white border border-[#E9EBED] rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.08)] py-1 z-30 animate-in fade-in slide-in-from-top-1 duration-150 max-h-48 overflow-y-auto no-scrollbar">
+                    {capsule.options.map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => {
+                          capsule.onChange(opt)
+                          setOpenDropdown(null)
+                        }}
+                        className={cn(
+                          'w-full text-left px-3 py-2 text-[11px] font-medium hover:bg-[#F4F6F8] transition-colors',
+                          capsule.value === opt
+                            ? 'text-black font-bold bg-[#F4F6F8]'
+                            : 'text-[#6B7280]',
+                        )}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center overflow-y-auto">
-            <LoadingPage innerBg="transparent" />
+            <LoadingPage />
           </div>
         ) : isEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center -mt-10 animate-in fade-in zoom-in duration-500 overflow-y-auto">
@@ -257,7 +381,7 @@ function HistoryContent() {
                     </h4>
                     <div className="bg-white rounded-2xl shadow-[0px_4px_12px_0px_#00000008] border border-[#F4F6F8] overflow-hidden divide-y divide-[#F1F1F1]">
                       {monthSales.map((sale) => (
-                        <SaleItem 
+                        <SaleItem
                           key={sale._id}
                           sale={sale}
                           onClick={() => handleRecordClick(sale)}
@@ -281,9 +405,7 @@ function HistoryContent() {
 
 export default function HistoryPage() {
   return (
-    <Suspense
-      fallback={<LoadingPage />}
-    >
+    <Suspense fallback={<LoadingPage />}>
       <HistoryContent />
     </Suspense>
   )

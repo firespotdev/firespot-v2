@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { TabSwitch } from '@/components/ui'
 import Image from 'next/image'
 import {
   useCreateManualSale,
@@ -96,6 +97,11 @@ function RecordSaleContent() {
       setCheckoutAmountPaid(getTotal())
     }
   }, [cartItems, amount, checkoutInstallmentType, activeTab])
+
+  // Reset prefill flag when changing sale ID to edit
+  useEffect(() => {
+    setHasPrefilled(false)
+  }, [editId])
 
   // Prefill in edit mode
   useEffect(() => {
@@ -338,6 +344,7 @@ function RecordSaleContent() {
         { saleId: editId, payload },
         {
           onSuccess: (data) => {
+            router.replace('/record-sale')
             openDrawer({
               type: 'record-success',
               props: {
@@ -733,28 +740,14 @@ function RecordSaleContent() {
           </button>
 
           {/* Tab switch replacing 'Enter amount' title */}
-          <div className="flex bg-[#F4F6F8] rounded-full p-[3px] select-none flex-1 max-w-[178px] mx-3">
-            <button
-              onClick={() => setActiveTab('amount')}
-              className={`flex-1 text-center py-2 w-fit text-[10px] tracking-[1px] font-bold rounded-full transition-all duration-200 ${
-                activeTab === 'amount'
-                  ? 'bg-white text-black shadow-[0px_4px_8px_0px_#0000000A] font-bold'
-                  : 'text-black font-medium'
-              }`}
-            >
-              AMOUNT
-            </button>
-            <button
-              onClick={() => setActiveTab('items')}
-              className={`flex-1 text-center py-2 w-fit text-[10px] tracking-[1px] font-bold rounded-full transition-all duration-200 ${
-                activeTab === 'items'
-                  ? 'bg-white text-black shadow-[0px_4px_8px_0px_#0000000A] font-bold'
-                  : 'text-black font-medium'
-              }`}
-            >
-              ITEMS
-            </button>
-          </div>
+          <TabSwitch
+            value={activeTab}
+            onChange={setActiveTab}
+            options={[
+              { label: 'AMOUNT', value: 'amount' },
+              { label: 'ITEMS', value: 'items' },
+            ]}
+          />
 
           <Link href="/recents" className="p-2 -mr-2 rounded-full shrink-0">
             <Image

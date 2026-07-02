@@ -55,7 +55,8 @@ export const useCancelSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (saleId: string) => SalesApi.cancelSale(saleId),
-    onSuccess: () => {
+    onSuccess: (data, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
     },
@@ -67,7 +68,8 @@ export const useEditSale = () => {
   return useMutation({
     mutationFn: ({ saleId, payload }: { saleId: string; payload: EditSalePayload }) =>
       SalesApi.editSale(saleId, payload),
-    onSuccess: () => {
+    onSuccess: (data, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
     },
@@ -84,7 +86,8 @@ export const useArchiveSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (saleId: string) => SalesApi.archiveSale(saleId),
-    onSuccess: () => {
+    onSuccess: (data, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
     },
