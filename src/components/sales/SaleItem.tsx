@@ -6,12 +6,8 @@ import { MerchantAvatar } from '@/components/layout/MerchantAvatar'
 import { Sale } from '@/services/sales/interface'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/constants'
-import {
-  getStatusColor,
-  getStatusLabel,
-  getAmountLabel,
-  getStatusDescription,
-} from '@/lib/utils/sales'
+import { getAmountLabel, getStatusDescription } from '@/lib/utils/sales'
+import { StatusBadge } from '@/components/ui'
 
 interface SaleItemProps {
   sale: Sale
@@ -85,14 +81,7 @@ export function SaleItem({
             <p className="text-[14px] font-bold text-[#111827] mb-0.5">
               {getAmountLabel(sale)}
             </p>
-            <span
-              className={cn(
-                'text-[11px] font-medium',
-                getStatusColor(sale.status),
-              )}
-            >
-              {getStatusLabel(sale)}
-            </span>
+            <StatusBadge status={sale.status} variant="text" />
           </div>
           <ChevronRight className="text-[#9CA3AF]" size={18} />
         </div>

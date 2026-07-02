@@ -8,7 +8,7 @@ import { SaleItem } from '@/components/sales/SaleItem'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Sale } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
-import { showNotificationToast } from '@/components/ui'
+import { showNotificationToast, StatBanner } from '@/components/ui'
 
 export default function RecentsPage() {
   const router = useRouter()
@@ -59,31 +59,13 @@ export default function RecentsPage() {
         Recent
       </h2>
 
-      <div className="border border-[#F4F6F8] px-4 py-4 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] w-full flex justify-between items-center mb-6 shrink-0">
-        <div className="w-full">
-          <div className="flex items-center gap-1 mb-2 justify-between w-full">
-            <span className="text-[#00000066] text-xs font-medium">
-              Total sales recorded today
-            </span>
-            <span
-              className={cn(
-                'text-xs font-bold',
-                (stats?.todaySalesAmount ?? 0) > 0
-                  ? 'text-[#24C166]'
-                  : 'text-[#00000066]',
-              )}
-            >
-              {(stats?.todaySalesAmount ?? 0) > 0 ? '+' : ''}NGN{' '}
-              {formatCurrency(stats?.todaySalesAmount ?? 0)}
-            </span>
-          </div>
-          <div className="flex items-end gap-1.5">
-            <h3 className="font-bold text-[22px] tracking-tight leading-none text-black">
-              ₦ {formatCurrency(stats?.todaySalesAmount ?? 0)}
-            </h3>
-          </div>
-        </div>
-      </div>
+      <StatBanner
+        label="Total sales recorded today"
+        amount={stats?.todaySalesAmount ?? 0}
+        badgeText={`${(stats?.todaySalesAmount ?? 0) > 0 ? '+' : ''}NGN ${formatCurrency(stats?.todaySalesAmount ?? 0)}`}
+        badgePositive={(stats?.todaySalesAmount ?? 0) > 0}
+        className="mb-6"
+      />
 
       {/* Pending Sales Section */}
       <div className="mt-6">

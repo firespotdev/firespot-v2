@@ -10,7 +10,7 @@ import {
   Archive,
   Check,
 } from 'lucide-react'
-import { Button, TagFooter } from '../ui'
+import { Button, TagFooter, StatusBadge, CircularIconButton } from '../ui'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
@@ -42,24 +42,22 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
     <div className="flex flex-col h-full font-satoshi bg-white">
       {/* Header */}
       <div className="shrink-0 p-3 text-black border-b border-[#f1f1f1] w-full text-center flex justify-between items-center bg-white">
-        <button
+        <CircularIconButton
+          icon="arrow-left"
+          size="sm"
           onClick={closeDrawer}
-          className="w-6 h-6 flex items-center justify-center rounded-full active:bg-gray-100 transition-colors"
-        >
-          <ArrowLeft size={24} />
-        </button>
+        />
         <h2 className="text-base font-bold">Transaction details</h2>
-        <button
+        <CircularIconButton
+          icon={<MoreVertical size={20} />}
+          size="sm"
           onClick={() => {
             openDrawer({
               type: 'transaction-options',
               props: { sale },
             })
           }}
-          className="w-6 h-6 flex items-center justify-center rounded-full active:bg-gray-100 transition-colors text-black"
-        >
-          <MoreVertical size={20} />
-        </button>
+        />
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -85,15 +83,9 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                 {isConfirmed ? '+ ' : ''}NGN {formatCurrency(sale.amount || 0)}
               </h3>
               {isArchived ? (
-                <span className="text-[10px] font-bold rounded-full bg-[#FF002E] text-white py-0.5 px-2 flex items-center gap-1">
-                  <Archive size={10} strokeWidth={2.5} />
-                  Archived
-                </span>
+                <StatusBadge status="ARCHIVED" />
               ) : sale.hasBeenEdited ? (
-                <span className="text-[10px] font-bold rounded-full bg-[#8E8E93] text-white py-0.5 px-2 flex items-center gap-1">
-                  <PencilLine size={10} strokeWidth={2.5} />
-                  Edited
-                </span>
+                <StatusBadge status="EDITED" />
               ) : null}
             </div>
             <p className="text-[14px] text-[#898A8D] font-medium">
