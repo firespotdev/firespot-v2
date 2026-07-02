@@ -118,6 +118,7 @@ export class SalesService {
       merchantId: merchantObjectId,
       status: 'PENDING',
       source: 'QR scan',
+      isCollection: true,
       reference: `FS-${nanoid(8).toUpperCase()}`,
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
@@ -204,6 +205,10 @@ export class SalesService {
       search,
       page = '1',
       limit = '10',
+      mode,
+      paymentMethod,
+      qrKitName,
+      location,
     } = query
     const skip = (Number(page) - 1) * Number(limit)
     const merchantObjectId = new Types.ObjectId(merchantId)
@@ -211,6 +216,24 @@ export class SalesService {
 
     if (status && status !== 'ALL') {
       filter.status = status
+    }
+
+    if (mode === 'recorded') {
+      filter.isCollection = { $ne: true }
+    } else if (mode === 'collected') {
+      filter.isCollection = true
+    }
+
+    if (paymentMethod && paymentMethod !== 'ALL') {
+      filter.paymentMethod = paymentMethod
+    }
+
+    if (qrKitName && qrKitName !== 'ALL') {
+      filter.qrKitName = qrKitName
+    }
+
+    if (location && location !== 'ALL') {
+      filter.location = location
     }
 
     if (search) {
@@ -313,10 +336,16 @@ export class SalesService {
 
   async getSalesStats(merchantId: string, query?: SalesQueryDto) {
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const pendingCount = await this.saleModel.countDocuments({
+    const pendingFilter: any = {
       merchantId: merchantObjectId,
       status: 'PENDING',
-    })
+    }
+    if (query?.mode === 'recorded') {
+      pendingFilter.isCollection = { $ne: true }
+    } else if (query?.mode === 'collected') {
+      pendingFilter.isCollection = true
+    }
+    const pendingCount = await this.saleModel.countDocuments(pendingFilter)
 
     // For filtered stats
     const dateRange = this.calculateDateRange(query || {})
@@ -325,6 +354,24 @@ export class SalesService {
       merchantId: merchantObjectId,
       status: 'CONFIRMED',
     }
+    if (query?.mode === 'recorded') {
+      filter.isCollection = { $ne: true }
+    } else if (query?.mode === 'collected') {
+      filter.isCollection = true
+    }
+
+    if (query?.paymentMethod && query.paymentMethod !== 'ALL') {
+      filter.paymentMethod = query.paymentMethod
+    }
+
+    if (query?.qrKitName && query.qrKitName !== 'ALL') {
+      filter.qrKitName = query.qrKitName
+    }
+
+    if (query?.location && query.location !== 'ALL') {
+      filter.location = query.location
+    }
+
     if (dateRange.startDate) {
       const end = dateRange.endDate || new Date()
       filter.$or = [
@@ -340,8 +387,18 @@ export class SalesService {
       .find(filter)
       .select('amount recordedAt createdAt')
       .lean()
+
+    const totalConfirmedFilter: any = {
+      merchantId: merchantObjectId,
+      status: 'CONFIRMED',
+    }
+    if (query?.mode === 'recorded') {
+      totalConfirmedFilter.isCollection = { $ne: true }
+    } else if (query?.mode === 'collected') {
+      totalConfirmedFilter.isCollection = true
+    }
     const totalConfirmed = await this.saleModel
-      .find({ merchantId: merchantObjectId, status: 'CONFIRMED' })
+      .find(totalConfirmedFilter)
       .select('amount')
       .lean()
 
@@ -449,8 +506,12 @@ export class SalesService {
     }
 
     const savedSale = await sale.save()
-    this.eventsGateway.server.to(sale.merchantId.toString()).emit('sale.confirmed', savedSale)
-    this.eventsGateway.server.to(`sale-${sale._id.toString()}`).emit('sale.confirmed', savedSale)
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .emit('sale.confirmed', savedSale)
+    this.eventsGateway.server
+      .to(`sale-${sale._id.toString()}`)
+      .emit('sale.confirmed', savedSale)
     return savedSale
   }
 
@@ -466,8 +527,12 @@ export class SalesService {
 
     sale.status = 'CANCELLED'
     const savedSale = await sale.save()
-    this.eventsGateway.server.to(sale.merchantId.toString()).emit('sale.cancelled', savedSale)
-    this.eventsGateway.server.to(`sale-${sale._id.toString()}`).emit('sale.cancelled', savedSale)
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .emit('sale.cancelled', savedSale)
+    this.eventsGateway.server
+      .to(`sale-${sale._id.toString()}`)
+      .emit('sale.cancelled', savedSale)
     return savedSale
   }
 
@@ -537,27 +602,31 @@ export class SalesService {
     const savedSale = await sale.save()
 
     // Emit event to merchant room and sale room
-    this.eventsGateway.server.to(sale.merchantId.toString()).emit('receipt.uploaded', savedSale)
-    this.eventsGateway.server.to(`sale-${sale._id.toString()}`).emit('receipt.uploaded', savedSale)
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .emit('receipt.uploaded', savedSale)
+    this.eventsGateway.server
+      .to(`sale-${sale._id.toString()}`)
+      .emit('receipt.uploaded', savedSale)
     return savedSale
   }
 
   async getCustomerSalesHistory(customerPhoneNumber: string): Promise<Sale[]> {
-    const cleanPhone = customerPhoneNumber.replace(/\D/g, "")
+    const cleanPhone = customerPhoneNumber.replace(/\D/g, '')
     // Strip leading zero for Nigerian format if present
-    const phoneToFind = cleanPhone.startsWith("0") ? cleanPhone.substring(1) : cleanPhone;
+    const phoneToFind = cleanPhone.startsWith('0')
+      ? cleanPhone.substring(1)
+      : cleanPhone
 
     const customers = await this.customerModel
       .find({ phoneNumber: { $regex: phoneToFind } })
       .select('_id')
       .exec()
-    const customerIds = customers.map(c => c._id)
+    const customerIds = customers.map((c) => c._id)
 
     return this.saleModel
       .find({
-        $or: [
-          { customerId: { $in: customerIds } },
-        ],
+        $or: [{ customerId: { $in: customerIds } }],
         status: 'CONFIRMED',
       })
       .sort({ createdAt: -1 })

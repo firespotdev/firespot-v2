@@ -28,5 +28,21 @@ export class SalesQueryDto {
   @IsOptional()
   @IsNumberString()
   limit?: string;
+
+  @IsOptional()
+  @IsString()
+  mode?: 'collected' | 'recorded';
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  qrKitName?: string;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
 }
 

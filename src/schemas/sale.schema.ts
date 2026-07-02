@@ -99,6 +99,12 @@ export class Sale extends Document {
   @Prop()
   dueDate?: Date;
 
+  @Prop({ default: false, index: true })
+  isCollection?: boolean;
+
+  @Prop()
+  location?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }
