@@ -2,7 +2,17 @@ import { IsOptional, IsEnum, IsString, IsNumberString } from 'class-validator';
 
 export class SalesQueryDto {
   @IsOptional()
-  @IsEnum(['ALL', 'PENDING', 'CONFIRMED', 'CANCELLED'])
+  @IsEnum([
+    'ALL',
+    'PENDING',
+    'CONFIRMED',
+    'CANCELLED',
+    'OUTSTANDING',
+    'OWING',
+    'UNCONFIRMED',
+    'PAID',
+    'ARCHIVED',
+  ])
   status?: string;
 
   @IsOptional()

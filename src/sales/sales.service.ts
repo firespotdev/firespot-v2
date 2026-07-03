@@ -219,7 +219,25 @@ export class SalesService {
     const filter: any = { merchantId: merchantObjectId }
 
     if (status && status !== 'ALL') {
-      filter.status = status
+      const upperStatus = status.toUpperCase()
+      if (upperStatus === 'PAID' || upperStatus === 'CONFIRMED') {
+        filter.status = 'CONFIRMED'
+      } else if (upperStatus === 'UNCONFIRMED' || upperStatus === 'PENDING') {
+        filter.status = 'PENDING'
+      } else if (upperStatus === 'ARCHIVED' || upperStatus === 'CANCELLED') {
+        filter.$or = [
+          { isArchived: true },
+          { status: 'CANCELLED' },
+          { status: 'ARCHIVED' },
+        ]
+      } else if (upperStatus === 'OWING' || upperStatus === 'OUTSTANDING') {
+        filter.$or = [
+          { status: 'OUTSTANDING' },
+          { balanceOwed: { $gt: 0 } },
+        ]
+      } else {
+        filter.status = status
+      }
     }
 
     if (mode === 'recorded') {
