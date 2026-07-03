@@ -106,7 +106,7 @@ export default function RecentsPage() {
             </div>
           )}
           <Link
-            href="/history?status=PENDING"
+            href="/history?status=UNCONFIRMED"
             className="text-[#6B7280] text-[14px] font-medium w-full text-center py-3 hover:text-black transition-colors block"
           >
             View all pending records
@@ -135,7 +135,7 @@ export default function RecentsPage() {
             </div>
           )}
           <Link
-            href="/history?status=CONFIRMED"
+            href="/history?status=PAID"
             className="text-[#6B7280] text-[14px] font-medium w-full text-center py-3 hover:text-black transition-colors block"
           >
             View all recorded sales
@@ -145,10 +145,10 @@ export default function RecentsPage() {
 
       <div className="mt-8 mb-6">
         <Link
-          href="/history?status=CANCELLED"
+          href="/history?status=ARCHIVED"
           className="bg-white text-[#6B7280] border border-[#F1F1F1] text-[13px] font-medium py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors text-center flex items-center justify-center"
         >
-          View cancelled attempts
+          View archived attempts
         </Link>
       </div>
     </div>

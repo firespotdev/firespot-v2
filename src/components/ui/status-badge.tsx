@@ -29,34 +29,52 @@ export function StatusBadge({
   const upperStatus = (status || '').toUpperCase()
 
   const config = {
-    CONFIRMED: {
-      label: 'Confirmed',
+    PAID: {
+      label: 'Paid',
       color: 'bg-[#24C166] text-white',
       textColor: 'text-[#24C166]',
       Icon: Check,
     },
-    PENDING: {
-      label: 'Pending',
+    CONFIRMED: {
+      label: 'Paid',
+      color: 'bg-[#24C166] text-white',
+      textColor: 'text-[#24C166]',
+      Icon: Check,
+    },
+    OWING: {
+      label: 'Owing',
       color: 'bg-[#FF9500] text-white',
       textColor: 'text-[#FF9500]',
       Icon: Clock,
     },
     OUTSTANDING: {
-      label: 'Outstanding',
+      label: 'Owing',
+      color: 'bg-[#FF9500] text-white',
+      textColor: 'text-[#FF9500]',
+      Icon: Clock,
+    },
+    UNCONFIRMED: {
+      label: 'Unconfirmed',
       color: 'bg-[#BB8123] text-white',
       textColor: 'text-[#BB8123]',
       Icon: Clock,
     },
-    CANCELLED: {
-      label: 'Cancelled',
-      color: 'bg-[#FF3B30] text-white',
-      textColor: 'text-[#FF3B30]',
-      Icon: X,
+    PENDING: {
+      label: 'Unconfirmed',
+      color: 'bg-[#BB8123] text-white',
+      textColor: 'text-[#BB8123]',
+      Icon: Clock,
     },
     ARCHIVED: {
       label: 'Archived',
-      color: 'bg-[#FF3B30] text-white',
-      textColor: 'text-[#FF3B30]',
+      color: 'bg-[#8E8E93] text-white',
+      textColor: 'text-[#8E8E93]',
+      Icon: Archive,
+    },
+    CANCELLED: {
+      label: 'Archived',
+      color: 'bg-[#8E8E93] text-white',
+      textColor: 'text-[#8E8E93]',
       Icon: Archive,
     },
     EDITED: {
@@ -65,7 +83,6 @@ export function StatusBadge({
       textColor: 'text-[#8E8E93]',
       Icon: PencilLine,
     },
-
   }[upperStatus] || {
     label: upperStatus || 'Unknown',
     color: 'bg-[#8E8E93] text-white',

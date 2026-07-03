@@ -26,6 +26,7 @@ import {
   type DateRangePreset,
 } from '@/services/insights'
 import { Sale } from '@/services/sales/interface'
+import { getMerchantStatus } from '@/lib/utils/sales'
 import { SaleItem } from '@/components/sales/SaleItem'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 import { LoaderCircle, TabSwitch } from '@/components/ui'
@@ -76,9 +77,15 @@ function HistoryContent() {
   }, [searchQuery])
 
   // Fetch sales and statistics with active tab (mode) and dropdown filters applied
+  const apiStatusParam = useMemo(() => {
+    if (selectedStatus === 'PAID') return 'CONFIRMED'
+    if (selectedStatus === 'UNCONFIRMED') return 'PENDING'
+    return selectedStatus
+  }, [selectedStatus])
+
   const { data: salesData, isLoading } = useSales({
     mode: activeTab,
-    status: selectedStatus,
+    status: apiStatusParam,
     paymentMethod: selectedMethod,
     qrKitName: selectedQrKit,
     location: selectedLocation,
@@ -97,22 +104,28 @@ function HistoryContent() {
   const sales: Sale[] = salesData?.data ?? []
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
 
-  // Group sales by month/year
+  // Group sales by month/year with merchant status filtering
   const groupedSales = useMemo(() => {
-    const filtered = searchQuery
-      ? sales.filter(
-          (s) =>
-            (s.description ?? '')
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            (s.paymentMethod ?? '')
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) ||
-            (s.customerType ?? '')
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()),
-        )
-      : sales
+    let filtered = sales
+    if (selectedStatus !== 'ALL') {
+      filtered = filtered.filter(
+        (s) => getMerchantStatus(s).toUpperCase() === selectedStatus,
+      )
+    }
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (s) =>
+          (s.description ?? '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          (s.paymentMethod ?? '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          (s.customerType ?? '')
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()),
+      )
+    }
 
     const groups: Record<string, Sale[]> = {}
     for (const sale of filtered) {
@@ -121,12 +134,11 @@ function HistoryContent() {
       groups[key].push(sale)
     }
     return groups
-  }, [sales, searchQuery])
+  }, [sales, searchQuery, selectedStatus])
 
   const isEmpty = sales.length === 0 && !isLoading
 
   const handleRecordClick = (sale: Sale) => {
-    if (!['CONFIRMED', 'OUTSTANDING'].includes(sale.status)) return
     openDrawer({
       type: 'transaction-details',
       props: { sale },
@@ -138,7 +150,7 @@ function HistoryContent() {
       id: 'status' as const,
       label: selectedStatus === 'ALL' ? 'STATUS' : selectedStatus,
       isActive: selectedStatus !== 'ALL',
-      options: ['ALL', 'CONFIRMED', 'PENDING', 'CANCELLED'],
+      options: ['ALL', 'PAID', 'OWING', 'UNCONFIRMED', 'ARCHIVED'],
       value: selectedStatus,
       onChange: setSelectedStatus,
     },

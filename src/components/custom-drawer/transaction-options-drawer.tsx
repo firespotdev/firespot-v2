@@ -1,10 +1,11 @@
 'use client'
 
-import { Archive, Download, PencilLine, Share, Mail, Wallet } from 'lucide-react'
+import { Archive, Download, PencilLine, Share, Mail, Wallet, RotateCcw } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
-import { ActionList, ActionListItem, CircularIconButton, TagFooter } from '../ui'
+import { getMerchantStatus } from '@/lib/utils/sales'
+import { ActionList, ActionListItem, CircularIconButton, TagFooter, showNotificationToast } from '../ui'
 
 interface TransactionOptionsDrawerProps {
   sale: Sale
@@ -18,11 +19,16 @@ export function TransactionOptionsDrawer({
   const router = useRouter()
   const { openDrawer, closeDrawer: storeCloseDrawer } = useDrawerStore()
 
+  const merchantStatus = getMerchantStatus(sale)
+  const isPaidCollected =
+    (sale.isCollection || sale.source === 'QR scan' || sale.source === 'Link shared') &&
+    merchantStatus === 'Paid'
+
   const isConfirmed = sale.status === 'CONFIRMED' || !sale.status
   const isOutstanding =
-    sale.status === 'OUTSTANDING' ||
+    merchantStatus === 'Owing' ||
     (sale.balanceOwed !== undefined && sale.balanceOwed > 0 && !sale.isPaidInFull)
-  const isArchived = (sale as any).isArchived
+  const isArchived = merchantStatus === 'Archived'
   const creationDate = new Date(
     sale.createdAt || sale.recordedAt || Date.now(),
   ).getTime()
@@ -95,7 +101,7 @@ export function TransactionOptionsDrawer({
           </ActionList>
         )}
 
-        {/* Card 2: Edit & Archive Actions */}
+        {/* Card 2: Edit & Archive/Refund Actions */}
         <ActionList>
           <ActionListItem
             icon={
@@ -111,26 +117,45 @@ export function TransactionOptionsDrawer({
             href={`/record-sale?id=${sale._id}&edit=true`}
             onClick={closeDrawer}
           />
-          <ActionListItem
-            icon={
-              <Archive
-                size={24}
-                className={
-                  isArchived ? 'text-red-200 stroke-[2.2px]' : 'text-[#FF3B30] stroke-[2.2px]'
-                }
-              />
-            }
-            title="Archive sale"
-            danger
-            disabled={isArchived}
-            onClick={() => {
-              storeCloseDrawer('transaction-options')
-              openDrawer({
-                type: 'confirm-archive',
-                props: { sale },
-              })
-            }}
-          />
+          {isPaidCollected ? (
+            <ActionListItem
+              icon={
+                <RotateCcw
+                  size={24}
+                  className="text-[#FF3B30] stroke-[2.2px]"
+                />
+              }
+              title="Refund sale"
+              danger
+              onClick={() => {
+                storeCloseDrawer('transaction-options')
+                showNotificationToast({
+                  message: 'Refund feature initiated for this collected payment',
+                })
+              }}
+            />
+          ) : (
+            <ActionListItem
+              icon={
+                <Archive
+                  size={24}
+                  className={
+                    isArchived ? 'text-red-200 stroke-[2.2px]' : 'text-[#FF3B30] stroke-[2.2px]'
+                  }
+                />
+              }
+              title="Archive sale"
+              danger
+              disabled={isArchived}
+              onClick={() => {
+                storeCloseDrawer('transaction-options')
+                openDrawer({
+                  type: 'confirm-archive',
+                  props: { sale },
+                })
+              }}
+            />
+          )}
         </ActionList>
       </div>
       <TagFooter />

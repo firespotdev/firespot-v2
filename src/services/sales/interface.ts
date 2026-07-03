@@ -1,4 +1,4 @@
-export type SaleStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'OUTSTANDING';
+export type SaleStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'OUTSTANDING' | 'ARCHIVED';
 export type CustomerType = 'New' | 'Repeat';
 export type SaleSource = 'QR scan' | 'Link shared' | 'Manual';
 export type PaymentMethod = 'Bank Transfer' | 'Cash' | 'POS' | 'Other';

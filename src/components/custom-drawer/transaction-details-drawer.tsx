@@ -16,6 +16,7 @@ import { Button, TagFooter, StatusBadge, CircularIconButton } from '../ui'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
+import { getMerchantStatus } from '@/lib/utils/sales'
 
 import { cn, formatCurrency } from '@/lib/utils'
 
@@ -39,11 +40,10 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
     }
   }
 
-  const isOutstanding =
-    sale.status === 'OUTSTANDING' ||
-    (sale.balanceOwed !== undefined && sale.balanceOwed > 0 && !sale.isPaidInFull)
-  const isConfirmed = !isOutstanding && (sale.status === 'CONFIRMED' || !sale.status)
-  const isArchived = (sale as any).isArchived
+  const merchantStatus = getMerchantStatus(sale)
+  const isOutstanding = merchantStatus === 'Owing'
+  const isConfirmed = merchantStatus === 'Paid'
+  const isArchived = merchantStatus === 'Archived'
 
   const handleRecordRepayment = () => {
     try {
@@ -88,8 +88,10 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
               isArchived
                 ? 'border-[#D1D5DB]'
                 : isOutstanding
-                  ? 'border-[#BB8123]'
-                  : 'border-[#24C166]',
+                  ? 'border-[#FF9500]'
+                  : merchantStatus === 'Unconfirmed'
+                    ? 'border-[#BB8123]'
+                    : 'border-[#24C166]',
             )}
           >
             <Check
@@ -97,8 +99,10 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                 isArchived
                   ? 'text-[#D1D5DB]'
                   : isOutstanding
-                    ? 'text-[#BB8123]'
-                    : 'text-[#24C166]'
+                    ? 'text-[#FF9500]'
+                    : merchantStatus === 'Unconfirmed'
+                      ? 'text-[#BB8123]'
+                      : 'text-[#24C166]'
               }
               size={32}
               strokeWidth={3}
@@ -111,13 +115,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
               <h3 className="text-[20px] font-bold text-black -tracking-[0.4px] leading-none">
                 {isConfirmed ? '+ ' : ''}NGN {formatCurrency(sale.amount || 0)}
               </h3>
-              {isArchived ? (
-                <StatusBadge status="ARCHIVED" />
-              ) : isOutstanding ? (
-                <StatusBadge status="OUTSTANDING" />
-              ) : sale.hasBeenEdited ? (
-                <StatusBadge status="EDITED" />
-              ) : null}
+              <StatusBadge status={merchantStatus} />
             </div>
             <p className="text-[14px] text-[#898A8D] font-medium">
               {isOutstanding
