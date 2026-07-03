@@ -8,6 +8,7 @@ export type TransactionStatusType =
   | 'CANCELLED'
   | 'ARCHIVED'
   | 'EDITED'
+  | 'OUTSTANDING'
   | string
 
 export interface StatusBadgeProps {
@@ -40,6 +41,12 @@ export function StatusBadge({
       textColor: 'text-[#FF9500]',
       Icon: Clock,
     },
+    OUTSTANDING: {
+      label: 'Outstanding',
+      color: 'bg-[#BB8123] text-white',
+      textColor: 'text-[#BB8123]',
+      Icon: Clock,
+    },
     CANCELLED: {
       label: 'Cancelled',
       color: 'bg-[#FF3B30] text-white',
@@ -58,6 +65,7 @@ export function StatusBadge({
       textColor: 'text-[#8E8E93]',
       Icon: PencilLine,
     },
+
   }[upperStatus] || {
     label: upperStatus || 'Unknown',
     color: 'bg-[#8E8E93] text-white',

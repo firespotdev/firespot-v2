@@ -22,6 +22,10 @@ export type DrawerContentType =
   | 'customer-checkout'
   | 'transaction-options'
   | 'confirm-archive'
+  | 'send-reminder'
+  | 'repayment-summary'
+  | 'repayment-success'
+
 
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
@@ -38,5 +42,5 @@ export interface DrawerState {
   configs: DrawerConfig[]
   openDrawer: (config: DrawerConfig) => void
   closeDrawer: (type?: DrawerContentType | unknown) => void
-  closeAllDrawers?: () => void
+  closeAllDrawers: () => void
 }

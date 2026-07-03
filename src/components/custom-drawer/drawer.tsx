@@ -35,6 +35,10 @@ import { CollectPaymentDrawer } from './collect-drawer'
 import { CustomerCheckoutDrawer } from './customer-checkout-drawer'
 import { TransactionOptionsDrawer } from './transaction-options-drawer'
 import { ConfirmArchiveDrawer } from './confirm-archive-drawer'
+import { SendReminderDrawer } from './send-reminder-drawer'
+import { RepaymentSummaryDrawer } from './repayment-summary-drawer'
+import { RepaymentSuccessDrawer } from './repayment-success-drawer'
+
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -183,6 +187,26 @@ const DRAWER_CONFIG: Record<
     Content: ConfirmArchiveDrawer,
     noHeader: true,
     direction: 'bottom',
+  },
+  'send-reminder': {
+    title: '',
+    Content: SendReminderDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'repayment-summary': {
+    title: '',
+    Content: RepaymentSummaryDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'repayment-success': {
+    title: '',
+    Content: RepaymentSuccessDrawer,
+    noHeader: true,
+    direction: 'right',
+    fullScreen: true,
+    hideHandle: true,
   },
   custom: {
     title: '',

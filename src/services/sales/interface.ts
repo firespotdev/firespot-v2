@@ -1,7 +1,18 @@
-export type SaleStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+export type SaleStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'OUTSTANDING';
 export type CustomerType = 'New' | 'Repeat';
 export type SaleSource = 'QR scan' | 'Link shared' | 'Manual';
 export type PaymentMethod = 'Bank Transfer' | 'Cash' | 'POS' | 'Other';
+
+export interface SaleItem {
+  productId?: string;
+  productName?: string;
+  price?: number;
+  quantity?: number;
+  selectedVariant?: {
+    size?: string;
+    color?: string;
+  };
+}
 
 export interface Sale {
   _id: string;
@@ -20,6 +31,20 @@ export interface Sale {
   customerPurchaseCount?: number;
   recordedAt?: string | Date;
   hasBeenEdited?: boolean;
+  isArchived?: boolean;
+  isPaidInFull?: boolean;
+  amountPaid?: number;
+  totalDue?: number;
+  balanceOwed?: number;
+  customerId?: any;
+  customerName?: string;
+  customerPhone?: string;
+  items?: SaleItem[];
+  receiptUrl?: string;
+  receiptPublicId?: string;
+  dueDate?: string | Date;
+  isCollection?: boolean;
+  location?: string;
   createdAt: string | Date;
   updatedAt: string | Date;
 }

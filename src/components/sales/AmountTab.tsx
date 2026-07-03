@@ -1,6 +1,7 @@
 'use client'
 
 import { Delete, PencilLine, Plus } from 'lucide-react'
+import { Keypad } from './Keypad'
 
 interface AmountTabProps {
   amount: string
@@ -81,40 +82,7 @@ export function AmountTab({
         </div>
 
         {/* Keypad */}
-        <div className="w-full border-t border-[#F4F6F8]">
-          {[
-            ['1', '2', '3'],
-            ['4', '5', '6'],
-            ['7', '8', '9'],
-            ['.', '0', 'backspace'],
-          ].map((row, i) => (
-            <div
-              key={i}
-              className="flex border-b border-[#F4F6F8] h-[64px]"
-            >
-              {row.map((key, j) => (
-                <button
-                  key={key}
-                  onClick={() => handleKeyPress(key)}
-                  className={`flex-1 flex items-center justify-center transition-colors active:bg-gray-50 flex-col
-                    ${j === 1 ? 'border-x border-[#F4F6F8]' : ''}
-                  `}
-                >
-                  {key === 'backspace' ? (
-                    <Delete
-                      className="w-5 h-5 text-black"
-                      strokeWidth={2.5}
-                    />
-                  ) : (
-                    <span className="text-[24px] font-medium text-black">
-                      {key}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          ))}
-        </div>
+        <Keypad onKeyPress={handleKeyPress} />
       </div>
     </div>
   )

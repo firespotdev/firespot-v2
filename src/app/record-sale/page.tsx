@@ -68,7 +68,7 @@ function RecordSaleContent() {
     category: activeCategory,
   })
 
-  const { openDrawer, closeDrawer } = useDrawerStore()
+  const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
 
   // Keypad & sale state
   const [activeTab, setActiveTab] = useState<'amount' | 'items'>('amount')
@@ -246,10 +246,21 @@ function RecordSaleContent() {
     }
   }
 
-  const clearCart = () => {
+  const resetSaleState = () => {
     setCartItems([])
     setActiveTab('amount')
+    setAmount('')
+    setDescription('')
+    setCheckoutCustomer(null)
+    setCheckoutPaymentMethod('Bank Transfer')
+    setCheckoutInstallmentType('full')
+    setCheckoutAmountPaid(0)
     setCheckoutDueDate('')
+    setStep('input')
+  }
+
+  const clearCart = () => {
+    resetSaleState()
   }
 
   const handleProductAddTapped = (product: any) => {
@@ -293,6 +304,7 @@ function RecordSaleContent() {
     customer: any,
     dueDateVal?: string,
   ) => {
+    closeAllDrawers()
     openDrawer({
       type: 'record-success',
       props: {
@@ -302,6 +314,7 @@ function RecordSaleContent() {
         setStep,
         setAmount,
         setDescription,
+        onRecordAnother: resetSaleState,
       },
     })
 
@@ -344,7 +357,9 @@ function RecordSaleContent() {
         { saleId: editId, payload },
         {
           onSuccess: (data) => {
+            resetSaleState()
             router.replace('/record-sale')
+            closeAllDrawers()
             openDrawer({
               type: 'record-success',
               props: {
@@ -353,13 +368,14 @@ function RecordSaleContent() {
                 setStep,
                 setAmount,
                 setDescription,
+                onRecordAnother: resetSaleState,
               },
             })
-            clearCart()
           },
           onError: (error: any) => {
             const msg =
               error?.response?.data?.message || 'Failed to update transaction.'
+            closeAllDrawers()
             openDrawer({
               type: 'record-success',
               props: {
@@ -369,6 +385,7 @@ function RecordSaleContent() {
                 setStep,
                 setAmount,
                 setDescription,
+                onRecordAnother: resetSaleState,
               },
             })
           },
@@ -377,6 +394,8 @@ function RecordSaleContent() {
     } else {
       createManualSaleMutation.mutate(payload, {
         onSuccess: (data) => {
+          resetSaleState()
+          closeAllDrawers()
           openDrawer({
             type: 'record-success',
             props: {
@@ -385,13 +404,14 @@ function RecordSaleContent() {
               setStep,
               setAmount,
               setDescription,
+              onRecordAnother: resetSaleState,
             },
           })
-          clearCart()
         },
         onError: (error: any) => {
           const msg =
             error?.response?.data?.message || 'Failed to record transaction.'
+          closeAllDrawers()
           openDrawer({
             type: 'record-success',
             props: {
@@ -401,6 +421,7 @@ function RecordSaleContent() {
               setStep,
               setAmount,
               setDescription,
+              onRecordAnother: resetSaleState,
             },
           })
         },
@@ -692,6 +713,8 @@ function RecordSaleContent() {
           props: {
             sale: data,
             onRecordConfirm: (recordedSale: any) => {
+              resetSaleState()
+              closeAllDrawers()
               openDrawer({
                 type: 'record-success',
                 props: {
@@ -700,9 +723,9 @@ function RecordSaleContent() {
                   setStep,
                   setAmount,
                   setDescription,
+                  onRecordAnother: resetSaleState,
                 },
               })
-              clearCart()
             },
           },
         })

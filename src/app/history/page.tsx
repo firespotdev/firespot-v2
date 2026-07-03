@@ -126,7 +126,7 @@ function HistoryContent() {
   const isEmpty = sales.length === 0 && !isLoading
 
   const handleRecordClick = (sale: Sale) => {
-    if (sale.status !== 'CONFIRMED') return
+    if (!['CONFIRMED', 'OUTSTANDING'].includes(sale.status)) return
     openDrawer({
       type: 'transaction-details',
       props: { sale },

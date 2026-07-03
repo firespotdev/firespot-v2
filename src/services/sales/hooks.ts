@@ -105,3 +105,28 @@ export const useUploadReceipt = () => {
     },
   });
 };
+
+export const useRecordRepayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ saleId, payload }: { saleId: string; payload: { amountPaid: number; paymentMethod?: string; customerId?: string } }) =>
+      SalesApi.recordRepayment(saleId, payload),
+    onSuccess: (_, { saleId, payload }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      if (payload?.customerId) {
+        queryClient.invalidateQueries({ queryKey: ['customer-outstanding-sales', payload.customerId] });
+      }
+    },
+  });
+};
+
+export const useCustomerOutstandingSales = (customerId?: string) => {
+  return useQuery({
+    queryKey: ['customer-outstanding-sales', customerId],
+    queryFn: () => SalesApi.getCustomerOutstandingSales(customerId!),
+    enabled: !!customerId,
+  });
+};
+

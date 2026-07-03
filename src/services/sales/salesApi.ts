@@ -88,7 +88,18 @@ export const SalesApi = {
     return data;
   },
 
+  recordRepayment: async (saleId: string, payload: { amountPaid: number; paymentMethod?: string; customerId?: string }): Promise<any> => {
+    const { data } = await apiClient.post(`/sales/${saleId}/repayment`, payload);
+    return data;
+  },
+
+  getCustomerOutstandingSales: async (customerId: string): Promise<Sale[]> => {
+    const { data } = await apiClient.get(`/sales/customer/${customerId}/outstanding`);
+    return data;
+  },
+
   uploadReceipt: async (saleId: string, file: File): Promise<Sale> => {
+
     const formData = new FormData();
     formData.append('receipt', file);
     const { data } = await publicApiClient.post(`/sales/${saleId}/receipt`, formData, {

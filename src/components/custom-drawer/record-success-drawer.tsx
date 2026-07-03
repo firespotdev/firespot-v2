@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, X, AlertCircle, Clock } from 'lucide-react'
-import { Button } from '../ui'
+import { Button, StatBanner } from '../ui'
 import { LoaderCircle } from '../ui'
 import { useRouter } from 'next/navigation'
 import { useSalesStats } from '@/services/sales/hooks'
@@ -16,6 +16,7 @@ interface RecordSuccessDrawerProps {
   setStep: (step: 'input' | 'saving' | 'success' | 'error') => void
   setAmount: (amount: string) => void
   setDescription: (description: string) => void
+  onRecordAnother?: () => void
 }
 
 const RecordSuccessDrawer = ({
@@ -25,10 +26,11 @@ const RecordSuccessDrawer = ({
   setStep,
   setAmount,
   setDescription,
+  onRecordAnother,
 }: RecordSuccessDrawerProps) => {
   const router = useRouter()
-  const { openDrawer, closeDrawer } = useDrawerStore()
-  const { data: statsData } = useSalesStats()
+  const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
+  const { data: statsData, isLoading: isLoadingStats } = useSalesStats()
 
   const todaySalesAmount = statsData?.todaySalesAmount ?? 0
 
@@ -85,9 +87,14 @@ const RecordSuccessDrawer = ({
           <header className="sticky top-0 z-50 flex items-center justify-between p-4 bg-white">
             <div className="w-8" />
             <div className="w-8" />
-            <Link href="/profile" onClick={closeDrawer}>
+            <button
+              onClick={() => {
+                closeAllDrawers()
+                router.push('/profile')
+              }}
+            >
               <X className="w-6 h-6 text-black" />
-            </Link>
+            </button>
           </header>
 
           <div className="flex-1 flex flex-col items-center justify-center px-4 overflow-y-auto">
@@ -102,13 +109,22 @@ const RecordSuccessDrawer = ({
           </div>
 
           <div className="p-4 pb-6">
-            <Link
-              href="/record-sale"
-              onClick={closeDrawer}
-              className="flex items-center justify-center w-full bg-black text-white font-bold h-12 rounded-full hover:bg-black"
+            <button
+              onClick={() => {
+                if (onRecordAnother) {
+                  onRecordAnother()
+                } else {
+                  setAmount('')
+                  setDescription('')
+                  setStep('input')
+                }
+                closeAllDrawers()
+                router.push('/record-sale')
+              }}
+              className="flex items-center justify-center w-full bg-black text-white font-bold h-12 rounded-full hover:bg-black cursor-pointer"
             >
               {errorMessage ? 'Record new' : 'Try again'}
-            </Link>
+            </button>
           </div>
         </div>
       </div>
@@ -132,7 +148,7 @@ const RecordSuccessDrawer = ({
             onClick={() => {
               if (!(successDetails?.hasBeenEdited || successDetails?.isEdit)) {
                 setStep('input')
-                closeDrawer()
+                closeAllDrawers()
               }
             }}
             disabled={successDetails?.hasBeenEdited || successDetails?.isEdit}
@@ -160,13 +176,21 @@ const RecordSuccessDrawer = ({
           </button>
           <button
             onClick={() => {
+              if (onRecordAnother) {
+                onRecordAnother()
+              } else {
+                setAmount('')
+                setDescription('')
+                setStep('input')
+              }
+              closeAllDrawers()
               if (statsData?.pendingSalesCount! > 0) {
                 router.push('/recents')
               } else {
                 router.push('/profile')
               }
             }}
-            className="p-2 -mr-2 hover:bg-gray-50 rounded-full transition-colors shrink-0"
+            className="p-2 -mr-2 hover:bg-gray-50 rounded-full transition-colors shrink-0 cursor-pointer"
           >
             <X className="w-6 h-6 text-black stroke-[2.5px]" />
           </button>
@@ -272,23 +296,14 @@ const RecordSuccessDrawer = ({
             )}
           </p>
 
-          <div className="border border-[#F4F6F8] px-4 py-4 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] w-full flex justify-between items-center mb-8 shrink-0">
-            <div className="w-full">
-              <div className="flex items-center gap-1 mb-2 justify-between w-full">
-                <span className="text-[#00000066] text-xs font-medium">
-                  Total sales recorded today
-                </span>
-                <span className="text-[#24C166] text-xs font-bold">
-                  +NGN {formatCurrency(successDetails.amount)}
-                </span>
-              </div>
-              <div className="flex items-end gap-1.5">
-                <h3 className="font-bold text-[22px] tracking-tight leading-none text-black">
-                  &#8358; {formatCurrency(todaySalesAmount)}
-                </h3>
-              </div>
-            </div>
-          </div>
+          <StatBanner
+            label="Total sales recorded today"
+            amount={todaySalesAmount}
+            badgeText={`+NGN ${formatCurrency(successDetails?.amountPaid ?? successDetails?.amount ?? 0)}`}
+            badgePositive={true}
+            isLoading={isLoadingStats}
+            className="mb-8"
+          />
 
           <Button
             variant="secondary"
@@ -343,10 +358,14 @@ const RecordSuccessDrawer = ({
         <div className="w-full bg-white space-y-3 px-4 pb-4 pt-4 shrink-0 mt-auto border-t border-[#F1F1F1]">
           <Button
             onClick={() => {
-              setAmount('')
-              setDescription('')
-              setStep('input')
-              closeDrawer()
+              if (onRecordAnother) {
+                onRecordAnother()
+              } else {
+                setAmount('')
+                setDescription('')
+                setStep('input')
+              }
+              closeAllDrawers()
             }}
             className="w-full bg-black text-white h-14 rounded-full font-bold text-[15px] hover:bg-black/90 transition-all active:scale-[0.98]"
           >
@@ -355,7 +374,14 @@ const RecordSuccessDrawer = ({
           <Button
             variant="ghost"
             onClick={() => {
-              closeDrawer()
+              if (onRecordAnother) {
+                onRecordAnother()
+              } else {
+                setAmount('')
+                setDescription('')
+                setStep('input')
+              }
+              closeAllDrawers()
               if (statsData?.pendingSalesCount! > 0) {
                 router.push('/recents')
               } else {

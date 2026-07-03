@@ -11,6 +11,7 @@ export interface StatBannerProps {
   badgePositive?: boolean
   isHideable?: boolean
   isHidden?: boolean
+  isLoading?: boolean
   onToggleVisibility?: () => void
   onLabelClick?: () => void
   className?: string
@@ -24,6 +25,7 @@ export function StatBanner({
   badgePositive = true,
   isHideable = false,
   isHidden = false,
+  isLoading = false,
   onToggleVisibility,
   onLabelClick,
   className,
@@ -62,9 +64,13 @@ export function StatBanner({
         </div>
 
         <div className="flex items-end justify-between gap-1.5">
-          <h3 className="font-bold text-[22px] tracking-tight leading-none text-black">
-            {isHidden ? `${currency} ••••••••` : `${currency} ${formatCurrency(amount)}`}
-          </h3>
+          {isLoading ? (
+            <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
+          ) : (
+            <h3 className="font-bold text-[22px] tracking-tight leading-none text-black">
+              {isHidden ? `${currency} ••••••••` : `${currency} ${formatCurrency(amount)}`}
+            </h3>
+          )}
 
           {isHideable && onToggleVisibility && (
             <button

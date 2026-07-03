@@ -9,11 +9,14 @@ import {
   MoreVertical,
   Archive,
   Check,
+  Mail,
 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { Button, TagFooter, StatusBadge, CircularIconButton } from '../ui'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
+
 import { cn, formatCurrency } from '@/lib/utils'
 
 interface TransactionDetailsDrawerProps {
@@ -22,6 +25,7 @@ interface TransactionDetailsDrawerProps {
 }
 
 const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
+  const router = useRouter()
   const { openDrawer, closeDrawer } = useDrawerStore()
 
   if (!sale) return null
@@ -35,8 +39,23 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
     }
   }
 
-  const isConfirmed = sale.status === 'CONFIRMED' || !sale.status
+  const isOutstanding =
+    sale.status === 'OUTSTANDING' ||
+    (sale.balanceOwed !== undefined && sale.balanceOwed > 0 && !sale.isPaidInFull)
+  const isConfirmed = !isOutstanding && (sale.status === 'CONFIRMED' || !sale.status)
   const isArchived = (sale as any).isArchived
+
+  const handleRecordRepayment = () => {
+    try {
+      // @ts-ignore
+      if (typeof window !== 'undefined' && window.bprogress) {
+        // @ts-ignore
+        window.bprogress.start()
+      }
+    } catch (e) {}
+    closeDrawer()
+    router.push(`/record-repayment?id=${sale._id}`)
+  }
 
   return (
     <div className="flex flex-col h-full font-satoshi bg-white">
@@ -66,11 +85,21 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
           <div
             className={cn(
               'w-[64px] h-[64px] rounded-full border-4 flex items-center justify-center mb-4 bg-white shrink-0',
-              isArchived ? 'border-[#D1D5DB]' : 'border-[#24C166]',
+              isArchived
+                ? 'border-[#D1D5DB]'
+                : isOutstanding
+                  ? 'border-[#BB8123]'
+                  : 'border-[#24C166]',
             )}
           >
             <Check
-              className={isArchived ? 'text-[#D1D5DB]' : 'text-[#24C166]'}
+              className={
+                isArchived
+                  ? 'text-[#D1D5DB]'
+                  : isOutstanding
+                    ? 'text-[#BB8123]'
+                    : 'text-[#24C166]'
+              }
               size={32}
               strokeWidth={3}
             />
@@ -84,42 +113,72 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
               </h3>
               {isArchived ? (
                 <StatusBadge status="ARCHIVED" />
+              ) : isOutstanding ? (
+                <StatusBadge status="OUTSTANDING" />
               ) : sale.hasBeenEdited ? (
                 <StatusBadge status="EDITED" />
               ) : null}
             </div>
             <p className="text-[14px] text-[#898A8D] font-medium">
-              Sale recorded successfully
+              {isOutstanding
+                ? `Balance owed: NGN ${formatCurrency(sale.balanceOwed || 0)}`
+                : 'Sale recorded successfully'}
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2 justify-center mb-6 w-full">
-            <Button
-              variant="outline"
-              className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: 'Firespot Receipt',
-                    text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDate(sale.createdAt)}`,
-                    url: window.location.href,
+          {isOutstanding ? (
+            <div className="flex gap-2 justify-center mb-6 w-full px-4">
+              <Button
+                variant="default"
+                className="flex-1 rounded-full h-11 bg-black hover:bg-black/90 text-white px-4 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                onClick={handleRecordRepayment}
+              >
+                RECORD REPAYMENT
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 rounded-full h-11 bg-[#F1F1F1] border-none px-4 text-xs font-bold text-black hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                onClick={() => {
+                  openDrawer({
+                    type: 'send-reminder',
+                    props: { sale },
                   })
-                }
-              }}
-            >
-              <Share size={16} className="text-black" />
-              SHARE RECEIPT
-            </Button>
-            <Button
-              variant="outline"
-              className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
-              onClick={() => window.print()}
-            >
-              <Download size={16} className="text-black" />
-              DOWNLOAD RECEIPT
-            </Button>
-          </div>
+                }}
+              >
+                <Mail size={16} className="text-black" />
+                SEND REMINDER
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2 justify-center mb-6 w-full">
+              <Button
+                variant="outline"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({
+                      title: 'Firespot Receipt',
+                      text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDate(sale.createdAt)}`,
+                      url: window.location.href,
+                    })
+                  }
+                }}
+              >
+                <Share size={16} className="text-black" />
+                SHARE RECEIPT
+              </Button>
+              <Button
+                variant="outline"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                onClick={() => window.print()}
+              >
+                <Download size={16} className="text-black" />
+                DOWNLOAD RECEIPT
+              </Button>
+            </div>
+          )}
+
 
           {/* Details Section with Border */}
           <div className="w-full border border-[#F1F1F1] rounded-2xl bg-white p-5 space-y-4">
