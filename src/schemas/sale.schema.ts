@@ -15,7 +15,7 @@ export class Sale extends Document {
   @Prop({ enum: ['QR scan', 'Link shared', 'Manual'] })
   source?: string;
 
-  @Prop({ enum: ['PENDING', 'CONFIRMED', 'CANCELLED'], default: 'PENDING', index: true })
+  @Prop({ enum: ['PENDING', 'CONFIRMED', 'CANCELLED', 'OUTSTANDING'], default: 'PENDING', index: true })
   status: string;
   
   @Prop({ index: true, unique: true, sparse: true })

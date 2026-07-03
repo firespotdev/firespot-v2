@@ -176,7 +176,10 @@ export class SalesService {
       description: dto.description,
       paymentMethod: dto.paymentMethod || 'Other',
       targetBankName,
-      status: 'CONFIRMED',
+      status:
+        dto.isPaidInFull === false || (dto.balanceOwed && dto.balanceOwed > 0)
+          ? 'OUTSTANDING'
+          : 'CONFIRMED',
       recordedAt: new Date(),
       customerType: 'New', // Default for manual as per request
       source: 'Manual',
@@ -194,7 +197,8 @@ export class SalesService {
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
     })
 
-    return sale.save()
+    await sale.save()
+    return sale.populate('customerId')
   }
 
   async getSales(merchantId: string, query: SalesQueryDto) {
@@ -259,6 +263,7 @@ export class SalesService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
+        .populate('customerId')
         .exec(),
       this.saleModel.countDocuments(filter).exec(),
     ])
@@ -277,6 +282,7 @@ export class SalesService {
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = await this.saleModel
       .findOne({ _id: saleId, merchantId: merchantObjectId })
+      .populate('customerId')
       .exec()
 
     if (!sale) {
@@ -347,12 +353,25 @@ export class SalesService {
     }
     const pendingCount = await this.saleModel.countDocuments(pendingFilter)
 
+    // Helper to get actual recorded money from a sale
+    const getSaleRecordedAmount = (sale: any) => {
+      if (sale.status === 'CONFIRMED') {
+        return sale.amountPaid !== undefined && sale.amountPaid !== null
+          ? sale.amountPaid
+          : sale.amount || 0
+      }
+      if (sale.status === 'OUTSTANDING') {
+        return sale.amountPaid || 0
+      }
+      return 0
+    }
+
     // For filtered stats
     const dateRange = this.calculateDateRange(query || {})
 
     const filter: Record<string, any> = {
       merchantId: merchantObjectId,
-      status: 'CONFIRMED',
+      status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
     }
     if (query?.mode === 'recorded') {
       filter.isCollection = { $ne: true }
@@ -385,12 +404,12 @@ export class SalesService {
 
     const filteredConfirmed = await this.saleModel
       .find(filter)
-      .select('amount recordedAt createdAt')
+      .select('amount amountPaid status recordedAt createdAt')
       .lean()
 
     const totalConfirmedFilter: any = {
       merchantId: merchantObjectId,
-      status: 'CONFIRMED',
+      status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
     }
     if (query?.mode === 'recorded') {
       totalConfirmedFilter.isCollection = { $ne: true }
@@ -399,15 +418,15 @@ export class SalesService {
     }
     const totalConfirmed = await this.saleModel
       .find(totalConfirmedFilter)
-      .select('amount')
+      .select('amount amountPaid status')
       .lean()
 
     const statsAmount = filteredConfirmed.reduce(
-      (sum, sale) => sum + (sale.amount || 0),
+      (sum, sale) => sum + getSaleRecordedAmount(sale),
       0,
     )
     const totalSalesAmount = totalConfirmed.reduce(
-      (sum, sale) => sum + (sale.amount || 0),
+      (sum, sale) => sum + getSaleRecordedAmount(sale),
       0,
     )
 
@@ -421,8 +440,8 @@ export class SalesService {
 
     const response: any = {
       pendingSalesCount: pendingCount,
-      todaySalesCount: filteredConfirmed.length, // This now reflects filtered count
-      todaySalesAmount: statsAmount, // This now reflects filtered amount
+      todaySalesCount: filteredConfirmed.filter((s) => getSaleRecordedAmount(s) > 0 || s.status === 'CONFIRMED').length,
+      todaySalesAmount: statsAmount,
       totalSalesAmount,
       trend,
     }
@@ -436,15 +455,15 @@ export class SalesService {
       const prevEnd = new Date(dateRange.startDate.getTime() - 1)
       const prevStart = new Date(prevEnd.getTime() - diffMs)
 
-      const prevFilter: any = { merchantId, status: 'CONFIRMED' }
+      const prevFilter: any = { merchantId, status: { $in: ['CONFIRMED', 'OUTSTANDING'] } }
       prevFilter.createdAt = { $gte: prevStart, $lte: prevEnd }
 
       const prevSales = await this.saleModel
         .find(prevFilter)
-        .select('amount')
+        .select('amount amountPaid status')
         .lean()
       previousStatsAmount = prevSales.reduce(
-        (sum, sale) => sum + (sale.amount || 0),
+        (sum, sale) => sum + getSaleRecordedAmount(sale),
         0,
       )
 
@@ -483,11 +502,18 @@ export class SalesService {
       throw new NotFoundException('Sale not found')
     }
 
-    sale.status = 'CONFIRMED'
+    sale.status =
+      dto.isPaidInFull === false || (dto.balanceOwed && dto.balanceOwed > 0)
+        ? 'OUTSTANDING'
+        : 'CONFIRMED'
     sale.amount = dto.amount
     sale.description = dto.description
     sale.paymentMethod = dto.paymentMethod || 'Other'
     sale.recordedAt = new Date()
+    if (dto.isPaidInFull !== undefined) sale.isPaidInFull = dto.isPaidInFull
+    if (dto.amountPaid !== undefined) sale.amountPaid = dto.amountPaid
+    if (dto.totalDue !== undefined) sale.totalDue = dto.totalDue
+    if (dto.balanceOwed !== undefined) sale.balanceOwed = dto.balanceOwed
 
     // If no QR kit is linked (e.g., manual entry confirmed later or link share), attribute to first kit
     if (!sale.serialNumber) {
@@ -640,6 +666,12 @@ export class SalesService {
     startDate: Date | null,
     endDate: Date | null,
   ) {
+    const getRecordedAmt = (s: any) => {
+      if (s.status === 'CONFIRMED') return s.amountPaid !== undefined && s.amountPaid !== null ? s.amountPaid : (s.amount || 0)
+      if (s.status === 'OUTSTANDING') return s.amountPaid || 0
+      return 0
+    }
+
     const now = new Date()
     const trend: { label: string; amount: number; count: number }[] = []
 
@@ -653,8 +685,11 @@ export class SalesService {
         const timestamp = sale.recordedAt || sale.createdAt
         if (!timestamp) continue
         const h = new Date(timestamp).getHours()
-        buckets[h].amount += sale.amount || 0
-        buckets[h].count += 1
+        const recAmt = getRecordedAmt(sale)
+        buckets[h].amount += recAmt
+        if (recAmt > 0 || sale.status === 'CONFIRMED') {
+          buckets[h].count += 1
+        }
       }
       return buckets
     }
@@ -667,8 +702,11 @@ export class SalesService {
         const d = new Date(timestamp)
         const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`
         const curr = monthsMap.get(key) || { amount: 0, count: 0 }
-        curr.amount += sale.amount || 0
-        curr.count += 1
+        const recAmt = getRecordedAmt(sale)
+        curr.amount += recAmt
+        if (recAmt > 0 || sale.status === 'CONFIRMED') {
+          curr.count += 1
+        }
         monthsMap.set(key, curr)
       }
       const sortedKeys = Array.from(monthsMap.keys()).sort()
@@ -710,8 +748,11 @@ export class SalesService {
       const dStr = new Date(sale.createdAt).toISOString().split('T')[0]
       if (dayMap.has(dStr)) {
         const curr = dayMap.get(dStr)!
-        curr.amount += sale.amount || 0
-        curr.count += 1
+        const recAmt = getRecordedAmt(sale)
+        curr.amount += recAmt
+        if (recAmt > 0 || sale.status === 'CONFIRMED') {
+          curr.count += 1
+        }
       }
     }
 
@@ -727,5 +768,155 @@ export class SalesService {
       trend.push({ label, amount: v.amount, count: v.count })
     }
     return trend
+  }
+
+  async getCustomerOutstandingSales(merchantId: string, customerId: string) {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const customerObjectId = new Types.ObjectId(customerId)
+
+    return this.saleModel
+      .find({
+        merchantId: merchantObjectId,
+        customerId: customerObjectId,
+        $or: [
+          { status: 'OUTSTANDING' },
+          { balanceOwed: { $gt: 0 } },
+          { isPaidInFull: false },
+        ],
+      })
+      .sort({ createdAt: 1, dueDate: 1 })
+      .populate('customerId')
+      .exec()
+  }
+
+  async recordRepayment(
+    merchantId: string | undefined,
+    targetIdentifier: string,
+    dto: { amountPaid: number; paymentMethod?: string; customerId?: string },
+  ): Promise<any> {
+    const repaymentAmount = dto.amountPaid || 0
+    let targetCustomerId: string | undefined = dto.customerId
+    let primarySale: any = null
+
+    if (targetIdentifier) {
+      primarySale = await this.saleModel.findById(targetIdentifier).exec()
+      if (primarySale && primarySale.customerId) {
+        targetCustomerId = primarySale.customerId.toString()
+      }
+    }
+
+    if (!targetCustomerId && primarySale) {
+      const currentAmountPaid = primarySale.amountPaid || 0
+      const currentBalanceOwed =
+        primarySale.balanceOwed !== undefined && primarySale.balanceOwed !== null
+          ? primarySale.balanceOwed
+          : primarySale.amount
+            ? Math.max(0, primarySale.amount - currentAmountPaid)
+            : 0
+
+      const newAmountPaid = currentAmountPaid + repaymentAmount
+      const newBalanceOwed = Math.max(0, currentBalanceOwed - repaymentAmount)
+      const isPaidInFull = newBalanceOwed <= 0
+
+      primarySale.amountPaid = newAmountPaid
+      primarySale.balanceOwed = newBalanceOwed
+      primarySale.isPaidInFull = isPaidInFull
+      if (dto.paymentMethod) primarySale.paymentMethod = dto.paymentMethod
+      primarySale.status = isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
+
+      await primarySale.save()
+      await primarySale.populate('customerId')
+      return primarySale
+    }
+
+    if (!targetCustomerId) {
+      throw new NotFoundException('Customer or Sale not found')
+    }
+
+    const filter: any = {
+      customerId: new Types.ObjectId(targetCustomerId),
+      $or: [
+        { status: 'OUTSTANDING' },
+        { balanceOwed: { $gt: 0 } },
+        { isPaidInFull: false },
+      ],
+    }
+    if (merchantId) {
+      filter.merchantId = new Types.ObjectId(merchantId)
+    }
+
+    const outstandingSales = await this.saleModel
+      .find(filter)
+      .sort({ createdAt: 1, dueDate: 1 })
+      .exec()
+
+    let remainingRepayment = repaymentAmount
+    const updatedSales: any[] = []
+
+    for (const sale of outstandingSales) {
+      if (remainingRepayment <= 0) break
+
+      const currentBalance =
+        sale.balanceOwed !== undefined && sale.balanceOwed !== null
+          ? sale.balanceOwed
+          : sale.amount
+            ? Math.max(0, sale.amount - (sale.amountPaid || 0))
+            : 0
+
+      if (currentBalance <= 0) continue
+
+      const allocated = Math.min(remainingRepayment, currentBalance)
+      const newAmountPaid = (sale.amountPaid || 0) + allocated
+      const newBalanceOwed = currentBalance - allocated
+      const isPaidInFull = newBalanceOwed <= 0
+
+      sale.amountPaid = newAmountPaid
+      sale.balanceOwed = newBalanceOwed
+      sale.isPaidInFull = isPaidInFull
+      sale.status = isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
+      if (dto.paymentMethod) {
+        sale.paymentMethod = dto.paymentMethod
+      }
+
+      await sale.save()
+      await sale.populate('customerId')
+      updatedSales.push(sale)
+
+      remainingRepayment -= allocated
+
+      if (sale.merchantId) {
+        this.eventsGateway.server
+          .to(sale.merchantId.toString())
+          .emit('sale.updated', sale)
+      }
+    }
+
+    const remainingDebts = await this.saleModel
+      .find({
+        customerId: new Types.ObjectId(targetCustomerId),
+        $or: [
+          { status: 'OUTSTANDING' },
+          { balanceOwed: { $gt: 0 } },
+          { isPaidInFull: false },
+        ],
+      })
+      .exec()
+
+    const totalRemainingBalance = remainingDebts.reduce(
+      (sum, s) => sum + (s.balanceOwed || 0),
+      0,
+    )
+
+    const resultSale = primarySale || updatedSales[0] || {}
+    const resObj = typeof (resultSale as any).toObject === 'function' ? (resultSale as any).toObject() : resultSale
+
+    return {
+      ...resObj,
+      waterfall: {
+        amountPaid: repaymentAmount,
+        totalRemainingBalance,
+        affectedSales: updatedSales,
+      },
+    }
   }
 }

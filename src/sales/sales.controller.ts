@@ -130,5 +130,36 @@ export class SalesController {
   ) {
     return this.salesService.uploadReceipt(saleId, file.buffer);
   }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get customer outstanding sales' })
+  @Get('customer/:customerId/outstanding')
+  async getCustomerOutstandingSales(
+    @GetUser() user: User,
+    @Param('customerId') customerId: string,
+  ) {
+    return this.salesService.getCustomerOutstandingSales(
+      (user as any).userId,
+      customerId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Record a repayment for an outstanding sale' })
+  @Post(':id/repayment')
+  async recordRepayment(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+    @Body() dto: { amountPaid: number; paymentMethod?: string; customerId?: string },
+  ) {
+    return this.salesService.recordRepayment(
+      (user as any)?.userId,
+      saleId,
+      dto,
+    );
+  }
 }
+
 
