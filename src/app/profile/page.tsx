@@ -12,7 +12,7 @@ import { LoaderCircle } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantInsights, type InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
-import { useSalesStats } from '@/services/sales/hooks'
+import { useSalesStats, useSales } from '@/services/sales/hooks'
 import Link from 'next/link'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
@@ -34,6 +34,12 @@ export default function ProfilePage() {
   const { data: insights } = useMerchantInsights({ preset: 'today' })
   const { data: qrKitsData } = useUserQRKits()
   const { data: salesStats } = useSalesStats(filter)
+  const { data: collectedStats } = useSalesStats({
+    ...filter,
+    mode: 'collected',
+  })
+  const { data: recordedStats } = useSalesStats({ ...filter, mode: 'recorded' })
+  const { data: owingSales } = useSales({ status: 'OWING', limit: 1 })
   const updateProfilePhoto = useUpdateProfilePhoto()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -132,7 +138,7 @@ export default function ProfilePage() {
     <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
-          title={` ${sortedBankAccounts.length} bank account${sortedBankAccounts.length === 1 ? '' : 's'}`}
+          title="Pay"
           showDropdown
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
           onTitleClick={() =>
@@ -168,6 +174,12 @@ export default function ProfilePage() {
               onCameraClick={handleCameraClick}
               isUploadingPhoto={updateProfilePhoto.isPending}
               todaySalesAmount={salesStats?.todaySalesAmount ?? 0}
+              collectedAmount={collectedStats?.todaySalesAmount ?? 0}
+              recordedAmount={recordedStats?.todaySalesAmount ?? 0}
+              salesCount={salesStats?.todaySalesCount ?? 0}
+              ordersCount={insights?.qrKitScans?.totalScans ?? 0}
+              unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
+              owingCount={owingSales?.pagination?.total ?? 0}
               isAmountHidden={isAmountHidden}
               onToggleVisibility={() => setIsAmountHidden((prev) => !prev)}
               currentFilter={filter}
@@ -216,39 +228,89 @@ export default function ProfilePage() {
             </p>
           )}
 
-          {/* Stats Section - Link to Insights and Recents */}
-          <div className="grid grid-cols-3 gap-3">
-            <Link href="/insights" className="text-center">
-              <p className="text-xl font-bold text-black leading-none mb-1">
-                {insights?.qrKitScans?.totalScans ?? 0}
-              </p>
-              <div className="flex items-center justify-center gap-0.5">
-                <p className="text-[13px] text-[#00000080] font-medium">
-                  Scans today
-                </p>
-              </div>
-            </Link>
-
-            <Link href="/history?status=CONFIRMED" className="text-center">
-              <p className="text-xl font-bold text-black leading-none mb-1">
+          {/* Stats Section - Link to Insights, Recents, and Owing */}
+          <div className="grid grid-cols-4 gap-2 w-full text-center">
+            {/* Sales */}
+            <Link href="/history" className="flex flex-col items-center group">
+              <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 {salesStats?.todaySalesCount ?? 0}
-              </p>
-              <div className="flex items-center justify-center gap-0.5">
-                <p className="text-[13px] text-[#00000080] font-medium">
-                  Sales recorded
-                </p>
+              </span>
+              <span className="text-[13px] text-[#00000080] font-medium mt-1.5 transition-colors">
+                Sales
+              </span>
+            </Link>
+
+            {/* Orders */}
+            <Link href="/history" className="flex flex-col items-center group">
+              <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
+                {insights?.qrKitScans?.totalScans ?? 0}
+              </span>
+              <span className="text-[13px] text-[#00000080] font-medium mt-1.5 transition-colors">
+                Orders
+              </span>
+            </Link>
+
+            {/* Unconfirmed */}
+            <Link
+              href="/history?status=UNCONFIRMED"
+              className="flex flex-col items-center group"
+            >
+              <span
+                className="text-xl font-bold leading-none -tracking-[0.4px]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, #F5B041 0%, #BB8123 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                {salesStats?.pendingSalesCount ?? 0}
+              </span>
+              <div className="flex items-center gap-0.5 mt-1.5 group-hover:opacity-80 transition-opacity">
+                <span
+                  className="text-[13px] font-medium"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #F5B041 0%, #BB8123 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  Unconfirmed
+                </span>
+                <ChevronRight size={11} color="#BB8123" />
               </div>
             </Link>
 
-            <Link href="/recents" className="text-center">
-              <p className="text-xl font-bold text-[#BB8123] leading-none mb-1">
-                {salesStats?.pendingSalesCount ?? 0}
-              </p>
-              <div className="flex items-center justify-center gap-0.5">
-                <p className="text-[13px] text-[#BB8123] font-medium">
-                  Pending
-                </p>
-                <ChevronRight className="w-3 h-3 text-[#BB8123] mt-[1%]" />
+            {/* Owing */}
+            <Link
+              href="/history?status=OWING"
+              className="flex flex-col items-center group"
+            >
+              <span
+                className="text-xl font-bold leading-none -tracking-[0.4px]"
+                style={{
+                  background:
+                    'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                {owingSales?.pagination?.total ?? 0}
+              </span>
+              <div className="flex items-center gap-0.5 mt-1.5 transition-opacity">
+                <span
+                  className="text-[13px] font-medium"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                  }}
+                >
+                  Owing
+                </span>
+                <ChevronRight size={11} color="#D72483" />
               </div>
             </Link>
           </div>
@@ -263,28 +325,6 @@ export default function ProfilePage() {
             >
               <Link href="/record-sale">New Sale</Link>
             </Button>
-
-            {/* {(salesStats?.pendingSalesCount ?? 0) > 0 && (
-              <Link
-                href="/recents"
-                className="w-full text-xs text-[#BB8123] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
-              >
-                <AlertCircle
-                  className="mr-[2px] mt-[0.5%]"
-                  color="#BB8123"
-                  size={14}
-                  strokeWidth={2}
-                />
-                <span className="font-medium">
-                  Confirm or cancel {salesStats?.pendingSalesCount} pending sale
-                  {(salesStats?.pendingSalesCount ?? 0) === 1 ? '' : 's'}
-                </span>
-                <ChevronRight
-                  strokeWidth={2}
-                  className="w-4 h-4 text-[#BB8123] mt-[1%]"
-                />
-              </Link>
-            )} */}
           </div>
         </div>
       </div>

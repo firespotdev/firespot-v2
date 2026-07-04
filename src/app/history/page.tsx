@@ -43,15 +43,16 @@ function HistoryContent() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchParams = useSearchParams()
   const initialStatus = searchParams.get('status')
+  const initialMode = searchParams.get('mode') as 'collected' | 'recorded' | null
 
   // Top tab switch state
   const [activeTab, setActiveTab] = useState<'collected' | 'recorded'>(
-    'collected',
+    initialMode || 'collected',
   )
 
   // Filter dropdown states
   const [selectedStatus, setSelectedStatus] = useState<string>(
-    initialStatus || 'ALL',
+    initialStatus ? initialStatus.toUpperCase() : 'ALL',
   )
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL')
   const [selectedQrKit, setSelectedQrKit] = useState<string>('ALL')
@@ -64,6 +65,21 @@ function HistoryContent() {
   const [dateFilter, setDateFilter] = useState<InsightsQuery>({
     preset: 'today',
   })
+
+  // Synchronize state when searchParams changes
+  useEffect(() => {
+    const status = searchParams.get('status')
+    if (status) {
+      setSelectedStatus(status.toUpperCase())
+    } else {
+      setSelectedStatus('ALL')
+    }
+
+    const mode = searchParams.get('mode')
+    if (mode === 'collected' || mode === 'recorded') {
+      setActiveTab(mode)
+    }
+  }, [searchParams])
 
   // Fetch QR kits for the Qr kit dropdown options
   const { data: qrKitsData } = useUserQRKits()
