@@ -1,9 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { X, ArrowLeft, Pencil, RotateCcw, AlertCircle } from 'lucide-react'
+import {
+  X,
+  ArrowLeft,
+  Pencil,
+  RotateCcw,
+  AlertCircle,
+  PenLine,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
+import { TabSwitch } from '../ui'
+import { formatCurrency } from '@/lib/utils'
 
 interface Props {
   totalAmount: number
@@ -19,136 +28,131 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
   const [amountPaid, setAmountPaid] = useState('')
 
   const getBalanceOwed = () => {
-    const paidVal = Number(amountPaid) || 0
-    return Math.max(0, totalAmount - paidVal)
-  }
-
-  const formatDisplayAmount = (val: string | number) => {
-    if (val === '') return '0'
-    const str = String(val)
-    const [int, dec] = str.split('.')
-    const formattedInt = new Intl.NumberFormat('en-NG').format(Number(int))
-    return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt
+    const rawVal = Number(amountPaid.replace(/,/g, '')) || 0
+    return Math.max(0, totalAmount - rawVal)
   }
 
   const handleContinue = () => {
-    const paidVal =
-      installmentType === 'full' ? totalAmount : Number(amountPaid) || 0
-    onContinue(installmentType, paidVal)
+    const rawVal =
+      installmentType === 'full'
+        ? totalAmount
+        : Number(amountPaid.replace(/,/g, '')) || 0
+    onContinue(installmentType, rawVal)
   }
 
   return (
-    <div className="w-full flex flex-col font-satoshi p-6 bg-white max-w-125 mx-auto">
+    <div className="w-full flex flex-col font-satoshi p-3 max-w-125 mx-auto">
       {/* Header with back arrow, tabs, and close button */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-2.5">
         <button
           onClick={onBack || closeDrawer}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center"
+          type="button"
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 text-black" />
         </button>
 
-        <div className="flex bg-[#F4F6F8] rounded-[24px] p-1 select-none flex-1 max-w-[240px] mx-3 shadow-inner">
-          <button
-            onClick={() => setInstallmentType('full')}
-            className={`flex-1 text-center py-1.5 text-xs font-bold rounded-[20px] transition-all duration-200 ${
-              installmentType === 'full'
-                ? 'bg-white text-black shadow-sm font-bold'
-                : 'text-[#8E8E93] hover:text-black font-medium'
-            }`}
-          >
-            PAID IN FULL
-          </button>
-          <button
-            onClick={() => {
-              setInstallmentType('part')
-              setAmountPaid('')
-            }}
-            className={`flex-1 text-center py-1.5 text-xs font-bold rounded-[20px] transition-all duration-200 ${
-              installmentType === 'part'
-                ? 'bg-white text-black shadow-sm font-bold'
-                : 'text-[#8E8E93] hover:text-black font-medium'
-            }`}
-          >
-            PAID IN PART
-          </button>
-        </div>
+        <TabSwitch
+          options={[
+            {
+              label: 'PAID IN FULL',
+              value: 'full',
+            },
+            {
+              label: 'PAID IN PART',
+              value: 'part',
+            },
+          ]}
+          value={installmentType}
+          onChange={(value) => {
+            setInstallmentType(value as 'full' | 'part')
+            setAmountPaid('')
+          }}
+          maxW="max-w-[247px]"
+          bgClassName="bg-[#ECEDF0]"
+        />
 
         <button
           onClick={closeDrawer}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center"
+          type="button"
+          className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center cursor-pointer"
         >
           <X className="w-5 h-5 text-[#8E8E93]" />
         </button>
       </div>
 
       {installmentType === 'full' ? (
-        <div className="flex flex-col gap-5">
-          {/* Card 1: Paid now (Green Value) */}
-          <div className="w-full bg-[#F4F6F8] rounded-[16px] px-4 py-3 flex items-center justify-between border border-[#E9EBED]">
-            <div className="flex flex-col text-left">
-              <span className="text-[11px] text-[#8E8E93] font-bold tracking-wider uppercase">
+        <div className="flex flex-col gap-3">
+          {/* Integrated Combined Card */}
+          <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] border border-[#F1F1F1] overflow-hidden text-left mb-1">
+            {/* Paid now */}
+            <div className="p-3.5">
+              <span className="text-[13px] font-medium text-[#6B7280]">
                 Paid now
               </span>
-              <span className="text-[22px] font-bold text-[#24C166] tracking-tight mt-0.5">
-                ₦{formatDisplayAmount(totalAmount)}
-              </span>
+              <div className="flex w-full justify-between mt-1">
+                <span className="text-[32px] font-medium font-family-sofia-pro text-[#34C759] leading-none -tracking-[2px]">
+                  ₦ {formatCurrency(totalAmount)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setInstallmentType('part')}
+                  className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black cursor-pointer transition-colors"
+                >
+                  <PenLine size={14} />
+                  <span>Edit</span>
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => setInstallmentType('part')}
-              className="flex items-center gap-1 bg-white border border-[#E9EBED] hover:bg-gray-50 active:bg-gray-100 rounded-full px-3.5 py-1.5 text-xs font-bold text-black transition-all shadow-sm"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              Edit
-            </button>
-          </div>
 
-          {/* Card 2: Total due */}
-          <div className="w-full bg-[#F4F6F8] rounded-[16px] px-4 py-3 flex items-center justify-between border border-[#E9EBED]">
-            <div className="flex flex-col text-left">
-              <span className="text-[11px] text-[#8E8E93] font-bold tracking-wider uppercase">
+            <div className="border-t border-[#F1F1F1]" />
+
+            {/* Total due */}
+            <div className="p-3.5">
+              <span className="text-[13px] font-medium text-[#6B7280]">
                 Total due
               </span>
-              <span className="text-[22px] font-bold text-black tracking-tight mt-0.5">
-                ₦{formatDisplayAmount(totalAmount)}
-              </span>
+              <div className="flex w-full justify-between mt-1">
+                <span className="text-[32px] font-medium text-black font-family-sofia-pro -tracking-[2px] leading-none">
+                  ₦ {formatCurrency(totalAmount)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setInstallmentType('part')}
+                  className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black cursor-pointer transition-colors"
+                >
+                  <PenLine size={14} />
+                  <span>Edit</span>
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => setInstallmentType('part')}
-              className="flex items-center gap-1 bg-white border border-[#E9EBED] hover:bg-gray-50 active:bg-gray-100 rounded-full px-3.5 py-1.5 text-xs font-bold text-black transition-all shadow-sm"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              Edit
-            </button>
           </div>
 
-          {/* Disclaimer Info Box */}
-          <div className="flex bg-[#F4F6F8] border border-[#E9EBED] p-4 gap-3 rounded-[16px] items-start text-left">
-            <AlertCircle className="w-5 h-5 text-[#8E8E93] shrink-0 mt-0.5" />
-            <p className="text-xs text-[#8E8E93] font-medium leading-relaxed">
-              Customer paid everything. tap "Paid in part" or "Edit" only if
-              they're owing you a balance payment.
+          {/* Info Alert Box */}
+          <div className="bg-[#F4F4F4] rounded-[12px] p-3 border-2 border-[#0000000A] flex items-start gap-2 text-left mt-1">
+            <AlertCircle color="#00000066" size={18} className="mt-0.5" />
+            <p className="text-[12px] text-[#00000066] font-medium">
+              Customer paid everything. Click “Paid in part” or “Edit” only if
+              they’re owing you a balance payment.
             </p>
           </div>
 
-          <Button
-            onClick={handleContinue}
-            className="w-full h-12 bg-black text-white hover:bg-black/90 font-bold rounded-full mt-2 text-sm tracking-[0.2px] transition-all"
-          >
+          <Button onClick={handleContinue} className="active:scale-[0.98]">
             Continue
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3">
-            {/* Card 1: Paid now (Black/Input Value) */}
-            <div className="w-full bg-white rounded-[16px] px-4 py-3 flex items-center justify-between border-2 border-[#0085FF] shadow-sm">
-              <div className="flex flex-col text-left flex-1">
-                <span className="text-[11px] text-[#8E8E93] font-bold tracking-wider uppercase">
-                  Paid now
-                </span>
-                <div className="flex items-center text-[22px] font-bold text-black mt-0.5 w-full">
-                  <span className="mr-1 select-none text-[22px] font-bold text-black">
+        <div className="flex flex-col gap-3">
+          {/* Integrated Combined Card (Part Payment Active) */}
+          <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden text-left">
+            {/* Paid now input */}
+            <div className="p-3.5">
+              <span className="text-[13px] font-medium text-[#6B7280]">
+                Paid now
+              </span>
+              <div className="flex w-full justify-between mt-1">
+                <div className="flex items-center mt-0.5">
+                  <span className="text-[#24C166] font-family-sofia-pro font-medium text-[32px] -tracking-[2px] leading-none mr-1">
                     ₦
                   </span>
                   <input
@@ -157,63 +161,81 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
                     placeholder="0"
                     value={amountPaid}
                     onChange={(e) => {
-                      let val = e.target.value
-                      val = val.replace(/[^0-9.]/g, '')
+                      let val = e.target.value.replace(/[^0-9.]/g, '')
                       const parts = val.split('.')
                       if (parts.length > 2) return
                       if (parts[1] && parts[1].length > 2) return
                       if (Number(val) > totalAmount) return
-                      setAmountPaid(val)
+                      if (!val) {
+                        setAmountPaid('')
+                        return
+                      }
+                      const formattedInt = parts[0]
+                        ? new Intl.NumberFormat('en-NG').format(Number(parts[0]))
+                        : ''
+                      const formattedVal =
+                        parts[1] !== undefined
+                          ? `${formattedInt}.${parts[1]}`
+                          : formattedInt
+                      setAmountPaid(formattedVal)
                     }}
-                    className="w-full bg-transparent focus:outline-none font-bold text-black text-[22px] tracking-tight p-0 border-none"
+                    className="w-full bg-transparent focus:outline-none font-medium font-family-sofia-pro text-[#24C166] text-[32px] leading-none -tracking-[2px] p-0 border-none"
                     autoFocus
                   />
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setAmountPaid('')}
+                  className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black cursor-pointer transition-colors shrink-0"
+                >
+                  <RotateCcw size={14} />
+                  <span>Reset</span>
+                </button>
               </div>
-              <button
-                onClick={() => setAmountPaid('')}
-                className="flex items-center gap-1 bg-white border border-[#E9EBED] hover:bg-gray-50 active:bg-gray-100 rounded-full px-3.5 py-1.5 text-xs font-bold text-black transition-all shadow-sm shrink-0"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Reset
-              </button>
             </div>
 
-            {/* Card 2: Total due */}
-            <div className="w-full bg-[#F4F6F8] rounded-[16px] px-4 py-3 flex items-center justify-between border border-[#E9EBED]">
-              <div className="flex flex-col text-left">
-                <span className="text-[11px] text-[#8E8E93] font-bold tracking-wider uppercase">
-                  Total due
-                </span>
-                <span className="text-[22px] font-bold text-black tracking-tight mt-0.5">
-                  ₦{formatDisplayAmount(totalAmount)}
-                </span>
-              </div>
-              <button
-                onClick={() => setInstallmentType('part')}
-                className="flex items-center gap-1 bg-white border border-[#E9EBED] hover:bg-gray-50 active:bg-gray-100 rounded-full px-3.5 py-1.5 text-xs font-bold text-black transition-all shadow-sm"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Edit
-              </button>
-            </div>
+            <div className="border-t border-[#F1F1F1]" />
 
-            {/* Card 3: Balance owed */}
-            <div className="w-full bg-[#F4F6F8] rounded-[16px] px-4 py-3 flex flex-col items-start border border-[#E9EBED]">
-              <span className="text-[11px] text-[#8E8E93] font-bold tracking-wider uppercase">
-                Balance owed
+            {/* Total due */}
+            <div className="p-3.5">
+              <span className="text-[13px] font-medium text-[#6B7280]">
+                Total due
               </span>
-              <span className="text-[22px] font-bold text-black tracking-tight mt-0.5">
-                ₦{formatDisplayAmount(getBalanceOwed())}
-              </span>
+              <div className="flex w-full justify-between mt-1">
+                <span className="text-[32px] font-medium font-family-sofia-pro text-black leading-none -tracking-[2px]">
+                  ₦ {formatCurrency(totalAmount)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setInstallmentType('part')}
+                  className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black cursor-pointer transition-colors"
+                >
+                  <PenLine size={14} />
+                  <span>Edit</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          <Button
-            onClick={handleContinue}
-            disabled={amountPaid === '' || Number(amountPaid) === 0}
-            className="w-full h-12 bg-black text-white hover:bg-black/90 disabled:bg-[#F4F6F8] disabled:text-[#8E8E93] font-bold rounded-full text-sm tracking-[0.2px] transition-all"
-          >
+          {/* Balance Owed Card */}
+          <div className="bg-white rounded-[12px] p-4 shadow-[0px_4px_8px_0px_#0000000A] border border-[#F1F1F1] flex flex-col items-start text-left">
+            <span className="text-[13px] font-medium text-[#6B7280]">
+              Balance owed
+            </span>
+            <span
+              className="text-[32px] font-medium font-family-sofia-pro leading-none -tracking-[2px] mt-1"
+              style={{
+                background: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              ₦ {formatCurrency(getBalanceOwed())}
+            </span>
+          </div>
+
+          <Button onClick={handleContinue} className="active:scale-[0.98]">
             Continue
           </Button>
         </div>

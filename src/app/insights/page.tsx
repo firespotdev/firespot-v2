@@ -213,7 +213,7 @@ export default function InsightsPage() {
                     </Link>
                   </div>
                 </div>
-                <div className="flex items-center bg-[#f4f4f4] px-5 py-3 gap-2 rounded-[12px]">
+                <div className="flex items-center bg-[#f4f4f4] p-3 gap-2 rounded-[12px]">
                   <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
                   <p className="text-xs text-[#00000066] font-medium">
                     You will not receive a payout for these transactions.

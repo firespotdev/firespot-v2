@@ -6,7 +6,11 @@ import { MerchantAvatar } from '@/components/layout/MerchantAvatar'
 import { Sale } from '@/services/sales/interface'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/constants'
-import { getAmountLabel, getStatusDescription, getMerchantStatus } from '@/lib/utils/sales'
+import {
+  getAmountLabel,
+  getStatusDescription,
+  getMerchantStatus,
+} from '@/lib/utils/sales'
 import { StatusBadge } from '@/components/ui'
 
 interface SaleItemProps {
@@ -28,13 +32,13 @@ export function SaleItem({
   className,
   variant = 'default',
 }: SaleItemProps) {
+  const isArchivedItem = getMerchantStatus(sale) === 'Archived'
+
   const content = (
     <div
       className={cn(
         'p-3 flex items-center justify-between border-b border-[#F1F1F1] bg-white cursor-pointer transition-colors hover:bg-gray-50',
-        sale.status === 'CANCELLED' &&
-          variant === 'default' &&
-          'grayscale opacity-70',
+        isArchivedItem && variant === 'default' && 'bg-[#FAFAFA] opacity-70',
         className,
       )}
       onClick={() => onClick?.(sale)}

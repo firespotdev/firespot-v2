@@ -89,6 +89,7 @@ function RecordSaleContent() {
     'full' | 'part'
   >('full')
   const [checkoutAmountPaid, setCheckoutAmountPaid] = useState<number>(0)
+  const [hasSetInstallment, setHasSetInstallment] = useState<boolean>(false)
   const [checkoutCustomer, setCheckoutCustomer] = useState<any>(null)
   const [checkoutDueDate, setCheckoutDueDate] = useState<string>('')
 
@@ -255,6 +256,7 @@ function RecordSaleContent() {
     setCheckoutPaymentMethod('Bank Transfer')
     setCheckoutInstallmentType('full')
     setCheckoutAmountPaid(0)
+    setHasSetInstallment(false)
     setCheckoutDueDate('')
     setStep('input')
   }
@@ -442,6 +444,7 @@ function RecordSaleContent() {
       props: {
         onSubmit: (newMethod: string) => {
           setCheckoutPaymentMethod(newMethod)
+          closeDrawer('payment-method')
           openSplitPaymentStep(
             newMethod,
             instType,
@@ -467,7 +470,8 @@ function RecordSaleContent() {
       type: 'split-payment',
       props: {
         totalAmount: totVal,
-        onBack: () =>
+        onBack: () => {
+          closeDrawer('split-payment')
           openPaymentMethodStep(
             method,
             instType,
@@ -475,10 +479,13 @@ function RecordSaleContent() {
             cust,
             itemsList,
             totVal,
-          ),
+          )
+        },
         onContinue: (newInstType: 'full' | 'part', newAmountPaid: number) => {
+          setHasSetInstallment(true)
           setCheckoutInstallmentType(newInstType)
           setCheckoutAmountPaid(newAmountPaid)
+          closeDrawer('split-payment')
           openCustomerSelectStep(
             method,
             newInstType,
@@ -503,7 +510,8 @@ function RecordSaleContent() {
     openDrawer({
       type: 'customer-select',
       props: {
-        onBack: () =>
+        onBack: () => {
+          closeDrawer('customer-select')
           openSplitPaymentStep(
             method,
             instType,
@@ -511,9 +519,11 @@ function RecordSaleContent() {
             cust,
             itemsList,
             totVal,
-          ),
+          )
+        },
         onSelect: (newCust: any) => {
           setCheckoutCustomer(newCust)
+          closeDrawer('customer-select')
           openCheckoutSaleDrawer(
             method,
             instType,
@@ -548,6 +558,7 @@ function RecordSaleContent() {
         paymentMethod: method,
         installmentType: instType,
         amountPaid: amountPaidVal,
+        hasSetInstallment,
         customer: cust,
         totalAmount: totVal,
         dueDate: dueDateVal,
@@ -601,6 +612,7 @@ function RecordSaleContent() {
                 newInstType: 'full' | 'part',
                 newAmountPaid: number,
               ) => {
+                setHasSetInstallment(true)
                 setCheckoutInstallmentType(newInstType)
                 setCheckoutAmountPaid(newAmountPaid)
                 const finalDueDate = newInstType === 'full' ? '' : dueDateVal

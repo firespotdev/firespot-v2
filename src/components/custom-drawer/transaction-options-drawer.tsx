@@ -1,11 +1,27 @@
 'use client'
 
-import { Archive, Download, PencilLine, Share, Mail, Wallet, RotateCcw } from 'lucide-react'
+import {
+  Archive,
+  Download,
+  PencilLine,
+  Share,
+  Mail,
+  Wallet,
+  RotateCcw,
+  PlusCircle,
+  Bell,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
 import { getMerchantStatus } from '@/lib/utils/sales'
-import { ActionList, ActionListItem, CircularIconButton, TagFooter, showNotificationToast } from '../ui'
+import {
+  ActionList,
+  ActionListItem,
+  CircularIconButton,
+  TagFooter,
+  showNotificationToast,
+} from '../ui'
 
 interface TransactionOptionsDrawerProps {
   sale: Sale
@@ -21,13 +37,17 @@ export function TransactionOptionsDrawer({
 
   const merchantStatus = getMerchantStatus(sale)
   const isPaidCollected =
-    (sale.isCollection || sale.source === 'QR scan' || sale.source === 'Link shared') &&
+    (sale.isCollection ||
+      sale.source === 'QR scan' ||
+      sale.source === 'Link shared') &&
     merchantStatus === 'Paid'
 
   const isConfirmed = sale.status === 'CONFIRMED' || !sale.status
   const isOutstanding =
     merchantStatus === 'Owing' ||
-    (sale.balanceOwed !== undefined && sale.balanceOwed > 0 && !sale.isPaidInFull)
+    (sale.balanceOwed !== undefined &&
+      sale.balanceOwed > 0 &&
+      !sale.isPaidInFull)
   const isArchived = merchantStatus === 'Archived'
   const creationDate = new Date(
     sale.createdAt || sale.recordedAt || Date.now(),
@@ -56,7 +76,12 @@ export function TransactionOptionsDrawer({
         {isOutstanding ? (
           <ActionList>
             <ActionListItem
-              icon={<Wallet size={24} className="text-[#111827] stroke-[2.2px]" />}
+              icon={
+                <PlusCircle
+                  size={24}
+                  className="text-[#111827] stroke-[2.2px]"
+                />
+              }
               title="Record repayment"
               onClick={() => {
                 closeDrawer()
@@ -64,7 +89,9 @@ export function TransactionOptionsDrawer({
               }}
             />
             <ActionListItem
-              icon={<Mail size={24} className="text-[#111827] stroke-[2.2px]" />}
+              icon={
+                <Bell size={24} className="text-[#111827] stroke-[2.2px]" />
+              }
               title="Send reminder"
               onClick={() => {
                 storeCloseDrawer('transaction-options')
@@ -78,7 +105,9 @@ export function TransactionOptionsDrawer({
         ) : (
           <ActionList>
             <ActionListItem
-              icon={<Share size={24} className="text-[#111827] stroke-[2.2px]" />}
+              icon={
+                <Share size={24} className="text-[#111827] stroke-[2.2px]" />
+              }
               title="Share receipt"
               onClick={() => {
                 closeDrawer()
@@ -91,7 +120,9 @@ export function TransactionOptionsDrawer({
               }}
             />
             <ActionListItem
-              icon={<Download size={24} className="text-[#111827] stroke-[2.2px]" />}
+              icon={
+                <Download size={24} className="text-[#111827] stroke-[2.2px]" />
+              }
               title="Download receipt"
               onClick={() => {
                 closeDrawer()
@@ -108,7 +139,9 @@ export function TransactionOptionsDrawer({
               <PencilLine
                 size={24}
                 className={
-                  isEditable ? 'text-[#111827] stroke-[2.2px]' : 'text-gray-200 stroke-[2.2px]'
+                  isEditable
+                    ? 'text-[#111827] stroke-[2.2px]'
+                    : 'text-gray-200 stroke-[2.2px]'
                 }
               />
             }
@@ -130,7 +163,8 @@ export function TransactionOptionsDrawer({
               onClick={() => {
                 storeCloseDrawer('transaction-options')
                 showNotificationToast({
-                  message: 'Refund feature initiated for this collected payment',
+                  message:
+                    'Refund feature initiated for this collected payment',
                 })
               }}
             />
@@ -140,7 +174,9 @@ export function TransactionOptionsDrawer({
                 <Archive
                   size={24}
                   className={
-                    isArchived ? 'text-red-200 stroke-[2.2px]' : 'text-[#FF3B30] stroke-[2.2px]'
+                    isArchived
+                      ? 'text-red-200 stroke-[2.2px]'
+                      : 'text-[#FF3B30] stroke-[2.2px]'
                   }
                 />
               }

@@ -25,6 +25,7 @@ export type DrawerContentType =
   | 'send-reminder'
   | 'repayment-summary'
   | 'repayment-success'
+  | 'add-customer'
 
 
 

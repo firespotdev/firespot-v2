@@ -22,6 +22,7 @@ interface Props {
   paymentMethod: string
   installmentType: 'full' | 'part'
   amountPaid: number
+  hasSetInstallment?: boolean
   customer: any
   totalAmount: number
   dueDate?: string
@@ -39,6 +40,7 @@ export function CurrentSaleDrawer({
   paymentMethod,
   installmentType,
   amountPaid,
+  hasSetInstallment = false,
   customer,
   totalAmount,
   dueDate,
@@ -183,40 +185,44 @@ export function CurrentSaleDrawer({
 
       {/* Checkout Metadata fields (Clickable to edit) */}
       <div className="flex flex-col gap-3 py-4 shrink-0 text-left">
-        {/* Paid now */}
-        <button
-          onClick={onEditInstallment}
-          className="flex justify-between items-center hover:opacity-85 transition-opacity"
-        >
-          <span className="text-sm text-[#00000080] font-medium">
-            {installmentType === 'full' ? 'Paid in full' : 'Paid now'}
-          </span>
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-medium text-[#24C166]">
-              NGN {formatCurrency(amountPaid)}
-            </span>
-            <ChevronRight className="w-4 h-4 text-[#00000080]" />
-          </div>
-        </button>
-
-        {/* Outstanding */}
-        {installmentType !== 'full' && (
-          <button
-            onClick={onEditInstallment}
-            className="flex justify-between items-center hover:opacity-85 transition-opacity"
-          >
-            <span className="text-sm text-[#00000080] font-medium">
-              Outstanding
-            </span>
-            <div className="flex items-center gap-1">
-              <span
-                className={`text-sm font-medium ${balanceOwed > 0 ? 'text-[#D97706]' : 'text-[#111827]'}`}
-              >
-                NGN {formatCurrency(balanceOwed)}
+        {/* Paid now / Paid in full (Only display when set) */}
+        {hasSetInstallment && (
+          <>
+            <button
+              onClick={onEditInstallment}
+              className="flex justify-between items-center hover:opacity-85 transition-opacity"
+            >
+              <span className="text-sm text-[#00000080] font-medium">
+                {installmentType === 'full' ? 'Paid in full' : 'Paid now'}
               </span>
-              <ChevronRight className="w-4 h-4 text-[#00000080]" />
-            </div>
-          </button>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-medium text-[#24C166]">
+                  NGN {formatCurrency(installmentType === 'full' ? totalAmount : amountPaid)}
+                </span>
+                <ChevronRight className="w-4 h-4 text-[#00000080]" />
+              </div>
+            </button>
+
+            {/* Outstanding */}
+            {installmentType !== 'full' && (
+              <button
+                onClick={onEditInstallment}
+                className="flex justify-between items-center hover:opacity-85 transition-opacity"
+              >
+                <span className="text-sm text-[#00000080] font-medium">
+                  Outstanding
+                </span>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={`text-sm font-medium ${balanceOwed > 0 ? 'text-[#D97706]' : 'text-[#111827]'}`}
+                  >
+                    NGN {formatCurrency(balanceOwed)}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-[#00000080]" />
+                </div>
+              </button>
+            )}
+          </>
         )}
 
         {/* Payment method */}
@@ -234,18 +240,20 @@ export function CurrentSaleDrawer({
         </button>
 
         {/* Customer */}
-        <button
-          onClick={onEditCustomer}
-          className="flex justify-between items-center hover:opacity-85 transition-opacity"
-        >
-          <span className="text-sm text-[#00000080] font-medium">Customer</span>
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-medium text-[#111827]">
-              {customer ? customer.name : 'Select customer'}
-            </span>
-            <ChevronRight className="w-4 h-4 text-[#00000080]" />
-          </div>
-        </button>
+        {customer && (
+          <button
+            onClick={onEditCustomer}
+            className="flex justify-between items-center hover:opacity-85 transition-opacity"
+          >
+            <span className="text-sm text-[#00000080] font-medium">Customer</span>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-medium text-[#111827]">
+                {customer.name}
+              </span>
+              <ChevronRight className="w-4 h-4 text-[#00000080]" />
+            </div>
+          </button>
+        )}
 
         {/* Due Date */}
         {balanceOwed > 0 && (

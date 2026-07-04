@@ -38,7 +38,7 @@ import { ConfirmArchiveDrawer } from './confirm-archive-drawer'
 import { SendReminderDrawer } from './send-reminder-drawer'
 import { RepaymentSummaryDrawer } from './repayment-summary-drawer'
 import { RepaymentSuccessDrawer } from './repayment-success-drawer'
-
+import { AddCustomerDrawer } from './add-customer-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -208,6 +208,12 @@ const DRAWER_CONFIG: Record<
     fullScreen: true,
     hideHandle: true,
   },
+  'add-customer': {
+    title: '',
+    Content: AddCustomerDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
   custom: {
     title: '',
     Content: () => null,
@@ -290,7 +296,9 @@ export function CustomDrawer() {
           >
             {noHeader ? (
               <>
-                <DrawerTitle className="sr-only">{title || 'Share'}</DrawerTitle>
+                <DrawerTitle className="sr-only">
+                  {title || 'Share'}
+                </DrawerTitle>
                 <Content {...(config.props || {})} closeDrawer={handleClose} />
                 {nextDrawer}
               </>
@@ -355,9 +363,12 @@ export function CustomDrawer() {
               'checkout-sale',
               'collect-payment',
               'variant-selector',
+              'repayment-summary',
+              'send-reminder',
+              'add-customer',
             ].includes(config.type)
               ? 'bg-white'
-              : 'bg-[#f4f6f8]'
+              : 'bg-[#f5f6f8]'
           } max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80vh]`}
         >
           {noHeader ? (

@@ -31,13 +31,13 @@ export const getStatusColor = (status: string) => {
       return 'text-[#24C166]'
     case 'OWING':
     case 'OUTSTANDING':
-      return 'text-[#FF9500]'
+      return 'text-[#D72483]'
     case 'UNCONFIRMED':
     case 'PENDING':
       return 'text-[#BB8123]'
     case 'ARCHIVED':
     case 'CANCELLED':
-      return 'text-[#FF3B30]'
+      return 'text-[#9CA3AF]'
     default:
       return 'text-[#6B7280]'
   }

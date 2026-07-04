@@ -18,4 +18,5 @@ export * from './status-badge'
 export * from './stat-banner'
 export * from './filter-capsule'
 export * from './circular-icon-button'
-
+export * from './clock-gradient-icon'
+export * from './clock-fill-icon'

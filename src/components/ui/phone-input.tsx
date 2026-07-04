@@ -8,6 +8,7 @@ interface PhoneInputProps {
   value?: string
   onChange?: (value: string) => void
   className?: string
+  inputClassName?: string
   error?: boolean
 }
 
@@ -46,6 +47,7 @@ export function PhoneInput({
   value,
   onChange,
   className,
+  inputClassName,
   error,
 }: PhoneInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -123,6 +125,7 @@ export function PhoneInput({
           'pl-28 font-medium',
           error &&
             'border-[#FF002E] focus-visible:border-[#FF002E] focus-visible:ring-[#FF002E]/20 focus-visible:ring-[3px]',
+          inputClassName,
         )}
       />
     </div>

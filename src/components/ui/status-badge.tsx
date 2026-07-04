@@ -1,4 +1,3 @@
-import * as React from 'react'
 import { Archive, Check, Clock, PencilLine, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +27,10 @@ export function StatusBadge({
 }: StatusBadgeProps) {
   const upperStatus = (status || '').toUpperCase()
 
+  const isOwing = upperStatus === 'OWING' || upperStatus === 'OUTSTANDING'
+  const isUnconfirmed = upperStatus === 'UNCONFIRMED' || upperStatus === 'PENDING'
+  const isArchived = upperStatus === 'ARCHIVED' || upperStatus === 'CANCELLED'
+
   const config = {
     PAID: {
       label: 'Paid',
@@ -43,38 +46,38 @@ export function StatusBadge({
     },
     OWING: {
       label: 'Owing',
-      color: 'bg-[#FF9500] text-white',
-      textColor: 'text-[#FF9500]',
+      color: 'text-white',
+      textColor: 'text-[#D72483]',
       Icon: Clock,
     },
     OUTSTANDING: {
       label: 'Owing',
-      color: 'bg-[#FF9500] text-white',
-      textColor: 'text-[#FF9500]',
+      color: 'text-white',
+      textColor: 'text-[#D72483]',
       Icon: Clock,
     },
     UNCONFIRMED: {
       label: 'Unconfirmed',
-      color: 'bg-[#BB8123] text-white',
+      color: 'text-white',
       textColor: 'text-[#BB8123]',
       Icon: Clock,
     },
     PENDING: {
       label: 'Unconfirmed',
-      color: 'bg-[#BB8123] text-white',
+      color: 'text-white',
       textColor: 'text-[#BB8123]',
       Icon: Clock,
     },
     ARCHIVED: {
       label: 'Archived',
-      color: 'bg-[#8E8E93] text-white',
-      textColor: 'text-[#8E8E93]',
+      color: 'text-white',
+      textColor: 'text-[#9CA3AF]',
       Icon: Archive,
     },
     CANCELLED: {
       label: 'Archived',
-      color: 'bg-[#8E8E93] text-white',
-      textColor: 'text-[#8E8E93]',
+      color: 'text-white',
+      textColor: 'text-[#9CA3AF]',
       Icon: Archive,
     },
     EDITED: {
@@ -94,8 +97,24 @@ export function StatusBadge({
   const IconComponent = config.Icon
 
   if (variant === 'text') {
+    if (isOwing) {
+      return (
+        <span
+          className={cn('text-[11px] font-medium', className)}
+          style={{
+            background: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          {displayLabel}
+        </span>
+      )
+    }
     return (
-      <span className={cn('text-[11px] font-medium', config.textColor, className)}>
+      <span
+        className={cn('text-[11px] font-medium', config.textColor, className)}
+      >
         {displayLabel}
       </span>
     )
@@ -104,8 +123,30 @@ export function StatusBadge({
   if (variant === 'dot') {
     return (
       <div className={cn('flex items-center gap-1.5', className)}>
-        <span className={cn('w-2 h-2 rounded-full', config.color.split(' ')[0])} />
-        <span className={cn('text-[14px] font-medium', config.textColor)}>
+        <span
+          className={cn('w-2 h-2 rounded-full', !isOwing && !isUnconfirmed && !isArchived && config.color.split(' ')[0])}
+          style={
+            isOwing
+              ? { background: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)' }
+              : isUnconfirmed
+                ? { background: 'linear-gradient(0deg, #6B7280, #6B7280), linear-gradient(0deg, #BB8123, #BB8123)' }
+                : isArchived
+                  ? { backgroundColor: '#9CA3AF' }
+                  : undefined
+          }
+        />
+        <span
+          className={cn('text-[14px] font-medium', !isOwing && config.textColor)}
+          style={
+            isOwing
+              ? {
+                  background: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }
+              : undefined
+          }
+        >
           {displayLabel}
         </span>
       </div>
@@ -119,6 +160,15 @@ export function StatusBadge({
         config.color,
         className,
       )}
+      style={
+        isOwing
+          ? { background: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)' }
+          : isUnconfirmed
+            ? { background: 'linear-gradient(0deg, #6B7280, #6B7280), linear-gradient(0deg, #BB8123, #BB8123)' }
+            : isArchived
+              ? { backgroundColor: '#9CA3AF' }
+              : undefined
+      }
     >
       {icon && <IconComponent size={10} strokeWidth={2.5} />}
       {displayLabel}
