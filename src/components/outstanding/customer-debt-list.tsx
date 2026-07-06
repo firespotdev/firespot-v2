@@ -105,7 +105,6 @@ export function CustomerDebtList({
             currency="₦"
             className="px-4 py-3.5"
           />
-          {/* Gray circular history-like refresh button inside stat banner */}
           <button
             onClick={refetch}
             className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#E5E7EB] flex items-center justify-center text-[#6B7280] transition-colors"
