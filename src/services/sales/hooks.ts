@@ -130,3 +130,10 @@ export const useCustomerOutstandingSales = (customerId?: string) => {
   });
 };
 
+export const useOutstandingSummary = () => {
+  return useQuery({
+    queryKey: ['sales-outstanding-summary'],
+    queryFn: () => SalesApi.getOutstandingSummary(),
+  });
+};
+

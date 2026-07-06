@@ -34,7 +34,10 @@ export function StatBanner({
     <AppCard
       rounded="12"
       padding="md"
-      className={cn('w-full flex justify-between items-center shrink-0', className)}
+      className={cn(
+        'w-full flex justify-between items-center shrink-0',
+        className,
+      )}
     >
       <div className="w-full">
         <div className="flex items-center gap-1 mb-2 justify-between w-full">
@@ -45,10 +48,16 @@ export function StatBanner({
               className="flex items-center gap-1 text-[#00000066] text-xs font-medium hover:text-black transition-colors"
             >
               <span>{label}</span>
-              <ChevronDown size={14} strokeWidth={2} className="text-[#00000066]" />
+              <ChevronDown
+                size={14}
+                strokeWidth={2}
+                className="text-[#00000066]"
+              />
             </button>
           ) : (
-            <span className="text-[#00000066] text-xs font-medium">{label}</span>
+            <span className="text-[#00000066] text-xs font-medium leading-none">
+              {label}
+            </span>
           )}
 
           {badgeText && (
@@ -68,7 +77,9 @@ export function StatBanner({
             <div className="h-6 w-32 bg-gray-200 animate-pulse rounded" />
           ) : (
             <h3 className="font-bold text-[22px] tracking-tight leading-none text-black">
-              {isHidden ? `${currency} ••••••••` : `${currency} ${formatCurrency(amount)}`}
+              {isHidden
+                ? `${currency} ••••••••`
+                : `${currency} ${formatCurrency(amount)}`}
             </h3>
           )}
 

@@ -2,8 +2,7 @@ import * as React from 'react'
 import { ArrowLeft, ChevronDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export interface CircularIconButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export interface CircularIconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: 'x' | 'chevron-down' | 'arrow-left' | React.ReactNode
   size?: 'sm' | 'md' | 'lg'
   variant?: 'ghost' | 'filled' | 'bordered'
@@ -27,20 +26,21 @@ export const CircularIconButton = React.forwardRef<
   ) => {
     const sizeClasses = {
       sm: 'w-7 h-7 p-1',
-      md: 'w-9 h-9 p-1.5',
+      md: 'w-9 h-9',
       lg: 'w-10 h-10 p-2',
     }[size]
 
     const iconSizeMap = {
       sm: 16,
-      md: 20,
+      md: 24,
       lg: 24,
     }[size]
 
     const variantClasses = {
       ghost: 'hover:bg-gray-100 active:bg-gray-200 text-black',
       filled: 'bg-gray-100 hover:bg-gray-200 text-black',
-      bordered: 'border border-[#F1F1F1] bg-white hover:bg-gray-50 text-black shadow-sm',
+      bordered:
+        'border border-[#F1F1F1] bg-white hover:bg-gray-50 text-black shadow-sm',
     }[variant]
 
     const renderIcon = () => {
@@ -49,12 +49,12 @@ export const CircularIconButton = React.forwardRef<
 
       switch (icon) {
         case 'chevron-down':
-          return <ChevronDown size={iconSizeMap} className="stroke-[2.5px]" />
+          return <ChevronDown size={iconSizeMap} className="stroke-[2px]" />
         case 'arrow-left':
-          return <ArrowLeft size={iconSizeMap} className="stroke-[2.5px]" />
+          return <ArrowLeft size={iconSizeMap} className="stroke-[2px]" />
         case 'x':
         default:
-          return <X size={iconSizeMap} className="stroke-[2.5px]" />
+          return <X size={iconSizeMap} className="stroke-[2px]" />
       }
     }
 
@@ -63,12 +63,7 @@ export const CircularIconButton = React.forwardRef<
         ref={ref}
         type="button"
         onClick={onClick}
-        className={cn(
-          'rounded-full transition-all flex items-center justify-center shrink-0',
-          sizeClasses,
-          variantClasses,
-          className,
-        )}
+        className={cn(sizeClasses, variantClasses, className)}
         {...props}
       >
         {renderIcon()}

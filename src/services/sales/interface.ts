@@ -45,6 +45,11 @@ export interface Sale {
   dueDate?: string | Date;
   isCollection?: boolean;
   location?: string;
+  repayments?: Array<{
+    amount: number;
+    paymentMethod: string;
+    recordedAt?: string | Date;
+  }>;
   createdAt: string | Date;
   updatedAt: string | Date;
 }

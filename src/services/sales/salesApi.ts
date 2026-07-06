@@ -107,4 +107,19 @@ export const SalesApi = {
     });
     return data;
   },
+
+  getOutstandingSummary: async (): Promise<{
+    totalOutstandingAmount: number;
+    customers: Array<{
+      customerId: string;
+      customerName: string;
+      customerPhone: string;
+      customerAvatar?: string;
+      transactionCount: number;
+      totalOwed: number;
+    }>;
+  }> => {
+    const { data } = await apiClient.get('/sales/outstanding/summary');
+    return data;
+  },
 };

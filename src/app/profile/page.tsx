@@ -284,7 +284,7 @@ export default function ProfilePage() {
 
             {/* Owing */}
             <Link
-              href="/history?status=OWING"
+              href="/outstanding"
               className="flex flex-col items-center group"
             >
               <span
