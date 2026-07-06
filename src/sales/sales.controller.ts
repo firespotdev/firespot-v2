@@ -69,6 +69,14 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get merchant outstanding summary' })
+  @Get('outstanding/summary')
+  async getOutstandingSummary(@GetUser() user: User) {
+    return this.salesService.getOutstandingSummary((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get a single sale' })
   @Get(':id')
   async getSale(@GetUser() user: User, @Param('id') id: string) {

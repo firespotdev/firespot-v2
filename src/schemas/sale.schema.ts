@@ -105,6 +105,20 @@ export class Sale extends Document {
   @Prop()
   location?: string;
 
+  @Prop({
+    type: [{
+      amount: Number,
+      paymentMethod: String,
+      recordedAt: { type: Date, default: Date.now },
+    }],
+    default: [],
+  })
+  repayments?: Array<{
+    amount: number;
+    paymentMethod: string;
+    recordedAt?: Date;
+  }>;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

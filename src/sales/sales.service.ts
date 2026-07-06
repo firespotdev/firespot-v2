@@ -195,6 +195,11 @@ export class SalesService {
         : undefined,
       items: dto.items || [],
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+      repayments: dto.amountPaid && dto.amountPaid > 0 ? [{
+        amount: dto.amountPaid,
+        paymentMethod: dto.paymentMethod || 'Other',
+        recordedAt: new Date(),
+      }] : [],
     })
 
     await sale.save()
@@ -213,10 +218,15 @@ export class SalesService {
       paymentMethod,
       qrKitName,
       location,
+      customerId,
     } = query
     const skip = (Number(page) - 1) * Number(limit)
     const merchantObjectId = new Types.ObjectId(merchantId)
     const filter: any = { merchantId: merchantObjectId }
+
+    if (customerId) {
+      filter.customerId = new Types.ObjectId(customerId)
+    }
 
     if (status && status !== 'ALL') {
       const upperStatus = status.toUpperCase()
@@ -533,6 +543,16 @@ export class SalesService {
     if (dto.totalDue !== undefined) sale.totalDue = dto.totalDue
     if (dto.balanceOwed !== undefined) sale.balanceOwed = dto.balanceOwed
 
+    if (dto.amountPaid && dto.amountPaid > 0) {
+      sale.repayments = [{
+        amount: dto.amountPaid,
+        paymentMethod: dto.paymentMethod || 'Other',
+        recordedAt: new Date(),
+      }]
+    } else {
+      sale.repayments = []
+    }
+
     // If no QR kit is linked (e.g., manual entry confirmed later or link share), attribute to first kit
     if (!sale.serialNumber) {
       const firstKit = await this.qrKitModel
@@ -842,6 +862,22 @@ export class SalesService {
       if (dto.paymentMethod) primarySale.paymentMethod = dto.paymentMethod
       primarySale.status = isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
 
+      if (!primarySale.repayments) {
+        primarySale.repayments = []
+      }
+      if (currentAmountPaid > 0 && primarySale.repayments.length === 0) {
+        primarySale.repayments.push({
+          amount: currentAmountPaid,
+          paymentMethod: primarySale.paymentMethod || 'Other',
+          recordedAt: primarySale.recordedAt || primarySale.createdAt || new Date(),
+        })
+      }
+      primarySale.repayments.push({
+        amount: repaymentAmount,
+        paymentMethod: dto.paymentMethod || 'Other',
+        recordedAt: new Date(),
+      })
+
       await primarySale.save()
       await primarySale.populate('customerId')
       return primarySale
@@ -896,6 +932,23 @@ export class SalesService {
         sale.paymentMethod = dto.paymentMethod
       }
 
+      if (!sale.repayments) {
+        sale.repayments = []
+      }
+      const prevPaid = newAmountPaid - allocated
+      if (prevPaid > 0 && sale.repayments.length === 0) {
+        sale.repayments.push({
+          amount: prevPaid,
+          paymentMethod: sale.paymentMethod || 'Other',
+          recordedAt: sale.recordedAt || sale.createdAt || new Date(),
+        })
+      }
+      sale.repayments.push({
+        amount: allocated,
+        paymentMethod: dto.paymentMethod || 'Other',
+        recordedAt: new Date(),
+      })
+
       await sale.save()
       await sale.populate('customerId')
       updatedSales.push(sale)
@@ -935,6 +988,86 @@ export class SalesService {
         totalRemainingBalance,
         affectedSales: updatedSales,
       },
+    }
+  }
+
+  async getOutstandingSummary(merchantId: string) {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+
+    const owingSales = await this.saleModel
+      .find({
+        merchantId: merchantObjectId,
+        $or: [
+          { status: 'OUTSTANDING' },
+          { balanceOwed: { $gt: 0 } },
+          { isPaidInFull: false },
+        ],
+      })
+      .populate('customerId')
+      .exec()
+
+    const customerMap = new Map<
+      string,
+      {
+        customerId: string
+        customerName: string
+        customerPhone: string
+        customerAvatar?: string
+        transactionCount: number
+        totalOwed: number
+      }
+    >()
+
+    let totalOutstandingAmount = 0
+
+    for (const sale of owingSales) {
+      const bal =
+        sale.balanceOwed !== undefined && sale.balanceOwed !== null
+          ? sale.balanceOwed
+          : sale.amount
+            ? Math.max(0, sale.amount - (sale.amountPaid || 0))
+            : 0
+
+      if (bal <= 0) continue
+
+      totalOutstandingAmount += bal
+
+      let custId = 'anonymous'
+      let custName = 'Anonymous Customer'
+      let custPhone = ''
+      let custAvatar = ''
+
+      if (sale.customerId) {
+        const customer = sale.customerId as any
+        custId = customer._id ? customer._id.toString() : 'anonymous'
+        custName = customer.name || 'Anonymous Customer'
+        custPhone = customer.phoneNumber || ''
+        custAvatar = customer.profilePhotoUrl || ''
+      } else if (sale.customerFingerprint) {
+        custId = `fingerprint-${sale.customerFingerprint}`
+        custName =
+          sale.customerType === 'Repeat' ? 'Repeat Customer' : 'New Customer'
+      }
+
+      const existing = customerMap.get(custId)
+      if (existing) {
+        existing.transactionCount += 1
+        existing.totalOwed += bal
+      } else {
+        customerMap.set(custId, {
+          customerId: custId,
+          customerName: custName,
+          customerPhone: custPhone,
+          customerAvatar: custAvatar,
+          transactionCount: 1,
+          totalOwed: bal,
+        })
+      }
+    }
+
+    return {
+      totalOutstandingAmount,
+      customers: Array.from(customerMap.values()),
     }
   }
 }

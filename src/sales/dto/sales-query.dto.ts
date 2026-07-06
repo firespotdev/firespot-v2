@@ -54,5 +54,9 @@ export class SalesQueryDto {
   @IsOptional()
   @IsString()
   location?: string;
+
+  @IsOptional()
+  @IsString()
+  customerId?: string;
 }
 
