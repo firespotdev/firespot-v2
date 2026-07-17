@@ -1,5 +1,5 @@
 import { apiClient, publicApiClient } from '@/lib/utils/axios';
-import { Sale, SalesStats, SalesResponse } from './interface';
+import { PublicSale, Sale, SalesStats, SalesResponse } from './interface';
 
 export interface CreatePendingSalePayload {
   merchantId: string;
@@ -98,13 +98,32 @@ export const SalesApi = {
     return data;
   },
 
-  uploadReceipt: async (saleId: string, file: File): Promise<Sale> => {
+  getPublicSale: async (saleId: string): Promise<PublicSale> => {
+    const { data } = await publicApiClient.get(`/sales/${saleId}/public`);
+    return data;
+  },
 
+  uploadReceipt: async (saleId: string, file: File): Promise<Sale> => {
     const formData = new FormData();
     formData.append('receipt', file);
     const { data } = await publicApiClient.post(`/sales/${saleId}/receipt`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+    return data;
+  },
+
+  deleteReceipt: async (saleId: string): Promise<Sale> => {
+    const { data } = await publicApiClient.delete(`/sales/${saleId}/receipt`);
+    return data;
+  },
+
+  recordScan: async (saleId: string): Promise<Sale> => {
+    const { data } = await publicApiClient.patch(`/sales/${saleId}/scan`);
+    return data;
+  },
+
+  recordCopy: async (saleId: string): Promise<Sale> => {
+    const { data } = await publicApiClient.patch(`/sales/${saleId}/copy`);
     return data;
   },
 

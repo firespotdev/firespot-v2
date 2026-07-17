@@ -13,7 +13,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useAuthStore } from '@/services/auth'
+import { logoutEverywhere } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { useUserQRKits } from '@/services/qr'
 import { useUserProfile } from '@/services/users'
@@ -29,7 +29,6 @@ interface ProfileMenuDrawerProps {
 export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const { data: profile } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
-  const logout = useAuthStore((state) => state.logout)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: salesStats } = useSalesStats()
   const [soundEnabled, setSoundEnabled] = usePreference('soundEnabled', true)
@@ -56,8 +55,10 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
   const handleSignOut = () => {
     closeDrawer()
-    logout()
-    window.location.href = '/'
+    // Revoke the refresh token server-side, then clear local state.
+    logoutEverywhere().finally(() => {
+      window.location.href = '/'
+    })
   }
 
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${qrKitsData?.data?.[0]?.serialNumber || 'profile'}`

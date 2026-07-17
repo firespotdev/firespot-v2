@@ -26,6 +26,8 @@ export type DrawerContentType =
   | 'repayment-summary'
   | 'repayment-success'
   | 'add-customer'
+  | 'account-switch'
+  | 'sale-receipt'
 
 
 

@@ -138,16 +138,12 @@ export default function ProfilePage() {
     <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
-          title="Pay"
+          title={profile?.businessName || 'Your business'}
+          subtitle="Owner · Main Address"
           showDropdown
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
           onTitleClick={() =>
-            openDrawer({
-              type: 'bank-accounts',
-              props: {
-                bankAccounts: sortedBankAccounts,
-              },
-            })
+            openDrawer({ type: 'account-switch', props: { mode: 'merchant' } })
           }
           onShareClick={handleShareClick}
         />
@@ -251,68 +247,90 @@ export default function ProfilePage() {
             </Link>
 
             {/* Unconfirmed */}
-            <Link
-              href="/history?status=UNCONFIRMED"
-              className="flex flex-col items-center group"
-            >
-              <span
-                className="text-xl font-bold leading-none -tracking-[0.4px]"
-                style={{
-                  background:
-                    'linear-gradient(135deg, #F5B041 0%, #BB8123 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                {salesStats?.pendingSalesCount ?? 0}
-              </span>
-              <div className="flex items-center gap-0.5 mt-1.5 group-hover:opacity-80 transition-opacity">
-                <span
-                  className="text-[13px] font-medium"
-                  style={{
+            {(() => {
+              const unconfirmedCount = salesStats?.pendingSalesCount ?? 0
+              const active = unconfirmedCount >= 1
+              const gradientStyle = active
+                ? {
                     background:
                       'linear-gradient(135deg, #F5B041 0%, #BB8123 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
+                    WebkitBackgroundClip: 'text' as const,
+                    WebkitTextFillColor: 'transparent' as const,
+                  }
+                : undefined
+              return (
+                <Link
+                  href="/history?status=UNCONFIRMED"
+                  className="flex flex-col items-center group"
                 >
-                  Unconfirmed
-                </span>
-                <ChevronRight size={11} color="#BB8123" />
-              </div>
-            </Link>
+                  <span
+                    className={`text-xl font-bold leading-none -tracking-[0.4px] ${
+                      active ? '' : 'text-black'
+                    }`}
+                    style={gradientStyle}
+                  >
+                    {unconfirmedCount}
+                  </span>
+                  <div className="flex items-center gap-0.5 mt-1.5 group-hover:opacity-80 transition-opacity">
+                    <span
+                      className={`text-[13px] font-medium ${
+                        active ? '' : 'text-[#00000080]'
+                      }`}
+                      style={gradientStyle}
+                    >
+                      Unconfirmed
+                    </span>
+                    <ChevronRight
+                      size={11}
+                      color={active ? '#BB8123' : '#00000080'}
+                    />
+                  </div>
+                </Link>
+              )
+            })()}
 
             {/* Owing */}
-            <Link
-              href="/outstanding"
-              className="flex flex-col items-center group"
-            >
-              <span
-                className="text-xl font-bold leading-none -tracking-[0.4px]"
-                style={{
-                  background:
-                    'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                {owingSales?.pagination?.total ?? 0}
-              </span>
-              <div className="flex items-center gap-0.5 mt-1.5 transition-opacity">
-                <span
-                  className="text-[13px] font-medium"
-                  style={{
+            {(() => {
+              const owingCount = owingSales?.pagination?.total ?? 0
+              const active = owingCount >= 1
+              const gradientStyle = active
+                ? {
                     background:
                       'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
+                    WebkitBackgroundClip: 'text' as const,
+                    WebkitTextFillColor: 'transparent' as const,
+                  }
+                : undefined
+              return (
+                <Link
+                  href="/outstanding"
+                  className="flex flex-col items-center group"
                 >
-                  Owing
-                </span>
-                <ChevronRight size={11} color="#D72483" />
-              </div>
-            </Link>
+                  <span
+                    className={`text-xl font-bold leading-none -tracking-[0.4px] ${
+                      active ? '' : 'text-black'
+                    }`}
+                    style={gradientStyle}
+                  >
+                    {owingCount}
+                  </span>
+                  <div className="flex items-center gap-0.5 mt-1.5 transition-opacity">
+                    <span
+                      className={`text-[13px] font-medium ${
+                        active ? '' : 'text-[#00000080]'
+                      }`}
+                      style={gradientStyle}
+                    >
+                      Owing
+                    </span>
+                    <ChevronRight
+                      size={11}
+                      color={active ? '#D72483' : '#00000080'}
+                    />
+                  </div>
+                </Link>
+              )
+            })()}
           </div>
         </div>
 

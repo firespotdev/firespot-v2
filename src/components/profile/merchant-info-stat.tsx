@@ -111,7 +111,7 @@ export function MerchantInfoStat({
               alt={merchantInfo.businessName}
               width={96}
               height={96}
-              className="w-24 h-24 rounded-full object-cover"
+              className="w-24 h-24 rounded-full object-cover shadow-[0px_4px_8px_0px_#0000000A]"
             />
           ) : (
             <div className="w-24 h-24 rounded-full bg-[#CED7E1] flex items-center justify-center">

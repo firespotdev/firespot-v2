@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef } from 'react'
-import { ChevronDown, Minus, ChevronRight } from 'lucide-react'
+import { ChevronDown, Minus, ChevronRight, Loader2 } from 'lucide-react'
 import { useDrawerStore } from '@/services/drawer'
 
 interface CartItem {
@@ -26,6 +26,8 @@ interface Props {
   customer: any
   totalAmount: number
   dueDate?: string
+  mode?: 'record' | 'collect'
+  isLoading?: boolean
   onEditPaymentMethod: () => void
   onEditInstallment: () => void
   onEditCustomer: () => void
@@ -44,6 +46,8 @@ export function CurrentSaleDrawer({
   customer,
   totalAmount,
   dueDate,
+  mode = 'record',
+  isLoading = false,
   onEditPaymentMethod,
   onEditInstallment,
   onEditCustomer,
@@ -184,129 +188,139 @@ export function CurrentSaleDrawer({
       </div>
 
       {/* Checkout Metadata fields (Clickable to edit) */}
-      <div className="flex flex-col gap-3 py-4 shrink-0 text-left">
-        {/* Paid now / Paid in full (Only display when set) */}
-        {hasSetInstallment && (
-          <>
-            <button
-              onClick={onEditInstallment}
-              className="flex justify-between items-center hover:opacity-85 transition-opacity"
-            >
-              <span className="text-sm text-[#00000080] font-medium">
-                {installmentType === 'full' ? 'Paid in full' : 'Paid now'}
-              </span>
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-medium text-[#24C166]">
-                  NGN {formatCurrency(installmentType === 'full' ? totalAmount : amountPaid)}
-                </span>
-                <ChevronRight className="w-4 h-4 text-[#00000080]" />
-              </div>
-            </button>
-
-            {/* Outstanding */}
-            {installmentType !== 'full' && (
+      {mode !== 'collect' && (
+        <div className="flex flex-col gap-3 py-4 shrink-0 text-left">
+          {/* Paid now / Paid in full (Only display when set) */}
+          {hasSetInstallment && (
+            <>
               <button
                 onClick={onEditInstallment}
                 className="flex justify-between items-center hover:opacity-85 transition-opacity"
               >
                 <span className="text-sm text-[#00000080] font-medium">
-                  Outstanding
+                  {installmentType === 'full' ? 'Paid in full' : 'Paid now'}
                 </span>
                 <div className="flex items-center gap-1">
-                  <span
-                    className={`text-sm font-medium ${balanceOwed > 0 ? 'text-[#D97706]' : 'text-[#111827]'}`}
-                  >
-                    NGN {formatCurrency(balanceOwed)}
+                  <span className="text-sm font-medium text-[#24C166]">
+                    NGN {formatCurrency(installmentType === 'full' ? totalAmount : amountPaid)}
                   </span>
                   <ChevronRight className="w-4 h-4 text-[#00000080]" />
                 </div>
               </button>
-            )}
-          </>
-        )}
 
-        {/* Payment method */}
-        <button
-          onClick={onEditPaymentMethod}
-          className="flex justify-between items-center hover:opacity-85 transition-opacity"
-        >
-          <span className="text-sm text-[#00000080] font-medium">Method</span>
-          <div className="flex items-center gap-1">
-            <span className="text-sm font-medium text-[#111827] capitalize">
-              {paymentMethod}
-            </span>
-            <ChevronRight className="w-4 h-4 text-[#00000080]" />
-          </div>
-        </button>
+              {/* Outstanding */}
+              {installmentType !== 'full' && (
+                <button
+                  onClick={onEditInstallment}
+                  className="flex justify-between items-center hover:opacity-85 transition-opacity"
+                >
+                  <span className="text-sm text-[#00000080] font-medium">
+                    Outstanding
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <span
+                      className={`text-sm font-medium ${balanceOwed > 0 ? 'text-[#D97706]' : 'text-[#111827]'}`}
+                    >
+                      NGN {formatCurrency(balanceOwed)}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-[#00000080]" />
+                  </div>
+                </button>
+              )}
+            </>
+          )}
 
-        {/* Customer */}
-        {customer && (
+          {/* Payment method */}
           <button
-            onClick={onEditCustomer}
+            onClick={onEditPaymentMethod}
             className="flex justify-between items-center hover:opacity-85 transition-opacity"
           >
-            <span className="text-sm text-[#00000080] font-medium">Customer</span>
+            <span className="text-sm text-[#00000080] font-medium">Method</span>
             <div className="flex items-center gap-1">
-              <span className="text-sm font-medium text-[#111827]">
-                {customer.name}
+              <span className="text-sm font-medium text-[#111827] capitalize">
+                {paymentMethod}
               </span>
               <ChevronRight className="w-4 h-4 text-[#00000080]" />
             </div>
           </button>
-        )}
 
-        {/* Due Date */}
-        {balanceOwed > 0 && (
-          <>
-            <input
-              type="date"
-              ref={dateInputRef}
-              className="hidden"
-              value={dueDate || ''}
-              onChange={(e) => {
-                if (onEditDueDate) {
-                  onEditDueDate(e.target.value)
-                }
-              }}
-            />
+          {/* Customer */}
+          {customer && (
             <button
-              onClick={() => {
-                if (dateInputRef.current) {
-                  if (typeof dateInputRef.current.showPicker === 'function') {
-                    dateInputRef.current.showPicker()
-                  } else {
-                    dateInputRef.current.click()
-                  }
-                }
-              }}
+              onClick={onEditCustomer}
               className="flex justify-between items-center hover:opacity-85 transition-opacity"
             >
-              <span className="text-sm text-[#00000080] font-medium">
-                Balance due by
-              </span>
+              <span className="text-sm text-[#00000080] font-medium">Customer</span>
               <div className="flex items-center gap-1">
-                <span
-                  className={
-                    dueDate
-                      ? 'text-sm font-medium text-[#111827]'
-                      : 'text-sm font-medium text-[#111827] underline'
-                  }
-                >
-                  {dueDate ? formatDueDate(dueDate) : 'Set a due date'}
+                <span className="text-sm font-medium text-[#111827]">
+                  {customer.name}
                 </span>
                 <ChevronRight className="w-4 h-4 text-[#00000080]" />
               </div>
             </button>
-          </>
-        )}
-      </div>
+          )}
 
-      {/* Main record button */}
+          {/* Due Date */}
+          {balanceOwed > 0 && (
+            <>
+              <input
+                type="date"
+                ref={dateInputRef}
+                className="hidden"
+                value={dueDate || ''}
+                onChange={(e) => {
+                  if (onEditDueDate) {
+                    onEditDueDate(e.target.value)
+                  }
+                }}
+              />
+              <button
+                onClick={() => {
+                  if (dateInputRef.current) {
+                    if (typeof dateInputRef.current.showPicker === 'function') {
+                      dateInputRef.current.showPicker()
+                    } else {
+                      dateInputRef.current.click()
+                    }
+                  }
+                }}
+                className="flex justify-between items-center hover:opacity-85 transition-opacity"
+              >
+                <span className="text-sm text-[#00000080] font-medium">
+                  Balance due by
+                </span>
+                <div className="flex items-center gap-1">
+                  <span
+                    className={
+                      dueDate
+                        ? 'text-sm font-medium text-[#111827]'
+                        : 'text-sm font-medium text-[#111827] underline'
+                    }
+                  >
+                    {dueDate ? formatDueDate(dueDate) : 'Set a due date'}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-[#00000080]" />
+                </div>
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Main button */}
       <button
         onClick={onConfirmRecord}
-        className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0"
+        disabled={isLoading}
+        className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 disabled:bg-black/60 disabled:cursor-not-allowed text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0 flex items-center justify-center gap-2"
       >
-        Record NGN {formatCurrency(amountPaid)}
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin text-white" />
+            <span>Loading...</span>
+          </>
+        ) : (
+          <span>{mode === 'collect' ? 'Collect' : 'Record'} NGN {formatCurrency(mode === 'collect' ? totalAmount : amountPaid)}</span>
+        )}
       </button>
     </div>
   )

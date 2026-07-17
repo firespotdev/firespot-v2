@@ -4,7 +4,16 @@ import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { LoginForm } from '@/components/auth/login-form'
 import { OtpVerification } from '@/components/auth/otp-verification'
-import { useLogin, useVerifyOtp, useAuthStore } from '@/services/auth'
+import {
+  useRequestOtp,
+  useVerifyOtp,
+  useAuthStore,
+  useAuthReady,
+} from '@/services/auth'
+import {
+  getPostAuthDestination,
+  isTokenExpired,
+} from '@/lib/utils/auth-redirect'
 
 function LoginPageContent() {
   const router = useRouter()
@@ -16,42 +25,51 @@ function LoginPageContent() {
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const token = useAuthStore((state) => state.token)
+  const user = useAuthStore((state) => state.user)
+  const onboardingCompleted = useAuthStore(
+    (state) => state.onboardingCompleted,
+  )
   const logout = useAuthStore((state) => state.logout)
-  const login = useLogin()
+  const authReady = useAuthReady()
+  const requestOtp = useRequestOtp()
   const verifyOtp = useVerifyOtp()
 
   // Get redirect params
   const redirectPath = searchParams.get('redirect')
   const serialNumber = searchParams.get('serial')
+  // 'merchant' intent (QR kit claim / old signup links) skips personal onboarding
+  const intent = searchParams.get('intent')
+  const referralCode = searchParams.get('ref')
 
-  // Build redirect URL after login
-  const getRedirectUrl = () => {
-    if (redirectPath) {
-      const url = new URL(redirectPath, window.location.origin)
-      if (serialNumber) {
-        url.searchParams.set('serial', serialNumber)
-      }
-      return url.pathname + url.search
+  // Build deep-link redirect (e.g. /pay?serial=XYZ) if present
+  const getDeepLinkRedirect = () => {
+    if (!redirectPath) return null
+    const url = new URL(redirectPath, window.location.origin)
+    if (serialNumber) {
+      url.searchParams.set('serial', serialNumber)
     }
-    return '/profile'
+    return url.pathname + url.search
   }
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated (after the bootstrap refresh settles)
   useEffect(() => {
+    if (!authReady) return
     if (isAuthenticated && token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        if (payload.exp && payload.exp * 1000 < Date.now()) {
-          logout()
-          return
-        }
-      } catch (e) {
+      if (isTokenExpired(token)) {
         logout()
         return
       }
-      router.replace(getRedirectUrl())
+      router.replace(
+        getPostAuthDestination({
+          user,
+          onboardingCompleted,
+          redirectPath: getDeepLinkRedirect(),
+          intent,
+          referralCode,
+        }),
+      )
     }
-  }, [isAuthenticated, token, router, logout])
+  }, [authReady, isAuthenticated, token, router, logout])
 
   const handlePhoneNumberChange = (value: string) => {
     setPhoneNumber(value)
@@ -60,27 +78,28 @@ function LoginPageContent() {
     }
   }
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoginError(undefined)
-
-    login.mutate(
+  const sendOtp = (onError: (message: string) => void, onSuccess?: () => void) => {
+    requestOtp.mutate(
       {
         phoneNumber,
         phoneCountryCode: '+234',
       },
       {
-        onSuccess: () => {
-          setStep(2)
-        },
+        onSuccess,
         onError: (error: any) => {
           const message =
             error?.response?.data?.message ||
             'Failed to send OTP. Please try again.'
-          setLoginError(message)
+          onError(message)
         },
       },
     )
+  }
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginError(undefined)
+    sendOtp(setLoginError, () => setStep(2))
   }
 
   const handleOtpVerify = (otp: string) => {
@@ -90,10 +109,19 @@ function LoginPageContent() {
       {
         phoneNumber,
         otpCode: otp,
+        phoneCountryCode: '+234',
       },
       {
-        onSuccess: () => {
-          router.push(getRedirectUrl())
+        onSuccess: (data) => {
+          router.push(
+            getPostAuthDestination({
+              user: data.user,
+              onboardingCompleted: data.onboardingCompleted,
+              redirectPath: getDeepLinkRedirect(),
+              intent,
+              referralCode,
+            }),
+          )
         },
         onError: (error: any) => {
           const message =
@@ -105,19 +133,7 @@ function LoginPageContent() {
   }
 
   const handleOtpResend = () => {
-    login.mutate(
-      {
-        phoneNumber,
-        phoneCountryCode: '+234',
-      },
-      {
-        onError: (error: any) => {
-          const message =
-            error?.response?.data?.message || 'Failed to resend OTP'
-          setOtpError(message)
-        },
-      },
-    )
+    sendOtp(setOtpError)
   }
 
   const handleBack = () => {
@@ -144,25 +160,14 @@ function LoginPageContent() {
     )
   }
 
-  // Build signup URL with preserved params + phone prefill
-  const getSignupUrl = () => {
-    const params = new URLSearchParams()
-    if (redirectPath) params.set('redirect', redirectPath)
-    if (serialNumber) params.set('serial', serialNumber)
-    if (phoneNumber) params.set('phone', phoneNumber)
-    const queryString = params.toString()
-    return queryString ? `/signup?${queryString}` : '/signup'
-  }
-
-  // Step 1: Login Form
+  // Step 1: Phone number entry (unified login/signup)
   return (
     <LoginForm
       phoneNumber={phoneNumber}
       onPhoneNumberChange={handlePhoneNumberChange}
       onSubmit={handleLoginSubmit}
-      isLoading={login.isPending}
+      isLoading={requestOtp.isPending}
       error={loginError}
-      signupUrl={getSignupUrl()}
     />
   )
 }

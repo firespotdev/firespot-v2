@@ -44,7 +44,9 @@ export function ActionListItem({
   title,
   subtitle,
   badge,
-  trailing = <ChevronRight size={16} className="text-[#AEAEB2] stroke-[2.5px]" />,
+  trailing = (
+    <ChevronRight size={16} className="text-[#AEAEB2] stroke-[2.5px]" />
+  ),
   danger = false,
   disabled = false,
   onClick,
@@ -56,7 +58,8 @@ export function ActionListItem({
     danger
       ? 'text-[#FF3B30] hover:bg-red-50 active:bg-red-100'
       : 'text-black hover:bg-gray-50 active:bg-gray-100',
-    disabled && 'opacity-50 cursor-not-allowed hover:bg-transparent active:bg-transparent',
+    disabled &&
+      'opacity-50 cursor-not-allowed hover:bg-transparent active:bg-transparent',
     className,
   )
 
@@ -67,7 +70,7 @@ export function ActionListItem({
         <div className="flex flex-col min-w-0">
           <span className="truncate">{title}</span>
           {subtitle && (
-            <span className="text-xs font-normal text-gray-500 truncate">
+            <span className="text-xs font-medium text-[#00000066] truncate">
               {subtitle}
             </span>
           )}

@@ -39,6 +39,8 @@ import { SendReminderDrawer } from './send-reminder-drawer'
 import { RepaymentSummaryDrawer } from './repayment-summary-drawer'
 import { RepaymentSuccessDrawer } from './repayment-success-drawer'
 import { AddCustomerDrawer } from './add-customer-drawer'
+import { AccountSwitchDrawer } from './account-switch-drawer'
+import { SaleReceiptDrawer } from './sale-receipt-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -128,6 +130,14 @@ const DRAWER_CONFIG: Record<
     hideHandle: true,
     direction: 'right',
   },
+  'sale-receipt': {
+    title: '',
+    Content: SaleReceiptDrawer,
+    noHeader: true,
+    fullScreen: true,
+    hideHandle: true,
+    direction: 'right',
+  },
   checkout: {
     title: '',
     Content: CheckoutDrawer,
@@ -168,7 +178,9 @@ const DRAWER_CONFIG: Record<
     title: '',
     Content: CollectPaymentDrawer,
     noHeader: true,
-    direction: 'bottom',
+    direction: 'right',
+    fullScreen: true,
+    hideHandle: true,
   },
   'customer-checkout': {
     title: '',
@@ -211,6 +223,12 @@ const DRAWER_CONFIG: Record<
   'add-customer': {
     title: '',
     Content: AddCustomerDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'account-switch': {
+    title: '',
+    Content: AccountSwitchDrawer,
     noHeader: true,
     direction: 'bottom',
   },
@@ -292,7 +310,7 @@ export function CustomDrawer() {
         >
           <DrawerContent
             hideHandle={hideHandle}
-            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px]`}
+            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px]`}
           >
             {noHeader ? (
               <>

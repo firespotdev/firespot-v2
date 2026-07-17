@@ -100,12 +100,30 @@ function ActivatePageContent() {
     return () => clearTimeout(timer)
   }, [mode])
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (merchant intent: kit claimants
+  // go straight to business setup, never personal onboarding)
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login')
+      const params = new URLSearchParams()
+      params.set('intent', 'merchant')
+      params.set('redirect', '/activate')
+      if (initialSerial) params.set('serial', initialSerial)
+      router.push(`/login?${params.toString()}`)
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router, initialSerial])
+
+  // Activation requires a business (bank account + name). Personal users
+  // claiming a kit are sent through merchant setup first, then back here.
+  useEffect(() => {
+    if (isAuthenticated && user && !user.businessName) {
+      const returnUrl = initialSerial
+        ? `/activate?serial=${initialSerial}`
+        : '/activate'
+      router.replace(
+        `/onboarding/merchant?redirect=${encodeURIComponent(returnUrl)}`,
+      )
+    }
+  }, [isAuthenticated, user, initialSerial, router])
 
   // Handle callback from Paystack - redirect to payment-status page
   useEffect(() => {

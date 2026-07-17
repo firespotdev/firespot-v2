@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { ArrowUpRight, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -14,7 +14,13 @@ import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
-import { useCreatePendingSale } from '@/services/sales/hooks'
+import {
+  useCreatePendingSale,
+  useRecordScan,
+  useRecordCopy,
+  usePublicSale,
+} from '@/services/sales/hooks'
+import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
@@ -26,14 +32,30 @@ const GRADIENT_END = '#D72483'
 
 export default function PaymentPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const serialNumber = params.serialNumber as string
+  const saleId = searchParams.get('saleId') || ''
+
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const createPendingSale = useCreatePendingSale()
+  const recordSaleScan = useRecordScan()
+  const recordSaleCopy = useRecordCopy()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
+  useEffect(() => {
+    if (saleId) {
+      recordSaleScan.mutate(saleId)
+    }
+  }, [saleId])
+
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
+  // Dynamic QR sale (public, limited view). On 404/cancelled we quietly fall
+  // back to the classic account-carousel page below.
+  const { data: publicSale, isLoading: saleLoading } = usePublicSale(
+    saleId || undefined,
+  )
 
   const qrCodeRef = useRef<HTMLDivElement>(null)
   const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
@@ -75,7 +97,9 @@ export default function PaymentPage() {
       },
     )
 
-    if (merchant) {
+    if (saleId) {
+      recordSaleCopy.mutate(saleId)
+    } else if (merchant) {
       // Get or create a persistent fingerprint for this customer
       let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
       if (!fingerprint) {
@@ -97,7 +121,7 @@ export default function PaymentPage() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading || (saleId && saleLoading)) {
     return <LoadingPage innerBg="#FFFFFF" />
   }
 
@@ -390,7 +414,7 @@ export default function PaymentPage() {
             <div className="max-w-125 mx-auto">
               <Button asChild className="w-full">
                 <Link
-                  href={`/signup?redirect=/activate&serial=${serialNumber}`}
+                  href={`/login?intent=merchant&redirect=/activate&serial=${serialNumber}`}
                 >
                   Login and activate this QR kit
                 </Link>
@@ -409,6 +433,18 @@ export default function PaymentPage() {
           </div>
         </div>
       </div>
+    )
+  }
+
+  // Dynamic QR sale: stepped payment experience (request -> waiting -> success)
+  if (saleId && publicSale && publicSale.status !== 'CANCELLED') {
+    return (
+      <SalePaymentFlow
+        sale={publicSale}
+        merchant={merchant}
+        serialNumber={serialNumber}
+        onTrackCopy={trackCopyEvent}
+      />
     )
   }
 
@@ -525,7 +561,7 @@ export default function PaymentPage() {
             </Button>
 
             <Link
-              href="/signup"
+              href="/login?intent=merchant"
               className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
             >
               I want something like this for my business

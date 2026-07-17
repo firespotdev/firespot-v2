@@ -3,8 +3,7 @@
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { TabSwitch } from '@/components/ui'
+import { TabSwitch, showNotificationToast } from '@/components/ui'
 import Image from 'next/image'
 import {
   useCreateManualSale,
@@ -92,6 +91,9 @@ function RecordSaleContent() {
   const [hasSetInstallment, setHasSetInstallment] = useState<boolean>(false)
   const [checkoutCustomer, setCheckoutCustomer] = useState<any>(null)
   const [checkoutDueDate, setCheckoutDueDate] = useState<string>('')
+  const [checkoutMode, setCheckoutMode] = useState<'record' | 'collect'>(
+    'record',
+  )
 
   useEffect(() => {
     if (checkoutInstallmentType === 'full') {
@@ -326,7 +328,9 @@ function RecordSaleContent() {
       description:
         activeTab === 'amount'
           ? description || 'Manual sale'
-          : cartItems.map((i) => `${i.name} x${i.quantity}`).join(', '),
+          : cartItems
+              .map((i) => (i.quantity > 1 ? `${i.name} x${i.quantity}` : i.name))
+              .join(', '),
       paymentMethod,
       isPaidInFull: installmentType === 'full',
       amountPaid: paidVal,
@@ -545,6 +549,7 @@ function RecordSaleContent() {
     itemsList = cartItems,
     totVal = getTotal(),
     dueDateVal = checkoutDueDate,
+    mode = checkoutMode,
   ) => {
     openDrawer({
       type: 'checkout-sale',
@@ -562,6 +567,8 @@ function RecordSaleContent() {
         customer: cust,
         totalAmount: totVal,
         dueDate: dueDateVal,
+        mode,
+        isLoading: collectSaleMutation.isPending,
         onEditDueDate: (newDueDate: string) => {
           setCheckoutDueDate(newDueDate)
           openCheckoutSaleDrawer(
@@ -572,6 +579,7 @@ function RecordSaleContent() {
             itemsList,
             totVal,
             newDueDate,
+            mode,
           )
         },
         onEditPaymentMethod: () => {
@@ -588,6 +596,7 @@ function RecordSaleContent() {
                   itemsList,
                   totVal,
                   dueDateVal,
+                  mode,
                 )
               },
             },
@@ -607,6 +616,7 @@ function RecordSaleContent() {
                   itemsList,
                   totVal,
                   dueDateVal,
+                  mode,
                 ),
               onContinue: (
                 newInstType: 'full' | 'part',
@@ -627,6 +637,7 @@ function RecordSaleContent() {
                   itemsList,
                   totVal,
                   finalDueDate,
+                  mode,
                 )
               },
             },
@@ -645,6 +656,7 @@ function RecordSaleContent() {
                   itemsList,
                   totVal,
                   dueDateVal,
+                  mode,
                 ),
               onSelect: (newCust: any) => {
                 setCheckoutCustomer(newCust)
@@ -656,19 +668,83 @@ function RecordSaleContent() {
                   itemsList,
                   totVal,
                   dueDateVal,
+                  mode,
                 )
               },
             },
           })
         },
         onConfirmRecord: () => {
-          submitConfirmedSale(method, instType, amountPaidVal, cust, dueDateVal)
+          if (mode === 'collect') {
+            const payload = {
+              merchantId: profile?.id || '',
+              amount: totVal,
+              description: itemsList
+                .map((i) => (i.quantity > 1 ? `${i.name} x${i.quantity}` : i.name))
+                .join(', '),
+              isPaidInFull: true,
+              amountPaid: 0,
+              totalDue: totVal,
+              balanceOwed: totVal,
+              items: itemsList.map((item) => ({
+                productId: item.id.startsWith('custom')
+                  ? undefined
+                  : item.id.split('-')[0],
+                productName: item.name,
+                price: item.price,
+                quantity: item.quantity,
+                selectedVariant: item.selectedVariant,
+              })),
+            }
+
+            collectSaleMutation.mutate(payload, {
+              onSuccess: (data) => {
+                openDrawer({
+                  type: 'collect-payment',
+                  props: {
+                    sale: data,
+                    onRecordConfirm: (recordedSale: any) => {
+                      resetSaleState()
+                      closeAllDrawers()
+                      openDrawer({
+                        type: 'record-success',
+                        props: {
+                          successDetails: recordedSale,
+                          status: 'success',
+                          setStep,
+                          setAmount,
+                          setDescription,
+                          onRecordAnother: resetSaleState,
+                        },
+                      })
+                    },
+                  },
+                })
+              },
+              onError: (error: any) => {
+                showNotificationToast({
+                  message:
+                    error?.response?.data?.message ||
+                    'Failed to initiate collect payment.',
+                })
+              },
+            })
+          } else {
+            submitConfirmedSale(
+              method,
+              instType,
+              amountPaidVal,
+              cust,
+              dueDateVal,
+            )
+          }
         },
       },
     })
   }
 
   const handleRecordTapped = () => {
+    setCheckoutMode('record')
     const updatedCart = autoConvertKeypadToCartItem() || cartItems
     const subtotal = updatedCart.reduce(
       (acc, curr) => acc + curr.price * curr.quantity,
@@ -689,6 +765,7 @@ function RecordSaleContent() {
   }
 
   const handleCollectTapped = () => {
+    setCheckoutMode('collect')
     const updatedCart = autoConvertKeypadToCartItem() || cartItems
     const subtotal = updatedCart.reduce(
       (acc, curr) => acc + curr.price * curr.quantity,
@@ -697,58 +774,21 @@ function RecordSaleContent() {
     const vat = Math.round(subtotal * 0.075)
     const totalVal = subtotal + vat
 
-    const payload = {
-      merchantId: profile?.id || '',
-      amount: totalVal,
-      description: updatedCart
-        .map((i) => `${i.name} x${i.quantity}`)
-        .join(', '),
-      isPaidInFull: true,
-      amountPaid: 0,
-      totalDue: totalVal,
-      balanceOwed: totalVal,
-      items: updatedCart.map((item) => ({
-        productId: item.id.startsWith('custom')
-          ? undefined
-          : item.id.split('-')[0],
-        productName: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        selectedVariant: item.selectedVariant,
-      })),
-    }
+    setCheckoutAmountPaid(totalVal)
+    setCheckoutPaymentMethod('Bank Transfer')
+    setCheckoutInstallmentType('full')
+    setCheckoutDueDate('')
 
-    collectSaleMutation.mutate(payload, {
-      onSuccess: (data) => {
-        openDrawer({
-          type: 'collect-payment',
-          props: {
-            sale: data,
-            onRecordConfirm: (recordedSale: any) => {
-              resetSaleState()
-              closeAllDrawers()
-              openDrawer({
-                type: 'record-success',
-                props: {
-                  successDetails: recordedSale,
-                  status: 'success',
-                  setStep,
-                  setAmount,
-                  setDescription,
-                  onRecordAnother: resetSaleState,
-                },
-              })
-            },
-          },
-        })
-      },
-      onError: (error: any) => {
-        alert(
-          error?.response?.data?.message ||
-            'Failed to initiate collect payment.',
-        )
-      },
-    })
+    openCheckoutSaleDrawer(
+      'Bank Transfer',
+      'full',
+      totalVal,
+      checkoutCustomer,
+      updatedCart,
+      totalVal,
+      '',
+      'collect',
+    )
   }
 
   const formatDisplayAmount = (val: string) => {
@@ -758,9 +798,7 @@ function RecordSaleContent() {
     return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt
   }
 
-  const showNotificationToast = ({ message }: { message: string }) => {
-    alert(message)
-  }
+
 
   return (
     <div className="h-dvh bg-[#F4F6F8] flex flex-col items-center overflow-hidden">

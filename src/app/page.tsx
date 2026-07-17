@@ -7,7 +7,8 @@ import { Zap } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { CTACarousel } from '@/components/ui/cta-carousel'
-import { useAuthStore } from '@/services/auth'
+import { useAuthStore, useAuthReady } from '@/services/auth'
+import { isTokenExpired } from '@/lib/utils/auth-redirect'
 
 export default function ScannerPage() {
   const router = useRouter()
@@ -21,23 +22,30 @@ export default function ScannerPage() {
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const token = useAuthStore((state) => state.token)
+  const user = useAuthStore((state) => state.user)
+  const onboardingCompleted = useAuthStore(
+    (state) => state.onboardingCompleted,
+  )
   const logout = useAuthStore((state) => state.logout)
+  const authReady = useAuthReady()
 
   useEffect(() => {
+    // Wait for the bootstrap refresh so a returning user with a valid refresh
+    // cookie isn't logged out over a merely-expired access token.
+    if (!authReady) return
     if (isAuthenticated && token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        if (payload.exp && payload.exp * 1000 < Date.now()) {
-          logout()
-          return
-        }
-      } catch (e) {
+      if (isTokenExpired(token)) {
         logout()
         return
       }
-      router.replace('/profile')
+      // Merchants land on their business profile; personal users can scan here
+      if (!onboardingCompleted) {
+        router.replace('/onboarding')
+      } else if (user?.role === 'merchant') {
+        router.replace('/profile')
+      }
     }
-  }, [isAuthenticated, token, router, logout])
+  }, [authReady, isAuthenticated, token, user, onboardingCompleted, router, logout])
 
   // Extract serial number from QR code content
   const extractSerialNumber = useCallback(
@@ -274,7 +282,7 @@ export default function ScannerPage() {
                   All your account numbers in one scan.
                 </p>
                 <Link
-                  href="/signup"
+                  href="/login?intent=merchant"
                   className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
                 >
                   SIGN UP

@@ -34,10 +34,12 @@ export function SendReminderDrawer({
 
   const customerName = useMemo(() => {
     if (!sale) return 'Customer'
-    if (sale.description && sale.description.startsWith('Sale for ')) {
-      return sale.description.replace('Sale for ', '').trim()
+    if (typeof sale.customerId === 'object' && sale.customerId) {
+      if ((sale.customerId as any).name) return (sale.customerId as any).name
+      if ((sale.customerId as any).businessName) return (sale.customerId as any).businessName
     }
-    return sale.description || 'Customer'
+    if (sale.customerName) return sale.customerName
+    return 'Customer'
   }, [sale])
 
   const customerPhone = useMemo(() => {

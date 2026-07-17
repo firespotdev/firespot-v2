@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, X, AlertCircle, Clock } from 'lucide-react'
-import { Button, StatBanner } from '../ui'
+import { Button, StatBanner, TagFooter } from '../ui'
 import { LoaderCircle } from '../ui'
 import { useRouter } from 'next/navigation'
 import { useSalesStats } from '@/services/sales/hooks'
@@ -367,31 +367,37 @@ const RecordSuccessDrawer = ({
               }
               closeAllDrawers()
             }}
-            className="w-full bg-black text-white h-14 rounded-full font-bold text-[15px] hover:bg-black/90 transition-all active:scale-[0.98]"
+            className="w-full bg-black text-white h-12 rounded-full font-bold text-[16px] hover:bg-black/90 transition-all active:scale-[0.98]"
           >
             Record another sale
           </Button>
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (onRecordAnother) {
-                onRecordAnother()
-              } else {
-                setAmount('')
-                setDescription('')
-                setStep('input')
-              }
-              closeAllDrawers()
-              if (statsData?.pendingSalesCount! > 0) {
-                router.push('/recents')
-              } else {
-                router.push('/profile')
-              }
-            }}
-            className="w-full hover:bg-gray-50 bg-transparent text-black h-14 rounded-full font-bold text-[15px] transition-colors"
-          >
-            Dismiss
-          </Button>
+          {/* Dynamic-QR (collect) sales show branding; manual sales get a
+              Dismiss action back to the profile/recents. */}
+          {successDetails?.isCollection ? (
+            <TagFooter className="py-4" />
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (onRecordAnother) {
+                  onRecordAnother()
+                } else {
+                  setAmount('')
+                  setDescription('')
+                  setStep('input')
+                }
+                closeAllDrawers()
+                if (statsData?.pendingSalesCount! > 0) {
+                  router.push('/recents')
+                } else {
+                  router.push('/profile')
+                }
+              }}
+              className="w-full hover:bg-gray-50 bg-transparent text-black h-14 rounded-full font-bold text-[15px] transition-colors"
+            >
+              Dismiss
+            </Button>
+          )}
         </div>
       </div>
     </div>

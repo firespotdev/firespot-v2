@@ -14,6 +14,31 @@ export interface SaleItem {
   };
 }
 
+export interface PublicSaleMerchant {
+  businessName?: string;
+  merchantSlug?: string;
+  profilePhotoUrl?: string;
+}
+
+/** Limited sale view served by the public GET /sales/:id/public endpoint */
+export interface PublicSale {
+  id: string;
+  status: SaleStatus;
+  amount?: number;
+  items: SaleItem[];
+  location?: string;
+  createdAt: string;
+  recordedAt?: string;
+  reference?: string;
+  receiptUrl?: string;
+  isCopied?: boolean;
+  targetBankName?: string;
+  paymentMethod?: string;
+  description?: string;
+  serialNumber?: string;
+  merchant: PublicSaleMerchant | null;
+}
+
 export interface Sale {
   _id: string;
   merchantId: any;

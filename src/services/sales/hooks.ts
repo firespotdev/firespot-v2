@@ -101,7 +101,33 @@ export const useUploadReceipt = () => {
       SalesApi.uploadReceipt(saleId, file),
     onSuccess: (_, { saleId }) => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};
+
+/**
+ * Public sale view for the customer pay page. Polls every 5s while the sale
+ * is PENDING as a fallback for the confirmation socket.
+ */
+export const usePublicSale = (saleId?: string) => {
+  return useQuery({
+    queryKey: ['public-sale', saleId],
+    queryFn: () => SalesApi.getPublicSale(saleId!),
+    enabled: !!saleId,
+    refetchInterval: (query) =>
+      query.state.data?.status === 'PENDING' ? 5000 : false,
+  });
+};
+
+export const useDeleteReceipt = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.deleteReceipt(saleId),
+    onSuccess: (_, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
     },
   });
 };
@@ -134,6 +160,28 @@ export const useOutstandingSummary = () => {
   return useQuery({
     queryKey: ['sales-outstanding-summary'],
     queryFn: () => SalesApi.getOutstandingSummary(),
+  });
+};
+
+export const useRecordScan = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.recordScan(saleId),
+    onSuccess: (_, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};
+
+export const useRecordCopy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.recordCopy(saleId),
+    onSuccess: (_, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
   });
 };
 

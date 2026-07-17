@@ -61,6 +61,11 @@ export function GlobalSocket() {
     if (!socket) return
 
     const handleSalePending = (sale: Sale) => {
+      if (sale.isCollection) {
+        // Suppress notification for collect flow
+        return
+      }
+
       // Play sound if enabled via ref to avoid dependency closures
       if (soundEnabledRef.current) {
         const audio = new Audio('/sound/notification.mp3')
