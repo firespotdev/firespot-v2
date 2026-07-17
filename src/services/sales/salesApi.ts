@@ -5,6 +5,7 @@ export interface CreatePendingSalePayload {
   merchantId: string;
   customerFingerprint?: string;
   customerType?: 'New' | 'Repeat';
+  customerName?: string;
   source?: 'QR scan' | 'Link shared' | 'Manual';
   targetBankName?: string;
   serialNumber?: string;

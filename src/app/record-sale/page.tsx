@@ -9,6 +9,7 @@ import {
   useCreateManualSale,
   useSale,
   useEditSale,
+  useRecordSale,
   useCreatePendingCollectSale,
 } from '@/services/sales/hooks'
 import { useProducts } from '@/services/products/hooks'
@@ -48,9 +49,12 @@ function RecordSaleContent() {
   const searchParams = useSearchParams()
   const editId = searchParams.get('id')
   const isEditMode = searchParams.get('edit') === 'true'
+  // Confirm an existing customer-initiated pending sale (from /recents).
+  const confirmId = searchParams.get('confirm')
+  const isConfirmMode = !!confirmId
 
   const { data: editSaleData } = useSale(
-    isEditMode ? editId || undefined : undefined,
+    isEditMode ? editId || undefined : isConfirmMode ? confirmId || undefined : undefined,
   )
 
   const { data: profile } = useUserProfile()
@@ -58,6 +62,7 @@ function RecordSaleContent() {
   // API mutations & queries
   const createManualSaleMutation = useCreateManualSale()
   const editSaleMutation = useEditSale()
+  const recordSaleMutation = useRecordSale()
   const collectSaleMutation = useCreatePendingCollectSale()
 
   const [activeCategory, setActiveCategory] = useState('All')
@@ -101,19 +106,19 @@ function RecordSaleContent() {
     }
   }, [cartItems, amount, checkoutInstallmentType, activeTab])
 
-  // Reset prefill flag when changing sale ID to edit
+  // Reset prefill flag when the target sale id changes
   useEffect(() => {
     setHasPrefilled(false)
-  }, [editId])
+  }, [editId, confirmId])
 
-  // Prefill in edit mode
+  // Prefill in edit or confirm mode
   useEffect(() => {
-    if (isEditMode && editSaleData && !hasPrefilled) {
+    if ((isEditMode || isConfirmMode) && editSaleData && !hasPrefilled) {
       setAmount(editSaleData.amount?.toString() || '')
       setDescription(editSaleData.description || '')
       setHasPrefilled(true)
     }
-  }, [editSaleData, isEditMode, hasPrefilled])
+  }, [editSaleData, isEditMode, isConfirmMode, hasPrefilled])
 
   // Keypad keys handler
   const handleKeyPress = (key: string) => {
@@ -358,7 +363,48 @@ function RecordSaleContent() {
             })),
     }
 
-    if (isEditMode && editId) {
+    if (isConfirmMode && confirmId) {
+      // Confirm the existing customer-initiated pending sale in place
+      // (updates it to CONFIRMED) instead of creating a new record.
+      recordSaleMutation.mutate(
+        { saleId: confirmId, payload },
+        {
+          onSuccess: (data) => {
+            resetSaleState()
+            router.replace('/record-sale')
+            closeAllDrawers()
+            openDrawer({
+              type: 'record-success',
+              props: {
+                successDetails: data,
+                status: 'success',
+                setStep,
+                setAmount,
+                setDescription,
+                onRecordAnother: resetSaleState,
+              },
+            })
+          },
+          onError: (error: any) => {
+            const msg =
+              error?.response?.data?.message || 'Failed to confirm payment.'
+            closeAllDrawers()
+            openDrawer({
+              type: 'record-success',
+              props: {
+                successDetails: null,
+                status: 'error',
+                errorMessage: msg,
+                setStep,
+                setAmount,
+                setDescription,
+                onRecordAnother: resetSaleState,
+              },
+            })
+          },
+        },
+      )
+    } else if (isEditMode && editId) {
       editSaleMutation.mutate(
         { saleId: editId, payload },
         {
@@ -909,32 +955,34 @@ function RecordSaleContent() {
                 Record
               </button>
 
-              {/* Collect Button */}
-              <button
-                disabled={
-                  !(
+              {/* Collect Button — hidden when confirming an existing payment */}
+              {!isConfirmMode && (
+                <button
+                  disabled={
+                    !(
+                      (activeTab === 'amount' &&
+                        amount &&
+                        amount !== '0' &&
+                        amount !== '.' &&
+                        amount !== '0.') ||
+                      cartItems.length > 0
+                    )
+                  }
+                  onClick={handleCollectTapped}
+                  className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 ${
                     (activeTab === 'amount' &&
                       amount &&
                       amount !== '0' &&
                       amount !== '.' &&
                       amount !== '0.') ||
                     cartItems.length > 0
-                  )
-                }
-                onClick={handleCollectTapped}
-                className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 ${
-                  (activeTab === 'amount' &&
-                    amount &&
-                    amount !== '0' &&
-                    amount !== '.' &&
-                    amount !== '0.') ||
-                  cartItems.length > 0
-                    ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
-                    : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
-                }`}
-              >
-                Collect
-              </button>
+                      ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
+                      : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
+                  }`}
+                >
+                  Collect
+                </button>
+              )}
             </div>
           </div>
         )}

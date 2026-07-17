@@ -8,10 +8,6 @@ import {
   Search,
   Mic,
   Ghost,
-  Home,
-  ScanLine,
-  History,
-  MessageCircle,
   Store,
   Package,
   BriefcaseBusiness,
@@ -25,6 +21,7 @@ import { useAuthStore, useAuthReady } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { isTokenExpired } from '@/lib/utils/auth-redirect'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { BottomNav } from '@/components/layout/bottom-nav'
 
 const QUICK_ACTIONS = [
   { label: 'Shops', Icon: Store },
@@ -183,45 +180,7 @@ function HomePageContent() {
       </div>
 
       {/* Bottom navigation */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[420px]">
-        <div className="bg-[#5c5c5c]/70 backdrop-blur-md rounded-full h-15 flex items-center justify-between px-3">
-          <span className="w-11 h-11 rounded-full bg-white/25 flex items-center justify-center">
-            <Home className="w-5.5 h-5.5 text-white" />
-          </span>
-          <button
-            type="button"
-            onClick={comingSoon}
-            aria-label="Search"
-            className="w-11 h-11 flex items-center justify-center"
-          >
-            <Search className="w-5.5 h-5.5 text-white/80" />
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/')}
-            aria-label="Scan"
-            className="w-11 h-11 flex items-center justify-center"
-          >
-            <ScanLine className="w-5.5 h-5.5 text-white/80" />
-          </button>
-          <button
-            type="button"
-            onClick={() => router.push('/customer/history')}
-            aria-label="History"
-            className="w-11 h-11 flex items-center justify-center"
-          >
-            <History className="w-5.5 h-5.5 text-white/80" />
-          </button>
-          <button
-            type="button"
-            onClick={comingSoon}
-            aria-label="Messages"
-            className="w-11 h-11 flex items-center justify-center"
-          >
-            <MessageCircle className="w-5.5 h-5.5 text-white/80" />
-          </button>
-        </div>
-      </nav>
+      <BottomNav variant="light" />
     </div>
   )
 }

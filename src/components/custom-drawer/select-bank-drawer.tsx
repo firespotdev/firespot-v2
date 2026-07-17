@@ -47,7 +47,7 @@ export function SelectBankDrawer({
   })
 
   return (
-    <div className="px-4">
+    <div className="px-3">
       <div className="flex-1 overflow-y-auto">
         {sortedAccounts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
@@ -57,7 +57,7 @@ export function SelectBankDrawer({
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3">
+            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3">
               {sortedAccounts
                 .filter((account) => account.isPrimary)
                 .map((account, index) => (
@@ -88,7 +88,7 @@ export function SelectBankDrawer({
                   </button>
                 ))}
             </div>
-            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-2">
+            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-2">
               {sortedAccounts
                 .filter((account) => !account.isPrimary)
                 .map((account, index) => (

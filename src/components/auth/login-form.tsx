@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Label, Button, PhoneInput, Spinner } from '@/components/ui'
+import Link from 'next/link'
 
 interface LoginFormProps {
   phoneNumber: string
@@ -29,14 +30,15 @@ export function LoginForm({
           className="mb-6"
         />
         <h1 className="font-bold text-xl text-black -tracking-[0.4px]">
-          Welcome to firespot
+          Log in or sign up
         </h1>
         <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-6">
-          Log in or sign up with your phone number
+          Get an OTP on your registered phone number to continue to your
+          firespot account.
         </p>
 
         <form onSubmit={onSubmit} className="w-full max-w-[400px] space-y-6">
-          <div>
+          <div className="mb-8">
             <Label>Phone number</Label>
             <PhoneInput
               className="w-full"
@@ -56,6 +58,16 @@ export function LoginForm({
 
           <Button type="submit">{isLoading ? <Spinner /> : 'Continue'}</Button>
         </form>
+
+        <p className="font-bold text-sm text-[#00000080] mt-8">
+          Do you run a business in Nigeria?{' '}
+          <Link
+            href="#"
+            className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text cursor-pointer hover:opacity-80"
+          >
+            Open a Shop
+          </Link>
+        </p>
       </div>
     </div>
   )

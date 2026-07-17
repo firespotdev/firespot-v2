@@ -44,7 +44,7 @@ export default function RecentsPage() {
   }
 
   const handleConfirm = (saleId: string) => {
-    router.push(`/record-sale?id=${saleId}`)
+    router.push(`/record-sale?confirm=${saleId}`)
   }
 
   return (

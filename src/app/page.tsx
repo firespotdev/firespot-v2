@@ -6,7 +6,9 @@ import { BrowserMultiFormatReader } from '@zxing/library'
 import { Zap } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { ClockCounterClockwiseIcon } from '@phosphor-icons/react'
 import { CTACarousel } from '@/components/ui/cta-carousel'
+import { BottomNav } from '@/components/layout/bottom-nav'
 import { useAuthStore, useAuthReady } from '@/services/auth'
 import { isTokenExpired } from '@/lib/utils/auth-redirect'
 
@@ -23,11 +25,14 @@ export default function ScannerPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const token = useAuthStore((state) => state.token)
   const user = useAuthStore((state) => state.user)
-  const onboardingCompleted = useAuthStore(
-    (state) => state.onboardingCompleted,
-  )
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
   const logout = useAuthStore((state) => state.logout)
   const authReady = useAuthReady()
+
+  // Signed-in personal users (merchants are redirected away above) get the
+  // Recent shortcut + bottom nav; logged-out visitors keep the login CTAs.
+  const isSignedIn =
+    authReady && isAuthenticated && !!token && !isTokenExpired(token)
 
   useEffect(() => {
     // Wait for the bootstrap refresh so a returning user with a valid refresh
@@ -45,7 +50,15 @@ export default function ScannerPage() {
         router.replace('/profile')
       }
     }
-  }, [authReady, isAuthenticated, token, user, onboardingCompleted, router, logout])
+  }, [
+    authReady,
+    isAuthenticated,
+    token,
+    user,
+    onboardingCompleted,
+    router,
+    logout,
+  ])
 
   // Extract serial number from QR code content
   const extractSerialNumber = useCallback(
@@ -222,14 +235,12 @@ export default function ScannerPage() {
               height={36}
             />
 
-            <p className="text-[#FFFFFFCC] text-sm">
-              Scan a firespot QR code to pay
-            </p>
+            <p className="text-[#FFFFFFCC] text-sm">Scan a firespot QR code</p>
 
             <button
               onClick={toggleFlash}
               disabled={!hasFlash}
-              className={`w-9 h-9 rounded-full flex items-center bg-[#FFFFFF66] justify-center shadow-[0_0_10px_0_rgba(255,255,255,0.3)] transition-colors`}
+              className={`glass-border w-9 h-9 rounded-full flex items-center bg-black/40 justify-center transition-colors`}
             >
               <Zap fill="#ffffff" stroke="#ffffff" className={`w-5 h-5`} />
             </button>
@@ -240,7 +251,9 @@ export default function ScannerPage() {
             <div className="flex-1 flex items-center justify-center">
               {error ? (
                 <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
-                  <p className="text-white text-sm mb-2">{error}</p>
+                  <p className="text-white text-sm mb-2">
+                    Camera access denied
+                  </p>
                   <p className="text-gray-400 text-xs">
                     Please ensure you're using a supported browser and have
                     granted camera permissions.
@@ -257,58 +270,72 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
-            <CTACarousel>
-              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
-                <h3 className="text-white font-bold text-sm">
-                  Login to your Firespot Lite account
-                </h3>
-                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
-                  Manage your QR kits and account numbers
-                </p>
-                <Link
-                  href="/login"
-                  className="block w-full bg-[#FFFFFF33] text-white text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
-                >
-                  LOG IN
-                </Link>
-              </div>
-              
-              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
-                <h3 className="text-white font-bold text-sm">
-                  Get your Firespot QR Kit
-                </h3>
-                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
-                  All your account numbers in one scan.
-                </p>
-                <Link
-                  href="/login?intent=merchant"
-                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
-                >
-                  SIGN UP
-                </Link>
-              </div>
-              
-              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
-                <h3 className="text-white font-bold text-sm">
-                  Pay for your purchases faster
-                </h3>
-                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
-                  Transfer from any Nigerian Bank
-                </p>
-                <Link
-                  href="https://firespot.co"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
-                >
-                  HOW IT WORKS
-                </Link>
-              </div>
-            </CTACarousel>
-          </div>
+          {isSignedIn ? (
+            <div className="flex justify-center pb-28">
+              <Link
+                href="/customer/history"
+                className="glass-border inline-flex items-center justify-center gap-1.5 w-[94px] py-2 pl-2 pr-3 rounded-[20px] bg-[#FFFFFF1A] text-[#FFFFFF80] text-sm font-medium"
+              >
+                <ClockCounterClockwiseIcon size={20} color="#FFFFFF99" />
+                Recent
+              </Link>
+            </div>
+          ) : (
+            <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
+              <CTACarousel>
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                  <h3 className="text-white font-bold text-sm">
+                    Login to your Firespot Lite account
+                  </h3>
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                    Manage your QR kits and account numbers
+                  </p>
+                  <Link
+                    href="/login"
+                    className="block w-full bg-[#FFFFFF33] text-white text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                  >
+                    LOG IN
+                  </Link>
+                </div>
+
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                  <h3 className="text-white font-bold text-sm">
+                    Get your Firespot QR Kit
+                  </h3>
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                    All your account numbers in one scan.
+                  </p>
+                  <Link
+                    href="/login?intent=merchant"
+                    className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                  >
+                    SIGN UP
+                  </Link>
+                </div>
+
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                  <h3 className="text-white font-bold text-sm">
+                    Pay for your purchases faster
+                  </h3>
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                    Transfer from any Nigerian Bank
+                  </p>
+                  <Link
+                    href="https://firespot.co"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                  >
+                    HOW IT WORKS
+                  </Link>
+                </div>
+              </CTACarousel>
+            </div>
+          )}
         </div>
       </div>
+
+      {isSignedIn && <BottomNav variant="dark" />}
     </div>
   )
 }

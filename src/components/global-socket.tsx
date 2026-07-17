@@ -1,17 +1,37 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { useQueryClient } from '@tanstack/react-query'
-import { showNotificationToast } from '@/components/ui'
+import {
+  showNewPaymentToast,
+  showReceiptUploadedToast,
+} from '@/components/ui'
 import { usePreference } from '@/hooks/usePreference'
 import { Sale } from '@/services/sales/interface'
 import { requestForToken, onForegroundMessage } from '@/lib/firebase'
 import { useAuthStore } from '@/services/auth'
+import { useDrawerStore } from '@/services/drawer'
 import { userApi } from '@/services/users/userApi'
+
+function formatPaymentTime(timestamp?: string | Date): string {
+  const date = timestamp ? new Date(timestamp) : new Date()
+  const time = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  })
+  const isToday = date.toDateString() === new Date().toDateString()
+  const day = isToday
+    ? 'Today'
+    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `${day} . ${time}`
+}
 
 export function GlobalSocket() {
   const { socket } = useSocket()
+  const router = useRouter()
   const queryClient = useQueryClient()
   const { isAuthenticated, user } = useAuthStore()
   const [soundEnabled] = usePreference('soundEnabled', true)
@@ -60,13 +80,48 @@ export function GlobalSocket() {
   useEffect(() => {
     if (!socket) return
 
+    // True when the merchant already has this sale's collect drawer open.
+    const isViewingSale = (saleId?: string) =>
+      Boolean(saleId) &&
+      useDrawerStore
+        .getState()
+        .configs.some(
+          (c) =>
+            c.type === 'collect-payment' &&
+            (c.props as any)?.sale?._id === saleId,
+        )
+
+    // Opens the collect drawer for a customer-initiated sale (its view adapts
+    // to the sale state: confirm / receipt).
+    const openCollectDrawer = (sale: Sale) => {
+      const { openDrawer, closeAllDrawers } = useDrawerStore.getState()
+      openDrawer({
+        type: 'collect-payment',
+        props: {
+          sale,
+          onRecordConfirm: () => {
+            closeAllDrawers()
+            queryClient.invalidateQueries({ queryKey: ['sales'] })
+            queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
+          },
+        },
+      })
+    }
+
+    const invalidateSales = () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] })
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
+    }
+
     const handleSalePending = (sale: Sale) => {
-      if (sale.isCollection) {
-        // Suppress notification for collect flow
+      // Merchant-initiated collect sales are handled in their own drawer.
+      if (sale.isCollection) return
+      // Don't interrupt if the merchant is already looking at this sale.
+      if (isViewingSale(sale._id)) {
+        invalidateSales()
         return
       }
 
-      // Play sound if enabled via ref to avoid dependency closures
       if (soundEnabledRef.current) {
         const audio = new Audio('/sound/notification.mp3')
         audio.play().catch((err) => {
@@ -74,22 +129,37 @@ export function GlobalSocket() {
         })
       }
 
-      showNotificationToast({
-        message: 'New pending sale',
-        duration: 3000,
+      showNewPaymentToast({
+        time: formatPaymentTime((sale as any).createdAt),
+        // Checkmark takes the merchant into the confirm flow (prefilled amount
+        // + description, records onto this existing sale).
+        onView: () => router.push(`/record-sale?confirm=${sale._id}`),
       })
 
-      // Invalidate sales queries to refetch
-      queryClient.invalidateQueries({ queryKey: ['sales'] })
-      queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
+      invalidateSales()
+    }
+
+    const handleReceiptUploaded = (sale: Sale) => {
+      if (isViewingSale(sale._id)) {
+        invalidateSales()
+        return
+      }
+
+      showReceiptUploadedToast({
+        onView: () => openCollectDrawer(sale),
+      })
+
+      invalidateSales()
     }
 
     socket.on('sale.pending', handleSalePending)
+    socket.on('receipt.uploaded', handleReceiptUploaded)
 
     return () => {
       socket.off('sale.pending', handleSalePending)
+      socket.off('receipt.uploaded', handleReceiptUploaded)
     }
-  }, [socket, queryClient])
+  }, [socket, queryClient, router])
 
   return null
 }

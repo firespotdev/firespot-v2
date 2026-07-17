@@ -114,7 +114,7 @@ export function PageHeader({
           )}
         </span>
         {subtitle && (
-          <span className="text-xs font-medium text-[#00000066] leading-none mt-1 truncate max-w-full">
+          <span className="text-xs font-medium text-center text-[#00000066] leading-none mt-1 truncate max-w-full">
             {subtitle}
           </span>
         )}
