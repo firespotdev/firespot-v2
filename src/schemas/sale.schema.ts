@@ -12,6 +12,10 @@ export class Sale extends Document {
   @Prop({ enum: ['New', 'Repeat'] })
   customerType?: string;
 
+  // Payer's name when the payment was initiated by a logged-in personal account
+  @Prop()
+  customerName?: string;
+
   @Prop({ enum: ['QR scan', 'Link shared', 'Manual'] })
   source?: string;
 

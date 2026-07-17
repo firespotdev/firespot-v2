@@ -14,6 +14,10 @@ export class CreatePendingSaleDto {
   customerType?: string;
 
   @IsOptional()
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
   @IsEnum(['QR scan', 'Link shared', 'Manual'])
   source?: string;
   @IsOptional()
