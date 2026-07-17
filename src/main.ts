@@ -1,6 +1,7 @@
 import { NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/http-exception.filter";
 
@@ -8,6 +9,9 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
   });
+
+  // Parse cookies (refresh-token cookie for the auth flow)
+  app.use(cookieParser());
 
   // Global exception filter for logging errors
   app.useGlobalFilters(new AllExceptionsFilter());

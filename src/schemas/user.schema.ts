@@ -36,9 +36,33 @@ export class User extends Document {
   @Prop()
   lastOtpRequestAt?: Date; // Timestamp of the last OTP request (for cooldown)
 
+  @Prop({ default: 0 })
+  otpFailedAttempts?: number; // Consecutive failed OTP verifications
+
+  @Prop()
+  otpLockedUntil?: Date; // Verification locked until this time after too many failures
+
+  // Personal profile
+  @Prop()
+  firstName?: string;
+
+  @Prop()
+  lastName?: string;
+
+  // True once the user has completed post-signup onboarding (name entry).
+  // Existing users are marked true via migration.
+  @Prop({ default: false })
+  onboardingCompleted: boolean;
+
   // Merchant info
   @Prop()
   businessName?: string;
+
+  @Prop()
+  businessIndustry?: string;
+
+  @Prop({ maxlength: 160 })
+  businessDescription?: string;
 
   // Merchant slug (6 alphanumeric characters, editable, for direct sharing)
   @Prop({ unique: true, sparse: true, index: true, length: 6 })

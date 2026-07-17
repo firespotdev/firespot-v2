@@ -306,6 +306,57 @@ export class SalesService {
     }
   }
 
+  /**
+   * Public, unauthenticated sale view for the customer pay page
+   * (/pay/:serial?saleId=...). Exposes only the fields the payer needs —
+   * never the merchant's phone number or bank account list.
+   */
+  async getPublicSaleById(saleId: string) {
+    if (!mongoose.isValidObjectId(saleId)) {
+      throw new NotFoundException('Sale not found')
+    }
+
+    const sale = await this.saleModel
+      .findById(saleId)
+      .populate('merchantId', 'businessName merchantSlug profilePhotoUrl')
+      .exec()
+
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+
+    const merchant = sale.merchantId as any
+
+    return {
+      id: sale._id,
+      status: sale.status,
+      amount: sale.amount,
+      items: (sale.items || []).map((item: any) => ({
+        productName: item.productName,
+        price: item.price,
+        quantity: item.quantity,
+        selectedVariant: item.selectedVariant,
+      })),
+      location: sale.location,
+      createdAt: (sale as any).createdAt,
+      recordedAt: sale.recordedAt,
+      reference: sale.reference,
+      receiptUrl: sale.receiptUrl,
+      isCopied: sale.isCopied,
+      targetBankName: sale.targetBankName,
+      paymentMethod: sale.paymentMethod,
+      description: sale.description,
+      serialNumber: sale.serialNumber,
+      merchant: merchant
+        ? {
+            businessName: merchant.businessName,
+            merchantSlug: merchant.merchantSlug,
+            profilePhotoUrl: merchant.profilePhotoUrl,
+          }
+        : null,
+    }
+  }
+
   async getSaleById(merchantId: string, saleId: string): Promise<Sale> {
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = await this.saleModel
@@ -660,7 +711,7 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
-    const upload = await this.cloudinaryService.uploadImage(fileBuffer)
+    const upload = await this.cloudinaryService.uploadDocument(fileBuffer)
     sale.receiptUrl = upload.url
     sale.receiptPublicId = upload.publicId
     const savedSale = await sale.save()
@@ -672,6 +723,33 @@ export class SalesService {
     this.eventsGateway.server
       .to(`sale-${sale._id.toString()}`)
       .emit('receipt.uploaded', savedSale)
+    return savedSale
+  }
+
+  async deleteReceipt(saleId: string): Promise<Sale> {
+    const sale = await this.saleModel.findById(saleId)
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    if (sale.status !== 'PENDING') {
+      throw new UnprocessableEntityException(
+        'Receipt can only be removed while the sale is pending',
+      )
+    }
+
+    if (sale.receiptPublicId) {
+      await this.cloudinaryService.deleteImage(sale.receiptPublicId)
+    }
+    sale.receiptUrl = undefined
+    sale.receiptPublicId = undefined
+    const savedSale = await sale.save()
+
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .emit('receipt.deleted', savedSale)
+    this.eventsGateway.server
+      .to(`sale-${sale._id.toString()}`)
+      .emit('receipt.deleted', savedSale)
     return savedSale
   }
 
@@ -1069,5 +1147,41 @@ export class SalesService {
       totalOutstandingAmount,
       customers: Array.from(customerMap.values()),
     }
+  }
+
+  async recordScan(saleId: string): Promise<Sale> {
+    const sale = await this.saleModel.findById(saleId);
+    if (!sale) {
+      throw new NotFoundException('Sale not found');
+    }
+    sale.isScanned = true;
+    const savedSale = await sale.save();
+
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .emit('sale.scanned', savedSale);
+    this.eventsGateway.server
+      .to(`sale-${sale._id.toString()}`)
+      .emit('sale.scanned', savedSale);
+
+    return savedSale;
+  }
+
+  async recordCopy(saleId: string): Promise<Sale> {
+    const sale = await this.saleModel.findById(saleId);
+    if (!sale) {
+      throw new NotFoundException('Sale not found');
+    }
+    sale.isCopied = true;
+    const savedSale = await sale.save();
+
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .emit('sale.copied', savedSale);
+    this.eventsGateway.server
+      .to(`sale-${sale._id.toString()}`)
+      .emit('sale.copied', savedSale);
+
+    return savedSale;
   }
 }

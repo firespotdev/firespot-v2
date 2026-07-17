@@ -1,11 +1,14 @@
 import {
   IsString,
   IsNotEmpty,
+  IsIn,
   Length,
   IsOptional,
   Matches,
+  MaxLength,
 } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
+import { BUSINESS_INDUSTRIES } from "../constants/business-industries";
 
 export class SetupProfileDto {
   @ApiProperty({
@@ -15,6 +18,28 @@ export class SetupProfileDto {
   @IsString()
   @IsNotEmpty()
   businessName: string;
+
+  @ApiProperty({
+    description: "Business industry (must be one of GET /users/industries)",
+    example: "Food & Drinks",
+    enum: BUSINESS_INDUSTRIES,
+  })
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(BUSINESS_INDUSTRIES, { message: "Invalid industry" })
+  industry: string;
+
+  @ApiProperty({
+    description: "Short business description",
+    example: "Homemade burgers and shakes in Lekki",
+    maxLength: 160,
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(160, {
+    message: "Description must be 160 characters or fewer",
+  })
+  description: string;
 
   @ApiProperty({
     description: "Bank name",

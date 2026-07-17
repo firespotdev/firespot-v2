@@ -28,6 +28,9 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { UsersService } from "./users.service";
 import { PaystackService } from "./services/paystack.service";
 import { AddBankAccountDto } from "./dto/add-bank-account.dto";
+import { BUSINESS_INDUSTRIES } from "./constants/business-industries";
+import { SetupProfileDto } from "./dto/setup-profile.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateMerchantSlugDto } from "./dto/update-merchant-slug.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
@@ -40,6 +43,29 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly paystackService: PaystackService,
   ) {}
+
+  @Get("industries")
+  @ApiOperation({
+    summary: "Get list of business industries",
+    description:
+      "Canonical list of industries for merchant setup. The industry submitted to merchant-setup must be one of these values.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "List of industries",
+    schema: {
+      type: "object",
+      properties: {
+        industries: {
+          type: "array",
+          items: { type: "string", example: "Food & Drinks" },
+        },
+      },
+    },
+  })
+  getIndustries() {
+    return { industries: BUSINESS_INDUSTRIES };
+  }
 
   @Get("banks")
   @ApiOperation({
@@ -335,6 +361,51 @@ export class UsersController {
   })
   async registerFcmToken(@Request() req, @Body() dto: RegisterFcmTokenDto) {
     return this.usersService.registerFcmToken(req.user.userId, dto.token);
+  }
+
+  @Patch("me/profile")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Update name (onboarding)",
+    description:
+      "Saves the user's first and last name and marks onboarding as completed.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Profile updated successfully",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - Invalid or missing JWT token",
+  })
+  async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.userId, dto);
+  }
+
+  @Post("me/merchant-setup")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Set up business (merchant onboarding)",
+    description:
+      "Adds a business to the account: verifies the bank account with Paystack, stores business name and bank details, upgrades the user to merchant, and assigns a merchant slug. Can only be done once.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Business setup completed successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Setup already completed, invalid referral code, or bank verification failed",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - Invalid or missing JWT token",
+  })
+  async merchantSetup(@Request() req, @Body() dto: SetupProfileDto) {
+    return this.usersService.setupProfile(req.user.userId, dto);
   }
 
   @Get("me")

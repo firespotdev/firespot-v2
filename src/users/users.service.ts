@@ -7,7 +7,13 @@ import { Agent, AgentDocument } from "../admin/schemas/agent.schema";
 import { PaystackService } from "./services/paystack.service";
 import { CloudinaryService } from "./services/cloudinary.service";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
+import { customAlphabet } from "nanoid";
+
+const nanoidAlphanumeric = customAlphabet(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+);
 import { AddBankAccountDto } from "./dto/add-bank-account.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 
@@ -30,6 +36,28 @@ export class UsersService {
     return {
       accountName: result.accountName,
       accountNumber: result.accountNumber,
+    };
+  }
+
+  /**
+   * Post-signup onboarding: saves the user's name and marks onboarding
+   * complete.
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    user.firstName = dto.firstName.trim();
+    user.lastName = dto.lastName.trim();
+    user.onboardingCompleted = true;
+    await user.save();
+
+    return {
+      message: "Profile updated successfully",
+      user: this.sanitizeUser(user),
     };
   }
 
@@ -74,6 +102,8 @@ export class UsersService {
 
     // Update user with permanent bank details
     user.businessName = dto.businessName;
+    user.businessIndustry = dto.industry;
+    user.businessDescription = dto.description;
     if (!user.bankAccounts) {
       user.bankAccounts = [];
     }
@@ -89,12 +119,29 @@ export class UsersService {
       user.referredByAgent = referringAgent._id;
     }
 
+    // Becoming a merchant: upgrade role and assign a shareable slug
+    user.role = "merchant";
+    user.onboardingCompleted = true;
+    if (!user.merchantSlug) {
+      user.merchantSlug = await this.generateUniqueMerchantSlug();
+    }
+
     await user.save();
 
     return {
       message: "Profile setup completed successfully",
       user: this.sanitizeUser(user),
     };
+  }
+
+  private async generateUniqueMerchantSlug(): Promise<string> {
+    while (true) {
+      const slug = nanoidAlphanumeric(6);
+      const existing = await this.userModel.findOne({ merchantSlug: slug });
+      if (!existing) {
+        return slug;
+      }
+    }
   }
 
   async updateProfilePhoto(userId: string, file: Express.Multer.File) {
@@ -423,7 +470,13 @@ export class UsersService {
       phoneNumber: user.phoneNumber,
       phoneCountryCode: user.phoneCountryCode,
       fullPhoneNumber: user.fullPhoneNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      onboardingCompleted: user.onboardingCompleted === true,
       businessName: user.businessName,
+      businessIndustry: user.businessIndustry,
+      businessDescription: user.businessDescription,
       merchantSlug: user.merchantSlug,
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],

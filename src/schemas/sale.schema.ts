@@ -102,6 +102,12 @@ export class Sale extends Document {
   @Prop({ default: false, index: true })
   isCollection?: boolean;
 
+  @Prop({ default: false })
+  isScanned?: boolean;
+
+  @Prop({ default: false })
+  isCopied?: boolean;
+
   @Prop()
   location?: string;
 

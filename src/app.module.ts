@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthModule } from "./auth/auth.module";
@@ -32,6 +34,14 @@ import { ReportsModule } from './reports/reports.module';
       inject: [ConfigService],
       useFactory: getDatabaseConfig,
     }),
+    // Global IP-based rate limiting; stricter per-route limits are set with
+    // @Throttle on sensitive endpoints (OTP request, admin login).
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
     AuthModule,
     UsersModule,
     QRKitsModule,
@@ -50,6 +60,12 @@ import { ReportsModule } from './reports/reports.module';
     ReportsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

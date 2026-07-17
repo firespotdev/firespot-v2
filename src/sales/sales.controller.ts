@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SalesService } from './sales.service';
@@ -129,6 +129,16 @@ export class SalesController {
     return this.salesService.cancelSale((user as any).userId, saleId);
   }
 
+  @ApiOperation({
+    summary: 'Get public sale details (customer pay page)',
+    description:
+      'Unauthenticated, limited view of a sale for the customer paying a dynamic QR. Returns amount, items, status and merchant display info only.',
+  })
+  @Get(':id/public')
+  async getPublicSale(@Param('id') saleId: string) {
+    return this.salesService.getPublicSaleById(saleId);
+  }
+
   @ApiOperation({ summary: 'Upload customer payment receipt screenshot' })
   @Post(':id/receipt')
   @UseInterceptors(FileInterceptor('receipt'))
@@ -137,6 +147,26 @@ export class SalesController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.salesService.uploadReceipt(saleId, file.buffer);
+  }
+
+  @ApiOperation({
+    summary: 'Remove uploaded receipt (customer, pending sales only)',
+  })
+  @Delete(':id/receipt')
+  async deleteReceipt(@Param('id') saleId: string) {
+    return this.salesService.deleteReceipt(saleId);
+  }
+
+  @ApiOperation({ summary: 'Record customer scanning/accessing link' })
+  @Patch(':id/scan')
+  async recordScan(@Param('id') saleId: string) {
+    return this.salesService.recordScan(saleId);
+  }
+
+  @ApiOperation({ summary: 'Record customer copying account number' })
+  @Patch(':id/copy')
+  async recordCopy(@Param('id') saleId: string) {
+    return this.salesService.recordCopy(saleId);
   }
 
   @ApiBearerAuth('JWT-auth')
