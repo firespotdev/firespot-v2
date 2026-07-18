@@ -92,6 +92,19 @@ export class User extends Document {
   @Prop({ type: [String], default: [] })
   fcmTokens?: string[];
 
+  // Merchants this user has saved to their Faves (personal activity feature)
+  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
+  favoriteMerchants?: Types.ObjectId[];
+
+  // Pre-created by a merchant recording a sale before this person has ever
+  // logged in. The real owner claims it on their first OTP verification, at
+  // which point isPlaceholder is cleared.
+  @Prop({ default: false, index: true })
+  isPlaceholder?: boolean;
+
+  @Prop()
+  placeholderCreatedAt?: Date;
+
   // Timestamps (automatically added by Mongoose)
   createdAt?: Date;
   updatedAt?: Date;

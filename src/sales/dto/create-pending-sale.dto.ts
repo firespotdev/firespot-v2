@@ -18,6 +18,10 @@ export class CreatePendingSaleDto {
   customerName?: string;
 
   @IsOptional()
+  @IsMongoId()
+  customerUserId?: string;
+
+  @IsOptional()
   @IsEnum(['QR scan', 'Link shared', 'Manual'])
   source?: string;
   @IsOptional()

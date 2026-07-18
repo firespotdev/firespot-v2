@@ -22,6 +22,7 @@ const nanoidAlphanumeric = customAlphabet(
 );
 import { User } from "../schemas/user.schema";
 import { Agent } from "../admin/schemas/agent.schema";
+import { normalizeNigerianPhone } from "../common/phone";
 import { RequestOtpDto } from "./dto/request-otp.dto";
 import { VerifyOtpDto } from "./dto/verify-otp.dto";
 import { SignupDto } from "./dto/signup.dto";
@@ -425,6 +426,11 @@ export class AuthService {
     user.otpFailedAttempts = 0;
     user.otpLockedUntil = undefined;
     user.lastLoginAt = now;
+    // The real owner has now proven control of this number, so a placeholder
+    // account pre-created by a merchant is claimed.
+    if (user.isPlaceholder) {
+      user.isPlaceholder = false;
+    }
     await user.save();
 
     // Issue a short-lived access token + rotated refresh token
@@ -454,11 +460,7 @@ export class AuthService {
    * Normalize phone number by removing leading zero for Nigerian numbers
    */
   private normalizePhoneNumber(phone: string, countryCode: string): string {
-    const cleaned = phone.replace(/\D/g, "");
-    if (countryCode === "+234" && cleaned.startsWith("0")) {
-      return cleaned.substring(1);
-    }
-    return cleaned;
+    return normalizeNigerianPhone(phone, countryCode);
   }
 
   async validateUser(userId: string): Promise<User> {

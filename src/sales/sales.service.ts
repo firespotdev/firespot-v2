@@ -17,6 +17,7 @@ import { SalesQueryDto } from './dto/sales-query.dto'
 import { nanoid } from 'nanoid'
 import { Customer, CustomerDocument } from '../schemas/customer.schema'
 import { CloudinaryService } from '../users/services/cloudinary.service'
+import { AccountLinkingService } from '../account-linking/account-linking.service'
 
 @Injectable()
 export class SalesService {
@@ -28,7 +29,37 @@ export class SalesService {
     private eventsGateway: EventsGateway,
     private firebaseService: FirebaseService,
     private cloudinaryService: CloudinaryService,
+    private accountLinkingService: AccountLinkingService,
   ) {}
+
+  /**
+   * Resolves the Firespot account behind a merchant's Customer record so a
+   * merchant-recorded sale surfaces in that customer's Activity. Uses the
+   * Customer's cached userId, else resolves/creates by phone and backfills the
+   * Customer (covers records created before account-linking existed).
+   * Best-effort: returns undefined on any failure so recording never breaks.
+   */
+  private async resolveCustomerUserId(
+    customerId?: string | Types.ObjectId,
+  ): Promise<Types.ObjectId | undefined> {
+    if (!customerId) return undefined
+    try {
+      const customer = await this.customerModel.findById(customerId).exec()
+      if (!customer) return undefined
+      if (customer.userId) return customer.userId as Types.ObjectId
+
+      const user = await this.accountLinkingService.resolveOrCreateUserByPhone(
+        customer.phoneNumber,
+      )
+      if (!user?._id) return undefined
+
+      customer.userId = user._id as Types.ObjectId
+      await customer.save()
+      return user._id as Types.ObjectId
+    } catch {
+      return undefined
+    }
+  }
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
     // Check if this fingerprint has any confirmed sales for this merchant already
@@ -58,6 +89,9 @@ export class SalesService {
     const sale = new this.saleModel({
       ...dto,
       merchantId: merchantObjectId,
+      customerUserId: dto.customerUserId
+        ? new Types.ObjectId(dto.customerUserId)
+        : undefined,
       customerType,
       customerPurchaseCount,
       reference,
@@ -112,6 +146,9 @@ export class SalesService {
       .sort({ createdAt: 1 })
       .exec()
 
+    // Link a merchant-selected customer to their Firespot account.
+    const linkedUserId = await this.resolveCustomerUserId(dto.customerId)
+
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = new this.saleModel({
       ...dto,
@@ -129,6 +166,11 @@ export class SalesService {
       customerId: dto.customerId
         ? new Types.ObjectId(dto.customerId)
         : undefined,
+      customerUserId:
+        linkedUserId ??
+        (dto.customerUserId
+          ? new Types.ObjectId(dto.customerUserId)
+          : undefined),
       items: dto.items || [],
     })
 
@@ -169,6 +211,10 @@ export class SalesService {
       .sort({ createdAt: 1 })
       .exec()
 
+    // Link a merchant-selected customer to their Firespot account so this
+    // recorded sale appears in the customer's Activity.
+    const linkedUserId = await this.resolveCustomerUserId(dto.customerId)
+
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = new this.saleModel({
       merchantId: merchantObjectId,
@@ -193,6 +239,7 @@ export class SalesService {
       customerId: dto.customerId
         ? new Types.ObjectId(dto.customerId)
         : undefined,
+      customerUserId: linkedUserId,
       items: dto.items || [],
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
       repayments: dto.amountPaid && dto.amountPaid > 0 ? [{
@@ -620,6 +667,17 @@ export class SalesService {
       }
     }
 
+    // Persist a customer selected at confirm time, and link them to their
+    // Firespot account if the sale isn't already linked (covers collect sales
+    // and customer selection during the confirm step).
+    if (dto.customerId) {
+      sale.customerId = new Types.ObjectId(dto.customerId)
+    }
+    if (!sale.customerUserId && sale.customerId) {
+      const linkedUserId = await this.resolveCustomerUserId(sale.customerId)
+      if (linkedUserId) sale.customerUserId = linkedUserId
+    }
+
     const savedSale = await sale.save()
     this.eventsGateway.server
       .to(sale.merchantId.toString())
@@ -753,27 +811,65 @@ export class SalesService {
     return savedSale
   }
 
-  async getCustomerSalesHistory(customerPhoneNumber: string): Promise<Sale[]> {
-    const cleanPhone = customerPhoneNumber.replace(/\D/g, '')
-    // Strip leading zero for Nigerian format if present
-    const phoneToFind = cleanPhone.startsWith('0')
-      ? cleanPhone.substring(1)
-      : cleanPhone
-
-    const customers = await this.customerModel
-      .find({ phoneNumber: { $regex: phoneToFind } })
-      .select('_id')
-      .exec()
-    const customerIds = customers.map((c) => c._id)
+  /**
+   * The personal user's own activity feed: confirmed payments they made,
+   * matched by the customerUserId attached when they paid. This is the
+   * customer's perspective — NOT the merchant's customer ledger.
+   */
+  async getMyActivity(userId: string): Promise<Sale[]> {
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      return []
+    }
 
     return this.saleModel
       .find({
-        $or: [{ customerId: { $in: customerIds } }],
+        customerUserId: new Types.ObjectId(userId),
         status: 'CONFIRMED',
       })
       .sort({ createdAt: -1 })
-      .populate('merchantId', 'businessName profilePhotoUrl')
+      .populate(
+        'merchantId',
+        'businessName profilePhotoUrl merchantSlug businessIndustry',
+      )
       .exec()
+  }
+
+  /**
+   * Attach a logged-in payer to a sale when they commit to paying (copy the
+   * account). Only touches pending sales, and won't reassign a sale that is
+   * already claimed by a different user.
+   */
+  async claimSalePayer(
+    saleId: string,
+    userId: string,
+    customerName?: string,
+  ): Promise<{ success: boolean }> {
+    if (!Types.ObjectId.isValid(saleId) || !Types.ObjectId.isValid(userId)) {
+      return { success: false }
+    }
+
+    const userObjectId = new Types.ObjectId(userId)
+    const update: Record<string, unknown> = { customerUserId: userObjectId }
+    if (customerName) {
+      update.customerName = customerName
+    }
+
+    await this.saleModel
+      .updateOne(
+        {
+          _id: new Types.ObjectId(saleId),
+          status: 'PENDING',
+          $or: [
+            { customerUserId: { $exists: false } },
+            { customerUserId: null },
+            { customerUserId: userObjectId },
+          ],
+        },
+        { $set: update },
+      )
+      .exec()
+
+    return { success: true }
   }
 
   private calculateTrendData(
@@ -956,6 +1052,13 @@ export class SalesService {
         recordedAt: new Date(),
       })
 
+      if (!primarySale.customerUserId && primarySale.customerId) {
+        const linkedUserId = await this.resolveCustomerUserId(
+          primarySale.customerId,
+        )
+        if (linkedUserId) primarySale.customerUserId = linkedUserId
+      }
+
       await primarySale.save()
       await primarySale.populate('customerId')
       return primarySale
@@ -1026,6 +1129,11 @@ export class SalesService {
         paymentMethod: dto.paymentMethod || 'Other',
         recordedAt: new Date(),
       })
+
+      if (!sale.customerUserId && sale.customerId) {
+        const linkedUserId = await this.resolveCustomerUserId(sale.customerId)
+        if (linkedUserId) sale.customerUserId = linkedUserId
+      }
 
       await sale.save()
       await sale.populate('customerId')

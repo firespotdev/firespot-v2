@@ -53,10 +53,26 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get customer payment history' })
+  @ApiOperation({ summary: 'Get my activity (payments I made)' })
   @Get('customer/history')
   async getCustomerHistory(@GetUser() user: User) {
-    return this.salesService.getCustomerSalesHistory(user.phoneNumber);
+    return this.salesService.getMyActivity((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Attach me as the payer of a sale (on pay)' })
+  @Patch(':id/claim')
+  async claimSale(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+    @Body() dto: { customerName?: string },
+  ) {
+    return this.salesService.claimSalePayer(
+      saleId,
+      (user as any).userId,
+      dto?.customerName,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')

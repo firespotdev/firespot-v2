@@ -363,6 +363,48 @@ export class UsersController {
     return this.usersService.registerFcmToken(req.user.userId, dto.token);
   }
 
+  @Get("favorites")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "List saved (Faves) merchants",
+    description:
+      "Returns the merchants the authenticated user has saved to their Faves.",
+  })
+  @ApiResponse({ status: 200, description: "Favorite merchants returned" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async getFavorites(@Request() req) {
+    return this.usersService.getFavoriteMerchants(req.user.userId);
+  }
+
+  @Post("favorites/:merchantId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Add a merchant to Faves",
+    description: "Saves a merchant to the authenticated user's Faves.",
+  })
+  @ApiParam({ name: "merchantId", description: "Merchant user id" })
+  @ApiResponse({ status: 201, description: "Merchant added to Faves" })
+  @ApiResponse({ status: 404, description: "Merchant not found" })
+  async addFavorite(@Request() req, @Param("merchantId") merchantId: string) {
+    return this.usersService.addFavoriteMerchant(req.user.userId, merchantId);
+  }
+
+  @Delete("favorites/:merchantId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Remove a merchant from Faves",
+    description: "Removes a merchant from the authenticated user's Faves.",
+  })
+  @ApiParam({ name: "merchantId", description: "Merchant user id" })
+  @ApiResponse({ status: 200, description: "Merchant removed from Faves" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async removeFavorite(@Request() req, @Param("merchantId") merchantId: string) {
+    return this.usersService.removeFavoriteMerchant(req.user.userId, merchantId);
+  }
+
   @Patch("me/profile")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")

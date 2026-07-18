@@ -11,6 +11,7 @@ import { FirebaseModule } from '../services/firebase/firebase.module';
 import { Customer, CustomerSchema } from '../schemas/customer.schema';
 import { Product, ProductSchema } from '../schemas/product.schema';
 import { UsersModule } from '../users/users.module';
+import { AccountLinkingModule } from '../account-linking/account-linking.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { UsersModule } from '../users/users.module';
     EventsModule,
     FirebaseModule,
     UsersModule,
+    AccountLinkingModule,
   ],
   controllers: [SalesController],
   providers: [SalesService]

@@ -16,6 +16,12 @@ export class Sale extends Document {
   @Prop()
   customerName?: string;
 
+  // The paying personal user's account, set when a logged-in user pays. Drives
+  // the customer-facing Activity feed ("payments I made"). Distinct from
+  // customerId, which is the merchant's own customer-ledger record.
+  @Prop({ type: Types.ObjectId, ref: "User", index: true })
+  customerUserId?: Types.ObjectId;
+
   @Prop({ enum: ['QR scan', 'Link shared', 'Manual'] })
   source?: string;
 

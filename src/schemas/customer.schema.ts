@@ -15,6 +15,11 @@ export class Customer extends Document {
   @Prop()
   email?: string;
 
+  // The Firespot User this customer maps to (matched/created by phone number).
+  // Links merchant-recorded sales into the customer's own Activity feed.
+  @Prop({ type: Types.ObjectId, ref: "User", index: true })
+  userId?: Types.ObjectId;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

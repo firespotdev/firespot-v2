@@ -464,6 +464,63 @@ export class UsersService {
     return { message: "FCM token registered successfully" };
   }
 
+  private toMerchantSummary(merchant: any) {
+    return {
+      id: merchant._id,
+      businessName: merchant.businessName,
+      merchantSlug: merchant.merchantSlug,
+      profilePhotoUrl: merchant.profilePhotoUrl,
+      businessIndustry: merchant.businessIndustry,
+    };
+  }
+
+  async getFavoriteMerchants(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .populate(
+        "favoriteMerchants",
+        "businessName merchantSlug profilePhotoUrl businessIndustry",
+      )
+      .exec();
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    const favorites = (user.favoriteMerchants || []) as any[];
+    return { favorites: favorites.map((m) => this.toMerchantSummary(m)) };
+  }
+
+  async addFavoriteMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      throw new HttpException("Invalid merchant id", HttpStatus.BAD_REQUEST);
+    }
+    const merchant = await this.userModel
+      .findOne({ _id: merchantId, role: "merchant" })
+      .exec();
+    if (!merchant) {
+      throw new HttpException("Merchant not found", HttpStatus.NOT_FOUND);
+    }
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        { $addToSet: { favoriteMerchants: new Types.ObjectId(merchantId) } },
+      )
+      .exec();
+    return this.getFavoriteMerchants(userId);
+  }
+
+  async removeFavoriteMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      throw new HttpException("Invalid merchant id", HttpStatus.BAD_REQUEST);
+    }
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        { $pull: { favoriteMerchants: new Types.ObjectId(merchantId) } },
+      )
+      .exec();
+    return this.getFavoriteMerchants(userId);
+  }
+
   private sanitizeUser(user: UserDocument) {
     return {
       id: user._id,
