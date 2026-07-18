@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
@@ -12,7 +12,6 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import {
   useMerchantInsights,
@@ -41,7 +40,6 @@ const PAY_METHOD_COLORS = [
 
 export default function InsightsPage() {
   const router = useRouter()
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const [filter, setFilter] = useState<InsightsQuery>({
     preset: 'today',
@@ -59,16 +57,7 @@ export default function InsightsPage() {
 
   const { data: bankAccountsData } = useBankAccounts()
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, isLoading, router])
-
-  if (!isAuthenticated) {
-    return null
-  }
+  // Auth + merchant capability are enforced by the (merchant) layout.
 
   const handleOpenFilter = () => {
     openDrawer({

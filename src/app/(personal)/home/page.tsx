@@ -1,7 +1,6 @@
 'use client'
 
-import { Suspense, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense } from 'react'
 import { toast } from 'sonner'
 import {
   Plus,
@@ -17,11 +16,9 @@ import {
   Banknote,
   Gift,
 } from 'lucide-react'
-import { useAuthStore, useAuthReady } from '@/services/auth'
+import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
-import { isTokenExpired } from '@/lib/utils/auth-redirect'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { BottomNav } from '@/components/layout/bottom-nav'
 
 const QUICK_ACTIONS = [
   { label: 'Shops', Icon: Store },
@@ -46,33 +43,10 @@ function comingSoon() {
 }
 
 function HomePageContent() {
-  const router = useRouter()
-
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const token = useAuthStore((state) => state.token)
   const user = useAuthStore((state) => state.user)
-  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
-  const logout = useAuthStore((state) => state.logout)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-  const hydrated = useAuthReady()
 
-  // Guards: must be authenticated and onboarded. Wait for the persisted
-  // store to rehydrate — before that everyone looks logged out.
-  useEffect(() => {
-    if (!hydrated) return
-    if (!isAuthenticated || !token || isTokenExpired(token)) {
-      if (token && isTokenExpired(token)) logout()
-      router.replace('/login')
-      return
-    }
-    if (!onboardingCompleted) {
-      router.replace('/onboarding')
-    }
-  }, [hydrated, isAuthenticated, token, onboardingCompleted, router, logout])
-
-  if (!hydrated) {
-    return <div className="h-dvh bg-white" />
-  }
+  // Auth + onboarding are enforced by the (personal) route-group layout.
 
   const displayName =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
@@ -178,9 +152,6 @@ function HomePageContent() {
           </button>
         </div>
       </div>
-
-      {/* Bottom navigation */}
-      <BottomNav variant="light" />
     </div>
   )
 }

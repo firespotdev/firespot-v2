@@ -1,11 +1,10 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { ArrowLeft, Check, Copy, Download, Share } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useAuthStore } from '@/services/auth'
 import { useUserQRKit, useQRCodeSVG, useUpdateQRKit } from '@/services/qr'
 import { Button, LoaderCircle, showNotificationToast } from '@/components/ui'
 import { Pencil } from 'lucide-react'
@@ -19,11 +18,9 @@ const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
 
 export default function QRKitDetailPage() {
-  const router = useRouter()
   const params = useParams()
   const id = params.id as string
 
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const { data: qrKit, isLoading, error } = useUserQRKit(id)
   const { data: svgContent } = useQRCodeSVG(qrKit?.qrCodeSvgUrl)
   const { data: profile } = useUserProfile()
@@ -72,15 +69,7 @@ export default function QRKitDetailPage() {
     return applyBrandingToSVG(svgContent, GRADIENT_START, GRADIENT_END, null, 0)
   }, [svgContent])
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, router])
-
-  if (!isAuthenticated) {
-    return null
-  }
+  // Auth + merchant capability are enforced by the (merchant) layout.
 
   if (isLoading) {
     return (

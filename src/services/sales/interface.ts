@@ -79,6 +79,20 @@ export interface Sale {
   updatedAt: string | Date;
 }
 
+/** Merchant fields populated on a customer's activity sale */
+export interface CustomerSaleMerchant {
+  _id?: string;
+  businessName?: string;
+  merchantSlug?: string;
+  profilePhotoUrl?: string;
+  businessIndustry?: string;
+}
+
+/** A sale as seen from the paying customer's activity feed (merchant populated) */
+export interface CustomerSale extends Omit<Sale, 'merchantId'> {
+  merchantId: CustomerSaleMerchant | string;
+}
+
 export interface TrendData {
   label: string;
   amount: number;

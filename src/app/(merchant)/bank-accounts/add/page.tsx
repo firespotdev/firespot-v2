@@ -16,12 +16,10 @@ import {
 } from '@/components/ui'
 import { useBanks, useResolveAccount } from '@/services/paystack'
 import { useAddBankAccount } from '@/services/users'
-import { useAuthStore } from '@/services/auth'
 import { showNotificationToast } from '@/components/ui'
 
 export default function AddBankAccountPage() {
   const router = useRouter()
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
 
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const resolveAccount = useResolveAccount()
@@ -35,12 +33,7 @@ export default function AddBankAccountPage() {
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
   const resolvedRef = useRef<string>('')
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, router])
+  // Auth + merchant capability are enforced by the (merchant) layout.
 
   // Auto-resolve account when account number is 10 digits and bank is selected
   useEffect(() => {
@@ -84,10 +77,6 @@ export default function AddBankAccountPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountNumber, selectedBankCode])
-
-  if (!isAuthenticated) {
-    return null
-  }
 
   const handleBankSelectChange = (value: string) => {
     const bank = banks.find((b) => b.code === value)

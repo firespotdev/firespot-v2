@@ -17,6 +17,7 @@ import {
   useCreatePendingSale,
   useRecordScan,
   useRecordCopy,
+  useClaimSalePayer,
   usePublicSale,
 } from '@/services/sales/hooks'
 import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
@@ -43,6 +44,7 @@ export default function PaymentPage() {
   const createPendingSale = useCreatePendingSale()
   const recordSaleScan = useRecordScan()
   const recordSaleCopy = useRecordCopy()
+  const claimSalePayer = useClaimSalePayer()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const authUser = useAuthStore((state) => state.user)
 
@@ -101,6 +103,14 @@ export default function PaymentPage() {
 
     if (saleId) {
       recordSaleCopy.mutate(saleId)
+      // Dynamic QR: link this merchant-initiated sale to the logged-in payer so
+      // it appears in their Activity once confirmed. No-op when logged out.
+      if (authUser?.id) {
+        const payerName =
+          [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
+          undefined
+        claimSalePayer.mutate({ saleId, customerName: payerName })
+      }
     } else if (merchant) {
       // Get or create a persistent fingerprint for this customer
       let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
@@ -515,6 +525,7 @@ export default function PaymentPage() {
         description: description || undefined,
         customerFingerprint: fingerprint,
         customerName: payerName,
+        customerUserId: authUser?.id,
         source: window.location.search.includes('shared=true')
           ? 'Link shared'
           : 'QR scan',

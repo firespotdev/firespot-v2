@@ -1,10 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronRight, CirclePlus, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { useAuthStore } from '@/services/auth'
 import { Button, LoaderCircle } from '@/components/ui'
 import { useUserQRKits, useClaimDigitalKit } from '@/services/qr'
 import Image from 'next/image'
@@ -13,9 +11,7 @@ import { useUserProfile } from '@/services/users'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 
 export default function QRKitsPage() {
-  const router = useRouter()
   const { openDrawer } = useDrawerStore()
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const { data: user } = useUserProfile()
   const { data: qrKitsData, isLoading: isLoadingKits } = useUserQRKits()
   const { mutate: claimDigital, isPending: isClaiming } = useClaimDigitalKit()
@@ -23,11 +19,7 @@ export default function QRKitsPage() {
   const qrKits = qrKitsData?.data || []
   const hasEntitlements = (user?.availableKitEntitlements || 0) > 0
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, router])
+  // Auth + merchant capability are enforced by the (merchant) layout.
 
   useEffect(() => {
     if (
@@ -39,10 +31,6 @@ export default function QRKitsPage() {
       claimDigital()
     }
   }, [isLoadingKits, qrKits.length, hasEntitlements, isClaiming, claimDigital])
-
-  if (!isAuthenticated) {
-    return null
-  }
 
   if (isLoadingKits || isClaiming) {
     return (

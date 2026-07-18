@@ -43,7 +43,10 @@ function HistoryContent() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchParams = useSearchParams()
   const initialStatus = searchParams.get('status')
-  const initialMode = searchParams.get('mode') as 'collected' | 'recorded' | null
+  const initialMode = searchParams.get('mode') as
+    | 'collected'
+    | 'recorded'
+    | null
 
   // Top tab switch state
   const [activeTab, setActiveTab] = useState<'collected' | 'recorded'>(
@@ -239,7 +242,7 @@ function HistoryContent() {
           placeholder="Search by description or payment method"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-9 pl-11 pr-4 bg-[#E6E8EB99] border border-[#EBEBEB] rounded-full text-sm font-medium placeholder:text-[#00000066] focus:outline-none focus:ring-1 focus:ring-[#26B2FF]"
+          className="w-full h-9 pl-11 pr-4 bg-[#E6E8EB99] border border-[#EBEBEB] rounded-full text-sm font-medium placeholder:text-[#00000066] focus:outline-none focus:ring-1 focus:ring-[#0075FF]"
         />
       </div>
 

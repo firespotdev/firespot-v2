@@ -5,7 +5,7 @@ export interface AppCardProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: 'default' | 'elevated' | 'bordered'
   rounded?: '12' | '16' | '24' | 'xl' | '2xl'
   divided?: boolean
-  padding?: 'none' | 'sm' | 'md' | 'lg'
+  padding?: 'none' | 'xs' | 'sm' | 'md' | 'lg'
 }
 
 export const AppCard = React.forwardRef<HTMLDivElement, AppCardProps>(
@@ -31,6 +31,7 @@ export const AppCard = React.forwardRef<HTMLDivElement, AppCardProps>(
 
     const paddingStyles = {
       none: '',
+      xs: 'p-2',
       sm: 'p-3',
       md: 'p-4',
       lg: 'p-6',

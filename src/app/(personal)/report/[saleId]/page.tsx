@@ -85,7 +85,7 @@ function DisputeReportPageContent() {
         <Landmark className="w-12 h-12 text-[#FF3B30] mb-4" />
         <h2 className="text-lg font-bold text-black mb-1">Transaction Not Found</h2>
         <p className="text-sm text-[#00000060] mb-6">We could not find the sale you are trying to dispute.</p>
-        <Button onClick={() => router.push('/customer/history')} className="rounded-full bg-black text-white h-11 px-8 font-bold">
+        <Button onClick={() => router.push('/activity')} className="rounded-full bg-black text-white h-11 px-8 font-bold">
           Go back to history
         </Button>
       </div>
@@ -101,7 +101,7 @@ function DisputeReportPageContent() {
           <p className="text-sm text-[#00000060] font-medium leading-relaxed mb-10 max-w-xs">
             We have received your dispute request. Our customer support team will investigate and follow up with you.
           </p>
-          <Button onClick={() => router.replace('/customer/history')} className="w-full h-12 bg-black text-white font-bold rounded-full">
+          <Button onClick={() => router.replace('/activity')} className="w-full h-12 bg-black text-white font-bold rounded-full">
             Done
           </Button>
         </div>

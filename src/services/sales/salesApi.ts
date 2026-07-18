@@ -1,11 +1,12 @@
 import { apiClient, publicApiClient } from '@/lib/utils/axios';
-import { PublicSale, Sale, SalesStats, SalesResponse } from './interface';
+import { CustomerSale, PublicSale, Sale, SalesStats, SalesResponse } from './interface';
 
 export interface CreatePendingSalePayload {
   merchantId: string;
   customerFingerprint?: string;
   customerType?: 'New' | 'Repeat';
   customerName?: string;
+  customerUserId?: string;
   source?: 'QR scan' | 'Link shared' | 'Manual';
   targetBankName?: string;
   serialNumber?: string;
@@ -61,6 +62,11 @@ export const SalesApi = {
 
   getSale: async (id: string): Promise<Sale> => {
     const { data } = await apiClient.get(`/sales/${id}`);
+    return data;
+  },
+
+  getCustomerHistory: async (): Promise<CustomerSale[]> => {
+    const { data } = await apiClient.get('/sales/customer/history');
     return data;
   },
 
@@ -125,6 +131,11 @@ export const SalesApi = {
 
   recordCopy: async (saleId: string): Promise<Sale> => {
     const { data } = await publicApiClient.patch(`/sales/${saleId}/copy`);
+    return data;
+  },
+
+  claimSalePayer: async (saleId: string, customerName?: string): Promise<{ success: boolean }> => {
+    const { data } = await apiClient.patch(`/sales/${saleId}/claim`, { customerName });
     return data;
   },
 

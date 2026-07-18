@@ -32,6 +32,13 @@ export const useSale = (id?: string) => {
   });
 };
 
+export const useCustomerHistory = () => {
+  return useQuery({
+    queryKey: ['customer-history'],
+    queryFn: () => SalesApi.getCustomerHistory(),
+  });
+};
+
 export const useSalesStats = (params?: Record<string, any>) => {
   return useQuery({
     queryKey: ['sales-stats', params],
@@ -160,6 +167,17 @@ export const useOutstandingSummary = () => {
   return useQuery({
     queryKey: ['sales-outstanding-summary'],
     queryFn: () => SalesApi.getOutstandingSummary(),
+  });
+};
+
+/**
+ * Attach the logged-in user as a sale's payer when they commit to paying.
+ * No-op-friendly: fails silently for logged-out payers (caller guards on auth).
+ */
+export const useClaimSalePayer = () => {
+  return useMutation({
+    mutationFn: ({ saleId, customerName }: { saleId: string; customerName?: string }) =>
+      SalesApi.claimSalePayer(saleId, customerName),
   });
 };
 

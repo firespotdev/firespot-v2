@@ -13,12 +13,17 @@ import {
 
 const NAV_ITEMS = [
   { key: 'home', Icon: HouseIcon, href: '/home', label: 'Home' },
-  { key: 'search', Icon: MagnifyingGlassIcon, href: '#', label: 'Search' },
+  {
+    key: 'search',
+    Icon: MagnifyingGlassIcon,
+    href: '/search',
+    label: 'Search',
+  },
   { key: 'scan', Icon: BarcodeIcon, href: '/', label: 'Scan' },
   {
     key: 'history',
     Icon: ClockCounterClockwiseIcon,
-    href: '#',
+    href: '/activity',
     label: 'History',
   },
   { key: 'chat', Icon: ChatsCircleIcon, href: '#', label: 'Chat' },

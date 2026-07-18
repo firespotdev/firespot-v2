@@ -41,6 +41,8 @@ import { RepaymentSuccessDrawer } from './repayment-success-drawer'
 import { AddCustomerDrawer } from './add-customer-drawer'
 import { AccountSwitchDrawer } from './account-switch-drawer'
 import { SaleReceiptDrawer } from './sale-receipt-drawer'
+import { ActivityDetailsDrawer } from './activity-details-drawer'
+import { ActivityOptionsDrawer } from './activity-options-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -137,6 +139,20 @@ const DRAWER_CONFIG: Record<
     fullScreen: true,
     hideHandle: true,
     direction: 'right',
+  },
+  'activity-details': {
+    title: '',
+    Content: ActivityDetailsDrawer,
+    noHeader: true,
+    fullScreen: true,
+    hideHandle: true,
+    direction: 'right',
+  },
+  'activity-options': {
+    title: '',
+    Content: ActivityOptionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
   },
   checkout: {
     title: '',

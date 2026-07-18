@@ -24,13 +24,12 @@ export default function ScannerPage() {
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const token = useAuthStore((state) => state.token)
-  const user = useAuthStore((state) => state.user)
   const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
   const logout = useAuthStore((state) => state.logout)
   const authReady = useAuthReady()
 
-  // Signed-in personal users (merchants are redirected away above) get the
-  // Recent shortcut + bottom nav; logged-out visitors keep the login CTAs.
+  // Signed-in users (personal, or merchants in personal mode) get the Recent
+  // shortcut + bottom nav; logged-out visitors keep the login CTAs.
   const isSignedIn =
     authReady && isAuthenticated && !!token && !isTokenExpired(token)
 
@@ -43,18 +42,20 @@ export default function ScannerPage() {
         logout()
         return
       }
-      // Merchants land on their business profile; personal users can scan here
+      // The scanner is a neutral surface both personal users and merchants
+      // (acting in personal mode via the bottom nav) can use. Merchants get
+      // routed to their business profile once at login time by
+      // getPostAuthDestination — not here — so switching to personal mode and
+      // tapping Scan isn't bounced back to /profile. Only unfinished
+      // onboarding still redirects.
       if (!onboardingCompleted) {
         router.replace('/onboarding')
-      } else if (user?.role === 'merchant') {
-        router.replace('/profile')
       }
     }
   }, [
     authReady,
     isAuthenticated,
     token,
-    user,
     onboardingCompleted,
     router,
     logout,
@@ -273,7 +274,7 @@ export default function ScannerPage() {
           {isSignedIn ? (
             <div className="flex justify-center pb-28">
               <Link
-                href="/customer/history"
+                href="/activity"
                 className="glass-border inline-flex items-center justify-center gap-1.5 w-[94px] py-2 pl-2 pr-3 rounded-[20px] bg-[#FFFFFF1A] text-[#FFFFFF80] text-sm font-medium"
               >
                 <ClockCounterClockwiseIcon size={20} color="#FFFFFF99" />

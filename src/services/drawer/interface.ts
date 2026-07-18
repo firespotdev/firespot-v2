@@ -28,6 +28,8 @@ export type DrawerContentType =
   | 'add-customer'
   | 'account-switch'
   | 'sale-receipt'
+  | 'activity-details'
+  | 'activity-options'
 
 
 

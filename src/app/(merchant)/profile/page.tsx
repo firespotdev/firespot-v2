@@ -1,12 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { ChevronRight, AlertCircle } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
-import { useAuthStore } from '@/services/auth'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
@@ -26,7 +24,6 @@ const ALLOWED_FILE_TYPES = [
 ]
 
 export default function ProfilePage() {
-  const router = useRouter()
   const [filter, setFilter] = useState<InsightsQuery>({
     preset: 'today',
   })
@@ -48,14 +45,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
-      router.push('/login')
-    }
-  }, [isAuthenticated, isLoading, router])
+  // Auth + merchant capability are enforced by the (merchant) layout.
 
   // Clear photo success message after 3 seconds
   useEffect(() => {
@@ -64,10 +54,6 @@ export default function ProfilePage() {
       return () => clearTimeout(timer)
     }
   }, [photoSuccess])
-
-  if (!isAuthenticated) {
-    return null
-  }
 
   const sortedBankAccounts = sortBankAccounts(profile?.bankAccounts || [])
 
