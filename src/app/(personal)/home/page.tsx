@@ -95,7 +95,6 @@ function HomePageContent() {
           </button>
         </div>
 
-        {/* Quick actions grid */}
         <div className="grid grid-cols-4 gap-x-3 gap-y-4 px-4 mt-5">
           {QUICK_ACTIONS.map(({ label, Icon }) => (
             <button
@@ -112,7 +111,6 @@ function HomePageContent() {
           ))}
         </div>
 
-        {/* Filter pills */}
         <div className="flex gap-2 px-4 mt-6 overflow-x-auto scrollbar-hide">
           {FILTER_PILLS.map(({ label, active, accent }) => (
             <button
@@ -132,7 +130,6 @@ function HomePageContent() {
           ))}
         </div>
 
-        {/* Feed empty state */}
         <div className="border-t border-[#F1F3F5] mt-4 pt-16 pb-10 flex flex-col items-center px-8 text-center">
           <span className="w-16 h-16 rounded-2xl bg-[#F1F3F5] flex items-center justify-center">
             <Ghost className="w-7 h-7 text-[#9CA3AF]" strokeWidth={1.5} />
