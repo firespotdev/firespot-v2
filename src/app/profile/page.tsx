@@ -260,7 +260,7 @@ export default function ProfilePage() {
                 : undefined
               return (
                 <Link
-                  href="/history?status=UNCONFIRMED"
+                  href="/recents"
                   className="flex flex-col items-center group"
                 >
                   <span

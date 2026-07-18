@@ -10,9 +10,15 @@ import { MerchantAvatar } from '../layout/MerchantAvatar'
 interface Props {
   onSelect: (customer: any) => void
   onBack?: () => void
+  /** Part payments must be attributed to a customer — disables skip/Continue. */
+  requireCustomer?: boolean
 }
 
-export function CustomerSelectDrawer({ onSelect, onBack }: Props) {
+export function CustomerSelectDrawer({
+  onSelect,
+  onBack,
+  requireCustomer = false,
+}: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: customers = [] } = useCustomers()
@@ -31,7 +37,7 @@ export function CustomerSelectDrawer({ onSelect, onBack }: Props) {
         onBack: () => {
           openDrawer({
             type: 'customer-select',
-            props: { onSelect, onBack },
+            props: { onSelect, onBack, requireCustomer },
           })
         },
       },
@@ -173,12 +179,14 @@ export function CustomerSelectDrawer({ onSelect, onBack }: Props) {
           </div>
         </div>
 
-        {/* Continue button */}
+        {/* Continue button — disabled for part payments until a customer is
+            selected (a balance must be attributed to someone). */}
         <Button
           onClick={() => {
             onSelect(selectedCustomer || null)
           }}
-          className="w-full mb-3 mt-1 bg-black text-white hover:bg-black/90 font-bold transition-all h-14 rounded-full text-base active:scale-[0.98]"
+          disabled={requireCustomer && !selectedCustomer}
+          className="w-full mb-3 mt-1 bg-black text-white hover:bg-black/90 disabled:bg-black/40 disabled:cursor-not-allowed font-bold transition-all h-14 rounded-full text-base active:scale-[0.98]"
         >
           Continue
         </Button>

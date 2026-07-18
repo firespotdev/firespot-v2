@@ -560,6 +560,7 @@ function RecordSaleContent() {
     openDrawer({
       type: 'customer-select',
       props: {
+        requireCustomer: instType === 'part',
         onBack: () => {
           closeDrawer('customer-select')
           openSplitPaymentStep(
@@ -693,6 +694,7 @@ function RecordSaleContent() {
           openDrawer({
             type: 'customer-select',
             props: {
+              requireCustomer: instType === 'part',
               onBack: () =>
                 openCheckoutSaleDrawer(
                   method,
