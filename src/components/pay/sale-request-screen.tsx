@@ -47,7 +47,7 @@ export function SaleRequestScreen({
             type="button"
             onClick={onShare}
             aria-label="Share"
-            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
           >
             <Share color="#868788" size={16} />
           </button>
@@ -56,7 +56,7 @@ export function SaleRequestScreen({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
           >
             <X size={16} color="#868788" />
           </button>

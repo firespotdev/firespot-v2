@@ -72,7 +72,7 @@ export function CustomerDebtList({
         <CircularIconButton icon="arrow-left" size="md" onClick={onBack} />
 
         <div className="text-center flex-1 mx-2">
-          <h2 className="text-[14px] font-bold text-black leading-tight truncate max-w-[200px] mx-auto">
+          <h2 className="text-[14px] font-bold text-black leading-tight truncate max-w-50 mx-auto">
             {customerName}
           </h2>
           <p className="text-xs text-[#6B7280] font-medium">

@@ -78,7 +78,7 @@ export function BottomNav({ variant = 'light' }: BottomNavProps) {
           const active = href !== '#' && pathname === href
           const itemClassName = `${
             active ? styles.itemActive : styles.itemInactive
-          } px-4 h-full flex justify-center items-center rounded-[20px] min-w-[65px]`
+          } px-4 h-full flex justify-center items-center rounded-4xl min-w-[65px]`
           const icon = (
             <Icon
               size={24}

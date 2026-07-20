@@ -117,7 +117,7 @@ export default function InsightsPage() {
 
   return (
     <div className="min-h-dvh bg-[#FFFFFF]">
-      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto min-h-dvh flex flex-col font-satoshi">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#FFFFFF] px-4 py-3">
           <div className="flex items-center justify-between">
@@ -179,8 +179,8 @@ export default function InsightsPage() {
 
           {insights && (
             <>
-              <div className="border-2 border-[#0000000A] rounded-[12px] w-full">
-                <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
+              <div className="border-2 border-[#0000000A] rounded-2xl w-full">
+                <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
                   <div className="">
                     <button className="flex items-center gap-1 mb-1">
                       <span className="text-[#00000066] text-xs font-medium">
@@ -202,7 +202,7 @@ export default function InsightsPage() {
                     </Link>
                   </div>
                 </div>
-                <div className="flex items-center bg-[#f4f4f4] p-3 gap-2 rounded-[12px]">
+                <div className="flex items-center bg-[#f4f4f4] p-3 gap-2 rounded-2xl">
                   <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
                   <p className="text-xs text-[#00000066] font-medium">
                     You will not receive a payout for these transactions.

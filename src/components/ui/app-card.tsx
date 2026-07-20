@@ -22,7 +22,7 @@ export const AppCard = React.forwardRef<HTMLDivElement, AppCardProps>(
     ref,
   ) => {
     const roundedStyles = {
-      '12': 'rounded-[12px]',
+      '12': 'rounded-2xl',
       '16': 'rounded-[16px]',
       '24': 'rounded-[24px]',
       xl: 'rounded-xl',

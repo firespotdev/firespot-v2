@@ -148,7 +148,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       </div>
 
       <div className="px-4 mb-3">
-        <div className="bg-white rounded-[12px] p-4 shadow-[0px_4px_8px_0px_#0000000A] flex items-center gap-4 relative overflow-hidden">
+        <div className="bg-white rounded-2xl p-4 shadow-[0px_4px_8px_0px_#0000000A] flex items-center gap-4 relative overflow-hidden">
           <div className="flex-1 z-10">
             <h3 className="text-[16px] font-bold text-black mb-1">
               Share your FS profile

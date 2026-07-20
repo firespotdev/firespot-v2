@@ -48,7 +48,7 @@ export function VariantSelectorDrawer({ product, onAdd }: Props) {
       </div>
 
       {/* Product Summary Card */}
-      <div className="flex items-center gap-3.5 p-4 bg-[#F4F6F8] rounded-[20px] mb-5 text-left border border-[#E9EBED]">
+      <div className="flex items-center gap-3.5 p-4 bg-[#F4F6F8] rounded-4xl mb-5 text-left border border-[#E9EBED]">
         <div className="relative w-14 h-14 bg-white rounded-[10px] flex items-center justify-center text-gray-400 shrink-0 overflow-hidden border border-[#E9EBED]">
           {product.imageUrl ? (
             <img

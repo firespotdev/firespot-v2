@@ -129,7 +129,7 @@ export function CurrentSaleDrawer({
       </div>
 
       {/* Items list */}
-      <div className="-mx-3 px-3 flex-1 overflow-y-auto max-h-[220px] mb-4 border-b border-[#F4F6F8] bg-[#FCFBFB]">
+      <div className="-mx-3 px-3 flex-1 overflow-y-auto max-h-55 mb-4 border-b border-[#F4F6F8] bg-[#FCFBFB]">
         {cartItems.length >= 1 ? (
           <div className="flex flex-col gap-3.5 py-4">
             {cartItems.map((item) => (
@@ -202,7 +202,10 @@ export function CurrentSaleDrawer({
                 </span>
                 <div className="flex items-center gap-1">
                   <span className="text-sm font-medium text-[#24C166]">
-                    NGN {formatCurrency(installmentType === 'full' ? totalAmount : amountPaid)}
+                    NGN{' '}
+                    {formatCurrency(
+                      installmentType === 'full' ? totalAmount : amountPaid,
+                    )}
                   </span>
                   <ChevronRight className="w-4 h-4 text-[#00000080]" />
                 </div>
@@ -250,7 +253,9 @@ export function CurrentSaleDrawer({
               onClick={onEditCustomer}
               className="flex justify-between items-center hover:opacity-85 transition-opacity"
             >
-              <span className="text-sm text-[#00000080] font-medium">Customer</span>
+              <span className="text-sm text-[#00000080] font-medium">
+                Customer
+              </span>
               <div className="flex items-center gap-1">
                 <span className="text-sm font-medium text-[#111827]">
                   {customer.name}
@@ -319,7 +324,10 @@ export function CurrentSaleDrawer({
             <span>Loading...</span>
           </>
         ) : (
-          <span>{mode === 'collect' ? 'Collect' : 'Record'} NGN {formatCurrency(mode === 'collect' ? totalAmount : amountPaid)}</span>
+          <span>
+            {mode === 'collect' ? 'Collect' : 'Record'} NGN{' '}
+            {formatCurrency(mode === 'collect' ? totalAmount : amountPaid)}
+          </span>
         )}
       </button>
     </div>

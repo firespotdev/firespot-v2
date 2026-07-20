@@ -85,21 +85,21 @@ function OrderStatusContent() {
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center mb-12">
-            <div className="w-[64px] h-[64px] rounded-full border-4 border-white flex items-center justify-center mb-5 shrink-0">
-              <Check className="w-[32px] h-[32px] text-white" strokeWidth={3} />
+            <div className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center mb-5 shrink-0">
+              <Check className="w-8 h-8 text-white" strokeWidth={3} />
             </div>
 
             <h1 className="text-[20px] font-bold text-white -tracking-[0.4px] mb-1.5 text-center shrink-0">
               Order submitted successfully
             </h1>
-            <p className="text-[14px] text-center text-white max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
+            <p className="text-[14px] text-center text-white max-w-87.5 mb-8 font-medium leading-[130%] shrink-0">
               You would receive your QRkits in a few. Check your email inbox for
               details on your order.
             </p>
 
             <Button
               variant="secondary"
-              className="py-[10px] w-fit px-[14px] h-9 gap-1 bg-[#33A061] hover:bg-[#33A061] shrink-0"
+              className="py-2.5 w-fit px-3.5 h-9 gap-1 bg-[#33A061] hover:bg-[#33A061] shrink-0"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

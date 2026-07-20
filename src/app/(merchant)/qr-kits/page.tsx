@@ -34,15 +34,15 @@ export default function QRKitsPage() {
 
   if (isLoadingKits || isClaiming) {
     return (
-      <LoadingPage 
-        message={isClaiming ? "Setting up your digital QR kit..." : undefined} 
+      <LoadingPage
+        message={isClaiming ? 'Setting up your digital QR kit...' : undefined}
       />
     )
   }
 
   return (
     <div className="min-h-dvh bg-[#F4F6F8]">
-      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto min-h-dvh flex flex-col font-satoshi">
         <header className="flex items-center py-4 px-4 sticky top-0 z-10 bg-[#F4F6F8]">
           <Link href="/profile">
             <ArrowLeft className="w-6 h-6 text-black" />
@@ -79,7 +79,7 @@ export default function QRKitsPage() {
                     className="w-full flex items-center gap-3 p-3 border-b border-[#F1F1F1] last:border-b-0 hover:bg-[#F9FAFB] transition-colors"
                   >
                     <div
-                      className={`w-9 h-9 rounded-[8px] flex items-center justify-center shrink-0 ${
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                         isActive
                           ? 'bg-linear-to-br from-[#FB5012] to-[#D72483]'
                           : 'bg-[#F1F1F1]'

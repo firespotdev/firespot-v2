@@ -21,7 +21,7 @@ export function LoginForm({
 }: LoginFormProps) {
   return (
     <div className="h-dvh bg-white">
-      <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
+      <div className="max-w-125 mx-auto h-full pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
         <Image
           src="/icons/firespot_logo.svg"
           alt="firespot logo"

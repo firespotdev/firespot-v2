@@ -195,7 +195,7 @@ export function RepaymentSummaryDrawer({
       </div>
 
       <div className="px-3 py-2 overflow-y-auto flex-1">
-        <div className="bg-[#F4F4F4] rounded-[12px] p-3 flex items-start gap-2 mb-2">
+        <div className="bg-[#F4F4F4] rounded-2xl p-3 flex items-start gap-2 mb-2">
           <AlertCircle size={24} color="#00000066" />
           <p className="text-[12px] text-[#000000]/40 font-medium">
             Outstanding payments are cleared in order of how long they have been

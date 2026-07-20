@@ -150,7 +150,7 @@ export function BusinessPaymentsForm({
             />
 
             {resolveAccount.isSuccess && (
-              <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+              <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-xl px-4">
                 <CircleCheck
                   className="w-5 h-5 text-[#ffffff]"
                   fill="#24C166"

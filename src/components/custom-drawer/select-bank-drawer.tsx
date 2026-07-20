@@ -57,7 +57,7 @@ export function SelectBankDrawer({
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3">
+            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3">
               {sortedAccounts
                 .filter((account) => account.isPrimary)
                 .map((account, index) => (
@@ -88,7 +88,7 @@ export function SelectBankDrawer({
                   </button>
                 ))}
             </div>
-            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-2">
+            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-2">
               {sortedAccounts
                 .filter((account) => !account.isPrimary)
                 .map((account, index) => (

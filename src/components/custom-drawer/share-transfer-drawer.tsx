@@ -107,7 +107,7 @@ export function ShareTransferDrawer({
       </header>
       <div className="px-12 w-full py-6">
         <div
-          className="rounded-[24px] p-1 w-full max-w-[280px] mx-auto aspect-square"
+          className="rounded-[24px] p-1 w-full max-w-70 mx-auto aspect-square"
           style={{
             background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
           }}

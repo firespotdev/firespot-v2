@@ -225,11 +225,8 @@ const RecordSuccessDrawer = ({
               </svg>
             </div>
           ) : (
-            <div className="w-[64px] h-[64px] rounded-full border-4 border-[#24C166] flex items-center justify-center mb-5 shrink-0">
-              <Check
-                className="w-[32px] h-[32px] text-[#24C166]"
-                strokeWidth={3}
-              />
+            <div className="w-16 h-16 rounded-full border-4 border-[#24C166] flex items-center justify-center mb-5 shrink-0">
+              <Check className="w-8 h-8 text-[#24C166]" strokeWidth={3} />
             </div>
           )}
 
@@ -252,7 +249,7 @@ const RecordSuccessDrawer = ({
               </>
             )}
           </h1>
-          <p className="text-[14px] text-center font-medium text-[#00000080] max-w-[350px] mb-8 leading-[135%] shrink-0">
+          <p className="text-[14px] text-center font-medium text-[#00000080] max-w-87.5 mb-8 leading-[135%] shrink-0">
             {successDetails?.isPaidInFull === false ||
             (successDetails?.balanceOwed && successDetails.balanceOwed > 0) ? (
               <>
@@ -316,7 +313,7 @@ const RecordSuccessDrawer = ({
                 },
               })
             }}
-            className="py-[10px] w-fit px-[14px] h-9 gap-1 shadow-[0px_2px_4px_0px_#0000000A] border border-[#0000000A] shrink-0"
+            className="py-2.5 w-fit px-3.5 h-9 gap-1 shadow-[0px_2px_4px_0px_#0000000A] border border-[#0000000A] shrink-0"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -120,7 +120,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
           ) : (
             <div
               className={cn(
-                'w-[64px] h-[64px] rounded-full border-4 flex items-center justify-center mb-4 bg-white shrink-0',
+                'w-16 h-16 rounded-full border-4 flex items-center justify-center mb-4 bg-white shrink-0',
                 isArchived
                   ? 'border-[#D1D5DB]'
                   : merchantStatus === 'Unconfirmed'
@@ -176,7 +176,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
             <div className="flex gap-2 justify-center mb-6 w-full px-1">
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
                 onClick={handleRecordRepayment}
               >
                 <PlusCircle size={16} className="text-black" />
@@ -184,7 +184,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
               </Button>
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
                 onClick={() => {
                   openDrawer({
                     type: 'send-reminder',
@@ -200,7 +200,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
             <div className="flex gap-2 justify-center mb-6 w-full">
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
                 onClick={() => {
                   if (navigator.share) {
                     navigator.share({
@@ -216,7 +216,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
               </Button>
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
                 onClick={() => window.print()}
               >
                 <Download size={16} className="text-black" />
@@ -283,7 +283,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                   <span className="text-[14px] text-[#00000080] font-normal">
                     Description
                   </span>
-                  <span className="text-[14px] font-medium text-black truncate max-w-[200px] capitalize">
+                  <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
                     {sale.description || 'New sale'}
                   </span>
                 </div>
@@ -341,7 +341,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                   <span className="text-[14px] text-[#00000080] font-normal">
                     Description
                   </span>
-                  <span className="text-[14px] font-medium text-black truncate max-w-[200px] capitalize">
+                  <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
                     {sale.description || 'No description'}
                   </span>
                 </div>

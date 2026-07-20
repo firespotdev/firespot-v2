@@ -45,7 +45,7 @@ export default function BusinessIntroPage() {
 
   return (
     <div className="min-h-dvh bg-white">
-      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col">
+      <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
         {/* Gradient hero: fills all space above the content, ending 16px away */}
         <div className="flex-1 min-h-0 mb-4 bg-linear-to-br from-[#FB5012] via-[#E8384F] to-[#D72483]" />
 

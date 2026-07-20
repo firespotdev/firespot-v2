@@ -52,14 +52,7 @@ export default function ScannerPage() {
         router.replace('/onboarding')
       }
     }
-  }, [
-    authReady,
-    isAuthenticated,
-    token,
-    onboardingCompleted,
-    router,
-    logout,
-  ])
+  }, [authReady, isAuthenticated, token, onboardingCompleted, router, logout])
 
   // Extract serial number from QR code content
   const extractSerialNumber = useCallback(
@@ -275,7 +268,7 @@ export default function ScannerPage() {
             <div className="flex justify-center pb-28">
               <Link
                 href="/activity"
-                className="glass-border inline-flex items-center justify-center gap-1.5 w-[94px] py-2 pl-2 pr-3 rounded-[20px] bg-[#FFFFFF1A] text-[#FFFFFF80] text-sm font-medium"
+                className="glass-border inline-flex items-center justify-center gap-1.5 w-23.5 py-2 pl-2 pr-3 rounded-4xl bg-[#FFFFFF1A] text-[#FFFFFF80] text-sm font-medium"
               >
                 <ClockCounterClockwiseIcon size={20} color="#FFFFFF99" />
                 Recent
@@ -284,11 +277,11 @@ export default function ScannerPage() {
           ) : (
             <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
               <CTACarousel>
-                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <div className="bg-[#FFFFFF66] rounded-2xl px-4 py-3.5">
                   <h3 className="text-white font-bold text-sm">
                     Login to your Firespot Lite account
                   </h3>
-                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-3.75">
                     Manage your QR kits and account numbers
                   </p>
                   <Link
@@ -299,11 +292,11 @@ export default function ScannerPage() {
                   </Link>
                 </div>
 
-                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <div className="bg-[#FFFFFF66] rounded-2xl px-4 py-3.5">
                   <h3 className="text-white font-bold text-sm">
                     Get your Firespot QR Kit
                   </h3>
-                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-3.75">
                     All your account numbers in one scan.
                   </p>
                   <Link
@@ -314,11 +307,11 @@ export default function ScannerPage() {
                   </Link>
                 </div>
 
-                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                <div className="bg-[#FFFFFF66] rounded-2xl px-4 py-3.5">
                   <h3 className="text-white font-bold text-sm">
                     Pay for your purchases faster
                   </h3>
-                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-3.75">
                     Transfer from any Nigerian Bank
                   </p>
                   <Link

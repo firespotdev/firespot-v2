@@ -60,7 +60,7 @@ function HomePageContent() {
 
   return (
     <div className="min-h-dvh bg-white">
-      <div className="max-w-[500px] mx-auto pb-28">
+      <div className="max-w-125 mx-auto pb-28">
         <PageHeader
           title={displayName}
           subtitle="No location set"

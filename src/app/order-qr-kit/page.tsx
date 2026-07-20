@@ -66,7 +66,7 @@ export default function OrderQRKitPage() {
     <div className="h-dvh flex flex-col bg-white overflow-hidden">
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[500px] mx-auto pt-8 px-4 pb-32 flex flex-col items-center font-satoshi">
+        <div className="max-w-125 mx-auto pt-8 px-4 pb-32 flex flex-col items-center font-satoshi">
           {/* Logo */}
           <Image
             src="/icons/firespot_logo.svg"
@@ -181,7 +181,7 @@ export default function OrderQRKitPage() {
 
       {/* Sticky footer */}
       <div className="fixed bottom-0 left-0 right-0 w-full z-10">
-        <div className="max-w-[500px] mx-auto bg-white border border-[#E5E7EB] rounded-t-[12px] shadow-[0px_-4px_24px_rgba(0,0,0,0.06)] p-4 flex items-center justify-between">
+        <div className="max-w-125 mx-auto bg-white border border-[#E5E7EB] rounded-t-[12px] shadow-[0px_-4px_24px_rgba(0,0,0,0.06)] p-4 flex items-center justify-between">
           <div>
             <h3 className="text-base font-bold text-black leading-none mb-1">
               {quantity || '0'} QR kits selected

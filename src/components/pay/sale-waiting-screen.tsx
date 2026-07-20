@@ -138,7 +138,7 @@ export function SaleWaitingScreen({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
           >
             <X size={16} color="#868788" />
           </button>
@@ -156,7 +156,7 @@ export function SaleWaitingScreen({
 
           {/* Transfer details (hidden once receipt is uploaded, per design) */}
           {!hasReceipt && account && (
-            <div className="w-full bg-white border border-[#F1F1F1] rounded-[12px] divide-y divide-[#F1F1F1] mt-4">
+            <div className="w-full bg-white border border-[#F1F1F1] rounded-2xl divide-y divide-[#F1F1F1] mt-4">
               <div className="flex items-center gap-3 p-4">
                 <BankLogo
                   bankName={account.bankName}
@@ -220,7 +220,7 @@ export function SaleWaitingScreen({
 
           {/* Receipt card */}
           <div
-            className={`w-full bg-white border-[0.5px] border-[#0000000A] rounded-[12px] shadow-[0px_0px_0px_1px_#E5E7EB] mt-9 ${hasReceipt ? 'mt-8' : ''}`}
+            className={`w-full bg-white border-[0.5px] border-[#0000000A] rounded-2xl shadow-[0px_0px_0px_1px_#E5E7EB] mt-9 ${hasReceipt ? 'mt-8' : ''}`}
           >
             {hasReceipt ? (
               <div className="flex items-center gap-3 p-4">

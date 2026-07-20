@@ -11,7 +11,7 @@ import { ActionList, ActionListItem, AppCard, Button } from '@/components/ui'
 function SearchPageContent() {
   return (
     <div className="min-h-dvh bg-[#F4F6F8]">
-      <div className="max-w-[500px] mx-auto pb-28 px-3">
+      <div className="max-w-125 mx-auto pb-28 px-3">
         <header className="flex py-2 gap-2 items-center w-full justify-between">
           <div className="relative z-20 w-full">
             <div className="absolute left-3 top-1/2 -translate-y-1/2">

@@ -69,7 +69,7 @@ export function DebtDetailsTimeline({
           {saleOwedAmount > 0 && (
             <button
               onClick={handleRemindClick}
-              className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 px-3.5 py-2.5 bg-[#F1F1F1] rounded-[20px] text-[10px] tracking-[1px] font-bold text-black"
+              className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 px-3.5 py-2.5 bg-[#F1F1F1] rounded-4xl text-[10px] tracking-[1px] font-bold text-black"
             >
               <Bell size={16} strokeWidth={2} />
               <span>REMIND</span>
@@ -86,11 +86,11 @@ export function DebtDetailsTimeline({
           {/* 1. Sale Recorded */}
           <div className="flex gap-2">
             <div className="flex flex-col items-center">
-              <div className="w-[22px] h-[22px] rounded-[22px] flex items-center justify-center">
+              <div className="w-5.5 h-5.5 rounded-[22px] flex items-center justify-center">
                 <PenLine size={15} color="#6B7280" />
               </div>
               {/* Dotted Line */}
-              <div className="w-[1.5px] flex-1 min-h-[24px] border-l border-dashed border-[#9CA3AF] my-1" />
+              <div className="w-[1.5px] flex-1 min-h-6 border-l border-dashed border-[#9CA3AF] my-1" />
             </div>
             <div className="flex-1 pb-4 flex justify-between items-start">
               <div>
@@ -134,7 +134,7 @@ export function DebtDetailsTimeline({
                   </svg>
                   {/* Dotted Line */}
                   {(idx < saleRepayments.length - 1 || saleOwedAmount > 0) && (
-                    <div className="w-[1.5px] flex-1 min-h-[24px] border-l border-dashed border-[#9CA3AF] my-1" />
+                    <div className="w-[1.5px] flex-1 min-h-6 border-l border-dashed border-[#9CA3AF] my-1" />
                   )}
                 </div>
                 <div className="flex-1 pb-4 flex justify-between items-start">

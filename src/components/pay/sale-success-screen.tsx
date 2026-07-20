@@ -37,18 +37,15 @@ export function SaleSuccessScreen({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
           >
             <X size={16} color="#868788" />
           </button>
         </header>
 
         <div className="flex-1 overflow-y-auto px-6 flex flex-col items-center justify-center text-center">
-          <div className="w-[64px] h-[64px] rounded-full border-4 border-[#24C166] flex items-center justify-center shrink-0">
-            <Check
-              className="w-[32px] h-[32px] text-[#24C166]"
-              strokeWidth={3}
-            />
+          <div className="w-16 h-16 rounded-full border-4 border-[#24C166] flex items-center justify-center shrink-0">
+            <Check className="w-8 h-8 text-[#24C166]" strokeWidth={3} />
           </div>
 
           <h1 className="font-bold text-[20px] text-black -tracking-[0.4px] leading-[110%] mt-6 max-w-75">
@@ -62,7 +59,7 @@ export function SaleSuccessScreen({
           <Button
             variant="secondary"
             onClick={handleViewReceipt}
-            className="bg-[#0000000A] py-[10px] w-fit px-[16px] h-9 gap-1 shadow-[0px_2px_4px_0px_#0000000A] border border-[#0000000A] shrink-0 mt-6"
+            className="bg-[#0000000A] py-2.5 w-fit px-4 h-9 gap-1 shadow-[0px_2px_4px_0px_#0000000A] border border-[#0000000A] shrink-0 mt-6"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

@@ -14,9 +14,7 @@ function OnboardingPageContent() {
   const [error, setError] = useState<string | undefined>()
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const onboardingCompleted = useAuthStore(
-    (state) => state.onboardingCompleted,
-  )
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const updateProfile = useUpdateProfile()
@@ -36,7 +34,14 @@ function OnboardingPageContent() {
         redirectPath || (user?.role === 'merchant' ? '/profile' : '/home'),
       )
     }
-  }, [hydrated, isAuthenticated, onboardingCompleted, router, redirectPath, user])
+  }, [
+    hydrated,
+    isAuthenticated,
+    onboardingCompleted,
+    router,
+    redirectPath,
+    user,
+  ])
 
   const handleBack = () => {
     // Onboarding is the first authenticated screen; going back returns to login
@@ -77,7 +82,7 @@ function OnboardingPageContent() {
 
   return (
     <div className="h-dvh bg-white">
-      <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
         <button
           onClick={handleBack}
           className="self-start mb-6"

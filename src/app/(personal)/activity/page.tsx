@@ -152,7 +152,7 @@ export default function ActivityPage() {
 
   return (
     <div className="min-h-dvh bg-[#F4F6F8] font-satoshi">
-      <div className="max-w-[500px] mx-auto min-h-dvh pb-28">
+      <div className="max-w-125 mx-auto min-h-dvh pb-28">
         {/* Header */}
         <header className="sticky top-0 z-10 bg-[#F4F6F8] flex items-center justify-between px-4 py-3">
           <Image
@@ -183,9 +183,7 @@ export default function ActivityPage() {
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={`shrink-0 px-4 h-9 rounded-full text-xs font-bold tracking-[0.5px] flex items-center transition-colors ${
-                  active
-                    ? 'bg-black text-white'
-                    : 'bg-white text-[#00000099]'
+                  active ? 'bg-black text-white' : 'bg-white text-[#00000099]'
                 }`}
               >
                 {tab}
@@ -215,7 +213,9 @@ export default function ActivityPage() {
                   Spent today
                 </p>
                 <p className="text-[26px] font-bold text-black -tracking-[0.4px] leading-none">
-                  {amountHidden ? '₦ • • • • •' : `₦ ${formatCurrency(spentToday)}`}
+                  {amountHidden
+                    ? '₦ • • • • •'
+                    : `₦ ${formatCurrency(spentToday)}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -276,7 +276,7 @@ function EmptyState() {
         🕐
       </span>
       <p className="font-bold text-lg text-black mt-6">No activity yet</p>
-      <p className="text-sm text-[#00000080] mt-1 max-w-[280px]">
+      <p className="text-sm text-[#00000080] mt-1 max-w-70">
         Your orders, bookings, payments, feedback, issues, refunds etc would be
         listed here.
       </p>

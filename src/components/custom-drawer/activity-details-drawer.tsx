@@ -2,10 +2,22 @@
 
 import { useMemo } from 'react'
 import Image from 'next/image'
-import { Share, RotateCcw, Heart, Copy, Check, MoreVertical } from 'lucide-react'
+import {
+  Share,
+  RotateCcw,
+  Heart,
+  Copy,
+  Check,
+  MoreVertical,
+} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
-import { Button, TagFooter, CircularIconButton, showNotificationToast } from '../ui'
+import {
+  Button,
+  TagFooter,
+  CircularIconButton,
+  showNotificationToast,
+} from '../ui'
 import { useDrawerStore } from '@/services/drawer'
 import { CustomerSale } from '@/services/sales/interface'
 import {
@@ -62,7 +74,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
     () =>
       Boolean(
         merchant.id &&
-          favoritesData?.favorites?.some((f) => f.id === merchant.id),
+        favoritesData?.favorites?.some((f) => f.id === merchant.id),
       ),
     [favoritesData, merchant.id],
   )
@@ -133,7 +145,9 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
         <CircularIconButton
           icon={<MoreVertical size={20} />}
           size="sm"
-          onClick={() => openDrawer({ type: 'activity-options', props: { sale } })}
+          onClick={() =>
+            openDrawer({ type: 'activity-options', props: { sale } })
+          }
         />
       </div>
 
@@ -172,7 +186,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
             <Button
               variant="outline"
               onClick={handleShare}
-              className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
+              className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
             >
               <Share size={16} className="text-black" />
               SHARE RECEIPT
@@ -180,7 +194,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
             <Button
               variant="outline"
               onClick={handlePayAgain}
-              className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
+              className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
             >
               <RotateCcw size={16} className="text-black" />
               PAY AGAIN
@@ -188,7 +202,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
             <Button
               variant="outline"
               onClick={handleToggleFave}
-              className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
+              className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
             >
               <Heart
                 size={16}

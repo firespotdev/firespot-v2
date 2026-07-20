@@ -174,7 +174,7 @@ export function PaymentMethodDrawer({
                   </div>
 
                   <div
-                    className={`w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
+                    className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
                       isSelected
                         ? 'border-[#0075FF] bg-[#0075FF]'
                         : 'border-[#D1D5DB] bg-white'
@@ -312,7 +312,7 @@ export function PaymentMethodDrawer({
                   </div>
 
                   <div
-                    className={`w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
+                    className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
                       isSelected
                         ? 'border-[#0075FF] bg-[#0075FF]'
                         : 'border-[#D1D5DB] bg-white'
@@ -330,7 +330,7 @@ export function PaymentMethodDrawer({
             })}
         </div>
 
-        <div className="bg-[#F4F4F4] rounded-[12px] p-3 flex items-center gap-2 border border-[#00000014]">
+        <div className="bg-[#F4F4F4] rounded-2xl p-3 flex items-center gap-2 border border-[#00000014]">
           <AlertCircle size={28} color="#00000066" strokeWidth={2} />
           <p className="text-xs text-[#00000066] leading-[1.4] font-medium">
             You will not receive a payout for these transactions. Sales are

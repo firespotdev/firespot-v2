@@ -60,7 +60,7 @@ export function SaleReceiptDrawer({
       <div className="flex-1 overflow-y-auto">
         <div className="flex flex-col items-center pt-8 px-4">
           {/* Status Icon Ring */}
-          <div className="w-[64px] h-[64px] rounded-full border-4 border-[#24C166] flex items-center justify-center mb-4 bg-white shrink-0">
+          <div className="w-16 h-16 rounded-full border-4 border-[#24C166] flex items-center justify-center mb-4 bg-white shrink-0">
             <Check className="text-[#24C166]" size={32} strokeWidth={3} />
           </div>
 
@@ -80,7 +80,7 @@ export function SaleReceiptDrawer({
           <div className="flex gap-2 justify-center mb-6 w-full">
             <Button
               variant="outline"
-              className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+              className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
               onClick={handleShare}
             >
               <Share size={16} className="text-black" />
@@ -88,7 +88,7 @@ export function SaleReceiptDrawer({
             </Button>
             <Button
               variant="outline"
-              className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-[14px] text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+              className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
               onClick={() => window.print()}
             >
               <Download size={16} className="text-black" />
@@ -128,7 +128,7 @@ export function SaleReceiptDrawer({
               <span className="text-[14px] text-[#00000080] font-normal">
                 Description
               </span>
-              <span className="text-[14px] font-medium text-black truncate max-w-[200px] capitalize">
+              <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
                 {sale.description || 'No description'}
               </span>
             </div>
@@ -140,7 +140,7 @@ export function SaleReceiptDrawer({
               <span className="text-[14px] text-[#00000080] font-normal">
                 Paid to
               </span>
-              <span className="text-[14px] font-medium text-black truncate max-w-[200px]">
+              <span className="text-[14px] font-medium text-black truncate max-w-50">
                 {paidTo}
               </span>
             </div>
@@ -179,7 +179,7 @@ export function SaleReceiptDrawer({
                 Reference
               </span>
               <div className="flex items-center gap-2">
-                <span className="text-[14px] font-medium text-black truncate max-w-[150px]">
+                <span className="text-[14px] font-medium text-black truncate max-w-37.5">
                   {sale.reference || 'N/A'}
                 </span>
                 <button

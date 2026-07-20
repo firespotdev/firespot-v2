@@ -74,7 +74,7 @@ export function OtpVerification({
     const currentOtpArray = (otp || defaultValue).split('')
     currentOtpArray[index] = value || ' '
     const newOtp = currentOtpArray.join('').trim().slice(0, 6)
-    
+
     setOtp(newOtp)
 
     if (value && index < 5) {
@@ -130,7 +130,7 @@ export function OtpVerification({
 
   return (
     <div className="h-dvh bg-white">
-      <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
         <button
           onClick={onBack}
           className="self-start mb-6"
@@ -144,7 +144,7 @@ export function OtpVerification({
           <h1 className="font-bold text-[20px] text-black mb-3">
             Enter the OTP to continue
           </h1>
-          <p className="text-sm font-medium text-[#00000080] mb-6 max-w-[345px]">
+          <p className="text-sm font-medium text-[#00000080] mb-6 max-w-86.25">
             We have sent a one time password to the phone number you used to
             register on firespot ({phoneNumber || '+2348179542786'}).
           </p>
@@ -172,13 +172,13 @@ export function OtpVerification({
                 ))}
               </div>
               {localError && (
-              <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
-                <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
-                  !
-                </span>
-                {localError}
-              </p>
-            )}
+                <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
+                  <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
+                    !
+                  </span>
+                  {localError}
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full">

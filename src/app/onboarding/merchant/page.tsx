@@ -135,7 +135,7 @@ function MerchantOnboardingPageContent() {
       >
         <ArrowLeft className="w-6 h-6 text-black" />
       </button>
-      <div className="max-w-[500px] mx-auto w-full flex-1 min-h-0 pb-4 px-4 flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto w-full flex-1 min-h-0 pb-4 px-4 flex flex-col font-satoshi">
         {step === 'about' ? (
           <>
             <h1 className="font-bold text-[20px] text-black mb-6 mt-2">

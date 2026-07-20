@@ -130,7 +130,7 @@ export default function AddBankAccountPage() {
 
   return (
     <div className="min-h-dvh bg-white">
-      <div className="max-w-[500px] mx-auto min-h-dvh flex flex-col font-satoshi">
+      <div className="max-w-125 mx-auto min-h-dvh flex flex-col font-satoshi">
         {/* Header */}
         <header className="flex items-center p-4">
           <ArrowLeft
@@ -184,12 +184,14 @@ export default function AddBankAccountPage() {
                 className="w-full font-medium"
                 value={accountNumber}
                 onChange={(e) =>
-                  setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))
+                  setAccountNumber(
+                    e.target.value.replace(/\D/g, '').slice(0, 10),
+                  )
                 }
               />
 
               {resolveAccount.isPending && (
-                <div className="h-11 bg-[#F4F6F8] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+                <div className="h-11 bg-[#F4F6F8] flex items-center gap-2 mt-2 rounded-xl px-4">
                   <div className="w-5 h-5 border-2 border-[#878F98] border-t-transparent rounded-full animate-spin" />
                   <p className="text-sm text-[#878F98] font-medium">
                     Verifying account...
@@ -198,7 +200,7 @@ export default function AddBankAccountPage() {
               )}
 
               {resolveAccount.isSuccess && (
-                <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+                <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-xl px-4">
                   <CircleCheck
                     className="w-5 h-5 text-[#ffffff]"
                     fill="#24C166"
@@ -210,7 +212,7 @@ export default function AddBankAccountPage() {
               )}
 
               {resolveAccount.isError && (
-                <div className="h-11 bg-[#FEE2E2] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+                <div className="h-11 bg-[#FEE2E2] flex items-center gap-2 mt-2 rounded-xl px-4">
                   <p className="text-sm text-[#DC2626] font-medium">
                     Could not verify account. Please check the details.
                   </p>
@@ -218,13 +220,15 @@ export default function AddBankAccountPage() {
               )}
             </div>
 
-            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+            {error && (
+              <p className="text-sm text-red-500 text-center">{error}</p>
+            )}
           </form>
         </div>
 
         {/* Fixed bottom button */}
         <div className="fixed bottom-0 left-0 right-0 bg-white">
-          <div className="max-w-[500px] mx-auto p-4 pb-6">
+          <div className="max-w-125 mx-auto p-4 pb-6">
             <Button
               type="submit"
               onClick={handleSubmit}

@@ -78,7 +78,7 @@ export function AddCustomerDrawer({
               strokeLinejoin="round"
             />
           </svg>
-          <div className="absolute -bottom-1.5 -right-1.5 w-5.5 h-5.5 rounded-[8px] border-2 border-white flex items-center justify-center">
+          <div className="absolute -bottom-1.5 -right-1.5 w-5.5 h-5.5 rounded-xl border-2 border-white flex items-center justify-center">
             <Image
               src="/images/firespot_logo.png"
               alt="add"
@@ -100,21 +100,21 @@ export function AddCustomerDrawer({
 
         <div className="w-full text-left">
           <Label>Contact information</Label>
-          <div className="flex flex-col bg-white rounded-[8px] transition-all">
+          <div className="flex flex-col bg-white rounded-xl transition-all">
             <div className="grid grid-cols-2">
               <Input
                 type="text"
                 placeholder="First name"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full font-medium h-12 border-[#0000001A] border-r-[0.5px] border-b-[0.5px] rounded-none rounded-tl-[8px]"
+                className="w-full font-medium h-12 border-[#0000001A] border-r-[0.5px] border-b-[0.5px] rounded-none rounded-tl-xl"
               />
               <Input
                 type="text"
                 placeholder="Last name"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full font-medium h-12 border-[#0000001A] border-l-[0.5px] border-b-[0.5px] rounded-none rounded-tr-[8px] focus-visible:z-10 focus-visible:relative"
+                className="w-full font-medium h-12 border-[#0000001A] border-l-[0.5px] border-b-[0.5px] rounded-none rounded-tr-xl focus-visible:z-10 focus-visible:relative"
               />
             </div>
 

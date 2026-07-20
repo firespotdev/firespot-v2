@@ -36,7 +36,8 @@ export function SendReminderDrawer({
     if (!sale) return 'Customer'
     if (typeof sale.customerId === 'object' && sale.customerId) {
       if ((sale.customerId as any).name) return (sale.customerId as any).name
-      if ((sale.customerId as any).businessName) return (sale.customerId as any).businessName
+      if ((sale.customerId as any).businessName)
+        return (sale.customerId as any).businessName
     }
     if (sale.customerName) return sale.customerName
     return 'Customer'
@@ -139,7 +140,7 @@ export function SendReminderDrawer({
             <Label className="font-medium text-xs leading-none text-[#00000066]">
               Message draft
             </Label>
-            <div className="bg-[#F4F4F4] rounded-[12px] p-3 relative min-h-[110px] overflow-hidden">
+            <div className="bg-[#F4F4F4] rounded-2xl p-3 relative min-h-27.5 overflow-hidden">
               {/* Formatted Backdrop with Blue Links */}
               <div
                 className="absolute inset-0 p-3 pointer-events-none whitespace-pre-wrap wrap-break-word text-sm font-medium text-black leading-relaxed font-satoshi select-none"
@@ -183,7 +184,7 @@ export function SendReminderDrawer({
             <button
               type="button"
               onClick={handleSMS}
-              className="flex flex-col items-center justify-center p-3.5 bg-[#F4F6F8] rounded-[12px] transition-colors"
+              className="flex flex-col items-center justify-center p-3.5 bg-[#F4F6F8] rounded-2xl transition-colors"
             >
               <Mail size={16} className="text-black mb-2" />
               <span className="text-sm font-medium text-black">SMS</span>
@@ -192,7 +193,7 @@ export function SendReminderDrawer({
             <button
               type="button"
               onClick={handleShare}
-              className="flex flex-col items-center justify-center p-3.5 bg-[#F4F6F8] rounded-[12px] transition-colors"
+              className="flex flex-col items-center justify-center p-3.5 bg-[#F4F6F8] rounded-2xl transition-colors"
             >
               <Share size={16} className="text-black mb-2" />
               <span className="text-sm font-medium text-black">Share</span>
@@ -201,7 +202,7 @@ export function SendReminderDrawer({
             <button
               type="button"
               onClick={handleCopy}
-              className="flex flex-col items-center justify-center p-3.5 bg-[#F4F6F8] rounded-[12px] transition-colors"
+              className="flex flex-col items-center justify-center p-3.5 bg-[#F4F6F8] rounded-2xl transition-colors"
             >
               <LinkIcon size={16} className="text-black mb-2" />
               <span className="text-sm font-medium text-black">Copy</span>

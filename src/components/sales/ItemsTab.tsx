@@ -29,7 +29,7 @@ export function ItemsTab({
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       {/* Search Input Bar */}
       <div className="px-4 py-2 border-b border-[#F4F6F8]">
-        <div className="flex items-center bg-[#F4F6F8] rounded-[12px] px-3 py-2 focus-within:ring-2 focus-within:ring-[#0085FF] focus-within:bg-white transition-all border border-transparent focus-within:border-[#0085FF]">
+        <div className="flex items-center bg-[#F4F6F8] rounded-2xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#0085FF] focus-within:bg-white transition-all border border-transparent focus-within:border-[#0085FF]">
           <Search className="w-4 h-4 text-[#8E8E93] mr-2" />
           <input
             type="text"
@@ -72,9 +72,7 @@ export function ItemsTab({
       {searchQuery && products.length > 0 && (
         <div className="px-4 py-2.5 text-left shrink-0 select-none">
           <span className="text-xs text-[#8E8E93] font-medium">
-            {products.length === 1
-              ? '1 result'
-              : `${products.length} results`}{' '}
+            {products.length === 1 ? '1 result' : `${products.length} results`}{' '}
             for &ldquo;{searchQuery}&rdquo;
           </span>
         </div>
@@ -94,9 +92,9 @@ export function ItemsTab({
               <h3 className="text-[17px] font-bold text-black mb-1.5">
                 Search products
               </h3>
-              <p className="text-xs text-[#8E8E93] font-medium max-w-[240px] leading-relaxed">
-                Find products easily by searching with the name or any
-                keyword of the product.
+              <p className="text-xs text-[#8E8E93] font-medium max-w-60 leading-relaxed">
+                Find products easily by searching with the name or any keyword
+                of the product.
               </p>
             </div>
           ) : (
@@ -110,9 +108,9 @@ export function ItemsTab({
               <h3 className="text-[17px] font-bold text-black mb-1.5">
                 No products yet
               </h3>
-              <p className="text-xs text-[#8E8E93] font-medium max-w-[240px] mb-6 leading-relaxed">
-                Upload your products and start collecting payments for
-                them with Firespot.
+              <p className="text-xs text-[#8E8E93] font-medium max-w-60 mb-6 leading-relaxed">
+                Upload your products and start collecting payments for them with
+                Firespot.
               </p>
               <button
                 onClick={() => openDrawer({ type: 'obtain-kit' })}
@@ -168,7 +166,7 @@ export function ItemsTab({
 
                       <button
                         onClick={() => handleProductAddTapped(prod)}
-                        className="w-8 h-8 bg-[#F4F6F8] hover:bg-gray-200 active:bg-gray-300 rounded-[8px] flex items-center justify-center text-black font-bold transition-all"
+                        className="w-8 h-8 bg-[#F4F6F8] hover:bg-gray-200 active:bg-gray-300 rounded-xl flex items-center justify-center text-black font-bold transition-all"
                       >
                         <Plus className="w-4 h-4 stroke-[3px]" />
                       </button>
@@ -227,10 +225,8 @@ export function ItemsTab({
                               </div>
 
                               <button
-                                onClick={() =>
-                                  handleProductAddTapped(prod)
-                                }
-                                className="w-8 h-8 bg-[#F4F6F8] hover:bg-gray-200 active:bg-gray-300 rounded-[8px] flex items-center justify-center text-black font-bold transition-all"
+                                onClick={() => handleProductAddTapped(prod)}
+                                className="w-8 h-8 bg-[#F4F6F8] hover:bg-gray-200 active:bg-gray-300 rounded-xl flex items-center justify-center text-black font-bold transition-all"
                               >
                                 <Plus className="w-4 h-4 stroke-[3px]" />
                               </button>

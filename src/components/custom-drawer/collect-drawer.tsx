@@ -3,11 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import {
   X,
-  Copy,
-  Share2,
   ChevronRight,
-  Pencil,
-  Loader2,
   ArrowLeft,
   FileText,
   Check,
@@ -19,7 +15,6 @@ import { Button } from '@/components/ui/button'
 import {
   showNotificationToast,
   GradientQRCode,
-  LoaderCircle,
   TagFooter,
   GreenSpinner,
 } from '@/components/ui'
@@ -249,12 +244,12 @@ export function CollectPaymentDrawer({
 
           {/* Receipt image wrapper */}
           <div className="flex-1 w-full bg-[#F4F6F8] flex flex-col items-center justify-center overflow-hidden">
-            <div className="flex justify-center items-center bg-[#EBEDEF] border border-[#DFDFDF] max-w-[280px] w-full max-h-[400px] h-full rounded-[12px]">
+            <div className="flex justify-center items-center bg-[#EBEDEF] border border-[#DFDFDF] max-w-70 w-full max-h-100 h-full rounded-2xl">
               {sale.receiptUrl ? (
                 <img
                   src={sale.receiptUrl}
                   alt="Receipt proof"
-                  className="w-full h-full object-contain rounded-[12px]"
+                  className="w-full h-full object-contain rounded-2xl"
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center text-[#9CA3AF]">
@@ -272,7 +267,7 @@ export function CollectPaymentDrawer({
           </div>
 
           {/* Bottom Confirmation Pill */}
-          <div className="bg-white shadow-[0px_4px_16px_rgba(0,0,0,0.06)] border border-[#F1F1F1] rounded-t-[12px] p-4 flex justify-between items-center w-full">
+          <div className="bg-white shadow-[0px_4px_16px_rgba(0,0,0,0.06)] border border-[#F1F1F1] rounded-t-2xl p-4 flex justify-between items-center w-full">
             <div className="flex items-center gap-3">
               <MerchantAvatar size={36} />
               <div className="text-left">
@@ -352,7 +347,7 @@ export function CollectPaymentDrawer({
             </button>
 
             {/* Gradient Border QR Wrapper */}
-            <div className="p-[3px] rounded-[20px] bg-linear-to-tr from-[#D72483] to-[#FB5012]">
+            <div className="p-0.75 rounded-4xl bg-linear-to-tr from-[#D72483] to-[#FB5012]">
               <div className="p-3.5 rounded-[18px] bg-white flex items-center justify-center">
                 <GradientQRCode value={checkoutUrl} size={210} />
               </div>
@@ -387,7 +382,7 @@ export function CollectPaymentDrawer({
             <h3 className="text-xl font-bold text-black leading-tight mt-4">
               Waiting for customer to pay
             </h3>
-            <p className="text-sm text-[#00000080] font-medium mt-1.5 max-w-[280px]">
+            <p className="text-sm text-[#00000080] font-medium mt-1.5 max-w-70">
               You would receive a notification immediately the customer
               initiates payment.
             </p>
@@ -411,7 +406,7 @@ export function CollectPaymentDrawer({
             {/* Stack list of notification pills */}
             <div className="w-full flex flex-col gap-3">
               {/* Pill 1: Link Copied Notification */}
-              <div className="w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border border-[#EBEBEB] rounded-[12px] px-4 py-3 flex justify-between items-center">
+              <div className="w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border border-[#EBEBEB] rounded-2xl px-4 py-3 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <MerchantAvatar size={36} />
                   <div className="text-left">
@@ -441,7 +436,7 @@ export function CollectPaymentDrawer({
 
               {/* Pill 2: Uploaded Receipt Card (if receiptUrl exists) */}
               {sale.receiptUrl && (
-                <div className="w-full shadow-[0px_4px_8px_0px_#0000000A] border-[3px] border-[#24C1664D] rounded-[12px] p-4 flex justify-between items-center">
+                <div className="w-full shadow-[0px_4px_8px_0px_#0000000A] border-[3px] border-[#24C1664D] rounded-2xl p-4 flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <FileText size={20} color="#24C166" />
                     <div className="text-left">
@@ -452,7 +447,7 @@ export function CollectPaymentDrawer({
                   </div>
                   <Button
                     onClick={() => setIsReceiptPreviewOpen(true)}
-                    className="w-fit bg-[#0000000A] shadow-[0px_2px_4px_0px_#0000000A] border border-[#0000000A] rounded-[20px] px-4 h-[34px] text-black text-[10px] tracking-[1px] font-bold"
+                    className="w-fit bg-[#0000000A] shadow-[0px_2px_4px_0px_#0000000A] border border-[#0000000A] rounded-4xl px-4 h-8.5 text-black text-[10px] tracking-[1px] font-bold"
                   >
                     VIEW
                   </Button>
@@ -473,7 +468,7 @@ export function CollectPaymentDrawer({
                 navigator.clipboard.writeText(checkoutUrl)
                 showNotificationToast({ message: 'Checkout link copied!' })
               }}
-              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
+              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-2xl gap-2 py-2"
             >
               <Link2 size={24} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">
@@ -487,7 +482,7 @@ export function CollectPaymentDrawer({
                   navigator.share({ title: 'Firespot Pay', url: checkoutUrl })
                 }
               }}
-              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
+              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-2xl gap-2 py-2"
             >
               <Share size={16} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">
@@ -497,7 +492,7 @@ export function CollectPaymentDrawer({
 
             <Button
               onClick={handleConfirmReceipt}
-              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
+              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-2xl gap-2 py-2"
             >
               <PenLine size={16} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">
