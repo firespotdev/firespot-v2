@@ -14,7 +14,7 @@ interface StatCardProps {
 function StatCard({ title, value, subtitle, gradient }: StatCardProps) {
   return (
     <div
-      className={`rounded-2xl p-5 ${
+      className={`rounded-[12px] p-5 ${
         gradient
           ? 'bg-linear-to-br from-[#FB5012] to-[#D72483] text-white'
           : 'bg-white border border-gray-100'
@@ -106,7 +106,7 @@ export default function MerchantDetail({
                 <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-400">
                   Profile Overview
                 </h3>
-                <div className="grid grid-cols-2 gap-4 rounded-2xl border border-gray-100 bg-gray-50/50 p-4">
+                <div className="grid grid-cols-2 gap-4 rounded-[12px] border border-gray-100 bg-gray-50/50 p-4">
                   <div>
                     <p className="text-xs text-gray-500">Phone Number</p>
                     <p className="font-medium text-gray-900">
@@ -164,7 +164,7 @@ export default function MerchantDetail({
                     {[...Array(4)].map((_, i) => (
                       <div
                         key={i}
-                        className="h-24 animate-pulse rounded-2xl bg-gray-100"
+                        className="h-24 animate-pulse rounded-[12px] bg-gray-100"
                       />
                     ))}
                   </div>
@@ -209,7 +209,7 @@ export default function MerchantDetail({
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
                     Pending QR Orders
                   </h3>
-                  <div className="divide-y divide-gray-100 rounded-2xl border border-amber-100 bg-amber-50/30 overflow-hidden">
+                  <div className="divide-y divide-gray-100 rounded-[12px] border border-amber-100 bg-amber-50/30 overflow-hidden">
                     {stats.pendingOrders.map((order: any) => (
                       <div key={order._id} className="p-4 space-y-2">
                         <div className="flex justify-between items-start">
