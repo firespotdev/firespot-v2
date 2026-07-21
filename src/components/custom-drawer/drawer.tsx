@@ -43,6 +43,7 @@ import { AccountSwitchDrawer } from './account-switch-drawer'
 import { SaleReceiptDrawer } from './sale-receipt-drawer'
 import { ActivityDetailsDrawer } from './activity-details-drawer'
 import { ActivityOptionsDrawer } from './activity-options-drawer'
+import { VerifyIdentityDrawer } from './verify-identity-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -151,6 +152,12 @@ const DRAWER_CONFIG: Record<
   'activity-options': {
     title: '',
     Content: ActivityOptionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'verify-identity': {
+    title: '',
+    Content: VerifyIdentityDrawer,
     noHeader: true,
     direction: 'bottom',
   },

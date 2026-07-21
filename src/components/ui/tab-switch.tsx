@@ -10,10 +10,14 @@ interface TabSwitchOption<T extends string> {
 interface TabSwitchProps<T extends string> {
   value: T
   onChange: (value: T) => void
-  options: [TabSwitchOption<T>, TabSwitchOption<T>]
+  /** Two or more options (the plans screen uses three). */
+  options: TabSwitchOption<T>[]
   bgClassName?: string
   maxW?: string
   className?: string
+  /** Styling for the selected pill — overridable for dark surfaces. */
+  activeClassName?: string
+  inactiveClassName?: string
 }
 
 export function TabSwitch<T extends string>({
@@ -23,6 +27,8 @@ export function TabSwitch<T extends string>({
   bgClassName = 'bg-[#F4F6F8]',
   maxW = 'max-w-[178px]',
   className,
+  activeClassName = 'bg-white text-black shadow-[0px_4px_8px_0px_#0000000A] font-bold',
+  inactiveClassName = 'text-black/60 font-medium',
 }: TabSwitchProps<T>) {
   return (
     <div
@@ -42,9 +48,7 @@ export function TabSwitch<T extends string>({
             onClick={() => onChange(opt.value)}
             className={cn(
               'flex-1 text-center py-2 w-fit text-[10px] tracking-[1.1px] font-bold rounded-full transition-all duration-200',
-              isActive
-                ? 'bg-white text-black shadow-[0px_4px_8px_0px_#0000000A] font-bold'
-                : 'text-black/60 font-medium'
+              isActive ? activeClassName : inactiveClassName
             )}
           >
             {opt.label}

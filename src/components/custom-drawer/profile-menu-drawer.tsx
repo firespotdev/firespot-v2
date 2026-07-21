@@ -500,8 +500,10 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
           </button>
 
-          <button
-            type="button"
+          {/* Entry point into the merchant plans (LITE / PRO / PRO MAX) */}
+          <Link
+            href="/plans"
+            onClick={closeDrawer}
             className="w-full flex items-center justify-between gap-3 py-3.5 px-4"
           >
             <div className="flex items-center gap-2">
@@ -527,7 +529,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
               </p>
               <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
             </div>
-          </button>
+          </Link>
         </div>
 
         {/* Section 3: Social */}

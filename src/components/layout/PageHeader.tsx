@@ -21,6 +21,8 @@ interface PageHeaderProps {
   /** Logo image; personal surfaces use /images/firespot_personal.png */
   logoSrc?: string
   className?: string
+  /** Rendered immediately after the title (e.g. the verification badge) */
+  titleAdornment?: React.ReactNode
 }
 
 export function PageHeader({
@@ -33,6 +35,7 @@ export function PageHeader({
   rightSlot,
   logoSrc = '/images/firespot_alt.png',
   className,
+  titleAdornment,
 }: PageHeaderProps) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
@@ -105,6 +108,7 @@ export function PageHeader({
       >
         <span className="flex items-center gap-1 text-[#000000] font-bold text-sm leading-[100%] max-w-full">
           <span className="truncate">{title}</span>
+          {titleAdornment}
           {showDropdown && (
             <ChevronDown
               className="w-4 h-4 shrink-0"

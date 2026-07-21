@@ -14,6 +14,7 @@ import {
   ActionListItem,
   showNotificationToast,
   TagFooter,
+  VerifiedBadge,
 } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
 import { useUserProfile } from '@/services/users'
@@ -147,7 +148,12 @@ export function AccountSwitchDrawer({
                 />
               </span>
             }
-            title={businessName.toUpperCase()}
+            title={
+              <span className="inline-flex items-center gap-1">
+                {businessName.toUpperCase()}
+                <VerifiedBadge level={(profile as any)?.verificationLevel} />
+              </span>
+            }
             subtitle="Owner · Main address"
             trailing={
               mode === 'merchant' ? (

@@ -8,11 +8,18 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   onboardingCompleted: boolean
+  /**
+   * The `lastLoginAt` the upgrade prompt was dismissed for. Comparing against
+   * the current user's `lastLoginAt` keeps the prompt hidden across reloads but
+   * re-surfaces it on the next login.
+   */
+  planPromptDismissedForLogin: string | null
   setAuth: (user: User, token: string, onboardingCompleted?: boolean) => void
   setUser: (user: User) => void
   updateUser: (user: User) => void
   setAccessToken: (token: string) => void
   setOnboardingCompleted: (completed: boolean) => void
+  dismissPlanPrompt: (lastLoginAt: string) => void
   logout: () => void
 }
 
@@ -23,6 +30,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       onboardingCompleted: false,
+      planPromptDismissedForLogin: null,
       setAuth: (user, token, onboardingCompleted = true) => {
         localStorage.setItem('token', token)
         set({ user, token, isAuthenticated: true, onboardingCompleted })
@@ -37,6 +45,8 @@ export const useAuthStore = create<AuthState>()(
       },
       setOnboardingCompleted: (completed) =>
         set({ onboardingCompleted: completed }),
+      dismissPlanPrompt: (lastLoginAt) =>
+        set({ planPromptDismissedForLogin: lastLoginAt }),
       logout: () => {
         localStorage.removeItem('token')
         set({
@@ -44,6 +54,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isAuthenticated: false,
           onboardingCompleted: false,
+          planPromptDismissedForLogin: null,
         })
       },
     }),

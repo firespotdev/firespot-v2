@@ -1,12 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { UpgradePrompt } from '@/components/merchant/upgrade-prompt'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle } from '@/components/ui'
+import { LoaderCircle, VerifiedBadge } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantInsights, type InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
@@ -44,8 +46,19 @@ export default function ProfilePage() {
   const [isAmountHidden, setIsAmountHidden] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const searchParams = useSearchParams()
+  const hasOpenedVerify = useRef(false)
 
   // Auth + merchant capability are enforced by the (merchant) layout.
+
+  // Arriving from the plan success screen ("Set up Shop") opens the
+  // "Verify your identity" drawer straight away.
+  useEffect(() => {
+    if (searchParams.get('verify') === '1' && !hasOpenedVerify.current) {
+      hasOpenedVerify.current = true
+      openDrawer({ type: 'verify-identity' })
+    }
+  }, [searchParams, openDrawer])
 
   // Clear photo success message after 3 seconds
   useEffect(() => {
@@ -126,6 +139,9 @@ export default function ProfilePage() {
         <PageHeader
           title={profile?.businessName || 'Your business'}
           subtitle="Owner · Main Address"
+          titleAdornment={
+            <VerifiedBadge level={(profile as any)?.verificationLevel} />
+          }
           showDropdown
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
           onTitleClick={() =>
@@ -133,6 +149,9 @@ export default function ProfilePage() {
           }
           onShareClick={handleShareClick}
         />
+
+        {/* Grandfathered merchants: re-surfaces once per login until upgraded */}
+        <UpgradePrompt />
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
           {/* Hidden file input for photo upload */}

@@ -13,6 +13,16 @@ export interface User {
   profilePhotoUrl?: string
   referralCode?: string
   merchantSlug?: string
+  // Merchant plan + verification state
+  planTier?: 'LITE' | 'PRO' | 'PROMAX' | null
+  planStatus?: 'none' | 'paid' | 'verifying' | 'verified' | 'failed'
+  verificationLevel?: 'PRO' | 'PROMAX' | null
+  planCurrentPeriodEnd?: string | null
+  /**
+   * Set on each OTP verification. The upgrade prompt keys its dismissal to
+   * this so it stays hidden across reloads but re-surfaces on the next login.
+   */
+  lastLoginAt?: string
 }
 
 export interface RequestOtpPayload {
