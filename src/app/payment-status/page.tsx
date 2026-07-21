@@ -35,6 +35,9 @@ function PaymentStatusContent() {
   const [status, setStatus] = useState<PaymentStatus>('loading')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [hasVerified, setHasVerified] = useState(false)
+  // What was actually charged, per the server. Never assume a fixed price —
+  // activation is configurable and may be free.
+  const [paidAmount, setPaidAmount] = useState(0)
 
   const verifyPayment = useVerifyPayment()
   const { data: profile } = useUserProfile()
@@ -44,7 +47,7 @@ function PaymentStatusContent() {
     openDrawer({
       type: 'receipt',
       props: {
-        amount: 2000,
+        amount: paidAmount,
         paidBy: profile?.businessName || 'Customer',
         paidTo: 'Firespot',
         referenceNumber: reference,
@@ -65,7 +68,8 @@ function PaymentStatusContent() {
 
     setHasVerified(true)
     verifyPayment.mutate(reference, {
-      onSuccess: () => {
+      onSuccess: (data: any) => {
+        setPaidAmount(data?.activationAmount ?? 0)
         setStatus('success')
       },
       onError: (error: any) => {

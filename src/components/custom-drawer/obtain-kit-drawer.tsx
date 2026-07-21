@@ -2,6 +2,15 @@ import { useDrawerStore } from '@/services/drawer'
 import { X } from 'lucide-react'
 import Link from 'next/link'
 
+/**
+ * Online kit ordering is hidden for now to keep the path to a working kit as
+ * short as possible: activate -> scan or enter serial -> done.
+ *
+ * The /order-qr-kit route and its API still work; this only removes the entry
+ * point. Flip to true to bring the button back.
+ */
+const SHOW_ORDER_ONLINE = false
+
 const ObtainKitDrawer = () => {
   const { closeDrawer } = useDrawerStore()
   return (
@@ -88,13 +97,15 @@ const ObtainKitDrawer = () => {
         </div>
       </div>
       <div className="flex items-center w-full gap-4 border-t border-[#F1F1F1] py-3 px-4 pb-4">
-        <Link
-          href="/order-qr-kit"
-          onClick={closeDrawer}
-          className="flex-1 bg-[#F1F1F1] h-12 rounded-full justify-center items-center flex text-black font-bold"
-        >
-          Order online
-        </Link>
+        {SHOW_ORDER_ONLINE && (
+          <Link
+            href="/order-qr-kit"
+            onClick={closeDrawer}
+            className="flex-1 bg-[#F1F1F1] h-12 rounded-full justify-center items-center flex text-black font-bold"
+          >
+            Order online
+          </Link>
+        )}
         <Link
           href="/activate"
           onClick={closeDrawer}

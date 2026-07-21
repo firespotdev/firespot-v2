@@ -15,12 +15,12 @@ import {
   useInitiateActivation,
   useUserProfile,
 } from '@/services/users'
+import { useQRKitPricing } from '@/services/qr-orders'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 
 type ViewMode = 'scan' | 'serial' | 'confirm' | 'callback'
 
-const ACTIVATION_AMOUNT = 2000 // NGN 2,000
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
 
@@ -69,6 +69,14 @@ function ActivatePageContent() {
   const { data: user } = useUserProfile()
   const checkSerial = useCheckSerialNumber()
   const initiateActivation = useInitiateActivation()
+  const { pricing } = useQRKitPricing()
+
+  // Free either because activation is priced at zero, or because this merchant
+  // pre-paid via an order and holds an entitlement. The server decides for
+  // real; this only picks the copy.
+  const isActivationFree =
+    pricing.activationAmount === 0 ||
+    !!(user?.availableKitEntitlements && user.availableKitEntitlements > 0)
 
   // QR code branding
   const qrCodeRef = useRef<HTMLDivElement>(null)
@@ -749,17 +757,13 @@ function ActivatePageContent() {
             >
               {initiateActivation.isPending
                 ? 'Processing...'
-                : user &&
-                    user.availableKitEntitlements &&
-                    user.availableKitEntitlements > 0
+                : isActivationFree
                   ? 'Activate this QR kit'
-                  : `Pay NGN ${ACTIVATION_AMOUNT.toLocaleString()} to activate this QR kit`}
+                  : `Pay NGN ${pricing.activationAmount.toLocaleString()} to activate this QR kit`}
             </Button>
             <p className="text-[#545F6CB2] text-[11px] font-medium text-center mt-4">
-              {user &&
-              user.availableKitEntitlements &&
-              user.availableKitEntitlements > 0
-                ? 'You have a pre-paid QR kit entitlement. Activating this kit will not require additional payment.'
+              {isActivationFree
+                ? '⚠️ Important: Activating your QR kit is free. No one should ever collect an activation fee from you.'
                 : '⚠️ Important: No one should collect activation fees on behalf of Firespot. Payment happens only inside the app.'}
             </p>
           </div>

@@ -17,14 +17,24 @@ import {
   Input,
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
+import { useQRKitPricing } from '@/services/qr-orders'
 import {
   NIGERIAN_STATES,
   STATE_LGA_MAP,
 } from '@/lib/utils/nigerian-states-lgas'
 
+const QUANTITY_CHOICES = [1, 2, 3, 4, 5, 10, 20]
+
 export default function OrderQRKitPage() {
   const router = useRouter()
   const { openDrawer } = useDrawerStore()
+  const { pricing } = useQRKitPricing()
+
+  const isFree = pricing.kitPrice === 0 && pricing.deliveryFee === 0
+  // Anything above the server's cap would be rejected on submit.
+  const quantityOptions = QUANTITY_CHOICES.filter(
+    (num) => num <= pricing.maxKitsPerOrder,
+  )
 
   const [quantity, setQuantity] = useState<number | ''>('')
   const [phoneNumber, setPhoneNumber] = useState('')
@@ -78,7 +88,9 @@ export default function OrderQRKitPage() {
 
           {/* Text */}
           <h1 className="font-bold text-xl text-black -tracking-[0.4px] text-center mb-1">
-            Get a QR kit for just NGN 2,500
+            {isFree
+              ? 'Get your QR kit for free'
+              : `Get a QR kit for just NGN ${pricing.kitPrice.toLocaleString()}`}
           </h1>
           <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-8">
             Same day delivery in Lagos state. 3-5 business days for every other
@@ -98,7 +110,7 @@ export default function OrderQRKitPage() {
                   <SelectValue placeholder="Select quantity" />
                 </SelectTrigger>
                 <SelectContent>
-                  {[1, 2, 3, 4, 5, 10, 20].map((num) => (
+                  {quantityOptions.map((num) => (
                     <SelectItem
                       key={num}
                       value={num.toString()}

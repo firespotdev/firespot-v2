@@ -2,13 +2,14 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { ChevronDown, Trash2, Minus, Plus, AlertCircle } from 'lucide-react'
+import { ChevronDown, Trash2, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
-import { useCreateQROrder } from '@/services/qr-orders/qr-ordersHooks'
+import { useCreateQROrder, useQRKitPricing } from '@/services/qr-orders'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { showNotificationToast, LoaderCircle } from '@/components/ui'
+import { showNotificationToast } from '@/components/ui'
+
+const formatNaira = (amount: number) => `NGN ${amount.toLocaleString()}.00`
 
 interface CheckoutDrawerProps {
   initialQuantity: number
@@ -30,14 +31,15 @@ export const CheckoutDrawer = ({
   const { closeDrawer } = useDrawerStore()
   const router = useRouter()
   const createOrderMutation = useCreateQROrder()
+  const { pricing, isLoading: isPricingLoading } = useQRKitPricing()
   const [quantity, setQuantity] = useState(initialQuantity)
 
-  const pricePerKit = 2500
-  const deliveryFee = 3000
-  const subtotal = quantity * pricePerKit
-  const total = subtotal + deliveryFee
+  const subtotal = quantity * pricing.kitPrice
+  const total = subtotal + pricing.deliveryFee
+  const isFree = total === 0
 
-  const handleIncrement = () => setQuantity((q) => q + 1)
+  const handleIncrement = () =>
+    setQuantity((q) => Math.min(q + 1, pricing.maxKitsPerOrder))
   const handleDecrement = () => setQuantity((q) => (q > 1 ? q - 1 : 1))
   const handleRemove = () => {
     clearForm()
@@ -68,15 +70,24 @@ export const CheckoutDrawer = ({
       },
       {
         onSuccess: (data) => {
+          // Free order: already settled server-side, no payment step follows.
+          if (data?.isFree) {
+            clearForm()
+            closeDrawer()
+            router.push('/order-status?status=success')
+            return
+          }
+
           if (data?.authorizationUrl) {
             // Redirect to Paystack
             window.location.href = data.authorizationUrl
-          } else {
-            showNotificationToast({
-              message: 'Error initializing payment',
-              duration: 3000,
-            })
+            return
           }
+
+          showNotificationToast({
+            message: 'Error initializing payment',
+            duration: 3000,
+          })
         },
         onError: (error: any) => {
           showNotificationToast({
@@ -161,7 +172,7 @@ export const CheckoutDrawer = ({
             </div>
           </div>
           <div className="text-[14px] font-bold text-[#111827]">
-            NGN {subtotal.toLocaleString()}.00
+            {isFree ? '-' : formatNaira(subtotal)}
           </div>
         </div>
       </div>
@@ -171,19 +182,19 @@ export const CheckoutDrawer = ({
         <div className="flex justify-between text-sm font-medium border-t border-[#F1F1F1] pt-4">
           <span className="text-[#6B7280]">Subtotal</span>
           <span className="text-[#111827] font-bold">
-            NGN {subtotal.toLocaleString()}.00
+            {isFree ? '-' : formatNaira(subtotal)}
           </span>
         </div>
         <div className="flex justify-between text-sm font-medium">
           <span className="text-[#6B7280]">Delivery fee</span>
           <span className="text-[#111827] font-bold">
-            NGN {deliveryFee.toLocaleString()}.00
+            {pricing.deliveryFee === 0 ? '-' : formatNaira(pricing.deliveryFee)}
           </span>
         </div>
         <div className="pt-4 border-t border-[#F1F1F1] flex justify-between items-center">
           <span className="text-[14px] font-bold text-[#111827]">Total</span>
           <span className="text-[14px] font-bold text-[#111827]">
-            NGN {total.toLocaleString()}.00
+            {isFree ? 'FREE' : formatNaira(total)}
           </span>
         </div>
       </div>
@@ -192,15 +203,16 @@ export const CheckoutDrawer = ({
       <div className="px-4 pt-4 border-t border-[#F1F1F1] rounded-t-[12px]">
         <Button
           onClick={handlePay}
-          disabled={createOrderMutation.isPending}
+          disabled={createOrderMutation.isPending || isPricingLoading}
           className="w-full bg-[#24C166] hover:bg-[#24C166] text-white text-base font-bold mb-4 shadow-sm"
         >
-          Pay NGN {total.toLocaleString()}
+          {isFree ? 'Place order' : `Pay ${formatNaira(total)}`}
         </Button>
         <div className="flex items-start gap-2 text-[#6B7280]">
           <p className="text-[12px] font-medium leading-tight text-center">
-            ⚠️ Important: No one should collect activation fees on behalf of
-            Firespot. Payment happens only inside the app.
+            {isFree
+              ? '⚠️ Important: Firespot QR kits are free. No one should ever collect a fee from you for a kit or its activation.'
+              : '⚠️ Important: No one should collect activation fees on behalf of Firespot. Payment happens only inside the app.'}
           </p>
         </div>
       </div>
