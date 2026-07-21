@@ -21,7 +21,7 @@ export default function QRCodeBrander() {
     setBrandedSvg,
   } = useQRBrandStore()
 
-  // Fetch QRKits list
+  // Fetch Kits list
   const {
     data: qrKitsData,
     isLoading: isLoadingList,
@@ -49,7 +49,15 @@ export default function QRCodeBrander() {
       )
       setBrandedSvg(branded)
     }
-  }, [svgData, setOriginalSvg, setBrandedSvg, gradientStart, gradientEnd, logoUrl, logoSize])
+  }, [
+    svgData,
+    setOriginalSvg,
+    setBrandedSvg,
+    gradientStart,
+    gradientEnd,
+    logoUrl,
+    logoSize,
+  ])
 
   // Download branded SVG
   const handleDownload = () => {
@@ -95,7 +103,9 @@ export default function QRCodeBrander() {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* QR Codes List */}
           <div className="lg:col-span-1">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Available QR Codes</h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Available QR Codes
+            </h2>
 
             {isLoadingList && (
               <div className="text-sm text-gray-600">Loading QR codes...</div>
@@ -127,7 +137,9 @@ export default function QRCodeBrander() {
                       : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  <div className="font-medium text-gray-900">{qrKit.serialNumber}</div>
+                  <div className="font-medium text-gray-900">
+                    {qrKit.serialNumber}
+                  </div>
                   <div className="mt-1 text-sm text-gray-500">
                     Status: {qrKit.activationStatus}
                   </div>
@@ -138,7 +150,9 @@ export default function QRCodeBrander() {
 
           {/* Preview */}
           <div className="lg:col-span-2">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Preview</h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Preview
+            </h2>
 
             {isLoadingSvg && selectedQRKit && (
               <div className="text-sm text-gray-600">Loading QR code...</div>
