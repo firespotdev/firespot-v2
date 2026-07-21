@@ -11,6 +11,7 @@ import type { QRKit } from '@/services/qr'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
 import { formatCurrency } from '@/lib/utils'
+import { useQRKitPricing } from '@/services/pricing/pricingApi'
 import AgentSelect from './AgentSelect'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminToast } from './AdminToast'
@@ -63,6 +64,7 @@ function StatusBadge({
 
 export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
   const { data: svgData, isLoading } = useQRCodeSVG(qrKit.qrCodeSvgUrl)
+  const { pricing } = useQRKitPricing()
   const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -638,7 +640,9 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         Activation Amount
                       </dt>
                       <dd className="text-sm font-medium text-gray-900">
-                        ₦{formatCurrency(qrKit.activationAmount / 100)}
+                        {pricing.activationAmount === 0
+                          ? 'Free'
+                          : `₦${formatCurrency(pricing.activationAmount)}`}
                       </dd>
                     </div>
                     {qrKit.merchantId && (
