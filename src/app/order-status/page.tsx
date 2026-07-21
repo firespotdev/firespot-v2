@@ -68,7 +68,6 @@ function OrderStatusContent() {
         return
       }
 
-      // A 200 alone isn't success — check what the server actually settled on.
       if (result.data?.paymentStatus === 'SUCCESSFUL') {
         setStatus('success')
       } else {
@@ -115,7 +114,6 @@ function OrderStatusContent() {
               You would receive your QRkits in a few. Check your email inbox for
               details on your order.
             </p>
-
 
             <div className="w-full border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-2xl mt-8 shrink-0">
               <Link
