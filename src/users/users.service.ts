@@ -538,6 +538,13 @@ export class UsersService {
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],
       profilePhotoUrl: user.profilePhotoUrl,
+      // Merchant plan + verification state (drives the badge and upgrade UI)
+      planTier: user.planTier || null,
+      planStatus: user.planStatus || "none",
+      verificationLevel: user.verificationLevel || null,
+      planCurrentPeriodEnd: user.planCurrentPeriodEnd || null,
+      // Used by the client to re-surface the upgrade prompt once per login
+      lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

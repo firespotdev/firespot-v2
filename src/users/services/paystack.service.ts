@@ -46,7 +46,23 @@ interface VerifyTransactionResponse {
     paid_at: string;
     channel: string;
     currency: string;
+    // Present when the transaction was tied to a plan (subscription tiers)
+    customer?: { customer_code?: string };
+    plan?: string | { plan_code?: string };
+    authorization?: { authorization_code?: string };
   };
+}
+
+interface CreatePlanResponse {
+  status: boolean;
+  message: string;
+  data: { plan_code: string; name: string; amount: number; interval: string };
+}
+
+interface CreateSubscriptionResponse {
+  status: boolean;
+  message: string;
+  data: { subscription_code: string; email_token: string; status: string };
 }
 
 interface CachedVerification {
@@ -194,6 +210,8 @@ export class PaystackService {
     metadata?: Record<string, any>;
     subaccount?: string;
     transactionCharge?: number;
+    /** Paystack plan code. When set, paying creates a recurring subscription. */
+    plan?: string;
   }): Promise<{
     authorizationUrl: string;
     accessCode: string;
@@ -210,6 +228,7 @@ export class PaystackService {
           metadata: params.metadata,
           subaccount: params.subaccount,
           transaction_charge: params.transactionCharge,
+          plan: params.plan,
         },
         {
           headers: {
@@ -247,6 +266,9 @@ export class PaystackService {
     reference: string;
     amount: number;
     paidAt: string;
+    customerCode?: string;
+    planCode?: string;
+    authorizationCode?: string;
   }> {
     try {
       const response = await axios.get<VerifyTransactionResponse>(
@@ -259,11 +281,17 @@ export class PaystackService {
       );
 
       if (response.data.status && response.data.data) {
+        const d = response.data.data;
+        const planCode =
+          typeof d.plan === "string" ? d.plan : d.plan?.plan_code;
         return {
-          status: response.data.data.status,
-          reference: response.data.data.reference,
-          amount: response.data.data.amount,
-          paidAt: response.data.data.paid_at,
+          status: d.status,
+          reference: d.reference,
+          amount: d.amount,
+          paidAt: d.paid_at,
+          customerCode: d.customer?.customer_code,
+          planCode,
+          authorizationCode: d.authorization?.authorization_code,
         };
       }
 
@@ -275,6 +303,138 @@ export class PaystackService {
       if (axios.isAxiosError(error)) {
         throw new HttpException(
           error.response?.data?.message || "Failed to verify payment",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Creates a recurring plan. Used once per tier (PRO / PRO MAX) during setup;
+   * the resulting plan_code goes into env config.
+   */
+  async createPlan(params: {
+    name: string;
+    amount: number; // kobo
+    interval: "monthly" | "annually";
+  }): Promise<{ planCode: string }> {
+    try {
+      const response = await axios.post<CreatePlanResponse>(
+        `${this.baseUrl}/plan`,
+        {
+          name: params.name,
+          amount: params.amount,
+          interval: params.interval,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.paystackSecretKey}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.data.status && response.data.data) {
+        return { planCode: response.data.data.plan_code };
+      }
+      throw new HttpException("Failed to create plan", HttpStatus.BAD_REQUEST);
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new HttpException(
+          error.response?.data?.message || "Failed to create plan",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Subscribes an existing customer to a plan using a saved authorization.
+   * PRO MAX bills one subscription per active store, so this is called per
+   * extra store beyond the one created by the initial checkout.
+   */
+  async createSubscription(params: {
+    customer: string;
+    plan: string;
+    authorization?: string;
+  }): Promise<{ subscriptionCode: string; emailToken: string }> {
+    try {
+      const response = await axios.post<CreateSubscriptionResponse>(
+        `${this.baseUrl}/subscription`,
+        {
+          customer: params.customer,
+          plan: params.plan,
+          authorization: params.authorization,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.paystackSecretKey}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      if (response.data.status && response.data.data) {
+        return {
+          subscriptionCode: response.data.data.subscription_code,
+          emailToken: response.data.data.email_token,
+        };
+      }
+      throw new HttpException(
+        "Failed to create subscription",
+        HttpStatus.BAD_REQUEST,
+      );
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new HttpException(
+          error.response?.data?.message || "Failed to create subscription",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /** Disables a subscription (e.g. when a PRO MAX store is removed). */
+  async disableSubscription(params: {
+    code: string;
+    token: string;
+  }): Promise<{ success: boolean }> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/subscription/disable`,
+        { code: params.code, token: params.token },
+        {
+          headers: {
+            Authorization: `Bearer ${this.paystackSecretKey}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      return { success: Boolean(response.data?.status) };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new HttpException(
+          error.response?.data?.message || "Failed to disable subscription",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async fetchSubscription(code: string): Promise<any> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/subscription/${code}`, {
+        headers: { Authorization: `Bearer ${this.paystackSecretKey}` },
+      });
+      return response.data?.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new HttpException(
+          error.response?.data?.message || "Failed to fetch subscription",
           HttpStatus.BAD_REQUEST,
         );
       }

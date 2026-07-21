@@ -452,6 +452,11 @@ export class AuthService {
         lastName: user.lastName,
         businessName: user.businessName,
         role: (user as any).role || "merchant",
+        planTier: user.planTier || null,
+        planStatus: user.planStatus || "none",
+        verificationLevel: user.verificationLevel || null,
+        // Lets the client show the upgrade prompt once per login
+        lastLoginAt: user.lastLoginAt,
       },
     };
   }

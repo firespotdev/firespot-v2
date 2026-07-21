@@ -18,6 +18,7 @@ import { nanoid } from 'nanoid'
 import { Customer, CustomerDocument } from '../schemas/customer.schema'
 import { CloudinaryService } from '../users/services/cloudinary.service'
 import { AccountLinkingService } from '../account-linking/account-linking.service'
+import { PLANS, PlanTier } from '../merchant-plans/constants/plans'
 
 @Injectable()
 export class SalesService {
@@ -31,6 +32,51 @@ export class SalesService {
     private cloudinaryService: CloudinaryService,
     private accountLinkingService: AccountLinkingService,
   ) {}
+
+  /**
+   * Hard-blocks recording once the merchant's plan daily cap is reached.
+   *
+   * Grandfathered merchants (no planTier) are exempt — they predate plans, and
+   * capping them on deploy would break active businesses.
+   */
+  private async assertDailyCap(
+    merchantId: string | Types.ObjectId,
+    incomingAmount = 0,
+  ): Promise<void> {
+    const merchant = await this.userModel
+      .findById(merchantId)
+      .select('planTier')
+      .exec()
+
+    const tier = merchant?.planTier as PlanTier | undefined
+    if (!tier || !PLANS[tier]) return // grandfathered / no plan → exempt
+
+    const cap = PLANS[tier].dailyCap
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+
+    const todaysSales = await this.saleModel
+      .find({
+        merchantId: new Types.ObjectId(merchantId),
+        status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
+        createdAt: { $gte: startOfDay },
+      })
+      .select('status amount amountPaid')
+      .exec()
+
+    const recordedToday = todaysSales.reduce((sum, sale) => {
+      if (sale.status === 'CONFIRMED') {
+        return sum + (sale.amountPaid ?? sale.amount ?? 0)
+      }
+      return sum + (sale.amountPaid ?? 0)
+    }, 0)
+
+    if (recordedToday + incomingAmount > cap) {
+      throw new UnprocessableEntityException(
+        `Daily limit reached. Your ${tier} plan allows up to ₦${cap.toLocaleString()} per day. Upgrade to collect more.`,
+      )
+    }
+  }
 
   /**
    * Resolves the Firespot account behind a merchant's Customer record so a
@@ -62,6 +108,8 @@ export class SalesService {
   }
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
+    await this.assertDailyCap(dto.merchantId, dto.amount || 0)
+
     // Check if this fingerprint has any confirmed sales for this merchant already
     const confirmedSalesCount = await this.saleModel.countDocuments({
       merchantId: dto.merchantId,
@@ -138,6 +186,8 @@ export class SalesService {
     merchantId: string,
     dto: CreatePendingSaleDto,
   ): Promise<Sale> {
+    await this.assertDailyCap(merchantId, dto.amount || 0)
+
     const firstKit = await this.qrKitModel
       .findOne({
         merchantId: new Types.ObjectId(merchantId),
@@ -185,6 +235,8 @@ export class SalesService {
     merchantId: string,
     dto: RecordSaleDto,
   ): Promise<Sale> {
+    await this.assertDailyCap(merchantId, dto.amount || 0)
+
     let targetBankName = dto.targetBankName
 
     // Default to primary bank for manual records if it's a bank transfer
@@ -627,6 +679,9 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
+
+    // Confirming a pending sale is the point the amount is actually recorded.
+    await this.assertDailyCap(merchantId, dto.amount || 0)
 
     sale.status =
       dto.isPaidInFull === false || (dto.balanceOwed && dto.balanceOwed > 0)

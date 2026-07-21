@@ -22,6 +22,9 @@ import { FirebaseModule } from './services/firebase/firebase.module';
 import { CustomersModule } from './customers/customers.module';
 import { ProductsModule } from './products/products.module';
 import { ReportsModule } from './reports/reports.module';
+import { StoresModule } from './stores/stores.module';
+import { MerchantPlansModule } from './merchant-plans/merchant-plans.module';
+import { KycModule } from './kyc/kyc.module';
 
 @Module({
   imports: [
@@ -58,6 +61,9 @@ import { ReportsModule } from './reports/reports.module';
     CustomersModule,
     ProductsModule,
     ReportsModule,
+    StoresModule,
+    MerchantPlansModule,
+    KycModule,
   ],
   controllers: [AppController],
   providers: [

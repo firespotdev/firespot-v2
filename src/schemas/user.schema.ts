@@ -2,6 +2,14 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { BankAccount, BankAccountSchema } from "./bank-account.schema";
 
+/** State of a single SmileID KYC check (bvn / nin / liveness / cac). */
+export interface KycCheckState {
+  status?: "pending" | "passed" | "failed";
+  jobId?: string;
+  checkedAt?: Date;
+  attempts?: number;
+}
+
 @Schema({ timestamps: true })
 export class User extends Document {
   @Prop({ required: true, unique: true, index: true })
@@ -104,6 +112,50 @@ export class User extends Document {
 
   @Prop()
   placeholderCreatedAt?: Date;
+
+  // ---- Merchant plans (LITE / PRO / PROMAX) ----
+
+  // Tier the merchant has paid for. Absent = grandfathered/never upgraded.
+  @Prop({ enum: ["LITE", "PRO", "PROMAX"], index: true })
+  planTier?: string;
+
+  @Prop({
+    enum: ["none", "paid", "verifying", "verified", "failed"],
+    default: "none",
+  })
+  planStatus?: string;
+
+  // Achieved verification badge. LITE grants none, so this is PRO/PROMAX only.
+  @Prop({ enum: ["PRO", "PROMAX"] })
+  verificationLevel?: string;
+
+  // Per-check SmileID KYC state. Drives resumability: the first required check
+  // that isn't "passed" is where the merchant picks back up.
+  @Prop({
+    type: {
+      bvn: { status: String, jobId: String, checkedAt: Date, attempts: Number },
+      nin: { status: String, jobId: String, checkedAt: Date, attempts: Number },
+      liveness: { status: String, jobId: String, checkedAt: Date, attempts: Number },
+      cac: { status: String, jobId: String, checkedAt: Date, attempts: Number },
+    },
+    default: {},
+  })
+  kyc?: {
+    bvn?: KycCheckState;
+    nin?: KycCheckState;
+    liveness?: KycCheckState;
+    cac?: KycCheckState;
+  };
+
+  // Paystack billing refs for the recurring tiers
+  @Prop()
+  paystackCustomerCode?: string;
+
+  @Prop({ type: [String], default: [] })
+  subscriptionCodes?: string[];
+
+  @Prop()
+  planCurrentPeriodEnd?: Date;
 
   // Timestamps (automatically added by Mongoose)
   createdAt?: Date;
