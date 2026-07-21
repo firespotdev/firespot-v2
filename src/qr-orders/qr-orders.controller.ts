@@ -19,6 +19,14 @@ export class QROrdersController {
     return this.ordersService.createOrder((user as any).userId, dto);
   }
 
+  @ApiOperation({
+    summary: 'Get QR kit pricing (naira). Zero means free.',
+  })
+  @Get('pricing')
+  getPricing() {
+    return this.ordersService.getPricing();
+  }
+
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Verify order payment status' })

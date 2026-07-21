@@ -6,8 +6,13 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
+import { ConfigService } from "@nestjs/config";
 import { Model, Types } from "mongoose";
 import { customAlphabet } from "nanoid";
+import {
+  getQRKitPricing,
+  nairaToKobo,
+} from "../../config/pricing.config";
 import { QRKit, QRKitDocument } from "../../schemas/qrkit.schema";
 import { User, UserDocument } from "../../schemas/user.schema";
 import { Agent, AgentDocument } from "../schemas/agent.schema";
@@ -32,6 +37,7 @@ export class AdminQRKitsService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private qrCodeService: QRCodeService,
+    private configService: ConfigService,
   ) {}
 
   /**
@@ -93,7 +99,10 @@ export class AdminQRKitsService {
       qrCodeSvgPublicId: publicId,
       activationStatus: "pending",
       paymentStatus: "pending",
-      activationAmount: 200000, // NGN 2,000 in kobo
+      // Kobo, from QR_KIT_ACTIVATION_AMOUNT. 0 while activation is free.
+      activationAmount: nairaToKobo(
+        getQRKitPricing(this.configService).activationAmount,
+      ),
       ...(agentId && {
         agentId: new Types.ObjectId(agentId),
         assignedToAgentAt: new Date(),

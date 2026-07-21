@@ -239,11 +239,14 @@ export class AdminMerchantsService {
       scanMatch,
     )
 
-    // 4. Pending QR Orders
+    // 4. Outstanding QR Orders — placed but not yet delivered.
+    // This used to filter on orderStatus 'PENDING', which only ever matched
+    // orders abandoned before payment. Free orders are created as PROCESSING
+    // and never pass through PENDING, so that filter now matches nothing.
     const pendingOrders = await this.qrOrderModel
       .find({
         merchantId: merchantObjectId,
-        orderStatus: 'PENDING',
+        orderStatus: { $in: ['PENDING', 'PROCESSING', 'SHIPPED'] },
       })
       .sort({ createdAt: -1 })
       .lean()
@@ -261,6 +264,7 @@ export class AdminMerchantsService {
         _id: order._id,
         quantity: order.quantity,
         totalAmount: order.totalAmount,
+        orderStatus: order.orderStatus,
         deliveryAddress: order.deliveryAddress,
         createdAt: order.createdAt,
       })),

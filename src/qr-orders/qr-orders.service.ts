@@ -11,6 +11,7 @@ import { CreateQROrderDto } from './dto/create-qr-order.dto'
 import { PaystackService } from '../users/services/paystack.service'
 import { ConfigService } from '@nestjs/config'
 import { QRKitsService } from '../qr-kits/qr-kits.service'
+import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
 
 @Injectable()
 export class QROrdersService {
@@ -22,6 +23,10 @@ export class QROrdersService {
     private qrKitsService: QRKitsService,
   ) {}
 
+  getPricing() {
+    return getQRKitPricing(this.configService)
+  }
+
   async createOrder(merchantId: string, dto: CreateQROrderDto) {
     const user = await this.userModel
       .findById(merchantId)
@@ -30,12 +35,20 @@ export class QROrdersService {
       throw new NotFoundException('User not found')
     }
 
-    const email = `${user.fullPhoneNumber.replace('+', '')}@firespot.co`
-    const KIT_PRICE = 2500
-    const DELIVERY_FEE = 3000
+    const pricing = this.getPricing()
 
-    const subtotal = dto.quantity * KIT_PRICE
-    const totalAmount = subtotal + DELIVERY_FEE
+    // The DTO caps quantity too, but that bound is compile-time. This one
+    // honours QR_KIT_MAX_PER_ORDER at runtime.
+    if (dto.quantity > pricing.maxKitsPerOrder) {
+      throw new BadRequestException(
+        `You can order at most ${pricing.maxKitsPerOrder} kits at a time`,
+      )
+    }
+
+    const email = `${user.fullPhoneNumber.replace('+', '')}@firespot.co`
+
+    const subtotal = dto.quantity * pricing.kitPrice
+    const totalAmount = subtotal + pricing.deliveryFee
 
     // Create DB Record
     const order = new this.orderModel({
@@ -46,10 +59,27 @@ export class QROrdersService {
       lga: dto.lga,
       deliveryAddress: dto.deliveryAddress,
       subtotal,
-      deliveryFee: DELIVERY_FEE,
+      deliveryFee: pricing.deliveryFee,
       totalAmount,
       paymentStatus: 'PENDING',
     })
+
+    // Free order: no Paystack hop at all. Mark it settled and fulfil inline so
+    // the merchant lands straight on the success screen.
+    if (totalAmount === 0) {
+      order.paymentStatus = 'SUCCESSFUL'
+      order.orderStatus = 'PROCESSING'
+      order.paidAt = new Date()
+      await order.save()
+
+      await this.fulfilOrder(order)
+
+      return {
+        orderId: order._id,
+        isFree: true,
+        totalAmount: 0,
+      }
+    }
 
     await order.save()
 
@@ -60,7 +90,7 @@ export class QROrdersService {
     try {
       const paymentResponse = await this.paystackService.initializeTransaction({
         email,
-        amount: totalAmount * 100, // Paystack uses kobo
+        amount: nairaToKobo(totalAmount),
         reference: `ORD-${order._id}-${Date.now()}`,
         callbackUrl: `${frontendUrl}/order-status`, // Or wherever they verify
         metadata: {
@@ -84,37 +114,51 @@ export class QROrdersService {
     }
   }
 
+  /**
+   * Grant entitlements and a digital kit for a settled order.
+   *
+   * Fulfilment failures are logged, not thrown: for the paid path this stops a
+   * Cloudinary/kit error from failing an otherwise valid payment verification.
+   * An admin can assign kits manually if this fails.
+   */
+  private async fulfilOrder(order: QROrderDocument) {
+    try {
+      const assignedKitIds = await this.qrKitsService.processOnlineOrder(
+        order.merchantId.toString(),
+        order.quantity,
+      )
+
+      // Link assigned kits to the order
+      order.assignedKitIds = assignedKitIds
+      await order.save()
+    } catch (error) {
+      console.error('Failed to auto-assign kits to order:', error.message)
+    }
+  }
+
   async verifyPayment(reference: string) {
     const verification = await this.paystackService.verifyTransaction(reference)
 
     if (verification.status === 'success') {
+      // Both the Paystack webhook and the frontend callback land here, and
+      // Paystack retries webhooks. Match on paymentStatus so only the first
+      // caller flips the order — otherwise entitlements are granted twice.
       const order = await this.orderModel.findOneAndUpdate(
-        { paystackReference: reference },
+        { paystackReference: reference, paymentStatus: { $ne: 'SUCCESSFUL' } },
         {
           paymentStatus: 'SUCCESSFUL',
           orderStatus: 'PROCESSING',
-          paidAt: new Date(verification.paidAt),
+          paidAt: verification.paidAt ? new Date(verification.paidAt) : new Date(),
         },
         { new: true },
       )
 
-      if (order && order.paymentStatus === 'SUCCESSFUL') {
-        try {
-          // Process online order (digital kit and physical entitlements)
-          const assignedKitIds = await this.qrKitsService.processOnlineOrder(
-            order.merchantId.toString(),
-            order.quantity,
-          )
-
-          // Link assigned kits to the order
-          order.assignedKitIds = assignedKitIds
-          await order.save()
-        } catch (error) {
-          console.error('Failed to auto-assign kits to order:', error.message)
-          // We don't throw here to avoid failing the payment verification
-          // An admin can manually assign kits if auto-assignment fails
-        }
+      // Already settled by a previous call — return it without re-fulfilling.
+      if (!order) {
+        return this.orderModel.findOne({ paystackReference: reference })
       }
+
+      await this.fulfilOrder(order)
 
       return order
     }
