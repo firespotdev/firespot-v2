@@ -6,7 +6,7 @@ import {
   BarcodeIcon,
   MagnifyingGlassIcon,
 } from '@phosphor-icons/react'
-import { ActionList, ActionListItem, AppCard, Button } from '@/components/ui'
+import { ActionList, ActionListItem, Button } from '@/components/ui'
 
 function SearchPageContent() {
   return (

@@ -153,7 +153,7 @@ export default function QRKitDetailPage() {
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                 backdropFilter: 'blur(125.30880737304688px)',
               }}
-              className="py-6 px-6 rounded-2xl flex flex-col items-center relative w-full max-w-75"
+              className="py-6 px-6 rounded-[12px] flex flex-col items-center relative w-full max-w-75"
             >
               <h2 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
                 SCAN TO TRANSFER
@@ -186,7 +186,7 @@ export default function QRKitDetailPage() {
                 </svg>
 
                 <div
-                  className="rounded-2xl p-1"
+                  className="rounded-[12px] p-1"
                   style={{
                     background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                   }}
@@ -501,7 +501,7 @@ export default function QRKitDetailPage() {
               </div>
             </div>
 
-            <div className="my-5 bg-[#F0F7FF] rounded-2xl px-4 py-3 flex items-center gap-3">
+            <div className="my-5 bg-[#F0F7FF] rounded-[12px] px-4 py-3 flex items-center gap-3">
               <div className="w-5 h-5 rounded-full bg-[#0075FF] flex items-center justify-center shrink-0 mt-0.5">
                 <span className="text-white text-xs font-bold">i</span>
               </div>

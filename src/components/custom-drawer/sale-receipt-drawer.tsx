@@ -97,7 +97,7 @@ export function SaleReceiptDrawer({
           </div>
 
           {/* First Details Card Section */}
-          <div className="w-full border border-[#F1F1F1] rounded-2xl bg-white p-5 space-y-4">
+          <div className="w-full border border-[#F1F1F1] rounded-[12px] bg-white p-5 space-y-4">
             {/* Status */}
             <div className="flex justify-between items-center border-b border-[#F1F1F1] pb-4">
               <span className="text-[14px] text-[#00000080] font-normal">
@@ -135,7 +135,7 @@ export function SaleReceiptDrawer({
           </div>
 
           {/* Second Details Section with Border */}
-          <div className="w-full border border-[#F1F1F1] rounded-2xl bg-white p-5 space-y-4 mt-4">
+          <div className="w-full border border-[#F1F1F1] rounded-[12px] bg-white p-5 space-y-4 mt-4">
             <div className="flex justify-between items-center">
               <span className="text-[14px] text-[#00000080] font-normal">
                 Paid to

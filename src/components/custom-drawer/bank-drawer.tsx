@@ -176,7 +176,7 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
             </p>
           </div>
         ) : (
-          <div className="border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-2xl">
+          <div className="border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-[12px]">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}

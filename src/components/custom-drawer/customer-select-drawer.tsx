@@ -92,7 +92,7 @@ export function CustomerSelectDrawer({
         <button
           onClick={handleOpenAddCustomer}
           type="button"
-          className="w-full flex items-center justify-between p-3 bg-white border border-[#F4F6F8] rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] text-left hover:bg-gray-50/50 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between p-3 bg-white border border-[#F4F6F8] rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] text-left hover:bg-gray-50/50 transition-colors cursor-pointer"
         >
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-linear-to-br from-[#FB5012] to-[#D72483] rounded-[10px] flex items-center justify-center text-white shrink-0">
@@ -132,7 +132,7 @@ export function CustomerSelectDrawer({
         </button>
 
         {/* Informational Box */}
-        <div className="bg-[#F4F4F4] border border-[#00000014] rounded-2xl py-2.5 px-3 text-left">
+        <div className="bg-[#F4F4F4] border border-[#00000014] rounded-[12px] py-2.5 px-3 text-left">
           <p className="text-xs text-[#00000066] font-medium">
             A balance needs a name. Select the customer so you can collect the
             balance later.
@@ -145,7 +145,7 @@ export function CustomerSelectDrawer({
           </span>
 
           {/* Customers List Box */}
-          <div className="flex flex-col border border-[#F1F1F1] rounded-2xl overflow-hidden bg-white max-h-[30vh] overflow-y-auto shadow-[0px_4px_8px_0px_#0000000A]">
+          <div className="flex flex-col border border-[#F1F1F1] rounded-[12px] overflow-hidden bg-white max-h-[30vh] overflow-y-auto shadow-[0px_4px_8px_0px_#0000000A]">
             {filtered.map((cust: any, index: number) => {
               const isSelected = selectedCustomer?._id === cust._id
               return (

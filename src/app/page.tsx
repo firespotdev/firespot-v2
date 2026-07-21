@@ -244,7 +244,7 @@ export default function ScannerPage() {
           <div className="flex-1 flex items-center justify-center px-8">
             <div className="flex-1 flex items-center justify-center">
               {error ? (
-                <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
+                <div className="text-center p-6 bg-black/60 rounded-[12px] max-w-sm">
                   <p className="text-white text-sm mb-2">
                     Camera access denied
                   </p>
@@ -277,7 +277,7 @@ export default function ScannerPage() {
           ) : (
             <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
               <CTACarousel>
-                <div className="bg-[#FFFFFF66] rounded-2xl px-4 py-3.5">
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
                   <h3 className="text-white font-bold text-sm">
                     Login to your Firespot Lite account
                   </h3>
@@ -292,7 +292,7 @@ export default function ScannerPage() {
                   </Link>
                 </div>
 
-                <div className="bg-[#FFFFFF66] rounded-2xl px-4 py-3.5">
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
                   <h3 className="text-white font-bold text-sm">
                     Get your Firespot QR Kit
                   </h3>
@@ -307,7 +307,7 @@ export default function ScannerPage() {
                   </Link>
                 </div>
 
-                <div className="bg-[#FFFFFF66] rounded-2xl px-4 py-3.5">
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
                   <h3 className="text-white font-bold text-sm">
                     Pay for your purchases faster
                   </h3>

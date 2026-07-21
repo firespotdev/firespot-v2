@@ -82,7 +82,7 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="h-9 w-9 flex items-center justify-center rounded-2xl border bg-white border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
+      <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border bg-white border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
         {onLogoClick ? (
           <button onClick={handleLeftButtonClick} type="button">
             <Image src={logoSrc} alt="firespot logo" width={20} height={20} />
@@ -126,7 +126,7 @@ export function PageHeader({
         <button
           onClick={onShareClick}
           type="button"
-          className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+          className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
         >
           <Share stroke="#868788" size={20} />
         </button>

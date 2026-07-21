@@ -244,12 +244,12 @@ export function CollectPaymentDrawer({
 
           {/* Receipt image wrapper */}
           <div className="flex-1 w-full bg-[#F4F6F8] flex flex-col items-center justify-center overflow-hidden">
-            <div className="flex justify-center items-center bg-[#EBEDEF] border border-[#DFDFDF] max-w-70 w-full max-h-100 h-full rounded-2xl">
+            <div className="flex justify-center items-center bg-[#EBEDEF] border border-[#DFDFDF] max-w-70 w-full max-h-100 h-full rounded-[12px]">
               {sale.receiptUrl ? (
                 <img
                   src={sale.receiptUrl}
                   alt="Receipt proof"
-                  className="w-full h-full object-contain rounded-2xl"
+                  className="w-full h-full object-contain rounded-[12px]"
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center text-[#9CA3AF]">
@@ -406,7 +406,7 @@ export function CollectPaymentDrawer({
             {/* Stack list of notification pills */}
             <div className="w-full flex flex-col gap-3">
               {/* Pill 1: Link Copied Notification */}
-              <div className="w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border border-[#EBEBEB] rounded-2xl px-4 py-3 flex justify-between items-center">
+              <div className="w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border border-[#EBEBEB] rounded-[12px] px-4 py-3 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                   <MerchantAvatar size={36} />
                   <div className="text-left">
@@ -436,7 +436,7 @@ export function CollectPaymentDrawer({
 
               {/* Pill 2: Uploaded Receipt Card (if receiptUrl exists) */}
               {sale.receiptUrl && (
-                <div className="w-full shadow-[0px_4px_8px_0px_#0000000A] border-[3px] border-[#24C1664D] rounded-2xl p-4 flex justify-between items-center">
+                <div className="w-full shadow-[0px_4px_8px_0px_#0000000A] border-[3px] border-[#24C1664D] rounded-[12px] p-4 flex justify-between items-center">
                   <div className="flex items-center gap-3">
                     <FileText size={20} color="#24C166" />
                     <div className="text-left">
@@ -468,7 +468,7 @@ export function CollectPaymentDrawer({
                 navigator.clipboard.writeText(checkoutUrl)
                 showNotificationToast({ message: 'Checkout link copied!' })
               }}
-              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-2xl gap-2 py-2"
+              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
             >
               <Link2 size={24} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">
@@ -482,7 +482,7 @@ export function CollectPaymentDrawer({
                   navigator.share({ title: 'Firespot Pay', url: checkoutUrl })
                 }
               }}
-              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-2xl gap-2 py-2"
+              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
             >
               <Share size={16} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">
@@ -492,7 +492,7 @@ export function CollectPaymentDrawer({
 
             <Button
               onClick={handleConfirmReceipt}
-              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-2xl gap-2 py-2"
+              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
             >
               <PenLine size={16} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">

@@ -131,7 +131,7 @@ function HomePageContent() {
         </div>
 
         <div className="border-t border-[#F1F3F5] mt-4 pt-16 pb-10 flex flex-col items-center px-8 text-center">
-          <span className="w-16 h-16 rounded-2xl bg-[#F1F3F5] flex items-center justify-center">
+          <span className="w-16 h-16 rounded-[12px] bg-[#F1F3F5] flex items-center justify-center">
             <Ghost className="w-7 h-7 text-[#9CA3AF]" strokeWidth={1.5} />
           </span>
           <p className="font-bold text-base text-black mt-6">

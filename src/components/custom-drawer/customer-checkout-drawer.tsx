@@ -232,7 +232,7 @@ export function CustomerCheckoutDrawer({
 
           {/* Account Details Box */}
           {bankAccount && (
-            <div className="w-full bg-[#F4F6F8] rounded-2xl p-4 text-left flex justify-between items-center mb-4 border border-[#E9EBED]">
+            <div className="w-full bg-[#F4F6F8] rounded-[12px] p-4 text-left flex justify-between items-center mb-4 border border-[#E9EBED]">
               <div className="flex flex-col">
                 <span className="text-xs text-[#00000060]">
                   Transferring to
@@ -270,7 +270,7 @@ export function CustomerCheckoutDrawer({
           </button>
 
           {/* Screenshot Upload Dropzone */}
-          <div className="w-full relative flex items-center justify-center p-6 border-2 border-dashed border-[#E9EBED] rounded-2xl hover:bg-gray-50 transition-all cursor-pointer mb-6 bg-[#F4F6F8]">
+          <div className="w-full relative flex items-center justify-center p-6 border-2 border-dashed border-[#E9EBED] rounded-[12px] hover:bg-gray-50 transition-all cursor-pointer mb-6 bg-[#F4F6F8]">
             <input
               type="file"
               accept="image/*"

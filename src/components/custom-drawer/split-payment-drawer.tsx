@@ -84,7 +84,7 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
       {installmentType === 'full' ? (
         <div className="flex flex-col gap-3">
           {/* Integrated Combined Card */}
-          <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] border border-[#F1F1F1] overflow-hidden text-left mb-1">
+          <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] border border-[#F1F1F1] overflow-hidden text-left mb-1">
             {/* Paid now */}
             <div className="p-3.5">
               <span className="text-[13px] font-medium text-[#6B7280]">
@@ -129,7 +129,7 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
           </div>
 
           {/* Info Alert Box */}
-          <div className="bg-[#F4F4F4] rounded-2xl p-3 border-2 border-[#0000000A] flex items-start gap-2 text-left mt-1">
+          <div className="bg-[#F4F4F4] rounded-[12px] p-3 border-2 border-[#0000000A] flex items-start gap-2 text-left mt-1">
             <AlertCircle color="#00000066" size={18} className="mt-0.5" />
             <p className="text-[12px] text-[#00000066] font-medium">
               Customer paid everything. Click “Paid in part” or “Edit” only if
@@ -144,7 +144,7 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
       ) : (
         <div className="flex flex-col gap-3">
           {/* Integrated Combined Card (Part Payment Active) */}
-          <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden text-left">
+          <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden text-left">
             {/* Paid now input */}
             <div className="p-3.5">
               <span className="text-[13px] font-medium text-[#6B7280]">
@@ -221,7 +221,7 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
           </div>
 
           {/* Balance Owed Card */}
-          <div className="bg-white rounded-2xl p-4 shadow-[0px_4px_8px_0px_#0000000A] border border-[#F1F1F1] flex flex-col items-start text-left">
+          <div className="bg-white rounded-[12px] p-4 shadow-[0px_4px_8px_0px_#0000000A] border border-[#F1F1F1] flex flex-col items-start text-left">
             <span className="text-[13px] font-medium text-[#6B7280]">
               Balance owed
             </span>

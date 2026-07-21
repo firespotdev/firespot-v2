@@ -4,8 +4,6 @@ import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
-  Search,
-  ListFilter,
   Eye,
   EyeOff,
   PieChart,
@@ -14,7 +12,7 @@ import {
   ScanLine,
 } from 'lucide-react'
 import { isToday, isYesterday, format } from 'date-fns'
-import { LoaderCircle } from '@/components/ui'
+import { EmptyState, LoaderCircle } from '@/components/ui'
 import { useCustomerHistory } from '@/services/sales/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import type { CustomerSale } from '@/services/sales/interface'
@@ -24,9 +22,12 @@ import {
   saleItemCount,
 } from '@/lib/utils/customer-sale'
 import { formatCurrency } from '@/lib/utils'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Map1, Scan, Sort } from 'iconsax-reactjs'
+import { MagnifyingGlassIcon } from '@phosphor-icons/react'
 
-type ActivityTab = 'ALL' | 'ORDERS' | 'BOOKINGS' | 'PAYMENTS'
-const TABS: ActivityTab[] = ['ALL', 'ORDERS', 'BOOKINGS', 'PAYMENTS']
+type ActivityTab = 'ALL' | 'ORDERS' | 'BOOKINGS' | 'PAYMENTS' | 'MISC'
+const TABS: ActivityTab[] = ['ALL', 'ORDERS', 'BOOKINGS', 'PAYMENTS', 'MISC']
 
 interface DayGroup {
   key: string
@@ -151,30 +152,26 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-[#F4F6F8] font-satoshi">
-      <div className="max-w-125 mx-auto min-h-dvh pb-28">
-        {/* Header */}
-        <header className="sticky top-0 z-10 bg-[#F4F6F8] flex items-center justify-between px-4 py-3">
-          <Image
-            src="/images/firespot_personal.png"
-            alt="Firespot"
-            width={32}
-            height={32}
-            className="w-8 h-8 object-contain"
-          />
-          <h1 className="text-lg font-bold text-black">Activity</h1>
-          <div className="flex items-center gap-3">
-            <button type="button" aria-label="Filter">
-              <ListFilter className="w-6 h-6 text-black" />
-            </button>
-            <button type="button" aria-label="Search">
-              <Search className="w-6 h-6 text-black" />
-            </button>
-          </div>
-        </header>
+    <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
+      <div className="max-w-125 mx-auto min-h-dvh">
+        <PageHeader
+          title="Activity"
+          logoSrc="/images/firespot_personal.png"
+          className="bg-[#F5F6F8]"
+          rightSlot={
+            <div className="flex items-center gap-3">
+              <button type="button" aria-label="Filter">
+                <Sort size={20} strokeWidth={2} color="black" />
+              </button>
+              <button type="button" aria-label="Search">
+                <MagnifyingGlassIcon size={20} strokeWidth={2} color="black" />
+              </button>
+            </div>
+          }
+        />
 
         {/* Tabs */}
-        <div className="flex gap-2 px-4 pt-1 pb-3 overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 px-3 pb-4 overflow-x-auto scrollbar-hide">
           {TABS.map((tab) => {
             const active = tab === activeTab
             return (
@@ -182,8 +179,10 @@ export default function ActivityPage() {
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`shrink-0 px-4 h-9 rounded-full text-xs font-bold tracking-[0.5px] flex items-center transition-colors ${
-                  active ? 'bg-black text-white' : 'bg-white text-[#00000099]'
+                className={`shrink-0 px-4 h-9 rounded-full text-[10px] font-bold tracking-[1px] flex items-center transition-colors ${
+                  active
+                    ? 'bg-black text-white'
+                    : 'bg-[#E5E7EB99] text-[#000000]'
                 }`}
               >
                 {tab}
@@ -192,109 +191,110 @@ export default function ActivityPage() {
           })}
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center pt-24">
-            <LoaderCircle />
-          </div>
-        ) : isError ? (
-          <div className="px-8 pt-24 text-center">
-            <p className="text-sm text-[#00000080] font-medium">
-              Couldn’t load your activity. Pull to refresh or try again later.
-            </p>
-          </div>
-        ) : filteredSales.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="px-4">
-            {/* Spent today card */}
-            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] p-4 flex items-center justify-between mb-5">
-              <div>
-                <p className="text-xs text-[#00000066] font-medium mb-1">
-                  Spent today
-                </p>
-                <p className="text-[26px] font-bold text-black -tracking-[0.4px] leading-none">
-                  {amountHidden
-                    ? '₦ • • • • •'
-                    : `₦ ${formatCurrency(spentToday)}`}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAmountHidden((v) => !v)}
-                  aria-label={amountHidden ? 'Show amount' : 'Hide amount'}
-                  className="w-9 h-9 rounded-full bg-[#E9EBED] flex items-center justify-center"
-                >
-                  {amountHidden ? (
-                    <Eye className="w-4.5 h-4.5 text-[#6B7280]" />
-                  ) : (
-                    <EyeOff className="w-4.5 h-4.5 text-[#6B7280]" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  aria-label="Breakdown"
-                  className="w-9 h-9 rounded-full bg-[#0075FF] flex items-center justify-center"
-                >
-                  <PieChart className="w-4.5 h-4.5 text-white" />
-                </button>
-              </div>
+        <div className="h-[calc(100dvh-12rem)] flex flex-col justify-center items-center">
+          {isLoading ? (
+            <div className="flex justify-center">
+              <LoaderCircle />
             </div>
-
-            {/* Grouped list */}
-            {groups.map((group) => (
-              <div key={group.key} className="mb-5">
-                <h2 className="text-[15px] font-bold text-black mb-2">
-                  {group.label}
-                </h2>
-                <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
-                  {group.sales.map((sale) => (
-                    <ActivityRow
-                      key={sale._id}
-                      sale={sale}
-                      onOpen={handleOpen}
-                    />
-                  ))}
+          ) : isError ? (
+            <div className="text-center">
+              <p className="text-sm text-[#00000080] font-medium">
+                Couldn’t load your activity. Pull to refresh or try again later.
+              </p>
+            </div>
+          ) : filteredSales.length === 0 ? (
+            <EmptyState
+              emoji={
+                <span
+                  className="text-[64px] leading-none"
+                  role="img"
+                  aria-label="clock"
+                >
+                  🕗
+                </span>
+              }
+              title="No Activity yet"
+              details="Your orders, bookings, payments, feedback, issues, refunds etc would be listed here."
+              cta={
+                <div className="flex items-center gap-3 mt-6">
+                  <Link
+                    href="/home"
+                    className="inline-flex items-center gap-1 bg-black text-white text-[10px] font-bold tracking-[1px] rounded-full h-9 px-4"
+                  >
+                    <Map1 size={16} color="white" />
+                    EXPLORE
+                  </Link>
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-1 bg-[#F1F1F1] border border-[#DFDFDF80] text-black text-[10px] font-bold tracking-[1px] rounded-full h-9 px-4"
+                  >
+                    <Scan size={16} color="black" />
+                    SCAN QR
+                  </Link>
+                </div>
+              }
+            />
+          ) : (
+            <div className="px-3 w-full h-full">
+              {/* Spent today card */}
+              <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] p-4 flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-xs text-[#00000066] font-medium mb-1">
+                    Spent today
+                  </p>
+                  <p className="text-[26px] font-bold text-black -tracking-[0.4px] leading-none">
+                    {amountHidden
+                      ? '₦ • • • • •'
+                      : `₦ ${formatCurrency(spentToday)}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAmountHidden((v) => !v)}
+                    aria-label={amountHidden ? 'Show amount' : 'Hide amount'}
+                    className="w-9 h-9 rounded-full bg-[#E9EBED] flex items-center justify-center"
+                  >
+                    {amountHidden ? (
+                      <Eye className="w-4.5 h-4.5 text-[#6B7280]" />
+                    ) : (
+                      <EyeOff className="w-4.5 h-4.5 text-[#6B7280]" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Breakdown"
+                    className="w-9 h-9 rounded-full bg-[#26B2FF] flex items-center justify-center"
+                  >
+                    <PieChart className="w-4.5 h-4.5 text-white" />
+                  </button>
                 </div>
               </div>
-            ))}
 
-            <p className="text-center text-xs text-[#00000066] font-medium py-4">
-              You’ve reached the end of the list
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
+              {/* Grouped list */}
+              {groups.map((group) => (
+                <div key={group.key} className="mb-5">
+                  <h2 className="text-[15px] font-bold text-black mb-2">
+                    {group.label}
+                  </h2>
+                  <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+                    {group.sales.map((sale) => (
+                      <ActivityRow
+                        key={sale._id}
+                        sale={sale}
+                        onOpen={handleOpen}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
 
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center text-center px-8 pt-20">
-      <span className="text-[64px] leading-none" role="img" aria-label="clock">
-        🕐
-      </span>
-      <p className="font-bold text-lg text-black mt-6">No activity yet</p>
-      <p className="text-sm text-[#00000080] mt-1 max-w-70">
-        Your orders, bookings, payments, feedback, issues, refunds etc would be
-        listed here.
-      </p>
-      <div className="flex items-center gap-3 mt-6">
-        <Link
-          href="/home"
-          className="inline-flex items-center gap-2 bg-black text-white text-xs font-bold tracking-[1px] rounded-full h-11 px-5"
-        >
-          <MapIcon className="w-4.5 h-4.5" />
-          EXPLORE
-        </Link>
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 bg-white text-black text-xs font-bold tracking-[1px] rounded-full h-11 px-5"
-        >
-          <ScanLine className="w-4.5 h-4.5" />
-          SCAN QR
-        </Link>
+              <p className="text-center text-xs text-[#00000066] font-medium py-4">
+                You’ve reached the end of the list
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

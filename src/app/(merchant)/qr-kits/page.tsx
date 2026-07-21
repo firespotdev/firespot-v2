@@ -61,13 +61,13 @@ export default function QRKitsPage() {
         {/* QR Kits List */}
         <div className="flex-1 px-4 pt-2">
           {qrKits.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center">
+            <div className="bg-white rounded-[12px] p-8 text-center">
               <p className="text-[#00000080] font-medium text-sm">
                 No QR kits found
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
               {qrKits.map((qrKit, index) => {
                 const isActive = qrKit.activationStatus === 'activated'
                 const statusText = isActive ? 'Active' : 'Inactive'

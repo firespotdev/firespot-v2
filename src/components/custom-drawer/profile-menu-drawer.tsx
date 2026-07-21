@@ -114,7 +114,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         <Link
           href="/profile"
           onClick={closeDrawer}
-          className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
+          className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
         >
           <div className="w-12 h-12 rounded-full bg-[#ced7e1] flex items-center justify-center">
             {profile?.profilePhotoUrl ? (
@@ -148,7 +148,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       </div>
 
       <div className="px-4 mb-3">
-        <div className="bg-white rounded-2xl p-4 shadow-[0px_4px_8px_0px_#0000000A] flex items-center gap-4 relative overflow-hidden">
+        <div className="bg-white rounded-[12px] p-4 shadow-[0px_4px_8px_0px_#0000000A] flex items-center gap-4 relative overflow-hidden">
           <div className="flex-1 z-10">
             <h3 className="text-[16px] font-bold text-black mb-1">
               Share your FS profile
@@ -264,7 +264,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           <Link
             href="/recents"
             onClick={closeDrawer}
-            className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D]"
+            className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-[12px] shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D]"
           >
             <Image
               src="/icons/history_brown.svg"
@@ -288,7 +288,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       {/* Menu Sections */}
       <div className="flex-1 px-4 space-y-3">
         {/* Section 1: Main navigation */}
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <Link
             href="/record-sale"
             onClick={closeDrawer}
@@ -368,7 +368,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             onClick={handleBankAccountsClick}
@@ -431,7 +431,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-2.5 px-4 border-b border-[#F1F1F1]"
@@ -464,7 +464,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         </div>
 
         {/* Section 2: Support */}
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-3.5 px-4 border-b border-[#F1F1F1]"
@@ -531,7 +531,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         </div>
 
         {/* Section 3: Social */}
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-3.5 px-4 border-b border-[#F1F1F1]"
@@ -583,7 +583,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </a>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
           <button
             type="button"
             onClick={handleSignOut}

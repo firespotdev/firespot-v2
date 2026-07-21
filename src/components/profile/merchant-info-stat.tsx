@@ -163,7 +163,7 @@ export function MerchantInfoStat({
       {unconfirmedCount > 0 && (
         <Link
           href="/recents"
-          className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
+          className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-[12px] shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
         >
           <Image
             src="/icons/history_brown.svg"
@@ -184,7 +184,7 @@ export function MerchantInfoStat({
         </Link>
       )}
 
-      <div className="border-2 border-[#000000]/8 bg-white rounded-2xl w-full">
+      <div className="border-2 border-[#000000]/8 bg-white rounded-[12px] w-full">
         <div className="px-4 py-3 flex justify-between items-center border-b-2 border-[#F4F6F8]">
           <div>
             <button

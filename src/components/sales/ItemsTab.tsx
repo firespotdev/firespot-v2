@@ -29,7 +29,7 @@ export function ItemsTab({
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       {/* Search Input Bar */}
       <div className="px-4 py-2 border-b border-[#F4F6F8]">
-        <div className="flex items-center bg-[#F4F6F8] rounded-2xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#0085FF] focus-within:bg-white transition-all border border-transparent focus-within:border-[#0085FF]">
+        <div className="flex items-center bg-[#F4F6F8] rounded-[12px] px-3 py-2 focus-within:ring-2 focus-within:ring-[#0085FF] focus-within:bg-white transition-all border border-transparent focus-within:border-[#0085FF]">
           <Search className="w-4 h-4 text-[#8E8E93] mr-2" />
           <input
             type="text"

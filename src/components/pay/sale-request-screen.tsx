@@ -47,7 +47,7 @@ export function SaleRequestScreen({
             type="button"
             onClick={onShare}
             aria-label="Share"
-            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
           >
             <Share color="#868788" size={16} />
           </button>
@@ -56,7 +56,7 @@ export function SaleRequestScreen({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
           >
             <X size={16} color="#868788" />
           </button>
@@ -122,7 +122,7 @@ export function SaleRequestScreen({
           </p>
 
           {itemsExpanded && items.length > 0 && (
-            <div className="mt-3 w-full max-w-80 bg-white border border-[#F1F1F1] rounded-2xl divide-y divide-[#F1F1F1] text-left">
+            <div className="mt-3 w-full max-w-80 bg-white border border-[#F1F1F1] rounded-[12px] divide-y divide-[#F1F1F1] text-left">
               {items.map((item, index) => (
                 <div
                   key={`${item.productName}-${index}`}

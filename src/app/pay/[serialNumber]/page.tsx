@@ -168,7 +168,7 @@ export default function PaymentPage() {
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                 backdropFilter: 'blur(125.30880737304688px)',
               }}
-              className="p-4 rounded-2xl flex flex-col items-center relative w-full max-w-75 mb-5"
+              className="p-4 rounded-[12px] flex flex-col items-center relative w-full max-w-75 mb-5"
             >
               <h3 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
                 SCAN TO TRANSFER
@@ -199,7 +199,7 @@ export default function PaymentPage() {
                 </svg>
 
                 <div
-                  className="rounded-2xl p-1"
+                  className="rounded-[12px] p-1"
                   style={{
                     background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                   }}

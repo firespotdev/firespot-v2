@@ -137,7 +137,7 @@ function OrderStatusContent() {
               </span>
             </Button>
 
-            <div className="w-full border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-2xl mt-8 shrink-0">
+            <div className="w-full border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-[12px] mt-8 shrink-0">
               <Link
                 href="/profile"
                 className="flex items-center gap-4 border-b border-[#F1F1F1] p-3"

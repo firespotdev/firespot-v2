@@ -1,16 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import {
-  Package,
-  RotateCcw,
-  Heart,
-  Info,
-  Share,
-  Download,
-  Clock,
-  Flag,
-} from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useDrawerStore } from '@/services/drawer'
 import { CustomerSale } from '@/services/sales/interface'
@@ -27,6 +17,16 @@ import {
   showNotificationToast,
 } from '../ui'
 import { resolveSaleMerchant } from '@/lib/utils/customer-sale'
+import {
+  ArrowClockwiseIcon,
+  ClockCounterClockwiseIcon,
+  CubeIcon,
+  DownloadSimpleIcon,
+  ExportIcon,
+  HeartIcon,
+  InfoIcon,
+  FlagIcon,
+} from '@phosphor-icons/react'
 
 interface ActivityOptionsDrawerProps {
   sale: CustomerSale
@@ -48,7 +48,7 @@ export function ActivityOptionsDrawer({ sale }: ActivityOptionsDrawerProps) {
     () =>
       Boolean(
         merchant.id &&
-          favoritesData?.favorites?.some((f) => f.id === merchant.id),
+        favoritesData?.favorites?.some((f) => f.id === merchant.id),
       ),
     [favoritesData, merchant.id],
   )
@@ -102,51 +102,51 @@ export function ActivityOptionsDrawer({ sale }: ActivityOptionsDrawerProps) {
       <div className="flex flex-col gap-4 px-3 pb-2">
         <ActionList>
           <ActionListItem
-            icon={<Package size={24} className="text-[#111827] stroke-[2.2px]" />}
+            icon={<CubeIcon size={24} className="text-[#111827]" />}
             title="View items"
             onClick={() => {
               showNotificationToast({ message: 'Coming soon' })
               close()
             }}
+            className="py-[13.5px]"
           />
           <ActionListItem
-            icon={
-              <RotateCcw size={24} className="text-[#111827] stroke-[2.2px]" />
-            }
+            icon={<ArrowClockwiseIcon size={24} className="text-[#111827]" />}
             title={`Pay ${businessName} again`}
             onClick={handlePayAgain}
+            className="py-[13.5px]"
           />
           <ActionListItem
             icon={
-              <Heart
+              <HeartIcon
                 size={24}
-                className="text-[#111827] stroke-[2.2px]"
+                className="text-[#111827] "
                 fill={isFaved ? '#111827' : 'none'}
               />
             }
             title={isFaved ? 'Remove from Faves' : 'Add business to Faves'}
             onClick={handleToggleFave}
+            className="py-[13.5px]"
           />
           <ActionListItem
-            icon={<Info size={24} className="text-[#111827] stroke-[2.2px]" />}
+            icon={<InfoIcon size={24} className="text-[#111827] " />}
             title={`About ${businessName}`}
             onClick={() => {
               showNotificationToast({ message: 'Coming soon' })
               close()
             }}
+            className="py-[13.5px]"
           />
         </ActionList>
 
         <ActionList>
           <ActionListItem
-            icon={<Share size={24} className="text-[#111827] stroke-[2.2px]" />}
+            icon={<ExportIcon size={24} className="text-[#111827] " />}
             title="Share receipt"
             onClick={handleShareReceipt}
           />
           <ActionListItem
-            icon={
-              <Download size={24} className="text-[#111827] stroke-[2.2px]" />
-            }
+            icon={<DownloadSimpleIcon size={24} className="text-[#111827] " />}
             title="Download receipt"
             onClick={() => {
               close()
@@ -154,14 +154,17 @@ export function ActivityOptionsDrawer({ sale }: ActivityOptionsDrawerProps) {
             }}
           />
           <ActionListItem
-            icon={<Clock size={24} className="text-[#111827] stroke-[2.2px]" />}
+            icon={
+              <ClockCounterClockwiseIcon
+                size={24}
+                className="text-[#111827] "
+              />
+            }
             title="View past activity"
             onClick={close}
           />
           <ActionListItem
-            icon={
-              <Flag size={24} className="text-[#FF3B30] stroke-[2.2px]" />
-            }
+            icon={<FlagIcon size={24} color="black" />}
             title="Report issue"
             danger
             onClick={() => {

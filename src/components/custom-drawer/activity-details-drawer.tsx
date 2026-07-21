@@ -9,6 +9,7 @@ import {
   Copy,
   Check,
   MoreVertical,
+  MoreHorizontal,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
@@ -143,7 +144,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
         <CircularIconButton icon="arrow-left" size="sm" onClick={closeDrawer} />
         <h2 className="text-base font-bold text-black">Transaction details</h2>
         <CircularIconButton
-          icon={<MoreVertical size={20} />}
+          icon={<MoreHorizontal size={20} />}
           size="sm"
           onClick={() =>
             openDrawer({ type: 'activity-options', props: { sale } })
@@ -214,7 +215,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
           </div>
 
           {/* Card 1: status + amount */}
-          <div className="w-full border border-[#F1F1F1] rounded-2xl bg-white p-5 space-y-4">
+          <div className="w-full border border-[#F1F1F1] rounded-[12px] bg-white p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-[#F1F1F1] pb-4">
               <span className="text-[14px] text-[#00000080] font-normal">
                 Status
@@ -232,7 +233,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
           </div>
 
           {/* Card 2: payment */}
-          <div className="w-full border border-[#F1F1F1] rounded-2xl bg-white p-5 space-y-4 mt-4">
+          <div className="w-full border border-[#F1F1F1] rounded-[12px] bg-white p-5 space-y-4 mt-4">
             <p className="text-[11px] font-bold text-[#00000066] tracking-[1px]">
               PAYMENT
             </p>
@@ -270,7 +271,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
 
           {/* Card 3: more */}
           {merchant.businessIndustry && (
-            <div className="w-full border border-[#F1F1F1] rounded-2xl bg-white p-5 space-y-4 mt-4">
+            <div className="w-full border border-[#F1F1F1] rounded-[12px] bg-white p-5 space-y-4 mt-4">
               <p className="text-[11px] font-bold text-[#00000066] tracking-[1px]">
                 MORE
               </p>

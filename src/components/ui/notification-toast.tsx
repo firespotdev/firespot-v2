@@ -69,7 +69,7 @@ export function showNewPaymentToast({
 }) {
   return toast.custom(
     (id) => (
-      <div className="w-full flex items-center gap-3 bg-white rounded-2xl py-3 px-4 shadow-[0px_4px_16px_rgba(0,0,0,0.12)]">
+      <div className="w-full flex items-center gap-3 bg-white rounded-[12px] py-3 px-4 shadow-[0px_4px_16px_rgba(0,0,0,0.12)]">
         <MerchantAvatar size={36} />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-black leading-tight truncate">
@@ -121,7 +121,7 @@ export function showReceiptUploadedToast({
 }) {
   return toast.custom(
     (id) => (
-      <div className="w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border-[3px] border-[#24C1664D] rounded-2xl p-3 flex justify-between items-center">
+      <div className="w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border-[3px] border-[#24C1664D] rounded-[12px] p-3 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <FileText size={20} color="#24C166" />
           <div className="text-left">

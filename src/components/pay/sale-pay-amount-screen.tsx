@@ -62,7 +62,7 @@ export function SalePayAmountScreen({
             type="button"
             onClick={onShare}
             aria-label="Share"
-            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
           >
             <Share color="#868788" size={16} />
           </button>
@@ -71,7 +71,7 @@ export function SalePayAmountScreen({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-9 w-9 bg-[#00000014] rounded-2xl flex items-center justify-center"
+            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
           >
             <X size={16} color="#868788" />
           </button>
@@ -107,7 +107,7 @@ export function SalePayAmountScreen({
           </div>
 
           {/* Amount + description card */}
-          <div className="w-full bg-white border border-[#E5E7EB] rounded-2xl mt-4 shadow-[0px_4px_8px_0px_#0000000A]">
+          <div className="w-full bg-white border border-[#E5E7EB] rounded-[12px] mt-4 shadow-[0px_4px_8px_0px_#0000000A]">
             <div className="p-4">
               <p className="text-xs text-[#64748B] font-medium">Enter amount</p>
               <div className="flex items-center gap-3 mt-1">

@@ -377,7 +377,7 @@ function ActivatePageContent() {
               </p>
 
               {scannerError ? (
-                <div className="text-center p-6 bg-white/20 rounded-2xl max-w-sm">
+                <div className="text-center p-6 bg-white/20 rounded-[12px] max-w-sm">
                   <p className="text-white text-sm mb-2">{scannerError}</p>
                 </div>
               ) : (
@@ -510,7 +510,7 @@ function ActivatePageContent() {
                     'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                   backdropFilter: 'blur(125.30880737304688px)',
                 }}
-                className="py-6 px-6 rounded-2xl flex flex-col items-center relative w-full max-w-75"
+                className="py-6 px-6 rounded-[12px] flex flex-col items-center relative w-full max-w-75"
               >
                 <h2 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
                   SCAN TO TRANSFER
@@ -544,7 +544,7 @@ function ActivatePageContent() {
 
                   {/* Gradient Border Container */}
                   <div
-                    className="rounded-2xl p-1"
+                    className="rounded-[12px] p-1"
                     style={{
                       background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                     }}
@@ -759,7 +759,7 @@ function ActivatePageContent() {
             </div>
           </div>
 
-          <div className="p-4 pb-6 border-t border-[#F1F1F1] rounded-2xl">
+          <div className="p-4 pb-6 border-t border-[#F1F1F1] rounded-[12px]">
             <Button
               onClick={handlePayment}
               disabled={initiateActivation.isPending}
