@@ -19,11 +19,9 @@ export function VerifyIdentityDrawer({}: VerifyIdentityDrawerProps) {
   const { closeDrawer } = useDrawerStore()
   const { data: status } = useKycStatus()
 
+  // "Continue" rather than "Start" once at least one step is already done.
   const isResuming = Boolean(
-    status?.nextCheck &&
-      status.requiredChecks.some(
-        (check) => status.checks?.[check]?.status === 'passed',
-      ),
+    status?.nextStep && status.steps.some((step) => step.status === 'passed'),
   )
 
   const handleContinue = () => {

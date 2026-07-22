@@ -1,5 +1,5 @@
 export type PlanTier = 'LITE' | 'PRO' | 'PROMAX'
-export type KycCheck = 'bvn' | 'nin' | 'liveness' | 'cac'
+export type KycCheck = 'bvn' | 'nin' | 'cac'
 export type BillingType = 'one_time' | 'monthly'
 export type PlanStatus = 'none' | 'paid' | 'verifying' | 'verified' | 'failed'
 
@@ -16,7 +16,12 @@ export interface PlanDefinition {
   billingType: BillingType
   perStore: boolean
   tagline: string
-  requiredChecks: KycCheck[]
+  requiredSteps: Array<{
+    key: KycCheck
+    product: 'enhanced_kyc' | 'biometric_kyc' | 'kyb'
+    idType: string
+    label: string
+  }>
   badge: 'PRO' | 'PROMAX' | null
   badgeLabel: string | null
   dailyCap: number
@@ -28,7 +33,7 @@ export interface CurrentPlanState {
   planStatus: PlanStatus
   verificationLevel: 'PRO' | 'PROMAX' | null
   planCurrentPeriodEnd: string | null
-  nextCheck: KycCheck | null
+  nextStep: KycCheck | null
 }
 
 export interface PlanCatalogResponse {

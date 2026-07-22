@@ -5,7 +5,6 @@ import { apiClient } from '@/lib/utils/axios'
 import type {
   KycStatusResponse,
   KycSessionResponse,
-  VerifyNinPayload,
   VerifyCacPayload,
 } from './interface'
 import type { KycCheck } from '../merchant-plans/interface'
@@ -18,11 +17,6 @@ export const KycApi = {
 
   createSession: async (): Promise<KycSessionResponse> => {
     const { data } = await apiClient.post('/kyc/session')
-    return data
-  },
-
-  verifyNin: async (payload: VerifyNinPayload) => {
-    const { data } = await apiClient.post('/kyc/nin', payload)
     return data
   },
 
@@ -64,14 +58,6 @@ const invalidateKyc = (queryClient: ReturnType<typeof useQueryClient>) => {
 export const useCreateKycSession = () => {
   return useMutation({
     mutationFn: () => KycApi.createSession(),
-  })
-}
-
-export const useVerifyNin = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (payload: VerifyNinPayload) => KycApi.verifyNin(payload),
-    onSuccess: () => invalidateKyc(queryClient),
   })
 }
 

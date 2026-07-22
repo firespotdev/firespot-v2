@@ -151,7 +151,7 @@ export default function ProfilePage() {
         />
 
         {/* Grandfathered merchants: re-surfaces once per login until upgraded */}
-        <UpgradePrompt />
+        {/* <UpgradePrompt /> */}
 
         <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
           {/* Hidden file input for photo upload */}

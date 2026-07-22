@@ -14,30 +14,19 @@ import {
 import {
   useKycStatus,
   useCreateKycSession,
-  useVerifyNin,
   useVerifyCac,
   type KycSessionResponse,
 } from '@/services/kyc'
-import type { KycCheck } from '@/services/merchant-plans'
 import { SmileIdEmbed } from '@/components/kyc/smileid-embed'
-
-const CHECK_LABELS: Record<KycCheck, string> = {
-  bvn: 'Bank Verification Number',
-  nin: 'National Identity Number',
-  liveness: 'Liveness check (Selfie)',
-  cac: 'CAC business registration',
-}
 
 function VerifyContent() {
   const router = useRouter()
   // Poll while incomplete so async SmileID callbacks land without a refresh.
   const { data: status, isLoading, refetch } = useKycStatus(true)
   const createSession = useCreateKycSession()
-  const verifyNin = useVerifyNin()
   const verifyCac = useVerifyCac()
 
   const [session, setSession] = useState<KycSessionResponse | null>(null)
-  const [ninValue, setNinValue] = useState('')
   const [rcValue, setRcValue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -66,10 +55,8 @@ function VerifyContent() {
     )
   }
 
-  const { requiredChecks, checks, nextCheck, nextCheckMode, isComplete } = status
-  const passedCount = requiredChecks.filter(
-    (c) => checks?.[c]?.status === 'passed',
-  ).length
+  const { steps, nextStep, nextStepMode, isComplete } = status
+  const passedCount = steps.filter((s) => s.status === 'passed').length
 
   const handleStartWebCheck = () => {
     setError(null)
@@ -80,30 +67,6 @@ function VerifyContent() {
           err?.response?.data?.message || 'Could not start verification.',
         ),
     })
-  }
-
-  const handleSubmitNin = () => {
-    setError(null)
-    if (ninValue.trim().length < 10) {
-      setError('Enter a valid NIN')
-      return
-    }
-    verifyNin.mutate(
-      { idNumber: ninValue.trim() },
-      {
-        onSuccess: (res: any) => {
-          if (res?.passed) {
-            showNotificationToast({ message: 'NIN verified' })
-            setNinValue('')
-          } else {
-            setError('We could not verify that NIN. Check it and try again.')
-          }
-          refetch()
-        },
-        onError: (err: any) =>
-          setError(err?.response?.data?.message || 'Could not verify NIN.'),
-      },
-    )
   }
 
   const handleSubmitCac = () => {
@@ -149,23 +112,23 @@ function VerifyContent() {
         <div className="flex-1 px-4 pb-8">
           {/* Progress — makes resumption legible */}
           <p className="text-sm text-[#00000080] mb-4">
-            {passedCount} of {requiredChecks.length} checks complete
+            {passedCount} of {steps.length} step{steps.length === 1 ? '' : 's'}{' '}
+            complete
           </p>
 
           <div className="border border-[#F1F1F1] rounded-2xl overflow-hidden mb-6">
-            {requiredChecks.map((check) => {
-              const state = checks?.[check]?.status || 'pending'
-              const isNext = check === nextCheck
+            {steps.map((step) => {
+              const isNext = step.key === nextStep?.key
               return (
                 <div
-                  key={check}
+                  key={step.key}
                   className="flex items-center gap-3 p-4 border-b border-[#F1F1F1] last:border-b-0"
                 >
                   <span
                     className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                      state === 'passed'
+                      step.status === 'passed'
                         ? 'bg-[#24C166] text-white'
-                        : state === 'failed'
+                        : step.status === 'failed'
                           ? 'bg-[#F04438] text-white'
                           : 'bg-[#F1F1F1] text-[#9CA3AF]'
                     }`}
@@ -174,13 +137,21 @@ function VerifyContent() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-[15px] font-medium text-black">
-                      {CHECK_LABELS[check]}
+                      {step.label}
                     </p>
-                    <p className="text-xs text-[#00000066] mt-0.5 capitalize">
-                      {state === 'passed'
+                    <p
+                      className={`text-xs mt-0.5 ${
+                        step.status === 'failed'
+                          ? 'text-[#F04438]'
+                          : 'text-[#00000066]'
+                      }`}
+                    >
+                      {step.status === 'passed'
                         ? 'Verified'
-                        : state === 'failed'
-                          ? 'Failed — retry'
+                        : step.status === 'failed'
+                          ? // Show SmileID's actual reason (e.g. ID not found)
+                            // rather than a bare "failed".
+                            step.reason || 'Failed — tap to retry'
                           : isNext
                             ? 'Next step'
                             : 'Pending'}
@@ -230,29 +201,7 @@ function VerifyContent() {
                 setError(message)
               }}
             />
-          ) : nextCheck === 'nin' ? (
-            <div className="space-y-4">
-              <div>
-                <Label>National Identity Number (NIN)</Label>
-                <Input
-                  value={ninValue}
-                  onChange={(e) =>
-                    setNinValue(e.target.value.replace(/\D/g, '').slice(0, 11))
-                  }
-                  inputMode="numeric"
-                  placeholder="Enter your 11-digit NIN"
-                  className="w-full font-medium"
-                />
-              </div>
-              <Button
-                onClick={handleSubmitNin}
-                disabled={verifyNin.isPending}
-                className="w-full h-13 rounded-full bg-black text-white font-bold"
-              >
-                {verifyNin.isPending ? <Spinner /> : 'Verify NIN'}
-              </Button>
-            </div>
-          ) : nextCheck === 'cac' ? (
+          ) : nextStepMode === 'server' && nextStep?.key === 'cac' ? (
             <div className="space-y-4">
               <div>
                 <Label>CAC registration (RC) number</Label>
@@ -271,12 +220,13 @@ function VerifyContent() {
                 {verifyCac.isPending ? <Spinner /> : 'Verify business'}
               </Button>
             </div>
-          ) : nextCheckMode === 'web_sdk' && nextCheck ? (
+          ) : nextStepMode === 'web_sdk' && nextStep ? (
             <div className="space-y-4">
               <p className="text-sm text-[#00000080]">
-                {nextCheck === 'bvn'
-                  ? 'You’ll be asked to consent and enter your BVN securely.'
-                  : 'You’ll be asked to take a quick selfie to confirm it’s you.'}
+                {nextStep.requiresSelfie
+                  ? // Biometric: one job does the ID lookup and the selfie.
+                    `You’ll consent, enter your ${nextStep.key.toUpperCase()}, and take a quick selfie so we can confirm it’s you.`
+                  : `You’ll be asked to consent and enter your ${nextStep.key.toUpperCase()} securely.`}
               </p>
               <Button
                 onClick={handleStartWebCheck}
@@ -286,7 +236,7 @@ function VerifyContent() {
                 {createSession.isPending ? (
                   <Spinner />
                 ) : (
-                  `Start ${CHECK_LABELS[nextCheck]}`
+                  `Start ${nextStep.label}`
                 )}
               </Button>
             </div>

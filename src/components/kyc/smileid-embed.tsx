@@ -81,11 +81,18 @@ export function SmileIdEmbed({
         product: session.product,
         callback_url: session.callbackUrl,
         environment: session.environment,
+        // Nigeria-only, BVN pre-selected — the user skips the country and
+        // ID-type pickers and lands directly on the BVN/consent step.
+        ...(session.idSelection ? { id_selection: session.idSelection } : {}),
+        ...(session.consentRequired
+          ? { consent_required: session.consentRequired }
+          : {}),
         partner_details: {
           partner_id: session.partnerId,
           name: 'Firespot',
-          logo_url: `${window.location.origin}/icons/firespot_logo.svg`,
-          policy_url: 'https://firespot.co/privacy',
+          logo_url:
+            session.logoUrl || `${window.location.origin}/icons/firespot_logo.svg`,
+          policy_url: session.privacyUrl || 'https://firespot.co/privacy',
           theme_color: '#FB5012',
         },
         onSuccess,
