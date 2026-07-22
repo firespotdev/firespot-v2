@@ -15,24 +15,6 @@ import { KycService } from './kyc.service'
 import { SmileIdService } from '../services/smileid/smileid.service'
 import type { KycCheck } from '../merchant-plans/constants/plans'
 
-class VerifyNinDto {
-  @IsString()
-  @IsNotEmpty()
-  idNumber: string
-
-  @IsString()
-  @IsOptional()
-  firstName?: string
-
-  @IsString()
-  @IsOptional()
-  lastName?: string
-
-  @IsString()
-  @IsOptional()
-  dob?: string
-}
-
 class VerifyCacDto {
   @IsString()
   @IsNotEmpty()
@@ -71,14 +53,6 @@ export class KycController {
     return this.kycService.createSession(req.user.userId)
   }
 
-  @Post('nin')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Verify NIN (server-to-server Enhanced KYC)' })
-  async verifyNin(@Request() req, @Body() dto: VerifyNinDto) {
-    return this.kycService.verifyNin(req.user.userId, dto)
-  }
-
   @Post('cac')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
@@ -98,8 +72,11 @@ export class KycController {
   /**
    * Public SmileID callback. Signature-verified; SmileID sends the signature
    * and timestamp in the body of the job result.
+   *
+   * Both paths are registered so an existing SMILEID_CALLBACK_URL pointing at
+   * /kyc/callback keeps working alongside the namespaced form.
    */
-  @Post('smileid/callback')
+  @Post(['callback', 'smileid/callback'])
   @ApiOperation({ summary: 'SmileID async job result callback' })
   @ApiResponse({ status: 201, description: 'Callback received' })
   async callback(@Body() payload: any, @Headers() headers: Record<string, string>) {

@@ -6,6 +6,8 @@
   "license": "MIT",
   "scripts": {
     "build": "nest build",
+    "plans:create": "ts-node -T scripts/create-paystack-plans.ts",
+    "merchant:reset": "ts-node -T scripts/reset-merchant-verification.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

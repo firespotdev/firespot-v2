@@ -16,7 +16,7 @@ import {
   PLAN_REFERENCE_PREFIX,
   PLAN_TIERS,
   PlanTier,
-  getNextCheck,
+  getNextStep,
   getPlan,
 } from './constants/plans'
 
@@ -45,7 +45,9 @@ export class MerchantPlansService {
         planStatus: user?.planStatus || 'none',
         verificationLevel: user?.verificationLevel || null,
         planCurrentPeriodEnd: user?.planCurrentPeriodEnd || null,
-        nextCheck: tier ? getNextCheck(tier, user?.kyc as any) : null,
+        nextStep: tier
+          ? (getNextStep(tier, user?.kyc as any)?.key ?? null)
+          : null,
       },
     }
   }

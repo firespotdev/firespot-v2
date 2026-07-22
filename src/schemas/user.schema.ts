@@ -2,12 +2,20 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { BankAccount, BankAccountSchema } from "./bank-account.schema";
 
-/** State of a single SmileID KYC check (bvn / nin / liveness / cac). */
+/** State of a single SmileID KYC check (bvn / nin / cac). */
 export interface KycCheckState {
   status?: "pending" | "passed" | "failed";
   jobId?: string;
   checkedAt?: Date;
   attempts?: number;
+  /** Why the check failed, surfaced to the merchant so they can correct it. */
+  reason?: string;
+  /**
+   * Which SmileID product proved this check (enhanced_kyc / biometric_kyc /
+   * kyb). A tier requiring a stronger product than the one on record reopens
+   * the step — e.g. a LITE enhanced BVN does not satisfy PRO's biometric BVN.
+   */
+  product?: string;
 }
 
 @Schema({ timestamps: true })
@@ -129,21 +137,20 @@ export class User extends Document {
   @Prop({ enum: ["PRO", "PROMAX"] })
   verificationLevel?: string;
 
-  // Per-check SmileID KYC state. Drives resumability: the first required check
-  // that isn't "passed" is where the merchant picks back up.
+  // Per-check SmileID KYC state. Drives resumability: the first required step
+  // not yet satisfied is where the merchant picks back up. `product` records
+  // how it was proven, so a stronger tier can reopen a weaker pass.
   @Prop({
     type: {
-      bvn: { status: String, jobId: String, checkedAt: Date, attempts: Number },
-      nin: { status: String, jobId: String, checkedAt: Date, attempts: Number },
-      liveness: { status: String, jobId: String, checkedAt: Date, attempts: Number },
-      cac: { status: String, jobId: String, checkedAt: Date, attempts: Number },
+      bvn: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String },
+      nin: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String },
+      cac: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String },
     },
     default: {},
   })
   kyc?: {
     bvn?: KycCheckState;
     nin?: KycCheckState;
-    liveness?: KycCheckState;
     cac?: KycCheckState;
   };
 
