@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -18,7 +19,11 @@ import { nanoid } from 'nanoid'
 import { Customer, CustomerDocument } from '../schemas/customer.schema'
 import { CloudinaryService } from '../users/services/cloudinary.service'
 import { AccountLinkingService } from '../account-linking/account-linking.service'
-import { PLANS, PlanTier } from '../merchant-plans/constants/plans'
+import {
+  PLANS,
+  getEffectiveTier,
+  getCollectEligibility,
+} from '../merchant-plans/constants/plans'
 
 @Injectable()
 export class SalesService {
@@ -36,6 +41,10 @@ export class SalesService {
   /**
    * Hard-blocks recording once the merchant's plan daily cap is reached.
    *
+   * The cap comes from getEffectiveTier, not the raw planTier: a merchant
+   * whose subscription lapsed past its grace window is capped at the LITE
+   * floor rather than keeping the tier they stopped paying for.
+   *
    * Grandfathered merchants (no planTier) are exempt — they predate plans, and
    * capping them on deploy would break active businesses.
    */
@@ -45,10 +54,13 @@ export class SalesService {
   ): Promise<void> {
     const merchant = await this.userModel
       .findById(merchantId)
-      .select('planTier')
+      // pendingPlanChange must be projected: a due downgrade lowers the cap
+      // immediately, before the record is materialised.
+      .select('planTier planStatus planGraceUntil pendingPlanChange')
       .exec()
 
-    const tier = merchant?.planTier as PlanTier | undefined
+    if (!merchant) return
+    const tier = getEffectiveTier(merchant)
     if (!tier || !PLANS[tier]) return // grandfathered / no plan → exempt
 
     const cap = PLANS[tier].dailyCap
@@ -182,10 +194,41 @@ export class SalesService {
   }
 
   //RANDOM REF?
+  /**
+   * Blocks initiating a collection without a verified plan.
+   *
+   * Only merchant-initiated collections are gated. Recording — including a
+   * customer scanning the merchant's QR, which produces isCollection:false —
+   * is always allowed, so QR kits keep working without a plan.
+   */
+  private async assertCanCollect(
+    merchantId: string | Types.ObjectId,
+  ): Promise<void> {
+    const merchant = await this.userModel
+      .findById(merchantId)
+      .select(
+        'planTier planStatus planGraceUntil kycCompletedAt pendingPlanChange',
+      )
+      .exec()
+    if (!merchant) return
+
+    const { canCollect, reason } = getCollectEligibility(merchant)
+    if (canCollect) return
+
+    throw new ForbiddenException({
+      message:
+        reason === 'kyc_incomplete'
+          ? 'Finish verifying your identity to start collecting payments.'
+          : 'Upgrade to a Firespot Business plan to collect payments. You can still record sales.',
+      reason,
+    })
+  }
+
   async createPendingCollectSale(
     merchantId: string,
     dto: CreatePendingSaleDto,
   ): Promise<Sale> {
+    await this.assertCanCollect(merchantId)
     await this.assertDailyCap(merchantId, dto.amount || 0)
 
     const firstKit = await this.qrKitModel

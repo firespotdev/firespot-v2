@@ -8,7 +8,7 @@ import {
   Request,
 } from '@nestjs/common'
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
-import { IsIn, IsNotEmpty, IsString } from 'class-validator'
+import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { MerchantPlansService } from './merchant-plans.service'
 import { PLAN_TIERS } from './constants/plans'
@@ -18,6 +18,10 @@ class PurchasePlanDto {
   @IsNotEmpty()
   @IsIn(PLAN_TIERS, { message: 'Invalid plan tier' })
   tier: string
+
+  @IsOptional()
+  @IsIn(['monthly', 'annually'], { message: 'Invalid billing interval' })
+  interval?: 'monthly' | 'annually'
 }
 
 @ApiTags('merchant-plans')
@@ -40,7 +44,37 @@ export class MerchantPlansController {
   @ApiOperation({ summary: 'Start a plan purchase (returns Paystack URL)' })
   @ApiResponse({ status: 201, description: 'Payment initialized' })
   async purchase(@Request() req, @Body() dto: PurchasePlanDto) {
-    return this.merchantPlansService.purchase(req.user.userId, dto.tier)
+    return this.merchantPlansService.purchase(
+      req.user.userId,
+      dto.tier,
+      dto.interval,
+    )
+  }
+
+  @Post('preview')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'What a plan change would cost, without committing to it',
+  })
+  @ApiResponse({ status: 201, description: 'Quote returned' })
+  async preview(@Request() req, @Body() dto: PurchasePlanDto) {
+    return this.merchantPlansService.previewChange(
+      req.user.userId,
+      dto.tier,
+      dto.interval,
+    )
+  }
+
+  @Post('cancel')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: 'Cancel the active subscription (access runs to period end)',
+  })
+  @ApiResponse({ status: 201, description: 'Subscription cancelled' })
+  async cancel(@Request() req) {
+    return this.merchantPlansService.cancelSubscription(req.user.userId)
   }
 
   @Get('verify/:reference')

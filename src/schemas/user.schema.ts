@@ -16,6 +16,12 @@ export interface KycCheckState {
    * the step — e.g. a LITE enhanced BVN does not satisfy PRO's biometric BVN.
    */
   product?: string;
+  /**
+   * The SmileID user_id this check's job ran under. Stored rather than
+   * re-derived, because the id encodes the product and generation in force at
+   * submission time — either can change before the job is polled.
+   */
+  smileUserId?: string;
 }
 
 @Schema({ timestamps: true })
@@ -137,14 +143,23 @@ export class User extends Document {
   @Prop({ enum: ["PRO", "PROMAX"] })
   verificationLevel?: string;
 
+  /**
+   * When the merchant first completed every KYC step for their tier. Durable:
+   * unlike planStatus (which a lapse overwrites with "failed"), this is never
+   * cleared — so a lapsed-but-verified merchant is still known to be verified.
+   * Gates the ability to collect payments.
+   */
+  @Prop()
+  kycCompletedAt?: Date;
+
   // Per-check SmileID KYC state. Drives resumability: the first required step
   // not yet satisfied is where the merchant picks back up. `product` records
   // how it was proven, so a stronger tier can reopen a weaker pass.
   @Prop({
     type: {
-      bvn: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String },
-      nin: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String },
-      cac: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String },
+      bvn: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      nin: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      cac: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
     },
     default: {},
   })
@@ -154,15 +169,112 @@ export class User extends Document {
     cac?: KycCheckState;
   };
 
+  /**
+   * Salts the SmileID user_id. SmileID enrollments are permanent and there is
+   * no API to clear them, so wiping our `kyc` records alone leaves the next
+   * job colliding with the old enrollment (2209). Bumped only by the local
+   * reset script — production merchants stay on generation 0, keeping their
+   * SmileID identity stable.
+   */
+  @Prop({ default: 0 })
+  kycGeneration?: number;
+
   // Paystack billing refs for the recurring tiers
   @Prop()
   paystackCustomerCode?: string;
 
+  // Legacy: codes only. Kept readable so existing rows still resolve; new
+  // subscriptions are written to `subscriptions` below.
   @Prop({ type: [String], default: [] })
   subscriptionCodes?: string[];
 
+  /**
+   * Paystack subscriptions. `emailToken` is an opaque token Paystack issues
+   * per subscription (NOT an email address) and is required alongside the code
+   * to disable it. Recoverable via GET /subscription/:code when missing.
+   */
+  @Prop({
+    type: [
+      {
+        code: String,
+        emailToken: String,
+        planCode: String,
+        interval: String,
+        status: String,
+        createdAt: Date,
+      },
+    ],
+    default: [],
+  })
+  subscriptions?: Array<{
+    code: string;
+    emailToken?: string;
+    planCode?: string;
+    interval?: string;
+    status?: string;
+    createdAt?: Date;
+  }>;
+
+  // Set when a merchant cancels; access runs to planCurrentPeriodEnd.
+  @Prop({ default: false })
+  cancelAtPeriodEnd?: boolean;
+
   @Prop()
   planCurrentPeriodEnd?: Date;
+
+  // Start of the current billing period. Needed so proration divides by the
+  // real period length instead of assuming 30 days.
+  @Prop()
+  planCurrentPeriodStart?: Date;
+
+  /**
+   * Billing cadence currently in force. Source of truth: a deferred change
+   * can land without creating a PlanOrder, so deriving this from order
+   * history alone goes stale.
+   */
+  @Prop({ enum: ["monthly", "annually"] })
+  planInterval?: string;
+
+  /**
+   * Paystack invoice the period was last renewed for. One renewal reaches us
+   * several times — `invoice.payment_succeeded` and `invoice.update` both fire
+   * for the same invoice, and Paystack retries delivery — so this is what
+   * keeps extending the period idempotent.
+   */
+  @Prop()
+  lastRenewalReference?: string;
+
+  // Set when a subscription charge fails. Full access continues until this
+  // moment, after which the merchant is demoted to the LITE floor.
+  @Prop()
+  planGraceUntil?: Date;
+
+  /**
+   * A downgrade scheduled for the end of the current period. Upgrades apply
+   * immediately (prorated) and never land here.
+   */
+  @Prop({
+    type: {
+      tier: String,
+      interval: String,
+      effectiveAt: Date,
+      planOrderId: Types.ObjectId,
+    },
+  })
+  pendingPlanChange?: {
+    tier: string;
+    interval?: string;
+    effectiveAt: Date;
+    planOrderId?: Types.ObjectId;
+  };
+
+  /**
+   * Paystack authorization token for the merchant's saved card (not card
+   * data). Lets prorated upgrades be charged silently instead of bouncing
+   * the merchant through checkout.
+   */
+  @Prop()
+  paystackAuthorizationCode?: string;
 
   // Timestamps (automatically added by Mongoose)
   createdAt?: Date;

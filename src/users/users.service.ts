@@ -16,6 +16,12 @@ const nanoidAlphanumeric = customAlphabet(
 );
 import { AddBankAccountDto } from "./dto/add-bank-account.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
+import {
+  getEffectiveTier,
+  isLapsed,
+  isInGracePeriod,
+  getCollectEligibility,
+} from "../merchant-plans/constants/plans";
 
 @Injectable()
 export class UsersService {
@@ -543,6 +549,19 @@ export class UsersService {
       planStatus: user.planStatus || "none",
       verificationLevel: user.verificationLevel || null,
       planCurrentPeriodEnd: user.planCurrentPeriodEnd || null,
+      // Lapse state. `effectiveTier` is what the merchant can actually use
+      // right now; `effectiveVerificationLevel` is null while lapsed so the
+      // badge disappears without the UI needing its own rule.
+      planGraceUntil: user.planGraceUntil || null,
+      effectiveTier: getEffectiveTier(user) || null,
+      isLapsed: isLapsed(user),
+      isInGracePeriod: isInGracePeriod(user),
+      effectiveVerificationLevel: isLapsed(user)
+        ? null
+        : user.verificationLevel || null,
+      // Collecting needs a plan AND completed KYC; recording never does.
+      canCollect: getCollectEligibility(user).canCollect,
+      collectBlockedReason: getCollectEligibility(user).reason,
       // Used by the client to re-surface the upgrade prompt once per login
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,

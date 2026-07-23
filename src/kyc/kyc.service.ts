@@ -146,9 +146,10 @@ export class KycService {
       if (Date.now() - checkedAt < 5000) continue
 
       try {
-        // Must poll under the same per-check SmileID user the job ran as.
+        // Must poll under the exact SmileID user the job ran as. Records
+        // written before ids were stored fall back to the old stable form.
         const result = await this.smileIdService.getJobStatus(
-          this.smileIdService.buildUserId(merchantId, check),
+          state.smileUserId || `${merchantId}-${check}`,
           state.jobId,
         )
         // null → the user hasn't submitted the flow yet (no job exists);
@@ -198,9 +199,15 @@ export class KycService {
     const jobId = this.smileIdService.buildJobId(merchantId, step.key)
     const { product, idSelection, consentRequired } = buildWebCheckConfig(step)
 
-    // Each check runs under its own SmileID user to avoid the enrollment
-    // clash (2209) that occurs when reusing one user_id across jobs.
-    const smileUserId = this.smileIdService.buildUserId(merchantId, step.key)
+    // Namespaced by product (and generation) so a biometric enrollment can
+    // never collide with a later enhanced job for the same check. Stored below
+    // so job polling uses this exact id.
+    const smileUserId = this.smileIdService.buildUserId(
+      merchantId,
+      step.key,
+      step.product,
+      user.kycGeneration,
+    )
 
     let token: string
     try {
@@ -226,6 +233,7 @@ export class KycService {
       jobId,
       undefined,
       step.product,
+      smileUserId,
     )
 
     return {
@@ -257,9 +265,15 @@ export class KycService {
     }
 
     const jobId = this.smileIdService.buildJobId(merchantId, 'cac')
+    const smileUserId = this.smileIdService.buildUserId(
+      merchantId,
+      'cac',
+      cacStep.product,
+      user.kycGeneration,
+    )
     try {
       await this.smileIdService.verifyBusinessCac({
-        userId: this.smileIdService.buildUserId(merchantId, 'cac'),
+        userId: smileUserId,
         jobId,
         ...dto,
       })
@@ -270,6 +284,7 @@ export class KycService {
         jobId,
         undefined,
         cacStep.product,
+        smileUserId,
       )
       return { check: 'cac', status: 'pending' }
     } catch (error) {
@@ -338,6 +353,7 @@ export class KycService {
     jobId?: string,
     reason?: string,
     product?: string,
+    smileUserId?: string,
   ) {
     const set: Record<string, unknown> = {
       [`kyc.${check}.status`]: status,
@@ -346,6 +362,8 @@ export class KycService {
       [`kyc.${check}.reason`]: status === 'failed' ? reason || null : null,
     }
     if (jobId) set[`kyc.${check}.jobId`] = jobId
+    // The SmileID identity this job ran under — polling must reuse it.
+    if (smileUserId) set[`kyc.${check}.smileUserId`] = smileUserId
     // Records which product proved this check, so a stronger tier can tell
     // that an older, weaker pass no longer satisfies its requirement.
     if (product) set[`kyc.${check}.product`] = product
@@ -381,6 +399,8 @@ export class KycService {
     if (nextStep !== null) return
 
     user.planStatus = 'verified'
+    // Durable marker: survives a later lapse, and is what gates collecting.
+    if (!user.kycCompletedAt) user.kycCompletedAt = new Date()
     const badge = PLANS[tier].badge
     if (badge) user.verificationLevel = badge
     await user.save()
@@ -394,11 +414,13 @@ export class KycService {
    */
   async reconcile(merchantId: string, check: KycCheck) {
     const user = await this.getMerchant(merchantId)
-    const jobId = (user.kyc as any)?.[check]?.jobId
+    const state = (user.kyc as any)?.[check]
+    const jobId = state?.jobId
     if (!jobId) throw new BadRequestException('No job to reconcile')
 
+    // Poll under the id the job actually ran as (legacy records fall back).
     const status = await this.smileIdService.getJobStatus(
-      this.smileIdService.buildUserId(merchantId, check),
+      state?.smileUserId || `${merchantId}-${check}`,
       jobId,
     )
 

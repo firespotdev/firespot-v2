@@ -24,6 +24,15 @@ export class PlanOrder extends Document {
   @Prop({ enum: ['one_time', 'monthly'], default: 'one_time' })
   billingType: string
 
+  // Billing cycle chosen at checkout (subscriptions only).
+  @Prop({ enum: ['monthly', 'annually'], default: 'monthly' })
+  interval: string
+
+  // True when this order is the prorated difference for a mid-cycle upgrade
+  // rather than a full period's price.
+  @Prop({ default: false })
+  isProration?: boolean
+
   @Prop({
     enum: ['PENDING', 'SUCCESSFUL', 'FAILED'],
     default: 'PENDING',

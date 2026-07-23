@@ -8,6 +8,7 @@
     "build": "nest build",
     "plans:create": "ts-node -T scripts/create-paystack-plans.ts",
     "merchant:reset": "ts-node -T scripts/reset-merchant-verification.ts",
+    "plans:fix-periods": "ts-node -T scripts/fix-plan-periods.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

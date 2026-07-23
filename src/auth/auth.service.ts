@@ -23,6 +23,7 @@ const nanoidAlphanumeric = customAlphabet(
 import { User } from "../schemas/user.schema";
 import { Agent } from "../admin/schemas/agent.schema";
 import { normalizeNigerianPhone } from "../common/phone";
+import { isLapsed } from "../merchant-plans/constants/plans";
 import { RequestOtpDto } from "./dto/request-otp.dto";
 import { VerifyOtpDto } from "./dto/verify-otp.dto";
 import { SignupDto } from "./dto/signup.dto";
@@ -455,6 +456,12 @@ export class AuthService {
         planTier: user.planTier || null,
         planStatus: user.planStatus || "none",
         verificationLevel: user.verificationLevel || null,
+        // Null while lapsed, so the badge hides without a client-side rule
+        effectiveVerificationLevel: isLapsed(user)
+          ? null
+          : user.verificationLevel || null,
+        planGraceUntil: user.planGraceUntil || null,
+        isLapsed: isLapsed(user),
         // Lets the client show the upgrade prompt once per login
         lastLoginAt: user.lastLoginAt,
       },

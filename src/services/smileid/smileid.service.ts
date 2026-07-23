@@ -86,8 +86,24 @@ export class SmileIdService {
    * user. The merchant id stays the first segment so callbacks can attribute
    * the result — Mongo ObjectIds contain no hyphens, so splitting is safe.
    */
-  buildUserId(merchantId: string, check: KycCheck): string {
-    return `${merchantId}-${check}`
+  buildUserId(
+    merchantId: string,
+    check: KycCheck,
+    product: string,
+    generation = 0,
+  ): string {
+    // Namespaced by product because the same check runs under different
+    // products across tiers (LITE proves BVN with enhanced_kyc, PRO with
+    // biometric_kyc). Sharing one id lets a biometric enrollment poison the
+    // later enhanced job with 2209 "already enrolled".
+    //
+    // Deterministic on purpose: retries reuse the identity rather than
+    // enrolling a new SmileID user each time, which keeps SmartSelfie
+    // Authentication available to us later. `generation` is the escape hatch —
+    // only the local reset script bumps it, so a wiped merchant gets a clean
+    // identity in development while production ids never move.
+    const base = `${merchantId}-${check}-${product}`
+    return generation > 0 ? `${base}-g${generation}` : base
   }
 
   /** Recovers our merchant id from a SmileID user_id. */

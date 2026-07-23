@@ -43,6 +43,8 @@ export class PaymentsService {
         await this.merchantPlansService.attachSubscriptionByCustomer(
           data?.customer?.customer_code,
           data?.subscription_code,
+          data?.email_token,
+          { planCode: data?.plan?.plan_code, interval: data?.plan?.interval },
         );
       } else {
         await this.qrKitsService.completeActivationByWebhook(reference);
@@ -53,7 +55,16 @@ export class PaymentsService {
     const customerCode = data?.customer?.customer_code;
 
     if (event === "subscription.create") {
+      // email_token is required later to disable this subscription.
       await this.merchantPlansService.attachSubscriptionByCustomer(
+        customerCode,
+        data?.subscription_code,
+        data?.email_token,
+        { planCode: data?.plan?.plan_code, interval: data?.plan?.interval },
+      );
+      // The new subscription is live, so retire any it replaces (interval
+      // switch or tier upgrade) — otherwise the merchant is billed twice.
+      await this.merchantPlansService.supersedePreviousSubscriptions(
         customerCode,
         data?.subscription_code,
       );
@@ -73,10 +84,14 @@ export class PaymentsService {
       );
     }
 
-    // Successful renewal invoice — extend the paid period.
+    // Successful renewal invoice — extend the paid period. Both events fire
+    // for the same invoice, so the reference is passed to dedupe them.
     if (event === "invoice.payment_succeeded" || event === "invoice.update") {
       if (data?.status === "success" || data?.paid === true) {
-        await this.merchantPlansService.renewPeriod(customerCode);
+        await this.merchantPlansService.renewPeriod(
+          customerCode,
+          data?.invoice_code || data?.transaction?.reference || data?.reference,
+        );
       }
     }
 

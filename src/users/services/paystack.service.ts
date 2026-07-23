@@ -359,6 +359,12 @@ export class PaystackService {
     customer: string;
     plan: string;
     authorization?: string;
+    /**
+     * When recurring billing should begin. Used on a prorated upgrade so the
+     * new tier's first full charge lands on the merchant's existing renewal
+     * date instead of resetting the billing cycle.
+     */
+    startDate?: Date;
   }): Promise<{ subscriptionCode: string; emailToken: string }> {
     try {
       const response = await axios.post<CreateSubscriptionResponse>(
@@ -367,6 +373,7 @@ export class PaystackService {
           customer: params.customer,
           plan: params.plan,
           authorization: params.authorization,
+          start_date: params.startDate?.toISOString(),
         },
         {
           headers: {
@@ -392,6 +399,56 @@ export class PaystackService {
           error.response?.data?.message || "Failed to create subscription",
           HttpStatus.BAD_REQUEST,
         );
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Charges a saved card directly — no checkout redirect. Used for prorated
+   * upgrades so the merchant is billed only the difference in-place.
+   *
+   * Returns success:false (rather than throwing) on a declined card, so the
+   * caller can fall back to a checkout for the same amount.
+   */
+  async chargeAuthorization(params: {
+    email: string;
+    amount: number; // kobo
+    authorizationCode: string;
+    reference?: string;
+    metadata?: Record<string, any>;
+  }): Promise<{ success: boolean; reference?: string; message?: string }> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/transaction/charge_authorization`,
+        {
+          email: params.email,
+          amount: params.amount,
+          authorization_code: params.authorizationCode,
+          reference: params.reference,
+          metadata: params.metadata,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.paystackSecretKey}`,
+            "Content-Type": "application/json",
+          },
+        },
+      );
+
+      const data = response.data?.data;
+      return {
+        success: data?.status === "success",
+        reference: data?.reference,
+        message: data?.gateway_response || response.data?.message,
+      };
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        return {
+          success: false,
+          message:
+            error.response?.data?.message || "Could not charge saved card",
+        };
       }
       throw error;
     }
