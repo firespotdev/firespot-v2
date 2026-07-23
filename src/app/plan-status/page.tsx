@@ -4,9 +4,14 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { X } from 'lucide-react'
-import { Button, LoaderCircle } from '@/components/ui'
+import { Button, LoaderCircle, TagFooter } from '@/components/ui'
 import { useAuthStore, useAuthReady } from '@/services/auth'
-import { useVerifyPlanPayment, type PlanTier } from '@/services/merchant-plans'
+import {
+  usePlanCatalog,
+  useVerifyPlanPayment,
+  type PlanTier,
+} from '@/services/merchant-plans'
+import { TierIcon } from '@/components/merchant/tier-icon'
 
 type Status = 'loading' | 'success' | 'failed'
 
@@ -20,6 +25,12 @@ const TIER_TAGLINE: Record<PlanTier, string> = {
   LITE: 'Start collecting payments with your verified Firespot business account.',
   PRO: 'Sell online and offline, all sales recorded automatically.',
   PROMAX: 'Run your business fully on Firespot Business Platform.',
+}
+
+const TIER_BADGE: Record<PlanTier, string> = {
+  LITE: 'bg-transparent border border-white text-white',
+  PRO: 'bg-white text-black',
+  PROMAX: 'bg-linear-to-r from-[#FB5012] to-[#D72483] text-white',
 }
 
 function PlanStatusContent() {
@@ -36,6 +47,14 @@ function PlanStatusContent() {
   const hasVerified = useRef(false)
 
   const verifyPlan = useVerifyPlanPayment()
+
+  // The full definition of the tier just purchased — name, price, features,
+  // billingType. Verification only hands back the tier key, so the rest comes
+  // from the catalog.
+  const { data: catalog } = usePlanCatalog()
+  const plan = tier
+    ? (catalog?.plans.find((p) => p.tier === tier) ?? null)
+    : null
 
   useEffect(() => {
     if (!authReady) return
@@ -120,52 +139,36 @@ function PlanStatusContent() {
         </header>
 
         <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 rounded-[18px] bg-white flex items-center justify-center">
-            <Image
-              src="/icons/firespot_logo.svg"
-              alt="Firespot"
-              width={32}
-              height={32}
-            />
-          </div>
+          {/* TierIcon supplies its own container for LITE/PRO and none for
+              PRO MAX, so it must not be wrapped in one here. */}
+          {tier && <TierIcon tier={tier} size={40} />}
 
-          <h1 className="text-[28px] leading-tight font-bold mt-6">
+          <h1 className="text-[20px] text-center leading-[125%] font-bold mt-4 -tracking-[0.4px]">
             You are now using
             <br />
             Firespot Business{' '}
-            {tier && (
-              <span className="align-middle text-[12px] font-bold tracking-[1px] px-2 py-1 rounded-[6px] bg-white text-black">
-                {TIER_LABELS[tier]}
+            {plan && (
+              <span
+                className={`text-[10px] w-fit font-bold px-1 rounded-[4px] h-4 inline-flex justify-center items-center ${TIER_BADGE[plan.tier]}`}
+              >
+                {TIER_LABELS[plan.tier]}
               </span>
             )}
           </h1>
 
-          <p className="text-base text-[#FFFFFF99] mt-4 max-w-[320px]">
-            {tier ? TIER_TAGLINE[tier] : ''}
+          <p className="text-sm text-[#FFFFFFB2] mt-1 max-w-[320px]">
+            Sell online and offline, all sales recorded automatically.
           </p>
         </div>
 
-        <div className="pb-8">
-          {/* Payment unlocks KYC — send them to the profile where the
-              "Verify your identity" drawer opens automatically. */}
-          <Button
-            onClick={() => router.replace('/profile?verify=1')}
-            className="w-full h-14 rounded-full bg-white text-black text-base font-bold"
-          >
-            Set up Shop
-          </Button>
+        <Button
+          onClick={() => router.replace('/profile?verify=1')}
+          className="w-full bg-white text-black text-base font-bold"
+        >
+          Set up Shop
+        </Button>
 
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <span className="text-sm text-[#FFFFFF66]">Powered by</span>
-            <Image
-              src="/icons/firespot_logo.svg"
-              alt="Firespot"
-              width={18}
-              height={18}
-            />
-            <span className="text-sm font-bold text-[#FFFFFF99]">firespot</span>
-          </div>
-        </div>
+        <TagFooter color="#FFFFFF66" icon="brand_offwhite" className="py-8" />
       </div>
     </div>
   )

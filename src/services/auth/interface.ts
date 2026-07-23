@@ -17,7 +17,11 @@ export interface User {
   planTier?: 'LITE' | 'PRO' | 'PROMAX' | null
   planStatus?: 'none' | 'paid' | 'verifying' | 'verified' | 'failed'
   verificationLevel?: 'PRO' | 'PROMAX' | null
+  /** Null while lapsed — bind badges to this, not verificationLevel. */
+  effectiveVerificationLevel?: 'PRO' | 'PROMAX' | null
   planCurrentPeriodEnd?: string | null
+  planGraceUntil?: string | null
+  isLapsed?: boolean
   /**
    * Set on each OTP verification. The upgrade prompt keys its dismissal to
    * this so it stays hidden across reloads but re-surfaces on the next login.

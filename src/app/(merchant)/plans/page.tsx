@@ -1,20 +1,26 @@
 'use client'
 
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowUpRight, Check, ChevronRight } from 'lucide-react'
 import {
-  Button,
-  LoaderCircle,
-  TabSwitch,
-  showNotificationToast,
-} from '@/components/ui'
+  ArrowLeft,
+  ArrowUpRight,
+  Check,
+  ChevronRight,
+  ChevronDown,
+} from 'lucide-react'
+import { format } from 'date-fns'
+import { Button, LoaderCircle, TabSwitch } from '@/components/ui'
+import { TierIcon } from '@/components/merchant/tier-icon'
+import { useDrawerStore } from '@/services/drawer'
 import {
   usePlanCatalog,
-  usePurchasePlan,
+  planTotal,
+  isDowngrade,
   type PlanDefinition,
   type PlanTier,
+  type BillingInterval,
 } from '@/services/merchant-plans'
 import { formatCurrency } from '@/lib/utils'
 
@@ -37,21 +43,27 @@ const TIER_BADGE: Record<PlanTier, string> = {
   PROMAX: 'bg-linear-to-r from-[#FB5012] to-[#D72483] text-white',
 }
 
-function priceLabel(plan: PlanDefinition): string {
-  if (plan.billingType === 'one_time') {
-    return `₦${formatCurrency(plan.price)} to upgrade, then `
-  }
+/** Subtitle for a subscription tier's bottom bar, reflecting the interval. */
+function priceSubtitle(
+  plan: PlanDefinition,
+  interval: BillingInterval,
+  storeCount: number,
+): string {
+  const total = planTotal(plan, interval, storeCount)
+  const cadence = interval === 'annually' ? 'year' : 'month'
   if (plan.perStore) {
-    return `₦${formatCurrency(plan.price)}/location/month`
+    return `₦${formatCurrency(total)}/location/${cadence}`
   }
-  return `₦${formatCurrency(plan.price)}/month`
+  return `₦${formatCurrency(total)}/${cadence}`
 }
 
 function PlansContent() {
   const router = useRouter()
   const { data, isLoading } = usePlanCatalog()
-  const purchase = usePurchasePlan()
+  const openDrawer = useDrawerStore((s) => s.openDrawer)
   const [activeTier, setActiveTier] = useState<PlanTier>('LITE')
+  const [interval, setInterval] = useState<BillingInterval>('monthly')
+  const [freqOpen, setFreqOpen] = useState(false)
 
   const plans = data?.plans || []
   const current = data?.current
@@ -60,22 +72,62 @@ function PlansContent() {
     [plans, activeTier],
   )
 
-  const isCurrentPlan = current?.planTier === activeTier
+  const storeCount = current?.activeStoreCount ?? 1
+  // A lapsed merchant still "holds" their tier but has been demoted to the
+  // LITE floor, so re-buying it must be allowed — that is a reactivation.
+  const isLapsed = Boolean(current?.isLapsed)
+  // Yearly merchants change plan on the yearly cadence only.
+  const isOnYearly = current?.currentInterval === 'annually'
+
+  // Default the selector to the merchant's actual cadence, so a yearly
+  // merchant doesn't open on a combination the server would reject.
+  useEffect(() => {
+    if (isOnYearly) setInterval('annually')
+  }, [isOnYearly])
+  const holdsThisTier = current?.planTier === activeTier
+  // Switching billing cycle on the tier you already hold is a plan change,
+  // not a repurchase — the old subscription is superseded server-side.
+  const isIntervalSwitch =
+    holdsThisTier &&
+    !isLapsed &&
+    plan?.billingType === 'monthly' &&
+    Boolean(current?.currentInterval) &&
+    interval !== current?.currentInterval
+  const isCurrentPlan = holdsThisTier && !isLapsed && !isIntervalSwitch
+  // Merchants can only move up — a lower tier than the one they hold is
+  // blocked here and again server-side.
+  const isLowerTier = isDowngrade(current?.planTier ?? null, activeTier)
+  const isReactivate = holdsThisTier && isLapsed
+  // A change already scheduled blocks further changes until it lands.
+  const pending = current?.pendingPlanChange ?? null
+  const hasPending = Boolean(pending)
+  const canPurchase =
+    !hasPending && (isReactivate || isIntervalSwitch || !isCurrentPlan)
+  // "Manage subscription" only applies to a live recurring plan.
+  const showManage =
+    holdsThisTier && !isLapsed && !hasPending && plan?.billingType === 'monthly'
+
+  const pendingDate = pending
+    ? (() => {
+        try {
+          return format(new Date(pending.effectiveAt), 'd MMM')
+        } catch {
+          return ''
+        }
+      })()
+    : ''
 
   const handleUpgrade = () => {
-    if (!plan) return
-    purchase.mutate(plan.tier, {
-      onSuccess: (res) => {
-        // Hand off to Paystack; we return via /plan-status?reference=
-        window.location.href = res.authorizationUrl
-      },
-      onError: (err: any) => {
-        showNotificationToast({
-          message:
-            err?.response?.data?.message ||
-            'Could not start payment. Try again.',
-        })
-      },
+    if (!plan || !canPurchase) return
+    // Downgrading to LITE is a cancellation — LITE returns free when the
+    // subscription ends, so it goes through the cancel flow, not checkout.
+    if (isLowerTier && plan.tier === 'LITE') {
+      openDrawer({ type: 'cancel-plan' })
+      return
+    }
+    openDrawer({
+      type: 'plan-checkout',
+      props: { tier: plan.tier, interval },
     })
   }
 
@@ -90,8 +142,8 @@ function PlansContent() {
   return (
     <div className="min-h-dvh bg-black font-satoshi text-white">
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
-        {/* Header: back + tier switcher */}
-        <header className="flex items-center gap-2 px-3 py-2">
+        {/* Header: back + tier switcher (sticky) */}
+        <header className="sticky top-0 z-20 bg-black flex items-center gap-2 px-3 py-2">
           <button
             type="button"
             onClick={() => router.back()}
@@ -116,17 +168,10 @@ function PlansContent() {
           <div className="w-6 h-6"></div>
         </header>
 
-        <div className="flex-1 px-4 pt-4 pb-40">
-          {/* Tier icon */}
+        <div className="flex-1 px-4 pt-4 pb-38">
+          {/* Tier icon (dynamic per tier) */}
           <div className="flex justify-center mb-4">
-            <div className="w-10 h-10 rounded-[12px] bg-white border-[1.11px] border-[#F1F1F1] shadow-[0px_4.44px_8.89px_0px_#0000000A] flex items-center justify-center">
-              <Image
-                src="/images/firespot_alt.png"
-                alt="Firespot"
-                width={22}
-                height={22}
-              />
-            </div>
+            <TierIcon tier={plan.tier} size={40} />
           </div>
 
           <h1 className="text-center text-[20px] -tracking-[0.4px] font-bold flex items-center justify-center gap-1.5 flex-wrap">
@@ -158,15 +203,25 @@ function PlansContent() {
           <div className="bg-[#FFFFFF0D] rounded-[12px] mt-6 p-3 space-y-4 border border-[#F1F1F114] shadow-[0px_4px_8px_0px_#0000000A]">
             {plan.features.map((feature) => (
               <div key={feature.label} className="flex items-center gap-3">
-                <span
-                  className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                    feature.included
-                      ? TIER_ACCENT[plan.tier]
-                      : 'bg-[#FFFFFF26] text-[#FFFFFF66]'
-                  }`}
-                >
-                  <Check className="w-3 h-3 stroke-[3px]" />
-                </span>
+                {feature.icon ? (
+                  <Image
+                    src={`/icons/${feature.icon}.svg`}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="w-5 h-5 shrink-0"
+                  />
+                ) : (
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                      feature.included
+                        ? TIER_ACCENT[plan.tier]
+                        : 'bg-[#FFFFFF26] text-[#FFFFFF66]'
+                    }`}
+                  >
+                    <Check className="w-3 h-3 stroke-[3px]" />
+                  </span>
+                )}
                 <span
                   className={`flex-1 font-medium text-[14px] text-[#FFFFFFB2]`}
                 >
@@ -181,8 +236,7 @@ function PlansContent() {
 
           <button
             type="button"
-            onClick={() => showNotificationToast({ message: 'Coming soon' })}
-            className="mx-auto mt-6 mb-10 flex items-center font-medium gap-1 text-xs text-white underline underline-offset-4"
+            className="mx-auto my-6 flex items-center font-medium gap-1 text-xs text-white underline underline-offset-4"
           >
             Learn more
             <ArrowUpRight className="w-4 h-4" />
@@ -198,33 +252,106 @@ function PlansContent() {
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-[#9CA3AF]">
-                  Subscription
+                  {plan.billingType === 'one_time'
+                    ? 'One time upgrade fee'
+                    : 'Subscription'}
                 </p>
                 <p className="text-[14px] font-bold">
-                  {priceLabel(plan)}
-                  {plan.billingType === 'one_time' && (
-                    <span className="text-[#F04438]">free forever</span>
+                  {plan.billingType === 'one_time' ? (
+                    <>
+                      {`₦${formatCurrency(plan.price)} to upgrade, then `}
+                      <span className="bg-linear-to-r from-[#FB5012] to-[#D72483] bg-clip-text text-transparent">
+                        free forever
+                      </span>
+                    </>
+                  ) : (
+                    priceSubtitle(plan, interval, storeCount)
                   )}
                 </p>
               </div>
+
               {plan.billingType === 'monthly' && (
-                <span className="shrink-0 text-[10px] font-bold tracking-[1px] text-white bg-[#FFFFFF33] rounded-full px-3 h-9">
-                  PER MONTH
-                </span>
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setFreqOpen((o) => !o)}
+                    className="flex items-center gap-1 text-[10px] font-bold tracking-[1px] text-white bg-[#FFFFFF33] rounded-full px-3 h-9"
+                  >
+                    {interval === 'annually' ? 'PER YEAR' : 'PER MONTH'}
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  </button>
+                  {freqOpen && (
+                    <div className="absolute right-0 bottom-11 w-36 bg-[#1A1A1A] border border-[#FFFFFF1A] rounded-[12px] overflow-hidden z-10">
+                      {(['monthly', 'annually'] as BillingInterval[]).map(
+                        (opt) => {
+                          // A yearly merchant can only change plan on the
+                          // yearly cadence; monthly is unavailable until the
+                          // year ends (server rejects it too).
+                          const locked = isOnYearly && opt === 'monthly'
+                          return (
+                            <button
+                              key={opt}
+                              type="button"
+                              disabled={locked}
+                              onClick={() => {
+                                if (locked) return
+                                setInterval(opt)
+                                setFreqOpen(false)
+                              }}
+                              className={`w-full text-left px-4 py-3 text-[10px] font-bold tracking-[1px] ${
+                                locked
+                                  ? 'text-[#FFFFFF4D] cursor-not-allowed'
+                                  : interval === opt
+                                    ? 'text-white bg-[#FFFFFF14]'
+                                    : 'text-[#FFFFFF99]'
+                              }`}
+                            >
+                              {opt === 'annually' ? 'PER YEAR' : 'PER MONTH'}
+                              {locked && (
+                                <span className="block text-[9px] font-medium tracking-normal text-[#FFFFFF4D] mt-0.5">
+                                  Available after your year ends
+                                </span>
+                              )}
+                            </button>
+                          )
+                        },
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
             <Button
               onClick={handleUpgrade}
-              disabled={purchase.isPending || isCurrentPlan}
+              disabled={!canPurchase}
               className="w-full mt-4 bg-white text-black disabled:opacity-60"
             >
-              {isCurrentPlan
-                ? 'Your current plan'
-                : purchase.isPending
-                  ? 'Starting payment…'
-                  : 'Upgrade now'}
+              {hasPending
+                ? `${TIER_LABELS[pending!.tier]} starts ${pendingDate}`
+                : isReactivate
+                  ? `Reactivate ${TIER_LABELS[activeTier]}`
+                  : isIntervalSwitch
+                    ? `Switch to ${interval === 'annually' ? 'yearly' : 'monthly'}`
+                    : isCurrentPlan
+                      ? 'Your current plan'
+                      : isLowerTier
+                        ? `Downgrade to ${TIER_LABELS[activeTier]}`
+                        : 'Upgrade now'}
             </Button>
+
+            {/* Cancellation lives here, under the CTA, for live plans only. */}
+            {showManage && (
+              <button
+                type="button"
+                onClick={() => openDrawer({ type: 'cancel-plan' })}
+                className="w-full mt-3 text-xs font-medium text-[#FFFFFF99] underline underline-offset-4"
+              >
+                {current?.cancelAtPeriodEnd
+                  ? 'Subscription ending — view details'
+                  : 'Manage subscription'}
+              </button>
+            )}
           </div>
         </div>
       </div>

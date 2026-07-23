@@ -34,6 +34,11 @@ interface MerchantInfoStatProps {
   onCameraClick?: () => void
   isUploadingPhoto?: boolean
   qrKitStatus?: React.ReactNode
+  /**
+   * Plan/subscription trouble banner. Rendered above the "Recent sales"
+   * banner, since a payment problem outranks unconfirmed records.
+   */
+  planStatusBanner?: React.ReactNode
   todaySalesAmount?: number
   collectedAmount?: number
   recordedAmount?: number
@@ -61,6 +66,7 @@ export function MerchantInfoStat({
   onCameraClick,
   isUploadingPhoto = false,
   qrKitStatus,
+  planStatusBanner,
   todaySalesAmount = 0,
   collectedAmount = 0,
   recordedAmount = 0,
@@ -159,6 +165,9 @@ export function MerchantInfoStat({
           </span>
         )}
       </div>
+
+      {/* Payment trouble outranks unconfirmed records, so it sits above. */}
+      {planStatusBanner}
 
       {unconfirmedCount > 0 && (
         <Link

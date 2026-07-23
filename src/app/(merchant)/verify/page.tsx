@@ -1,14 +1,15 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, Check, ShieldCheck } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from '@bprogress/next/app'
+import { ArrowLeft, ShieldCheck } from 'lucide-react'
 import {
+  AppCard,
   Button,
-  Input,
-  Label,
   LoaderCircle,
   Spinner,
+  TagFooter,
   showNotificationToast,
 } from '@/components/ui'
 import {
@@ -17,12 +18,25 @@ import {
   useVerifyCac,
   type KycSessionResponse,
 } from '@/services/kyc'
+import { usePlanCatalog } from '@/services/merchant-plans'
 import { SmileIdEmbed } from '@/components/kyc/smileid-embed'
+import {
+  VerificationStepList,
+  buildVerificationRows,
+} from '@/components/kyc/verification-step-list'
+
+/** ₦5,000,000 → "₦5m", ₦200,000 → "₦200k". */
+function compactNaira(amount: number): string {
+  if (amount >= 1_000_000) return `₦${amount / 1_000_000}m`
+  if (amount >= 1_000) return `₦${amount / 1_000}k`
+  return `₦${amount}`
+}
 
 function VerifyContent() {
   const router = useRouter()
   // Poll while incomplete so async SmileID callbacks land without a refresh.
   const { data: status, isLoading, refetch } = useKycStatus(true)
+  const { data: catalog } = usePlanCatalog()
   const createSession = useCreateKycSession()
   const verifyCac = useVerifyCac()
 
@@ -56,7 +70,16 @@ function VerifyContent() {
   }
 
   const { steps, nextStep, nextStepMode, isComplete } = status
-  const passedCount = steps.filter((s) => s.status === 'passed').length
+  const rows = buildVerificationRows(steps)
+
+  // The cap is what the merchant is unlocking, so it comes from their tier
+  // rather than being hardcoded.
+  const dailyCap = catalog?.plans.find(
+    (p) => p.tier === status.planTier,
+  )?.dailyCap
+
+  const isCacStep = nextStepMode === 'server' && nextStep?.key === 'cac'
+  const isSubmitting = createSession.isPending || verifyCac.isPending
 
   const handleStartWebCheck = () => {
     setError(null)
@@ -91,108 +114,49 @@ function VerifyContent() {
     )
   }
 
+  const handlePrimary = () => {
+    if (isCacStep) return handleSubmitCac()
+    handleStartWebCheck()
+  }
+
   return (
     <div className="min-h-dvh bg-white font-satoshi">
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
-        <header className="flex items-center px-4 py-3">
+        <header className="flex items-center justify-between px-3 py-3.5">
           <button
             type="button"
             onClick={() => router.push('/profile')}
             aria-label="Back"
-            className="w-9 h-9 flex items-center justify-center"
           >
-            <ArrowLeft className="w-6 h-6 text-black" />
+            <ArrowLeft size={24} color="black" />
           </button>
-          <h1 className="flex-1 text-center text-base font-bold text-black">
-            Verify your identity
-          </h1>
-          <div className="w-9" />
+          <Link
+            href="/plans"
+            className="text-xs font-medium text-black underline underline-offset-4"
+          >
+            Learn more
+          </Link>
         </header>
 
-        <div className="flex-1 px-4 pb-8">
-          {/* Progress — makes resumption legible */}
-          <p className="text-sm text-[#00000080] mb-4">
-            {passedCount} of {steps.length} step{steps.length === 1 ? '' : 's'}{' '}
-            complete
-          </p>
+        <h1 className="px-4 text-[20px] -tracking-[0.4px] font-bold text-black mt-2">
+          Verify your identity
+        </h1>
+        <p className="px-4 text-sm font-medium text-[#00000080] mt-1.5">
+          {dailyCap &&
+            `Collect up to ${compactNaira(dailyCap)} daily when you provide more information that can be used to verify your identity and business.`}
+        </p>
 
-          <div className="border border-[#F1F1F1] rounded-2xl overflow-hidden mb-6">
-            {steps.map((step) => {
-              const isNext = step.key === nextStep?.key
-              return (
-                <div
-                  key={step.key}
-                  className="flex items-center gap-3 p-4 border-b border-[#F1F1F1] last:border-b-0"
-                >
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                      step.status === 'passed'
-                        ? 'bg-[#24C166] text-white'
-                        : step.status === 'failed'
-                          ? 'bg-[#F04438] text-white'
-                          : 'bg-[#F1F1F1] text-[#9CA3AF]'
-                    }`}
-                  >
-                    <Check className="w-3.5 h-3.5 stroke-[3px]" />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-medium text-black">
-                      {step.label}
-                    </p>
-                    <p
-                      className={`text-xs mt-0.5 ${
-                        step.status === 'failed'
-                          ? 'text-[#F04438]'
-                          : 'text-[#00000066]'
-                      }`}
-                    >
-                      {step.status === 'passed'
-                        ? 'Verified'
-                        : step.status === 'failed'
-                          ? // Show SmileID's actual reason (e.g. ID not found)
-                            // rather than a bare "failed".
-                            step.reason || 'Failed — tap to retry'
-                          : isNext
-                            ? 'Next step'
-                            : 'Pending'}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {isComplete ? (
-            <div className="flex flex-col items-center text-center py-8">
-              <div className="w-16 h-16 rounded-full bg-[#E9F9F0] flex items-center justify-center">
-                <ShieldCheck className="w-8 h-8 text-[#24C166]" />
-              </div>
-              <p className="text-lg font-bold text-black mt-4">
-                You&apos;re verified
-              </p>
-              <p className="text-sm text-[#00000080] mt-1">
-                {status.verificationLevel
-                  ? `Your ${status.verificationLevel === 'PROMAX' ? 'Verified Business' : 'Verified User'} badge is now active.`
-                  : 'Your business account is fully set up.'}
-              </p>
-              <Button
-                onClick={() => router.push('/profile')}
-                className="w-full h-13 mt-6 rounded-full bg-black text-white font-bold"
-              >
-                Done
-              </Button>
-            </div>
-          ) : session ? (
+        {session ? (
+          // The widget takes over the screen for the duration of the check.
+          <div className="mt-6">
             <SmileIdEmbed
               session={session}
               onSuccess={() => {
                 setSession(null)
-                showNotificationToast({ message: 'Submitted — checking…' })
+                //showNotificationToast({ message: 'Submitted — checking…' })
                 refetch()
               }}
               onClose={() => {
-                // Dropping off is fine: state is server-side, so returning
-                // here resumes at the same step.
                 setSession(null)
                 refetch()
               }}
@@ -201,55 +165,63 @@ function VerifyContent() {
                 setError(message)
               }}
             />
-          ) : nextStepMode === 'server' && nextStep?.key === 'cac' ? (
-            <div className="space-y-4">
-              <div>
-                <Label>CAC registration (RC) number</Label>
-                <Input
-                  value={rcValue}
-                  onChange={(e) => setRcValue(e.target.value)}
-                  placeholder="e.g. RC1234567"
-                  className="w-full font-medium"
-                />
-              </div>
-              <Button
-                onClick={handleSubmitCac}
-                disabled={verifyCac.isPending}
-                className="w-full h-13 rounded-full bg-black text-white font-bold"
-              >
-                {verifyCac.isPending ? <Spinner /> : 'Verify business'}
-              </Button>
-            </div>
-          ) : nextStepMode === 'web_sdk' && nextStep ? (
-            <div className="space-y-4">
-              <p className="text-sm text-[#00000080]">
-                {nextStep.requiresSelfie
-                  ? // Biometric: one job does the ID lookup and the selfie.
-                    `You’ll consent, enter your ${nextStep.key.toUpperCase()}, and take a quick selfie so we can confirm it’s you.`
-                  : `You’ll be asked to consent and enter your ${nextStep.key.toUpperCase()} securely.`}
-              </p>
-              <Button
-                onClick={handleStartWebCheck}
-                disabled={createSession.isPending}
-                className="w-full h-13 rounded-full bg-black text-white font-bold"
-              >
-                {createSession.isPending ? (
-                  <Spinner />
-                ) : (
-                  `Start ${nextStep.label}`
-                )}
-              </Button>
-            </div>
-          ) : (
-            <p className="text-sm text-[#00000080] text-center py-6">
-              Checking your verification status…
-            </p>
-          )}
+          </div>
+        ) : (
+          <>
+            <div className="px-4">
+              <VerificationStepList
+                rows={rows}
+                onRetry={isComplete ? undefined : handleStartWebCheck}
+                className="mt-6"
+              />
 
-          {error && (
-            <p className="text-sm text-[#F04438] text-center mt-4">{error}</p>
-          )}
-        </div>
+              {error && (
+                <p className="text-sm text-[#FF002E] text-center mt-4">
+                  {error}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-auto pt-6">
+              {isComplete ? (
+                <div className="border-t border-[#F1F1F1] rounded-t-[12px] px-4 pt-4 pb-2">
+                  <div className="flex flex-col items-center text-center">
+                    <p className="text-xl font-bold text-black">
+                      You&apos;re verified
+                    </p>
+                    <p className="text-sm font-medium text-[#00000080] mt-1">
+                      {status.verificationLevel
+                        ? `Your ${status.verificationLevel === 'PROMAX' ? 'Verified Business' : 'Verified User'} badge is now active.`
+                        : 'Your business account is fully set up.'}
+                    </p>
+                    <Button
+                      onClick={() => router.push('/profile')}
+                      className="w-full h-14 mt-6 font-bold"
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border-t border-[#F1F1F1] rounded-t-[12px] px-4 pt-4 pb-2">
+                  <p className="text-[11px] text-[#6B7280] font-medium text-center">
+                    By continuing, I consent to identity checks via NIBSS iGree.
+                  </p>
+
+                  <Button
+                    onClick={handlePrimary}
+                    disabled={isSubmitting || !nextStep}
+                    className="w-full mt-4 font-bold"
+                  >
+                    {isSubmitting ? <Spinner /> : 'Start verification'}
+                  </Button>
+
+                  <TagFooter className="py-4" />
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

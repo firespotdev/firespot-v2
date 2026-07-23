@@ -2,8 +2,9 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Lock } from 'lucide-react'
 import { TabSwitch, showNotificationToast } from '@/components/ui'
+import { usePlanCatalog } from '@/services/merchant-plans'
 import Image from 'next/image'
 import {
   useCreateManualSale,
@@ -73,6 +74,11 @@ function RecordSaleContent() {
   })
 
   const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
+
+  // Collecting requires a verified plan; recording never does.
+  const { data: planCatalog } = usePlanCatalog()
+  const canCollect = planCatalog?.current?.canCollect !== false
+  const collectBlockedReason = planCatalog?.current?.collectBlockedReason
 
   // Keypad & sale state
   const [activeTab, setActiveTab] = useState<'amount' | 'items'>('amount')
@@ -813,6 +819,25 @@ function RecordSaleContent() {
   }
 
   const handleCollectTapped = () => {
+    // Collecting needs a verified plan. Recording — including a customer
+    // scanning this merchant's QR — is never gated, so we explain and point
+    // at the fix rather than silently disabling.
+    if (!canCollect) {
+      if (collectBlockedReason === 'kyc_incomplete') {
+        showNotificationToast({
+          message: 'Finish verifying your identity to collect payments.',
+        })
+        openDrawer({ type: 'verify-identity' })
+      } else {
+        showNotificationToast({
+          message:
+            'Upgrade to a Firespot Business plan to collect. You can still record sales.',
+        })
+        router.push('/plans')
+      }
+      return
+    }
+
     setCheckoutMode('collect')
     const updatedCart = autoConvertKeypadToCartItem() || cartItems
     const subtotal = updatedCart.reduce(
@@ -971,17 +996,21 @@ function RecordSaleContent() {
                     )
                   }
                   onClick={handleCollectTapped}
-                  className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 ${
+                  className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 flex items-center gap-1.5 ${
                     (activeTab === 'amount' &&
                       amount &&
                       amount !== '0' &&
                       amount !== '.' &&
                       amount !== '0.') ||
                     cartItems.length > 0
-                      ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
+                      ? canCollect
+                        ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
+                        : // Locked, but still tappable so we can explain why.
+                          'bg-[#F4F6F8] text-[#8E8E93]'
                       : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
                   }`}
                 >
+                  {!canCollect && <Lock className="w-3.5 h-3.5" />}
                   Collect
                 </button>
               )}

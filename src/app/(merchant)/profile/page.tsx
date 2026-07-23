@@ -6,6 +6,7 @@ import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { UpgradePrompt } from '@/components/merchant/upgrade-prompt'
+import { PlanStatusBanner } from '@/components/merchant/plan-status-banner'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, VerifiedBadge } from '@/components/ui'
@@ -140,7 +141,10 @@ export default function ProfilePage() {
           title={profile?.businessName || 'Your business'}
           subtitle="Owner · Main Address"
           titleAdornment={
-            <VerifiedBadge level={(profile as any)?.verificationLevel} />
+            // Effective level: null while lapsed, so the badge hides itself.
+            <VerifiedBadge
+              level={(profile as any)?.effectiveVerificationLevel}
+            />
           }
           showDropdown
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
@@ -181,6 +185,7 @@ export default function ProfilePage() {
               ordersCount={insights?.qrKitScans?.totalScans ?? 0}
               unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
               owingCount={owingSales?.pagination?.total ?? 0}
+              planStatusBanner={<PlanStatusBanner />}
               isAmountHidden={isAmountHidden}
               onToggleVisibility={() => setIsAmountHidden((prev) => !prev)}
               currentFilter={filter}

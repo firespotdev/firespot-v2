@@ -31,6 +31,8 @@ export type DrawerContentType =
   | 'activity-details'
   | 'activity-options'
   | 'verify-identity'
+  | 'plan-checkout'
+  | 'cancel-plan'
 
 
 

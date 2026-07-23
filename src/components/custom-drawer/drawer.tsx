@@ -44,6 +44,8 @@ import { SaleReceiptDrawer } from './sale-receipt-drawer'
 import { ActivityDetailsDrawer } from './activity-details-drawer'
 import { ActivityOptionsDrawer } from './activity-options-drawer'
 import { VerifyIdentityDrawer } from './verify-identity-drawer'
+import { PlanCheckoutDrawer } from './plan-checkout-drawer'
+import { CancelPlanDrawer } from './cancel-plan-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -158,6 +160,18 @@ const DRAWER_CONFIG: Record<
   'verify-identity': {
     title: '',
     Content: VerifyIdentityDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'plan-checkout': {
+    title: '',
+    Content: PlanCheckoutDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'cancel-plan': {
+    title: '',
+    Content: CancelPlanDrawer,
     noHeader: true,
     direction: 'bottom',
   },
@@ -407,6 +421,8 @@ export function CustomDrawer() {
               'repayment-summary',
               'send-reminder',
               'add-customer',
+              'plan-checkout',
+              'cancel-plan',
             ].includes(config.type)
               ? 'bg-white'
               : 'bg-[#f5f6f8]'

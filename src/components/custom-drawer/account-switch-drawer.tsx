@@ -151,7 +151,10 @@ export function AccountSwitchDrawer({
             title={
               <span className="inline-flex items-center gap-1">
                 {businessName.toUpperCase()}
-                <VerifiedBadge level={(profile as any)?.verificationLevel} />
+                {/* Effective level: null while lapsed, so the badge hides. */}
+                <VerifiedBadge
+                  level={(profile as any)?.effectiveVerificationLevel}
+                />
               </span>
             }
             subtitle="Owner · Main address"
