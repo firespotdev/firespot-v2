@@ -621,6 +621,22 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         type="payment"
                       />
                     </div>
+                    <div>
+                      <p className="mb-1 text-xs text-gray-400">Link</p>
+                      {qrKit.linkStatus ? (
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                            qrKit.linkStatus === 'linked'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {qrKit.linkStatus}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -633,6 +649,18 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                       <dt className="text-xs text-gray-400">Serial Number</dt>
                       <dd className="font-mono text-sm font-medium text-gray-900">
                         {qrKit.serialNumber}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-400">Type</dt>
+                      <dd className="text-sm font-medium text-gray-900">
+                        {qrKit.isDigital ? 'Digital' : 'Physical'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-400">Source</dt>
+                      <dd className="text-sm font-medium capitalize text-gray-900">
+                        {qrKit.source?.replace('-', ' ') || '—'}
                       </dd>
                     </div>
                     <div>

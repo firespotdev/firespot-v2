@@ -5,7 +5,7 @@ import {
   useAdminQROrders,
   useUpdateQROrderStatus,
 } from '@/services/qr-orders/qr-orderApi'
-import type { QROrder, QROrderFilters } from '@/services/qr-orders/interface'
+import type { QROrderFilters } from '@/services/qr-orders/interface'
 import { adminToast } from './AdminToast'
 
 export default function QROrdersList() {
@@ -17,7 +17,7 @@ export default function QROrdersList() {
     try {
       await updateStatus.mutateAsync({ id, status: newStatus })
       adminToast.success(`Order status updated to ${newStatus}`)
-    } catch (err) {
+    } catch {
       adminToast.error('Failed to update order status')
     }
   }
@@ -231,6 +231,14 @@ export default function QROrdersList() {
                         <span className="text-gray-400 text-xs">—</span>
                       )}
                     </div>
+                    {order.fulfilmentError && (
+                      <p
+                        className="mt-1 max-w-48 text-[10px] font-medium text-red-600"
+                        title={order.fulfilmentError}
+                      >
+                        Needs attention: {order.fulfilmentError}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
                     {new Date(order.createdAt).toLocaleDateString()}
