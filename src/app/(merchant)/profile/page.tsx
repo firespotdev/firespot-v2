@@ -41,6 +41,7 @@ export default function ProfilePage() {
   })
   const { data: recordedStats } = useSalesStats({ ...filter, mode: 'recorded' })
   const { data: owingSales } = useSales({ status: 'OWING', limit: 1 })
+  const owingCount = owingSales?.meta?.total ?? 0
   const updateProfilePhoto = useUpdateProfilePhoto()
   const setupCta = useSetupShopCta()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
@@ -186,7 +187,7 @@ export default function ProfilePage() {
               salesCount={salesStats?.todaySalesCount ?? 0}
               ordersCount={insights?.qrKitScans?.totalScans ?? 0}
               unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
-              owingCount={owingSales?.pagination?.total ?? 0}
+              owingCount={owingCount}
               planStatusBanner={<PlanStatusBanner />}
               shopSetupBanner={setupCta.show ? <SetupShopCta /> : null}
               suppressRecentSales={setupCta.show}
@@ -305,7 +306,6 @@ export default function ProfilePage() {
 
             {/* Owing */}
             {(() => {
-              const owingCount = owingSales?.pagination?.total ?? 0
               const active = owingCount >= 1
               const gradientStyle = active
                 ? {

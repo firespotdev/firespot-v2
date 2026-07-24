@@ -208,8 +208,8 @@ export const useOutstandingSummary = () => {
  */
 export const useClaimSalePayer = () => {
   return useMutation({
-    mutationFn: ({ saleId, customerName }: { saleId: string; customerName?: string }) =>
-      SalesApi.claimSalePayer(saleId, customerName),
+    mutationFn: ({ saleId }: { saleId: string }) =>
+      SalesApi.claimSalePayer(saleId),
   });
 };
 

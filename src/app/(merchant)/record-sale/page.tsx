@@ -121,6 +121,12 @@ function RecordSaleContent() {
   useEffect(() => {
     if ((isEditMode || isConfirmMode) && editSaleData && !hasPrefilled) {
       setCheckoutPaymentMethod(editSaleData.paymentMethod || '')
+      setCheckoutCustomer(
+        editSaleData.customerId &&
+          typeof editSaleData.customerId === 'object'
+          ? editSaleData.customerId
+          : null,
+      )
       const existingItems = (editSaleData.items || [])
         .filter((item) => Number(item.price) > 0 && Number(item.quantity) > 0)
         .map((item, index) => ({

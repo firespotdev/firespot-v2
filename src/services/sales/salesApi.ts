@@ -6,17 +6,12 @@ export interface CreatePendingSalePayload {
   customerFingerprint?: string;
   customerType?: 'New' | 'Repeat';
   customerName?: string;
-  customerUserId?: string;
   source?: 'QR scan' | 'Link shared' | 'Manual';
   targetBankName?: string;
   serialNumber?: string;
   amount?: number;
   description: string;
   items?: any[];
-  isPaidInFull?: boolean;
-  amountPaid?: number;
-  totalDue?: number;
-  balanceOwed?: number;
   customerId?: string;
 }
 
@@ -161,8 +156,8 @@ export const SalesApi = {
     return data;
   },
 
-  claimSalePayer: async (saleId: string, customerName?: string): Promise<{ success: boolean }> => {
-    const { data } = await apiClient.patch(`/sales/${saleId}/claim`, { customerName });
+  claimSalePayer: async (saleId: string): Promise<{ success: boolean }> => {
+    const { data } = await apiClient.patch(`/sales/${saleId}/claim`);
     return data;
   },
 
@@ -170,6 +165,7 @@ export const SalesApi = {
     totalOutstandingAmount: number;
     customers: Array<{
       customerId: string;
+      customerUserId: string;
       customerName: string;
       customerPhone: string;
       customerAvatar?: string;

@@ -141,10 +141,7 @@ export default function PaymentPage() {
       // Dynamic QR: link this merchant-initiated sale to the logged-in payer so
       // it appears in their Activity once confirmed. No-op when logged out.
       if (authUser?.id) {
-        const payerName =
-          [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
-          undefined
-        claimSalePayer.mutate({ saleId, customerName: payerName })
+        claimSalePayer.mutate({ saleId })
       }
     }
   }
@@ -550,7 +547,6 @@ export default function PaymentPage() {
         description,
         customerFingerprint: fingerprint,
         customerName: payerName,
-        customerUserId: authUser?.id,
         source: window.location.search.includes('shared=true')
           ? 'Link shared'
           : 'QR scan',
@@ -560,7 +556,6 @@ export default function PaymentPage() {
       {
         onSuccess: (sale: any) => {
           const newSaleId = sale?._id
-          recordCopy.mutate({ serialNumber, accountNumber, bankName })
           if (!newSaleId) {
             showNotificationToast({
               message: 'Failed to start payment. Please try again.',
@@ -568,12 +563,25 @@ export default function PaymentPage() {
             })
             return
           }
-          // Mark copied so the flow resumes at "waiting", then hand off.
-          recordSaleCopy.mutate(newSaleId, {
-            onSettled: () => {
-              router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
-            },
-          })
+
+          const continueToWaiting = () => {
+            recordCopy.mutate({ serialNumber, accountNumber, bankName })
+            // Mark copied so the flow resumes at "waiting", then hand off.
+            recordSaleCopy.mutate(newSaleId, {
+              onSettled: () => {
+                router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
+              },
+            })
+          }
+
+          if (authUser?.id) {
+            claimSalePayer.mutate(
+              { saleId: newSaleId },
+              { onSettled: continueToWaiting },
+            )
+          } else {
+            continueToWaiting()
+          }
         },
         onError: () => {
           showNotificationToast({

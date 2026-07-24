@@ -64,6 +64,7 @@ export interface Sale {
   totalDue?: number;
   balanceOwed?: number;
   customerId?: any;
+  customerUserId?: string;
   customerName?: string;
   customerPhone?: string;
   items?: SaleItem[];
@@ -115,10 +116,9 @@ export interface SalesStats {
 
 export interface SalesResponse {
   data: Sale[];
-  pagination: {
+  meta: {
     total: number;
     page: number;
-    limit: number;
-    pages: number;
+    lastPage: number;
   };
 }

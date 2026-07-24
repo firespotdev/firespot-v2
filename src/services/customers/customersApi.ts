@@ -4,7 +4,7 @@ export interface Customer {
   _id: string;
   name: string;
   phoneNumber: string;
-  email?: string;
+  userId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -12,7 +12,6 @@ export interface Customer {
 export interface CreateCustomerPayload {
   name: string;
   phoneNumber: string;
-  email?: string;
 }
 
 export const CustomersApi = {
