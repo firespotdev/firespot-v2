@@ -1,6 +1,5 @@
 import {
   IsArray,
-  IsBoolean,
   IsEnum,
   IsMongoId,
   IsNotEmpty,
@@ -28,10 +27,6 @@ export class CreatePendingSaleDto {
   customerName?: string;
 
   @IsOptional()
-  @IsMongoId()
-  customerUserId?: string;
-
-  @IsOptional()
   @IsEnum(["QR scan", "Link shared", "Manual"])
   source?: string;
   @IsOptional()
@@ -56,29 +51,6 @@ export class CreatePendingSaleDto {
   items?: any[];
 
   @IsOptional()
-  @IsBoolean()
-  isPaidInFull?: boolean;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  amountPaid?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0.01)
-  totalDue?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  balanceOwed?: number;
-
-  @IsOptional()
   @IsMongoId()
   customerId?: string;
-
-  @IsOptional()
-  @IsString()
-  dueDate?: string;
 }

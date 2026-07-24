@@ -64,7 +64,10 @@ export class AuthService {
     );
     const fullPhoneNumber = `${phoneCountryCode}${normalizedPhone}`;
 
-    let user = await this.userModel.findOne({ phoneNumber: normalizedPhone });
+    let user = await this.findUserByPhone(
+      normalizedPhone,
+      phoneCountryCode,
+    );
 
     if (!user) {
       user = await this.userModel.create({
@@ -89,7 +92,10 @@ export class AuthService {
       phoneCountryCode,
     );
 
-    const user = await this.userModel.findOne({ phoneNumber: normalizedPhone });
+    const user = await this.findUserByPhone(
+      normalizedPhone,
+      phoneCountryCode,
+    );
 
     if (!user) {
       throw new UnauthorizedException("User not found. Please sign up first.");
@@ -179,9 +185,10 @@ export class AuthService {
       phoneCountryCode,
     );
 
-    const existingUser = await this.userModel.findOne({
-      phoneNumber: normalizedPhone,
-    });
+    const existingUser = await this.findUserByPhone(
+      normalizedPhone,
+      phoneCountryCode,
+    );
     if (existingUser) {
       throw new BadRequestException(
         "User already exists. Please login instead.",
@@ -279,10 +286,18 @@ export class AuthService {
       phoneCountryCode,
     );
 
-    const existingUser = await this.userModel.findOne({
-      phoneNumber: normalizedPhone,
-    });
+    const existingUser = await this.findUserByPhone(
+      normalizedPhone,
+      phoneCountryCode,
+    );
     if (existingUser) {
+      if (existingUser.isPlaceholder) {
+        return this.sendOtpToUser(
+          existingUser,
+          phoneCountryCode,
+          normalizedPhone,
+        );
+      }
       throw new BadRequestException(
         "User already exists. Please login instead.",
       );
@@ -381,7 +396,10 @@ export class AuthService {
       phoneCountryCode,
     );
 
-    const user = await this.userModel.findOne({ phoneNumber: normalizedPhone });
+    const user = await this.findUserByPhone(
+      normalizedPhone,
+      phoneCountryCode,
+    );
 
     if (!user || !user.otpPinId || !user.otpExpiresAt) {
       throw new UnauthorizedException("Invalid OTP request");
@@ -471,6 +489,18 @@ export class AuthService {
   /**
    * Normalize phone number by removing leading zero for Nigerian numbers
    */
+  private async findUserByPhone(
+    normalizedPhone: string,
+    countryCode: string,
+  ): Promise<User | null> {
+    return (
+      (await this.userModel.findOne({ phoneNumber: normalizedPhone })) ??
+      (await this.userModel.findOne({
+        fullPhoneNumber: `${countryCode}${normalizedPhone}`,
+      }))
+    );
+  }
+
   private normalizePhoneNumber(phone: string, countryCode: string): string {
     return normalizeNigerianPhone(phone, countryCode);
   }

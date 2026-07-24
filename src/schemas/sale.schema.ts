@@ -16,9 +16,8 @@ export class Sale extends Document {
   @Prop()
   customerName?: string;
 
-  // The paying personal user's account, set when a logged-in user pays. Drives
-  // the customer-facing Activity feed ("payments I made"). Distinct from
-  // customerId, which is the merchant's own customer-ledger record.
+  // Global, merchant-independent customer identity. For debt this is required;
+  // it may point to a phone-linked placeholder User until OTP registration.
   @Prop({ type: Types.ObjectId, ref: "User", index: true })
   customerUserId?: Types.ObjectId;
 
@@ -73,7 +72,8 @@ export class Sale extends Document {
   @Prop()
   balanceOwed?: number;
 
-  @Prop({ type: Types.ObjectId, ref: "Customer", index: true })
+  // Merchant-specific relationship used for their chosen display name/list.
+  @Prop({ type: Types.ObjectId, ref: "MerchantCustomer", index: true })
   customerId?: Types.ObjectId;
 
   @Prop({
@@ -151,3 +151,4 @@ export type SaleDocument = Sale & Document;
 // Indexes
 SaleSchema.index({ merchantId: 1, createdAt: -1 });
 SaleSchema.index({ merchantId: 1, recordedAt: -1 });
+SaleSchema.index({ merchantId: 1, customerUserId: 1, status: 1 });

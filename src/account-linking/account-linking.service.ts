@@ -27,14 +27,16 @@ export class AccountLinkingService {
       return null;
     }
 
-    const existing = await this.userModel
-      .findOne({ phoneNumber: normalizedPhone })
-      .exec();
+    const fullPhoneNumber = `${countryCode}${normalizedPhone}`;
+    const existing =
+      (await this.userModel
+        .findOne({ phoneNumber: normalizedPhone })
+        .exec()) ??
+      (await this.userModel.findOne({ fullPhoneNumber }).exec());
     if (existing) {
       return existing;
     }
 
-    const fullPhoneNumber = `${countryCode}${normalizedPhone}`;
     return this.userModel.create({
       phoneNumber: normalizedPhone,
       phoneCountryCode: countryCode,

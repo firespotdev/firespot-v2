@@ -11,9 +11,14 @@ export function normalizeNigerianPhone(
   phone: string,
   countryCode = "+234",
 ): string {
-  const cleaned = (phone || "").replace(/\D/g, "");
+  let cleaned = (phone || "").replace(/\D/g, "");
+  const callingCode = (countryCode || "").replace(/\D/g, "");
+
+  if (callingCode && cleaned.startsWith(callingCode)) {
+    cleaned = cleaned.slice(callingCode.length);
+  }
   if (countryCode === "+234" && cleaned.startsWith("0")) {
-    return cleaned.substring(1);
+    cleaned = cleaned.slice(1);
   }
   return cleaned;
 }

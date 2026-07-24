@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, UseGuards, Request } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsNotEmpty, IsString } from "class-validator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CustomersService } from "./customers.service";
 
@@ -13,9 +13,6 @@ class CreateCustomerDto {
   @IsNotEmpty()
   phoneNumber: string;
 
-  @IsString()
-  @IsOptional()
-  email?: string;
 }
 
 @ApiTags("customers")
@@ -33,7 +30,6 @@ export class CustomersController {
       req.user.userId,
       dto.name,
       dto.phoneNumber,
-      dto.email,
     );
   }
 

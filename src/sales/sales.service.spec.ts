@@ -5,9 +5,11 @@ jest.mock("nanoid", () => ({ nanoid: () => "TEST1234" }));
 
 describe("SalesService amount invariants", () => {
   const customerId = "507f1f77bcf86cd799439014";
+  const customerUserId = "507f1f77bcf86cd799439015";
   const createService = (
     saleModel: Record<string, jest.Mock> = {},
     customerModel: Record<string, jest.Mock> = {},
+    customersService: Record<string, jest.Mock> = {},
   ) =>
     new SalesService(
       saleModel as any,
@@ -22,6 +24,7 @@ describe("SalesService amount invariants", () => {
       {} as any,
       {} as any,
       {} as any,
+      customersService as any,
     );
 
   describe("recorded sale normalization", () => {
@@ -128,10 +131,12 @@ describe("SalesService amount invariants", () => {
     const createOutstandingSale = () => ({
       merchantId: { toString: () => "507f1f77bcf86cd799439011" },
       customerId: { toString: () => customerId },
+      customerUserId: { toString: () => customerUserId },
       amount: 1075,
       totalDue: 1075,
       amountPaid: 475,
       balanceOwed: 600,
+      isPaidInFull: false,
       status: "OUTSTANDING",
       paymentMethod: "Cash",
       repayments: [],
@@ -158,7 +163,9 @@ describe("SalesService amount invariants", () => {
       };
       const customerModel = {
         findOne: jest.fn().mockReturnValue({
-          exec: jest.fn().mockResolvedValue({ _id: customerId }),
+          exec: jest
+            .fn()
+            .mockResolvedValue({ _id: customerId, userId: customerUserId }),
         }),
       };
       const service = createService(saleModel, customerModel);
@@ -192,7 +199,9 @@ describe("SalesService amount invariants", () => {
       };
       const customerModel = {
         findOne: jest.fn().mockReturnValue({
-          exec: jest.fn().mockResolvedValue({ _id: customerId }),
+          exec: jest
+            .fn()
+            .mockResolvedValue({ _id: customerId, userId: customerUserId }),
         }),
         findById: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue(null),
@@ -223,6 +232,7 @@ describe("SalesService amount invariants", () => {
     it("rejects repayment of a legacy balance with no customer", async () => {
       const sale = createOutstandingSale();
       sale.customerId = undefined;
+      sale.customerUserId = undefined;
       const saleModel = {
         findOne: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue(sale),
@@ -250,6 +260,7 @@ describe("SalesService amount invariants", () => {
             {
               status: "OUTSTANDING",
               balanceOwed: 500,
+              customerUserId,
               customerId: {
                 _id: customerId,
                 name: "Ada",
@@ -259,6 +270,7 @@ describe("SalesService amount invariants", () => {
             {
               status: "OUTSTANDING",
               balanceOwed: 900,
+              customerUserId: undefined,
               customerId: null,
             },
           ]),
@@ -273,6 +285,7 @@ describe("SalesService amount invariants", () => {
         customers: [
           expect.objectContaining({
             customerId,
+            customerUserId,
             customerName: "Ada",
             totalOwed: 500,
           }),
@@ -281,9 +294,51 @@ describe("SalesService amount invariants", () => {
       expect(find).toHaveBeenCalledWith(
         expect.objectContaining({
           status: "OUTSTANDING",
+          customerUserId: { $exists: true, $ne: null },
           customerId: { $exists: true, $ne: null },
         }),
       );
+    });
+  });
+
+  describe("authenticated payer identity", () => {
+    it("claims a pending sale using the server-authenticated user identity", async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const sale = {
+        merchantId: "507f1f77bcf86cd799439012",
+        customerUserId: undefined,
+        customerId: undefined,
+        customerName: undefined,
+        save,
+      };
+      const saleModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(sale),
+        }),
+      };
+      const customersService = {
+        findOrCreateForUser: jest.fn().mockResolvedValue({
+          _id: customerId,
+          userId: customerUserId,
+          name: "Ada Okafor",
+        }),
+      };
+      const service = createService(saleModel, {}, customersService);
+
+      await expect(
+        service.claimSalePayer(
+          "507f1f77bcf86cd799439013",
+          customerUserId,
+        ),
+      ).resolves.toEqual({ success: true });
+      expect(customersService.findOrCreateForUser).toHaveBeenCalledWith(
+        sale.merchantId,
+        expect.objectContaining({ toString: expect.any(Function) }),
+      );
+      expect(sale.customerUserId).toBe(customerUserId);
+      expect(sale.customerId).toBe(customerId);
+      expect(sale.customerName).toBe("Ada Okafor");
+      expect(save).toHaveBeenCalledTimes(1);
     });
   });
 });

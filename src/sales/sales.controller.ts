@@ -68,12 +68,10 @@ export class SalesController {
   async claimSale(
     @GetUser() user: User,
     @Param('id') saleId: string,
-    @Body() dto: { customerName?: string },
   ) {
     return this.salesService.claimSalePayer(
       saleId,
       (user as any).userId,
-      dto?.customerName,
     );
   }
 
@@ -238,4 +236,3 @@ export class SalesController {
     );
   }
 }
-

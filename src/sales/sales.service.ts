@@ -18,7 +18,10 @@ import { EditSaleDto } from './dto/edit-sale.dto'
 import { SalesQueryDto } from './dto/sales-query.dto'
 import { RecordRepaymentDto } from './dto/record-repayment.dto'
 import { nanoid } from 'nanoid'
-import { Customer, CustomerDocument } from '../schemas/customer.schema'
+import {
+  MerchantCustomer,
+  MerchantCustomerDocument,
+} from '../schemas/merchant-customer.schema'
 import { CloudinaryService } from '../users/services/cloudinary.service'
 import { AccountLinkingService } from '../account-linking/account-linking.service'
 import {
@@ -26,6 +29,7 @@ import {
   getEffectiveTier,
   getCollectEligibility,
 } from '../merchant-plans/constants/plans'
+import { CustomersService } from '../customers/customers.service'
 
 @Injectable()
 export class SalesService {
@@ -33,11 +37,13 @@ export class SalesService {
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
-    @InjectModel(Customer.name) private customerModel: Model<CustomerDocument>,
+    @InjectModel(MerchantCustomer.name)
+    private customerModel: Model<MerchantCustomerDocument>,
     private eventsGateway: EventsGateway,
     private firebaseService: FirebaseService,
     private cloudinaryService: CloudinaryService,
     private accountLinkingService: AccountLinkingService,
+    private customersService: CustomersService,
   ) {}
 
   private roundMoney(value: number): number {
@@ -52,13 +58,13 @@ export class SalesService {
     return normalized
   }
 
-  private async requireMerchantCustomer(
+  private async requireMerchantRelationship(
     merchantId: string | Types.ObjectId,
     customerId?: string | Types.ObjectId,
-  ): Promise<CustomerDocument> {
+  ): Promise<MerchantCustomerDocument> {
     if (!customerId || !Types.ObjectId.isValid(customerId.toString())) {
       throw new BadRequestException(
-        'Select a valid customer for this transaction',
+        'Select a valid customer relationship for this transaction',
       )
     }
 
@@ -71,46 +77,11 @@ export class SalesService {
 
     if (!customer) {
       throw new BadRequestException(
-        'Select a valid customer for this transaction',
+        'Select a valid customer relationship for this transaction',
       )
     }
 
     return customer
-  }
-
-  private async getOrCreateCustomerForPayer(
-    merchantId: string | Types.ObjectId,
-    userId?: string | Types.ObjectId,
-    customerName?: string,
-  ): Promise<CustomerDocument | undefined> {
-    if (!userId || !Types.ObjectId.isValid(userId.toString())) return undefined
-
-    const merchantObjectId = new Types.ObjectId(merchantId.toString())
-    const userObjectId = new Types.ObjectId(userId.toString())
-    const user = await this.userModel
-      .findById(userObjectId)
-      .select('firstName lastName phoneNumber fullPhoneNumber')
-      .exec()
-    if (!user) return undefined
-
-    const existing = await this.customerModel
-      .findOne({ merchantId: merchantObjectId, userId: userObjectId })
-      .exec()
-    if (existing) return existing
-
-    const phoneNumber = user.fullPhoneNumber || user.phoneNumber
-    const name =
-      customerName?.trim() ||
-      [user.firstName, user.lastName].filter(Boolean).join(' ') ||
-      phoneNumber
-
-    const customer = new this.customerModel({
-      merchantId: merchantObjectId,
-      userId: userObjectId,
-      name,
-      phoneNumber,
-    })
-    return customer.save()
   }
 
   /**
@@ -284,9 +255,15 @@ export class SalesService {
       ...dto,
       description,
       merchantId: merchantObjectId,
-      customerUserId: dto.customerUserId
-        ? new Types.ObjectId(dto.customerUserId)
-        : undefined,
+      // The public pending endpoint must not trust a user id supplied by the
+      // browser. Logged-in payers are attached through the guarded claim route.
+      customerUserId: undefined,
+      // Pending payment intent is not an accounting record or a debt.
+      isPaidInFull: undefined,
+      amountPaid: undefined,
+      totalDue: undefined,
+      balanceOwed: undefined,
+      dueDate: undefined,
       customerType,
       customerPurchaseCount,
       reference,
@@ -375,12 +352,14 @@ export class SalesService {
       .sort({ createdAt: 1 })
       .exec()
 
-    if (dto.customerId) {
-      await this.requireMerchantCustomer(merchantId, dto.customerId)
-    }
-
-    // Link a merchant-selected customer to their Firespot account.
-    const linkedUserId = await this.resolveCustomerUserId(dto.customerId)
+    const relationship = dto.customerId
+      ? await this.requireMerchantRelationship(merchantId, dto.customerId)
+      : undefined
+    const linkedUserId =
+      relationship?.userId ??
+      (relationship
+        ? await this.resolveCustomerUserId(relationship._id)
+        : undefined)
 
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = new this.saleModel({
@@ -402,11 +381,7 @@ export class SalesService {
       customerId: dto.customerId
         ? new Types.ObjectId(dto.customerId)
         : undefined,
-      customerUserId:
-        linkedUserId ??
-        (dto.customerUserId
-          ? new Types.ObjectId(dto.customerUserId)
-          : undefined),
+      customerUserId: linkedUserId,
       items: dto.items || [],
     })
 
@@ -423,9 +398,12 @@ export class SalesService {
   ): Promise<Sale> {
     const description = this.requireDescription(dto.description)
     const customer = dto.customerId
-      ? await this.requireMerchantCustomer(merchantId, dto.customerId)
+      ? await this.requireMerchantRelationship(merchantId, dto.customerId)
       : undefined
-    const amounts = this.normalizeRecordedAmounts(dto, !!customer)
+    const customerUserId =
+      customer?.userId ??
+      (customer ? await this.resolveCustomerUserId(customer._id) : undefined)
+    const amounts = this.normalizeRecordedAmounts(dto, !!customerUserId)
     await this.assertDailyCap(merchantId, amounts.total)
 
     let targetBankName = dto.targetBankName
@@ -456,8 +434,6 @@ export class SalesService {
 
     // Link a merchant-selected customer to their Firespot account so this
     // recorded sale appears in the customer's Activity.
-    const linkedUserId = await this.resolveCustomerUserId(customer?._id)
-
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = new this.saleModel({
       merchantId: merchantObjectId,
@@ -477,7 +453,7 @@ export class SalesService {
       totalDue: amounts.total,
       balanceOwed: amounts.balanceOwed,
       customerId: customer?._id,
-      customerUserId: linkedUserId,
+      customerUserId,
       items: dto.items || [],
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
       repayments:
@@ -515,7 +491,19 @@ export class SalesService {
     const filter: any = { merchantId: merchantObjectId }
 
     if (customerId) {
-      filter.customerId = new Types.ObjectId(customerId)
+      const relationship = await this.requireMerchantRelationship(
+        merchantId,
+        customerId,
+      )
+      const identityId =
+        relationship.userId ??
+        (await this.resolveCustomerUserId(relationship._id))
+      if (!identityId) {
+        throw new BadRequestException(
+          'This customer relationship has no valid identity',
+        )
+      }
+      filter.customerUserId = identityId
     }
 
     if (status && status !== 'ALL') {
@@ -886,16 +874,18 @@ export class SalesService {
     const description = this.requireDescription(dto.description)
     const selectedCustomerId = dto.customerId || sale.customerId
     let customer = selectedCustomerId
-      ? await this.requireMerchantCustomer(merchantId, selectedCustomerId)
+      ? await this.requireMerchantRelationship(merchantId, selectedCustomerId)
       : undefined
     if (!customer && sale.customerUserId) {
-      customer = await this.getOrCreateCustomerForPayer(
+      customer = await this.customersService.findOrCreateForUser(
         merchantId,
         sale.customerUserId,
-        sale.customerName,
       )
     }
-    const amounts = this.normalizeRecordedAmounts(dto, !!customer)
+    const customerUserId =
+      customer?.userId ??
+      (customer ? await this.resolveCustomerUserId(customer._id) : undefined)
+    const amounts = this.normalizeRecordedAmounts(dto, !!customerUserId)
 
     // Confirming a pending sale is the point the amount is actually recorded.
     await this.assertDailyCap(merchantId, amounts.total)
@@ -944,10 +934,7 @@ export class SalesService {
     // Firespot account if the sale isn't already linked (covers collect sales
     // and customer selection during the confirm step).
     if (customer) sale.customerId = customer._id
-    if (!sale.customerUserId && sale.customerId) {
-      const linkedUserId = await this.resolveCustomerUserId(sale.customerId)
-      if (linkedUserId) sale.customerUserId = linkedUserId
-    }
+    if (customerUserId) sale.customerUserId = customerUserId
 
     const savedSale = await sale.save()
     this.eventsGateway.server
@@ -1199,32 +1186,35 @@ export class SalesService {
   async claimSalePayer(
     saleId: string,
     userId: string,
-    customerName?: string,
   ): Promise<{ success: boolean }> {
     if (!Types.ObjectId.isValid(saleId) || !Types.ObjectId.isValid(userId)) {
       return { success: false }
     }
 
     const userObjectId = new Types.ObjectId(userId)
-    const update: Record<string, unknown> = { customerUserId: userObjectId }
-    if (customerName) {
-      update.customerName = customerName
-    }
-
-    await this.saleModel
-      .updateOne(
-        {
-          _id: new Types.ObjectId(saleId),
-          status: 'PENDING',
-          $or: [
-            { customerUserId: { $exists: false } },
-            { customerUserId: null },
-            { customerUserId: userObjectId },
-          ],
-        },
-        { $set: update },
-      )
+    const sale = await this.saleModel
+      .findOne({
+        _id: new Types.ObjectId(saleId),
+        status: 'PENDING',
+        $or: [
+          { customerUserId: { $exists: false } },
+          { customerUserId: null },
+          { customerUserId: userObjectId },
+        ],
+      })
       .exec()
+    if (!sale) return { success: false }
+
+    const relationship = await this.customersService.findOrCreateForUser(
+      sale.merchantId,
+      userObjectId,
+    )
+    if (!relationship?.userId) return { success: false }
+
+    sale.customerUserId = relationship.userId
+    sale.customerId = relationship._id as Types.ObjectId
+    sale.customerName = relationship.name
+    await sale.save()
 
     return { success: true }
   }
@@ -1344,12 +1334,22 @@ export class SalesService {
 
   async getCustomerOutstandingSales(merchantId: string, customerId: string) {
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const customer = await this.requireMerchantCustomer(merchantId, customerId)
+    const customer = await this.requireMerchantRelationship(
+      merchantId,
+      customerId,
+    )
+    const customerUserId =
+      customer.userId ?? (await this.resolveCustomerUserId(customer._id))
+    if (!customerUserId) {
+      throw new BadRequestException(
+        'This customer relationship has no valid identity',
+      )
+    }
 
     return this.saleModel
       .find({
         merchantId: merchantObjectId,
-        customerId: customer._id,
+        customerUserId,
         status: 'OUTSTANDING',
       })
       .sort({ createdAt: 1, dueDate: 1 })
@@ -1371,6 +1371,7 @@ export class SalesService {
 
     const merchantObjectId = new Types.ObjectId(merchantId)
     let targetCustomerId: string | undefined = dto.customerId
+    let targetCustomerUserId: Types.ObjectId | undefined
     let primarySale: any = null
 
     if (targetIdentifier && Types.ObjectId.isValid(targetIdentifier)) {
@@ -1386,25 +1387,42 @@ export class SalesService {
       if (primarySale && primarySale.customerId) {
         targetCustomerId = primarySale.customerId.toString()
       }
+      if (primarySale?.customerUserId) {
+        targetCustomerUserId = primarySale.customerUserId as Types.ObjectId
+      }
     }
 
     if (targetCustomerId) {
-      await this.requireMerchantCustomer(merchantId, targetCustomerId)
+      const relationship = await this.requireMerchantRelationship(
+        merchantId,
+        targetCustomerId,
+      )
+      targetCustomerUserId =
+        relationship.userId ??
+        (await this.resolveCustomerUserId(relationship._id))
+    } else if (targetCustomerUserId) {
+      const relationship = await this.customersService.findOrCreateForUser(
+        merchantId,
+        targetCustomerUserId,
+      )
+      if (relationship) {
+        targetCustomerId = relationship._id.toString()
+        if (primarySale && !primarySale.customerId) {
+          primarySale.customerId = relationship._id
+          await primarySale.save()
+        }
+      }
     }
 
-    if (!targetCustomerId && primarySale) {
+    if (!targetCustomerId || !targetCustomerUserId) {
       throw new BadRequestException(
         'This outstanding balance is not linked to a valid customer',
       )
     }
 
-    if (!targetCustomerId || !Types.ObjectId.isValid(targetCustomerId)) {
-      throw new NotFoundException('Customer or Sale not found')
-    }
-
     const filter: any = {
       merchantId: merchantObjectId,
-      customerId: new Types.ObjectId(targetCustomerId),
+      customerUserId: targetCustomerUserId,
       status: 'OUTSTANDING',
     }
     const outstandingSales = await this.saleModel
@@ -1502,7 +1520,7 @@ export class SalesService {
     const remainingDebts = await this.saleModel
       .find({
         merchantId: merchantObjectId,
-        customerId: new Types.ObjectId(targetCustomerId),
+        customerUserId: targetCustomerUserId,
         status: 'OUTSTANDING',
       })
       .exec()
@@ -1543,6 +1561,7 @@ export class SalesService {
       .find({
         merchantId: merchantObjectId,
         status: 'OUTSTANDING',
+        customerUserId: { $exists: true, $ne: null },
         customerId: { $exists: true, $ne: null },
       })
       .populate('customerId')
@@ -1552,6 +1571,7 @@ export class SalesService {
       string,
       {
         customerId: string
+        customerUserId: string
         customerName: string
         customerPhone: string
         customerAvatar?: string
@@ -1573,22 +1593,31 @@ export class SalesService {
       if (bal <= 0) continue
 
       const customer = sale.customerId as any
-      if (!customer?._id || !customer.name || !customer.phoneNumber) continue
+      const identityId = sale.customerUserId?.toString()
+      if (
+        !identityId ||
+        !customer?._id ||
+        !customer.name ||
+        !customer.phoneNumber
+      ) {
+        continue
+      }
 
       totalOutstandingAmount += bal
 
-      const custId = customer._id.toString()
+      const relationshipId = customer._id.toString()
       const custName = customer.name
       const custPhone = customer.phoneNumber
       const custAvatar = customer.profilePhotoUrl || ''
 
-      const existing = customerMap.get(custId)
+      const existing = customerMap.get(identityId)
       if (existing) {
         existing.transactionCount += 1
         existing.totalOwed += bal
       } else {
-        customerMap.set(custId, {
-          customerId: custId,
+        customerMap.set(identityId, {
+          customerId: relationshipId,
+          customerUserId: identityId,
           customerName: custName,
           customerPhone: custPhone,
           customerAvatar: custAvatar,
