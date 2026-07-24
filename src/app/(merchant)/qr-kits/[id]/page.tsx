@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { ArrowLeft, Check, Copy, Download, Share } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -12,7 +13,6 @@ import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
 import { getInitials } from '@/lib/utils'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
-import { useDrawerStore } from '@/services/drawer'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -21,6 +21,7 @@ export default function QRKitDetailPage() {
   const params = useParams()
   const id = params.id as string
 
+  const router = useRouter()
   const { data: qrKit, isLoading, error } = useUserQRKit(id)
   const { data: svgContent } = useQRCodeSVG(qrKit?.qrCodeSvgUrl)
   const { data: profile } = useUserProfile()
@@ -29,7 +30,6 @@ export default function QRKitDetailPage() {
   const [isEditingName, setIsEditingName] = useState(false)
   const [kitName, setKitName] = useState('')
   const cardRef = useRef<HTMLDivElement>(null)
-  const openDrawer = useDrawerStore((state) => state.openDrawer)
   const updateQRKit = useUpdateQRKit()
 
   useEffect(() => {
@@ -191,7 +191,7 @@ export default function QRKitDetailPage() {
                     background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                   }}
                 >
-                  <div className="bg-white p-2 rounded-[1.2rem] relative">
+                  <div className="bg-white p-1 rounded-[0.6rem] relative">
                     {brandedSvg ? (
                       <div
                         dangerouslySetInnerHTML={{ __html: brandedSvg }}
@@ -443,7 +443,7 @@ export default function QRKitDetailPage() {
                   ) : (
                     <div className="flex items-center gap-2 truncate">
                       <span className="text-sm font-bold text-black truncate">
-                        {qrKit.name || 'Not set'}
+                        {qrKit.name || 'Name this QRkit'}
                       </span>
                       <button
                         type="button"
@@ -513,10 +513,20 @@ export default function QRKitDetailPage() {
 
             <div className="flex flex-col gap-3 border-t border-[#F1F1F1] pt-5">
               <Button
-                variant="default"
+                type="button"
+                onClick={() =>
+                  router.push(`/order-qr-kit?qrKitId=${qrKit._id}`)
+                }
+                className="bg-black text-white hover:bg-black/90"
+              >
+                Order a physical unit of this QR kit
+              </Button>
+
+              <Button
+                variant="secondary"
                 onClick={handleDownloadPDF}
                 disabled={isDownloading}
-                className="flex items-center justify-center gap-2"
+                className="flex items-center justify-center gap-2 bg-[#F1F1F1] text-black hover:bg-[#E8E8E8]"
               >
                 <Download className="w-5 h-5" />
                 <span>

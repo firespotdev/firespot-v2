@@ -1,21 +1,30 @@
 import { apiClient } from '@/lib/utils/axios';
+import type {
+  CreateQROrderPayload,
+  CreateQROrderResponse,
+  QRKitPricing,
+  VerifyQROrderResponse,
+} from './interface';
 
-export interface CreateQROrderPayload {
-  quantity: number;
-  phoneNumber: string;
-  state: string;
-  lga: string;
-  deliveryAddress: string;
-}
+export type { CreateQROrderPayload };
 
 export const QROrdersApi = {
-  createOrder: async (payload: CreateQROrderPayload) => {
+  createOrder: async (
+    payload: CreateQROrderPayload,
+  ): Promise<CreateQROrderResponse> => {
     const { data } = await apiClient.post('/qr-orders', payload);
     return data;
   },
 
-  verifyOrderPayment: async (reference: string) => {
+  verifyOrderPayment: async (
+    reference: string,
+  ): Promise<VerifyQROrderResponse> => {
     const { data } = await apiClient.get(`/qr-orders/verify/${reference}`);
+    return data;
+  },
+
+  getPricing: async (): Promise<QRKitPricing> => {
+    const { data } = await apiClient.get('/qr-orders/pricing');
     return data;
   },
 };
