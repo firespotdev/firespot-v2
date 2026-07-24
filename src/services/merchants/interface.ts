@@ -65,6 +65,7 @@ export interface PendingQROrder {
   _id: string
   quantity: number
   totalAmount: number
+  orderStatus: string
   deliveryAddress: string
   createdAt: string
 }

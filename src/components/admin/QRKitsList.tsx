@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useQRKits, useQRCodeSVG, useDeleteQRKit, qrKitsApi } from '@/services/qr'
 import type { QRKit, QRKitFilters } from '@/services/qr'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
@@ -19,19 +19,16 @@ interface QRPreviewSmallProps {
 
 function QRPreviewSmall({ qrKit }: QRPreviewSmallProps) {
   const { data: svgData, isLoading } = useQRCodeSVG(qrKit.qrCodeSvgUrl)
-  const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
+  const brandedSvg = useMemo(() => {
+    if (!svgData) return null
 
-  useEffect(() => {
-    if (svgData) {
-      const branded = applyBrandingToSVG(
-        svgData,
-        GRADIENT_START,
-        GRADIENT_END,
-        null,
-        20,
-      )
-      setBrandedSvg(branded)
-    }
+    return applyBrandingToSVG(
+      svgData,
+      GRADIENT_START,
+      GRADIENT_END,
+      null,
+      20,
+    )
   }, [svgData])
 
   if (isLoading) {
@@ -72,7 +69,7 @@ function StatusBadge({
   type,
 }: {
   status: string
-  type: 'activation' | 'payment'
+  type: 'activation' | 'payment' | 'link'
 }) {
   const getStyles = () => {
     if (type === 'activation') {
@@ -84,7 +81,7 @@ function StatusBadge({
         default:
           return 'bg-amber-100 text-amber-700'
       }
-    } else {
+    } else if (type === 'payment') {
       switch (status) {
         case 'successful':
           return 'bg-emerald-100 text-emerald-700'
@@ -94,6 +91,10 @@ function StatusBadge({
           return 'bg-amber-100 text-amber-700'
       }
     }
+
+    return status === 'linked'
+      ? 'bg-blue-100 text-blue-700'
+      : 'bg-gray-100 text-gray-700'
   }
 
   return (
@@ -162,11 +163,6 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
 
   const handlePageChange = (newPage: number) => {
     setFilters((prev) => ({ ...prev, page: newPage }))
-  }
-
-  const handleDelete = (e: React.MouseEvent, qrKit: QRKit) => {
-    e.stopPropagation() // Prevent row click
-    setDeleteTarget(qrKit)
   }
 
   const confirmDelete = () => {
@@ -522,7 +518,7 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-100 bg-white">
+        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">
           <table className="min-w-full divide-y divide-gray-100">
             <thead className="bg-gray-50">
               <tr>
@@ -541,10 +537,22 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                   Serial Number
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Type
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Activation
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Link Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Source
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Payment
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Merchant
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Agent
@@ -580,6 +588,9 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                       {qrKit.serialNumber}
                     </span>
                   </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                    {qrKit.isDigital ? 'Digital' : 'Physical'}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge
                       status={qrKit.activationStatus}
@@ -587,7 +598,32 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
                     />
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
+                    {qrKit.linkStatus ? (
+                      <StatusBadge status={qrKit.linkStatus} type="link" />
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm capitalize text-gray-700">
+                    {qrKit.source?.replace('-', ' ') || '—'}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={qrKit.paymentStatus} type="payment" />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm">
+                    {qrKit.merchantId ? (
+                      typeof qrKit.merchantId === 'string' ? (
+                        <span className="font-mono text-xs text-gray-500">
+                          {qrKit.merchantId}
+                        </span>
+                      ) : (
+                        <p className="font-medium text-gray-900">
+                          {qrKit.merchantId.businessName || 'Unnamed merchant'}
+                        </p>
+                      )
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm">
                     {qrKit.agentId ? (

@@ -6,6 +6,9 @@ export interface QRKit {
   activationStatus: 'pending' | 'activated' | 'deactivated'
   paymentStatus: 'pending' | 'successful' | 'failed'
   activationAmount: number
+  isDigital: boolean
+  linkStatus?: 'linked' | 'unlinked'
+  source?: 'self-generated' | 'admin-generated' | 'online-order'
   merchantId?:
     | string
     | {
@@ -13,7 +16,7 @@ export interface QRKit {
         phoneNumber?: string
         businessName?: string
         merchantSlug?: string
-        bankAccounts?: any[]
+        bankAccounts?: unknown[]
         profilePhotoUrl?: string
       }
   agentId?:

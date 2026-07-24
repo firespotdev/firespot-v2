@@ -11,6 +11,7 @@ import type { QRKit } from '@/services/qr'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
 import { formatCurrency } from '@/lib/utils'
+import { useQRKitPricing } from '@/services/pricing/pricingApi'
 import AgentSelect from './AgentSelect'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminToast } from './AdminToast'
@@ -63,6 +64,7 @@ function StatusBadge({
 
 export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
   const { data: svgData, isLoading } = useQRCodeSVG(qrKit.qrCodeSvgUrl)
+  const { pricing } = useQRKitPricing()
   const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -142,7 +144,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
 
     try {
       if (currentAgentId) {
-        // Reassign from current agent to new agent
+        // Reassign from current agent to new
         await reassignQRKits.mutateAsync({
           fromAgentId: currentAgentId,
           toAgentId: selectedAgentId,
@@ -619,6 +621,22 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         type="payment"
                       />
                     </div>
+                    <div>
+                      <p className="mb-1 text-xs text-gray-400">Link</p>
+                      {qrKit.linkStatus ? (
+                        <span
+                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                            qrKit.linkStatus === 'linked'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {qrKit.linkStatus}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-gray-400">—</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -634,11 +652,25 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                       </dd>
                     </div>
                     <div>
+                      <dt className="text-xs text-gray-400">Type</dt>
+                      <dd className="text-sm font-medium text-gray-900">
+                        {qrKit.isDigital ? 'Digital' : 'Physical'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-gray-400">Source</dt>
+                      <dd className="text-sm font-medium capitalize text-gray-900">
+                        {qrKit.source?.replace('-', ' ') || '—'}
+                      </dd>
+                    </div>
+                    <div>
                       <dt className="text-xs text-gray-400">
                         Activation Amount
                       </dt>
                       <dd className="text-sm font-medium text-gray-900">
-                        ₦{formatCurrency(qrKit.activationAmount / 100)}
+                        {pricing.activationAmount === 0
+                          ? 'Free'
+                          : `₦${formatCurrency(pricing.activationAmount)}`}
                       </dd>
                     </div>
                     {qrKit.merchantId && (

@@ -207,7 +207,7 @@ export default function MerchantDetail({
               {!isLoading && stats && stats.pendingOrders.length > 0 && (
                 <section className="space-y-4">
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
-                    Pending QR Orders
+                    Outstanding QR Orders
                   </h3>
                   <div className="divide-y divide-gray-100 rounded-[12px] border border-amber-100 bg-amber-50/30 overflow-hidden">
                     {stats.pendingOrders.map((order: any) => (
@@ -218,7 +218,7 @@ export default function MerchantDetail({
                               {order.quantity} QR Kits
                             </p>
                             <p className="text-[10px] text-gray-500">
-                              Ordered{' '}
+                              {order.orderStatus} &middot; Ordered{' '}
                               {format(
                                 new Date(order.createdAt),
                                 'MMM dd, yyyy HH:mm',
@@ -226,7 +226,9 @@ export default function MerchantDetail({
                             </p>
                           </div>
                           <p className="text-sm font-bold text-[#FB5012]">
-                            ₦{order.totalAmount.toLocaleString()}
+                            {order.totalAmount === 0
+                              ? 'Free'
+                              : `₦${order.totalAmount.toLocaleString()}`}
                           </p>
                         </div>
                         <div className="flex gap-2 items-start text-xs text-gray-600">

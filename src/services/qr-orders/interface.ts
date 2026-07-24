@@ -20,6 +20,9 @@ export interface QROrder {
   assignedKitIds: QRKit[];
   paystackReference?: string;
   paidAt?: string;
+  serialSmsSentAt?: string;
+  fulfilmentError?: string;
+  fulfilmentFailedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
