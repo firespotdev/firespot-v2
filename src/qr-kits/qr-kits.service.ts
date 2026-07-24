@@ -161,6 +161,16 @@ export class QRKitsService {
       )
     }
 
+    if (
+      qrKit.reservedForMerchantId &&
+      qrKit.reservedForMerchantId.toString() !== userId
+    ) {
+      throw new HttpException(
+        'This QR kit was ordered by another merchant',
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
     // Check if user has completed profile setup
     const user = await this.userModel.findById(userId)
     if (
@@ -251,6 +261,8 @@ export class QRKitsService {
     // Link QR kit to merchant (pending payment)
     qrKit.merchantId = user._id as any
     qrKit.activationStatus = 'pending'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paystackReference = paystackResponse.reference
     qrKit.paystackAccessCode = paystackResponse.accessCode
     await qrKit.save()
@@ -287,8 +299,13 @@ export class QRKitsService {
     qrKit.merchantId = user._id as any
     qrKit.paymentStatus = 'successful'
     qrKit.activationStatus = 'activated'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paidAt = new Date()
     qrKit.activatedAt = new Date()
+    qrKit.reservationFulfilledAt = qrKit.reservedForOrderId
+      ? new Date()
+      : undefined
     qrKit.paystackReference = reference // Store the reference anyway for tracking
     await qrKit.save()
 
@@ -354,8 +371,13 @@ export class QRKitsService {
 
     qrKit.paymentStatus = 'successful'
     qrKit.activationStatus = 'activated'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paidAt = new Date(verification.paidAt)
     qrKit.activatedAt = new Date()
+    qrKit.reservationFulfilledAt = qrKit.reservedForOrderId
+      ? new Date()
+      : undefined
 
     // Auto-assign referring agent to QR kit if unassigned
     const user = await this.userModel.findById(qrKit.merchantId)
@@ -409,8 +431,13 @@ export class QRKitsService {
 
     qrKit.paymentStatus = 'successful'
     qrKit.activationStatus = 'activated'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paidAt = new Date()
     qrKit.activatedAt = new Date()
+    qrKit.reservationFulfilledAt = qrKit.reservedForOrderId
+      ? new Date()
+      : undefined
 
     // Auto-assign referring agent to QR kit if unassigned
     const user = await this.userModel.findById(qrKit.merchantId)
@@ -485,6 +512,9 @@ export class QRKitsService {
       .countDocuments({
         merchantId: null,
         agentId: null,
+        activationStatus: 'pending',
+        isDigital: { $ne: true },
+        reservedForOrderId: null,
       })
       .exec()
     return { availableCount }
@@ -499,6 +529,9 @@ export class QRKitsService {
       .find({
         merchantId: null,
         agentId: null,
+        activationStatus: 'pending',
+        isDigital: { $ne: true },
+        reservedForOrderId: null,
       })
       .limit(quantity)
       .exec()
@@ -519,6 +552,8 @@ export class QRKitsService {
       qrKit.merchantId = new Types.ObjectId(merchantId) as any
       qrKit.activationStatus = 'activated'
       qrKit.paymentStatus = 'successful'
+      qrKit.linkStatus = 'linked'
+      qrKit.source = qrKit.source || 'admin-generated'
       qrKit.paidAt = new Date()
       qrKit.activatedAt = new Date()
 
@@ -544,29 +579,91 @@ export class QRKitsService {
   /**
    * Process a successful online order
    */
-  async processOnlineOrder(merchantId: string, quantity: number) {
+  async processOnlineOrder(
+    merchantId: string,
+    orderId: string,
+    quantity: number,
+  ) {
     const user = await this.userModel.findById(merchantId)
     if (!user) {
       throw new HttpException('Merchant not found', HttpStatus.NOT_FOUND)
     }
 
-    // Give entitlements for physical kits
-    user.availableKitEntitlements =
-      (user.availableKitEntitlements || 0) + quantity
-    await user.save()
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const orderObjectId = new Types.ObjectId(orderId)
+    const reservedAt = new Date()
+    const reservedIds: Types.ObjectId[] = []
 
-    // Check if user already has a kit (including digital)
-    const existingKit = await this.qrKitModel.findOne({ merchantId: user._id })
-    const assignedIds: Types.ObjectId[] = []
+    const existingReservations = await this.qrKitModel
+      .find({ reservedForOrderId: orderObjectId })
+      .select('_id')
 
-    if (!existingKit) {
-      // First time order - provide ONE digital kit
-      const digitalKit = await this.createDigitalKit(merchantId)
-      assignedIds.push(digitalKit._id as Types.ObjectId)
+    if (existingReservations.length === quantity) {
+      return existingReservations.map((kit) => kit._id as Types.ObjectId)
     }
 
-    // Note: We don't return physical kits here anymore. Use entitlements.
-    return assignedIds
+    if (existingReservations.length > 0) {
+      await this.qrKitModel.updateMany(
+        { reservedForOrderId: orderObjectId },
+        {
+          $unset: {
+            reservedForOrderId: 1,
+            reservedForMerchantId: 1,
+            reservedAt: 1,
+          },
+        },
+      )
+    }
+
+    try {
+      for (let index = 0; index < quantity; index += 1) {
+        // findOneAndUpdate makes each reservation atomic, so concurrent paid
+        // orders cannot receive the same physical serial number.
+        const qrKit = await this.qrKitModel.findOneAndUpdate(
+          {
+            merchantId: null,
+            agentId: null,
+            activationStatus: 'pending',
+            isDigital: { $ne: true },
+            reservedForOrderId: null,
+          },
+          {
+            $set: {
+              reservedForOrderId: orderObjectId,
+              reservedForMerchantId: merchantObjectId,
+              reservedAt,
+              linkStatus: 'unlinked',
+              source: 'admin-generated',
+            },
+          },
+          { new: true, sort: { createdAt: 1 } },
+        )
+
+        if (!qrKit) {
+          throw new HttpException(
+            `Not enough physical QR kits to fulfil this order. Required: ${quantity}, reserved: ${reservedIds.length}.`,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          )
+        }
+
+        reservedIds.push(qrKit._id as Types.ObjectId)
+      }
+
+      return reservedIds
+    } catch (error) {
+      // Do not leave a partially fulfilled order holding inventory.
+      await this.qrKitModel.updateMany(
+        { reservedForOrderId: orderObjectId },
+        {
+          $unset: {
+            reservedForOrderId: 1,
+            reservedForMerchantId: 1,
+            reservedAt: 1,
+          },
+        },
+      )
+      throw error
+    }
   }
 
   /**
@@ -604,13 +701,46 @@ export class QRKitsService {
     }
 
     // Create a digital kit (does not consume an entitlement)
-    return this.createDigitalKit(merchantId)
+    return this.createDigitalKit(merchantId, 'online-order')
+  }
+
+  /**
+   * Generate a new digital kit directly on a merchant's account.
+   *
+   * This is the "proceed without linking" path. It intentionally creates a
+   * fresh kit on every successful request so merchants can run separate QR
+   * kits for separate counters or locations.
+   */
+  async generateDigitalKit(merchantId: string) {
+    const user = await this.userModel.findById(merchantId)
+
+    if (
+      !user ||
+      !user.businessName ||
+      !user.bankAccounts ||
+      user.bankAccounts.length === 0
+    ) {
+      throw new HttpException(
+        'Please complete your profile setup before generating a QR kit',
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    const qrKit = await this.createDigitalKit(merchantId)
+
+    return {
+      message: 'QR kit generated successfully',
+      qrKit,
+    }
   }
 
   /**
    * Create a digital QR kit for immediate use
    */
-  private async createDigitalKit(merchantId: string): Promise<QRKitDocument> {
+  private async createDigitalKit(
+    merchantId: string,
+    source: 'self-generated' | 'online-order' = 'self-generated',
+  ): Promise<QRKitDocument> {
     const user = await this.userModel.findById(merchantId)
     const serialNumber = await this.generateUniqueDigitalSerialNumber()
 
@@ -626,6 +756,8 @@ export class QRKitsService {
       merchantId: user?._id,
       isDigital: true,
       activationStatus: 'activated',
+      linkStatus: 'unlinked',
+      source,
       paymentStatus: 'successful',
       qrCodeSvgUrl: url,
       qrCodeSvgPublicId: publicId,

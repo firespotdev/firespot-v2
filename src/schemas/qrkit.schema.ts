@@ -1,6 +1,16 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
+export const QR_KIT_LINK_STATUSES = ["linked", "unlinked"] as const;
+export type QRKitLinkStatus = (typeof QR_KIT_LINK_STATUSES)[number];
+
+export const QR_KIT_SOURCES = [
+  "self-generated",
+  "admin-generated",
+  "online-order",
+] as const;
+export type QRKitSource = (typeof QR_KIT_SOURCES)[number];
+
 @Schema({ timestamps: true })
 export class QRKit extends Document {
   // Serial number (unique identifier on physical QR kit, never changes)
@@ -30,6 +40,29 @@ export class QRKit extends Document {
 
   @Prop({ default: false, index: true })
   isDigital: boolean;
+
+  // Whether this kit was attached through the physical serial-number flow.
+  // A merchant can own a self-generated digital kit while it remains unlinked.
+  @Prop({ enum: QR_KIT_LINK_STATUSES, index: true })
+  linkStatus?: QRKitLinkStatus;
+
+  // The flow that originally created this QR kit record.
+  @Prop({ enum: QR_KIT_SOURCES, index: true })
+  source?: QRKitSource;
+
+  // Online orders reserve physical inventory without linking it. The
+  // merchant still completes the normal serial-number activation flow later.
+  @Prop({ type: Types.ObjectId, ref: "QROrder", index: true })
+  reservedForOrderId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: "User", index: true })
+  reservedForMerchantId?: Types.ObjectId;
+
+  @Prop()
+  reservedAt?: Date;
+
+  @Prop()
+  reservationFulfilledAt?: Date;
 
   @Prop()
   paidAt?: Date;
@@ -63,4 +96,10 @@ export type QRKitDocument = QRKit & Document;
 
 // Indexes
 // Standard indexes are handled by @Prop annotations.
-// Custom composite indexes or options would go here.
+QRKitSchema.index({
+  isDigital: 1,
+  activationStatus: 1,
+  merchantId: 1,
+  agentId: 1,
+  reservedForOrderId: 1,
+});

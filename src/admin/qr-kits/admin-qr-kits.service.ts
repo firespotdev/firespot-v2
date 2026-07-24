@@ -99,6 +99,8 @@ export class AdminQRKitsService {
       qrCodeSvgPublicId: publicId,
       activationStatus: "pending",
       paymentStatus: "pending",
+      linkStatus: "unlinked",
+      source: "admin-generated",
       // Kobo, from QR_KIT_ACTIVATION_AMOUNT. 0 while activation is free.
       activationAmount: nairaToKobo(
         getQRKitPricing(this.configService).activationAmount,
@@ -390,6 +392,7 @@ export class AdminQRKitsService {
       {
         _id: { $in: dto.qrKitIds.map((id) => new Types.ObjectId(id)) },
         agentId: null, // Only assign unassigned kits
+        reservedForOrderId: null,
       },
       {
         $set: {
@@ -486,6 +489,12 @@ export class AdminQRKitsService {
     if (qrKit.activationStatus === "activated") {
       throw new BadRequestException(
         "Cannot delete an activated QR kit. Only pending or deactivated kits can be deleted.",
+      );
+    }
+
+    if (qrKit.reservedForOrderId) {
+      throw new BadRequestException(
+        "Cannot delete a QR kit reserved for an online order.",
       );
     }
 

@@ -1,17 +1,23 @@
-import { IsInt, IsNotEmpty, IsString, Max, MaxLength, Min } from 'class-validator';
-
-/**
- * Upper bound on a single order. Kits are free, so an unbounded quantity is a
- * standing invitation to mint entitlements. QR_KIT_MAX_PER_ORDER is the
- * authoritative cap (enforced in QROrdersService); this is the static ceiling.
- */
-const MAX_QUANTITY_CEILING = 100;
+import {
+  IsInt,
+  IsMongoId,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class CreateQROrderDto {
+  @IsOptional()
+  @IsMongoId()
+  qrKitId?: string;
+
   @IsNotEmpty()
   @IsInt()
   @Min(1)
-  @Max(MAX_QUANTITY_CEILING)
+  @Max(100)
   quantity: number;
 
   @IsNotEmpty()

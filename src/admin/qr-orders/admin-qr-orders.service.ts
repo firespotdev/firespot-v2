@@ -17,6 +17,7 @@ export class AdminQROrdersService {
     return this.orderModel
       .find(query)
       .populate('merchantId', 'businessName fullPhoneNumber merchantSlug')
+      .populate('qrKitId', 'serialNumber activationStatus name')
       .populate('assignedKitIds', 'serialNumber activationStatus')
       .sort({ createdAt: -1 })
       .exec();
@@ -26,6 +27,7 @@ export class AdminQROrdersService {
     const order = await this.orderModel
       .findById(id)
       .populate('merchantId', 'businessName fullPhoneNumber merchantSlug')
+      .populate('qrKitId', 'serialNumber activationStatus name qrCodeSvgUrl')
       .populate('assignedKitIds', 'serialNumber activationStatus qrCodeSvgUrl')
       .exec();
 
