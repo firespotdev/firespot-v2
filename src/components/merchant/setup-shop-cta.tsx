@@ -7,10 +7,6 @@ import { useShopSetup } from '@/services/shop'
 import { Shop } from 'iconsax-reactjs'
 
 /**
- * Whether the "Set up Shop" nudge should show, and its subtitle. Exposed so the
- * profile can give it precedence over the recent-sales banner — both live in
- * the same slot, and the parent needs to know if this one is claiming it.
- *
  * Shows once the merchant has verified a plan — gated on `canCollect` (plan
  * present + KYC complete), which keeps it visible through a lapse, when the
  * merchant still has a shop to manage. Hidden once the shop is live and fully
