@@ -1,17 +1,27 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, IsEnum, Min } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export class RecordSaleDto {
   @IsNotEmpty()
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   amount: number;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  description?: string;
+  description: string;
 
   @IsNotEmpty()
-  @IsEnum(['Bank Transfer', 'Cash', 'POS', 'Other'])
+  @IsEnum(["Bank Transfer", "Cash", "POS", "Other"])
   paymentMethod: string;
 
   @IsOptional()
@@ -19,6 +29,7 @@ export class RecordSaleDto {
   targetBankName?: string;
 
   @IsOptional()
+  @IsBoolean()
   isPaidInFull?: boolean;
 
   @IsOptional()
@@ -34,10 +45,12 @@ export class RecordSaleDto {
   balanceOwed?: number;
 
   @IsOptional()
+  @IsMongoId()
   @IsString()
   customerId?: string;
 
   @IsOptional()
+  @IsArray()
   items?: any[];
 
   @IsOptional()

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -15,6 +16,7 @@ import { CreatePendingSaleDto } from './dto/create-pending-sale.dto'
 import { RecordSaleDto } from './dto/record-sale.dto'
 import { EditSaleDto } from './dto/edit-sale.dto'
 import { SalesQueryDto } from './dto/sales-query.dto'
+import { RecordRepaymentDto } from './dto/record-repayment.dto'
 import { nanoid } from 'nanoid'
 import { Customer, CustomerDocument } from '../schemas/customer.schema'
 import { CloudinaryService } from '../users/services/cloudinary.service'
@@ -37,6 +39,137 @@ export class SalesService {
     private cloudinaryService: CloudinaryService,
     private accountLinkingService: AccountLinkingService,
   ) {}
+
+  private roundMoney(value: number): number {
+    return Math.round((Number(value) + Number.EPSILON) * 100) / 100
+  }
+
+  private requireDescription(description?: string): string {
+    const normalized = description?.trim()
+    if (!normalized) {
+      throw new BadRequestException('Description is required')
+    }
+    return normalized
+  }
+
+  private async requireMerchantCustomer(
+    merchantId: string | Types.ObjectId,
+    customerId?: string | Types.ObjectId,
+  ): Promise<CustomerDocument> {
+    if (!customerId || !Types.ObjectId.isValid(customerId.toString())) {
+      throw new BadRequestException(
+        'Select a valid customer for this transaction',
+      )
+    }
+
+    const customer = await this.customerModel
+      .findOne({
+        _id: new Types.ObjectId(customerId.toString()),
+        merchantId: new Types.ObjectId(merchantId.toString()),
+      })
+      .exec()
+
+    if (!customer) {
+      throw new BadRequestException(
+        'Select a valid customer for this transaction',
+      )
+    }
+
+    return customer
+  }
+
+  private async getOrCreateCustomerForPayer(
+    merchantId: string | Types.ObjectId,
+    userId?: string | Types.ObjectId,
+    customerName?: string,
+  ): Promise<CustomerDocument | undefined> {
+    if (!userId || !Types.ObjectId.isValid(userId.toString())) return undefined
+
+    const merchantObjectId = new Types.ObjectId(merchantId.toString())
+    const userObjectId = new Types.ObjectId(userId.toString())
+    const user = await this.userModel
+      .findById(userObjectId)
+      .select('firstName lastName phoneNumber fullPhoneNumber')
+      .exec()
+    if (!user) return undefined
+
+    const existing = await this.customerModel
+      .findOne({ merchantId: merchantObjectId, userId: userObjectId })
+      .exec()
+    if (existing) return existing
+
+    const phoneNumber = user.fullPhoneNumber || user.phoneNumber
+    const name =
+      customerName?.trim() ||
+      [user.firstName, user.lastName].filter(Boolean).join(' ') ||
+      phoneNumber
+
+    const customer = new this.customerModel({
+      merchantId: merchantObjectId,
+      userId: userObjectId,
+      name,
+      phoneNumber,
+    })
+    return customer.save()
+  }
+
+  /**
+   * The server owns the relationship between total, paid amount and balance.
+   * Clients may send the derived fields for display compatibility, but they
+   * cannot persist a contradictory set of values.
+   */
+  private normalizeRecordedAmounts(
+    dto: RecordSaleDto,
+    hasCustomer: boolean,
+  ): {
+    total: number
+    amountPaid: number
+    balanceOwed: number
+    isPaidInFull: boolean
+  } {
+    const total = this.roundMoney(dto.amount)
+    if (!Number.isFinite(total) || total <= 0) {
+      throw new BadRequestException('Sale amount must be greater than zero')
+    }
+
+    if (dto.isPaidInFull !== false) {
+      return {
+        total,
+        amountPaid: total,
+        balanceOwed: 0,
+        isPaidInFull: true,
+      }
+    }
+
+    const amountPaid = this.roundMoney(dto.amountPaid ?? 0)
+    if (!Number.isFinite(amountPaid) || amountPaid <= 0) {
+      throw new BadRequestException(
+        'Enter an amount paid for a partial payment',
+      )
+    }
+    if (amountPaid >= total) {
+      throw new BadRequestException(
+        'A partial payment must be less than the total amount',
+      )
+    }
+    if (!hasCustomer) {
+      throw new BadRequestException(
+        'Select the customer who owes the outstanding balance',
+      )
+    }
+    if (!dto.dueDate || Number.isNaN(new Date(dto.dueDate).getTime())) {
+      throw new BadRequestException(
+        'A due date is required for a partial payment',
+      )
+    }
+
+    return {
+      total,
+      amountPaid,
+      balanceOwed: this.roundMoney(total - amountPaid),
+      isPaidInFull: false,
+    }
+  }
 
   /**
    * Hard-blocks recording once the merchant's plan daily cap is reached.
@@ -120,6 +253,7 @@ export class SalesService {
   }
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
+    const description = this.requireDescription(dto.description)
     await this.assertDailyCap(dto.merchantId, dto.amount || 0)
 
     // Check if this fingerprint has any confirmed sales for this merchant already
@@ -148,6 +282,7 @@ export class SalesService {
     const merchantObjectId = new Types.ObjectId(dto.merchantId)
     const sale = new this.saleModel({
       ...dto,
+      description,
       merchantId: merchantObjectId,
       customerUserId: dto.customerUserId
         ? new Types.ObjectId(dto.customerUserId)
@@ -228,6 +363,7 @@ export class SalesService {
     merchantId: string,
     dto: CreatePendingSaleDto,
   ): Promise<Sale> {
+    const description = this.requireDescription(dto.description)
     await this.assertCanCollect(merchantId)
     await this.assertDailyCap(merchantId, dto.amount || 0)
 
@@ -239,12 +375,17 @@ export class SalesService {
       .sort({ createdAt: 1 })
       .exec()
 
+    if (dto.customerId) {
+      await this.requireMerchantCustomer(merchantId, dto.customerId)
+    }
+
     // Link a merchant-selected customer to their Firespot account.
     const linkedUserId = await this.resolveCustomerUserId(dto.customerId)
 
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = new this.saleModel({
       ...dto,
+      description,
       merchantId: merchantObjectId,
       status: 'PENDING',
       source: 'QR scan',
@@ -252,10 +393,12 @@ export class SalesService {
       reference: `FS-${nanoid(8).toUpperCase()}`,
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
-      isPaidInFull: dto.isPaidInFull,
-      amountPaid: dto.amountPaid,
-      totalDue: dto.totalDue,
-      balanceOwed: dto.balanceOwed,
+      // A collection request is not a recorded payment or a debt. These
+      // accounting fields are only derived when the merchant records it.
+      isPaidInFull: undefined,
+      amountPaid: undefined,
+      totalDue: undefined,
+      balanceOwed: undefined,
       customerId: dto.customerId
         ? new Types.ObjectId(dto.customerId)
         : undefined,
@@ -278,7 +421,12 @@ export class SalesService {
     merchantId: string,
     dto: RecordSaleDto,
   ): Promise<Sale> {
-    await this.assertDailyCap(merchantId, dto.amount || 0)
+    const description = this.requireDescription(dto.description)
+    const customer = dto.customerId
+      ? await this.requireMerchantCustomer(merchantId, dto.customerId)
+      : undefined
+    const amounts = this.normalizeRecordedAmounts(dto, !!customer)
+    await this.assertDailyCap(merchantId, amounts.total)
 
     let targetBankName = dto.targetBankName
 
@@ -308,40 +456,40 @@ export class SalesService {
 
     // Link a merchant-selected customer to their Firespot account so this
     // recorded sale appears in the customer's Activity.
-    const linkedUserId = await this.resolveCustomerUserId(dto.customerId)
+    const linkedUserId = await this.resolveCustomerUserId(customer?._id)
 
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = new this.saleModel({
       merchantId: merchantObjectId,
-      amount: dto.amount,
-      description: dto.description,
+      amount: amounts.total,
+      description,
       paymentMethod: dto.paymentMethod || 'Other',
       targetBankName,
-      status:
-        dto.isPaidInFull === false || (dto.balanceOwed && dto.balanceOwed > 0)
-          ? 'OUTSTANDING'
-          : 'CONFIRMED',
+      status: !amounts.isPaidInFull ? 'OUTSTANDING' : 'CONFIRMED',
       recordedAt: new Date(),
       customerType: 'New', // Default for manual as per request
       source: 'Manual',
       reference: `FS-${nanoid(8).toUpperCase()}`,
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
-      isPaidInFull: dto.isPaidInFull,
-      amountPaid: dto.amountPaid,
-      totalDue: dto.totalDue,
-      balanceOwed: dto.balanceOwed,
-      customerId: dto.customerId
-        ? new Types.ObjectId(dto.customerId)
-        : undefined,
+      isPaidInFull: amounts.isPaidInFull,
+      amountPaid: amounts.amountPaid,
+      totalDue: amounts.total,
+      balanceOwed: amounts.balanceOwed,
+      customerId: customer?._id,
       customerUserId: linkedUserId,
       items: dto.items || [],
       dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-      repayments: dto.amountPaid && dto.amountPaid > 0 ? [{
-        amount: dto.amountPaid,
-        paymentMethod: dto.paymentMethod || 'Other',
-        recordedAt: new Date(),
-      }] : [],
+      repayments:
+        amounts.amountPaid > 0
+          ? [
+              {
+                amount: amounts.amountPaid,
+                paymentMethod: dto.paymentMethod || 'Other',
+                recordedAt: new Date(),
+              },
+            ]
+          : [],
     })
 
     await sale.save()
@@ -383,10 +531,7 @@ export class SalesService {
           { status: 'ARCHIVED' },
         ]
       } else if (upperStatus === 'OWING' || upperStatus === 'OUTSTANDING') {
-        filter.$or = [
-          { status: 'OUTSTANDING' },
-          { balanceOwed: { $gt: 0 } },
-        ]
+        filter.status = 'OUTSTANDING'
       } else {
         filter.status = status
       }
@@ -453,13 +598,16 @@ export class SalesService {
    * (/pay/:serial?saleId=...). Exposes only the fields the payer needs —
    * never the merchant's phone number or bank account list.
    */
-  async getPublicSaleById(saleId: string) {
-    if (!mongoose.isValidObjectId(saleId)) {
+  async getPublicSaleById(saleId: string, serialNumber?: string) {
+    if (!mongoose.isValidObjectId(saleId) || !serialNumber?.trim()) {
       throw new NotFoundException('Sale not found')
     }
 
     const sale = await this.saleModel
-      .findById(saleId)
+      .findOne({
+        _id: saleId,
+        serialNumber: serialNumber.trim().toUpperCase(),
+      })
       .populate('merchantId', 'businessName merchantSlug profilePhotoUrl')
       .exec()
 
@@ -484,6 +632,8 @@ export class SalesService {
       recordedAt: sale.recordedAt,
       reference: sale.reference,
       receiptUrl: sale.receiptUrl,
+      customerMarkedPaidAt: sale.customerMarkedPaidAt,
+      cancelledBy: sale.cancelledBy,
       isCopied: sale.isCopied,
       targetBankName: sale.targetBankName,
       paymentMethod: sale.paymentMethod,
@@ -661,7 +811,9 @@ export class SalesService {
 
     const response: any = {
       pendingSalesCount: pendingCount,
-      todaySalesCount: filteredConfirmed.filter((s) => getSaleRecordedAmount(s) > 0 || s.status === 'CONFIRMED').length,
+      todaySalesCount: filteredConfirmed.filter(
+        (s) => getSaleRecordedAmount(s) > 0 || s.status === 'CONFIRMED',
+      ).length,
       todaySalesAmount: statsAmount,
       totalSalesAmount,
       trend,
@@ -676,7 +828,10 @@ export class SalesService {
       const prevEnd = new Date(dateRange.startDate.getTime() - 1)
       const prevStart = new Date(prevEnd.getTime() - diffMs)
 
-      const prevFilter: any = { merchantId, status: { $in: ['CONFIRMED', 'OUTSTANDING'] } }
+      const prevFilter: any = {
+        merchantId,
+        status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
+      }
       prevFilter.createdAt = { $gte: prevStart, $lte: prevEnd }
 
       const prevSales = await this.saleModel
@@ -722,29 +877,49 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
+    if (sale.status !== 'PENDING') {
+      throw new UnprocessableEntityException(
+        'Only a pending sale can be recorded',
+      )
+    }
+
+    const description = this.requireDescription(dto.description)
+    const selectedCustomerId = dto.customerId || sale.customerId
+    let customer = selectedCustomerId
+      ? await this.requireMerchantCustomer(merchantId, selectedCustomerId)
+      : undefined
+    if (!customer && sale.customerUserId) {
+      customer = await this.getOrCreateCustomerForPayer(
+        merchantId,
+        sale.customerUserId,
+        sale.customerName,
+      )
+    }
+    const amounts = this.normalizeRecordedAmounts(dto, !!customer)
 
     // Confirming a pending sale is the point the amount is actually recorded.
-    await this.assertDailyCap(merchantId, dto.amount || 0)
+    await this.assertDailyCap(merchantId, amounts.total)
 
-    sale.status =
-      dto.isPaidInFull === false || (dto.balanceOwed && dto.balanceOwed > 0)
-        ? 'OUTSTANDING'
-        : 'CONFIRMED'
-    sale.amount = dto.amount
-    sale.description = dto.description
+    sale.status = amounts.isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
+    sale.amount = amounts.total
+    sale.description = description
     sale.paymentMethod = dto.paymentMethod || 'Other'
     sale.recordedAt = new Date()
-    if (dto.isPaidInFull !== undefined) sale.isPaidInFull = dto.isPaidInFull
-    if (dto.amountPaid !== undefined) sale.amountPaid = dto.amountPaid
-    if (dto.totalDue !== undefined) sale.totalDue = dto.totalDue
-    if (dto.balanceOwed !== undefined) sale.balanceOwed = dto.balanceOwed
+    sale.isPaidInFull = amounts.isPaidInFull
+    sale.amountPaid = amounts.amountPaid
+    sale.totalDue = amounts.total
+    sale.balanceOwed = amounts.balanceOwed
+    sale.dueDate = amounts.isPaidInFull ? undefined : new Date(dto.dueDate!)
+    if (dto.items) sale.items = dto.items
 
-    if (dto.amountPaid && dto.amountPaid > 0) {
-      sale.repayments = [{
-        amount: dto.amountPaid,
-        paymentMethod: dto.paymentMethod || 'Other',
-        recordedAt: new Date(),
-      }]
+    if (amounts.amountPaid > 0) {
+      sale.repayments = [
+        {
+          amount: amounts.amountPaid,
+          paymentMethod: dto.paymentMethod || 'Other',
+          recordedAt: new Date(),
+        },
+      ]
     } else {
       sale.repayments = []
     }
@@ -768,9 +943,7 @@ export class SalesService {
     // Persist a customer selected at confirm time, and link them to their
     // Firespot account if the sale isn't already linked (covers collect sales
     // and customer selection during the confirm step).
-    if (dto.customerId) {
-      sale.customerId = new Types.ObjectId(dto.customerId)
-    }
+    if (customer) sale.customerId = customer._id
     if (!sale.customerUserId && sale.customerId) {
       const linkedUserId = await this.resolveCustomerUserId(sale.customerId)
       if (linkedUserId) sale.customerUserId = linkedUserId
@@ -796,7 +969,14 @@ export class SalesService {
       throw new NotFoundException('Sale not found')
     }
 
+    if (sale.status !== 'PENDING') {
+      throw new UnprocessableEntityException(
+        'Only a pending sale can be cancelled',
+      )
+    }
+
     sale.status = 'CANCELLED'
+    sale.cancelledBy = 'merchant'
     const savedSale = await sale.save()
     this.eventsGateway.server
       .to(sale.merchantId.toString())
@@ -805,6 +985,71 @@ export class SalesService {
       .to(`sale-${sale._id.toString()}`)
       .emit('sale.cancelled', savedSale)
     return savedSale
+  }
+
+  async cancelSaleAsCustomer(saleId: string, serialNumber: string) {
+    if (!mongoose.isValidObjectId(saleId)) {
+      throw new NotFoundException('Sale not found')
+    }
+
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      serialNumber: serialNumber.trim().toUpperCase(),
+    })
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    if (sale.status === 'CANCELLED') {
+      return sale
+    }
+    if (sale.status !== 'PENDING') {
+      throw new UnprocessableEntityException(
+        'This transaction can no longer be cancelled',
+      )
+    }
+
+    sale.status = 'CANCELLED'
+    sale.cancelledBy = 'customer'
+    const savedSale = await sale.save()
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .emit('sale.cancelled', savedSale)
+    this.eventsGateway.server
+      .to(`sale-${sale._id.toString()}`)
+      .emit('sale.cancelled', savedSale)
+    return savedSale
+  }
+
+  async markSalePaidByCustomer(saleId: string, serialNumber: string) {
+    if (!mongoose.isValidObjectId(saleId)) {
+      throw new NotFoundException('Sale not found')
+    }
+
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      serialNumber: serialNumber.trim().toUpperCase(),
+    })
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    if (sale.status !== 'PENDING') {
+      throw new UnprocessableEntityException(
+        'This transaction is no longer awaiting payment',
+      )
+    }
+
+    if (!sale.customerMarkedPaidAt) {
+      sale.customerMarkedPaidAt = new Date()
+      await sale.save()
+      this.eventsGateway.server
+        .to(sale.merchantId.toString())
+        .emit('payment.declared', sale)
+      this.eventsGateway.server
+        .to(`sale-${sale._id.toString()}`)
+        .emit('payment.declared', sale)
+    }
+
+    return sale
   }
 
   async editSale(merchantId: string, saleId: string, dto: EditSaleDto) {
@@ -840,8 +1085,17 @@ export class SalesService {
       )
     }
 
-    if (dto.amount !== undefined) sale.amount = dto.amount
-    if (dto.description !== undefined) sale.description = dto.description
+    if (dto.amount !== undefined) {
+      const amount = this.roundMoney(dto.amount)
+      sale.amount = amount
+      sale.totalDue = amount
+      sale.amountPaid = amount
+      sale.balanceOwed = 0
+      sale.isPaidInFull = true
+    }
+    if (dto.description !== undefined) {
+      sale.description = this.requireDescription(dto.description)
+    }
     if (dto.paymentMethod !== undefined) sale.paymentMethod = dto.paymentMethod
 
     sale.hasBeenEdited = true
@@ -866,6 +1120,11 @@ export class SalesService {
     const sale = await this.saleModel.findById(saleId)
     if (!sale) {
       throw new NotFoundException('Sale not found')
+    }
+    if (sale.status !== 'PENDING') {
+      throw new UnprocessableEntityException(
+        'Receipt can only be uploaded while the sale is pending',
+      )
     }
     const upload = await this.cloudinaryService.uploadDocument(fileBuffer)
     sale.receiptUrl = upload.url
@@ -977,7 +1236,10 @@ export class SalesService {
     endDate: Date | null,
   ) {
     const getRecordedAmt = (s: any) => {
-      if (s.status === 'CONFIRMED') return s.amountPaid !== undefined && s.amountPaid !== null ? s.amountPaid : (s.amount || 0)
+      if (s.status === 'CONFIRMED')
+        return s.amountPaid !== undefined && s.amountPaid !== null
+          ? s.amountPaid
+          : s.amount || 0
       if (s.status === 'OUTSTANDING') return s.amountPaid || 0
       return 0
     }
@@ -1082,17 +1344,13 @@ export class SalesService {
 
   async getCustomerOutstandingSales(merchantId: string, customerId: string) {
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const customerObjectId = new Types.ObjectId(customerId)
+    const customer = await this.requireMerchantCustomer(merchantId, customerId)
 
     return this.saleModel
       .find({
         merchantId: merchantObjectId,
-        customerId: customerObjectId,
-        $or: [
-          { status: 'OUTSTANDING' },
-          { balanceOwed: { $gt: 0 } },
-          { isPaidInFull: false },
-        ],
+        customerId: customer._id,
+        status: 'OUTSTANDING',
       })
       .sort({ createdAt: 1, dueDate: 1 })
       .populate('customerId')
@@ -1100,88 +1358,80 @@ export class SalesService {
   }
 
   async recordRepayment(
-    merchantId: string | undefined,
+    merchantId: string,
     targetIdentifier: string,
-    dto: { amountPaid: number; paymentMethod?: string; customerId?: string },
+    dto: RecordRepaymentDto,
   ): Promise<any> {
-    const repaymentAmount = dto.amountPaid || 0
+    const repaymentAmount = this.roundMoney(dto.amountPaid)
+    if (!Number.isFinite(repaymentAmount) || repaymentAmount <= 0) {
+      throw new BadRequestException(
+        'Repayment amount must be greater than zero',
+      )
+    }
+
+    const merchantObjectId = new Types.ObjectId(merchantId)
     let targetCustomerId: string | undefined = dto.customerId
     let primarySale: any = null
 
-    if (targetIdentifier) {
-      primarySale = await this.saleModel.findById(targetIdentifier).exec()
+    if (targetIdentifier && Types.ObjectId.isValid(targetIdentifier)) {
+      primarySale = await this.saleModel
+        .findOne({
+          _id: new Types.ObjectId(targetIdentifier),
+          merchantId: merchantObjectId,
+        })
+        .exec()
+      if (!primarySale && !targetCustomerId) {
+        throw new NotFoundException('Outstanding sale not found')
+      }
       if (primarySale && primarySale.customerId) {
         targetCustomerId = primarySale.customerId.toString()
       }
     }
 
-    if (!targetCustomerId && primarySale) {
-      const currentAmountPaid = primarySale.amountPaid || 0
-      const currentBalanceOwed =
-        primarySale.balanceOwed !== undefined && primarySale.balanceOwed !== null
-          ? primarySale.balanceOwed
-          : primarySale.amount
-            ? Math.max(0, primarySale.amount - currentAmountPaid)
-            : 0
-
-      const newAmountPaid = currentAmountPaid + repaymentAmount
-      const newBalanceOwed = Math.max(0, currentBalanceOwed - repaymentAmount)
-      const isPaidInFull = newBalanceOwed <= 0
-
-      primarySale.amountPaid = newAmountPaid
-      primarySale.balanceOwed = newBalanceOwed
-      primarySale.isPaidInFull = isPaidInFull
-      if (dto.paymentMethod) primarySale.paymentMethod = dto.paymentMethod
-      primarySale.status = isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
-
-      if (!primarySale.repayments) {
-        primarySale.repayments = []
-      }
-      if (currentAmountPaid > 0 && primarySale.repayments.length === 0) {
-        primarySale.repayments.push({
-          amount: currentAmountPaid,
-          paymentMethod: primarySale.paymentMethod || 'Other',
-          recordedAt: primarySale.recordedAt || primarySale.createdAt || new Date(),
-        })
-      }
-      primarySale.repayments.push({
-        amount: repaymentAmount,
-        paymentMethod: dto.paymentMethod || 'Other',
-        recordedAt: new Date(),
-      })
-
-      if (!primarySale.customerUserId && primarySale.customerId) {
-        const linkedUserId = await this.resolveCustomerUserId(
-          primarySale.customerId,
-        )
-        if (linkedUserId) primarySale.customerUserId = linkedUserId
-      }
-
-      await primarySale.save()
-      await primarySale.populate('customerId')
-      return primarySale
+    if (targetCustomerId) {
+      await this.requireMerchantCustomer(merchantId, targetCustomerId)
     }
 
-    if (!targetCustomerId) {
+    if (!targetCustomerId && primarySale) {
+      throw new BadRequestException(
+        'This outstanding balance is not linked to a valid customer',
+      )
+    }
+
+    if (!targetCustomerId || !Types.ObjectId.isValid(targetCustomerId)) {
       throw new NotFoundException('Customer or Sale not found')
     }
 
     const filter: any = {
+      merchantId: merchantObjectId,
       customerId: new Types.ObjectId(targetCustomerId),
-      $or: [
-        { status: 'OUTSTANDING' },
-        { balanceOwed: { $gt: 0 } },
-        { isPaidInFull: false },
-      ],
+      status: 'OUTSTANDING',
     }
-    if (merchantId) {
-      filter.merchantId = new Types.ObjectId(merchantId)
-    }
-
     const outstandingSales = await this.saleModel
       .find(filter)
       .sort({ createdAt: 1, dueDate: 1 })
       .exec()
+
+    const totalOutstanding = this.roundMoney(
+      outstandingSales.reduce((sum, sale) => {
+        const balance =
+          sale.balanceOwed !== undefined && sale.balanceOwed !== null
+            ? sale.balanceOwed
+            : sale.amount
+              ? Math.max(0, sale.amount - (sale.amountPaid || 0))
+              : 0
+        return sum + balance
+      }, 0),
+    )
+
+    if (totalOutstanding <= 0) {
+      throw new BadRequestException('This customer has no outstanding balance')
+    }
+    if (repaymentAmount > totalOutstanding) {
+      throw new BadRequestException(
+        'Repayment cannot exceed the outstanding balance',
+      )
+    }
 
     let remainingRepayment = repaymentAmount
     const updatedSales: any[] = []
@@ -1198,13 +1448,16 @@ export class SalesService {
 
       if (currentBalance <= 0) continue
 
-      const allocated = Math.min(remainingRepayment, currentBalance)
-      const newAmountPaid = (sale.amountPaid || 0) + allocated
-      const newBalanceOwed = currentBalance - allocated
+      const allocated = this.roundMoney(
+        Math.min(remainingRepayment, currentBalance),
+      )
+      const newAmountPaid = this.roundMoney((sale.amountPaid || 0) + allocated)
+      const newBalanceOwed = this.roundMoney(currentBalance - allocated)
       const isPaidInFull = newBalanceOwed <= 0
 
       sale.amountPaid = newAmountPaid
       sale.balanceOwed = newBalanceOwed
+      sale.totalDue = sale.totalDue || sale.amount
       sale.isPaidInFull = isPaidInFull
       sale.status = isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
       if (dto.paymentMethod) {
@@ -1237,7 +1490,7 @@ export class SalesService {
       await sale.populate('customerId')
       updatedSales.push(sale)
 
-      remainingRepayment -= allocated
+      remainingRepayment = this.roundMoney(remainingRepayment - allocated)
 
       if (sale.merchantId) {
         this.eventsGateway.server
@@ -1248,22 +1501,30 @@ export class SalesService {
 
     const remainingDebts = await this.saleModel
       .find({
+        merchantId: merchantObjectId,
         customerId: new Types.ObjectId(targetCustomerId),
-        $or: [
-          { status: 'OUTSTANDING' },
-          { balanceOwed: { $gt: 0 } },
-          { isPaidInFull: false },
-        ],
+        status: 'OUTSTANDING',
       })
       .exec()
 
-    const totalRemainingBalance = remainingDebts.reduce(
-      (sum, s) => sum + (s.balanceOwed || 0),
-      0,
+    const totalRemainingBalance = this.roundMoney(
+      remainingDebts.reduce((sum, sale) => {
+        const balance =
+          sale.balanceOwed !== undefined && sale.balanceOwed !== null
+            ? sale.balanceOwed
+            : Math.max(
+                0,
+                (sale.totalDue || sale.amount || 0) - (sale.amountPaid || 0),
+              )
+        return sum + balance
+      }, 0),
     )
 
     const resultSale = primarySale || updatedSales[0] || {}
-    const resObj = typeof (resultSale as any).toObject === 'function' ? (resultSale as any).toObject() : resultSale
+    const resObj =
+      typeof (resultSale as any).toObject === 'function'
+        ? (resultSale as any).toObject()
+        : resultSale
 
     return {
       ...resObj,
@@ -1281,11 +1542,8 @@ export class SalesService {
     const owingSales = await this.saleModel
       .find({
         merchantId: merchantObjectId,
-        $or: [
-          { status: 'OUTSTANDING' },
-          { balanceOwed: { $gt: 0 } },
-          { isPaidInFull: false },
-        ],
+        status: 'OUTSTANDING',
+        customerId: { $exists: true, $ne: null },
       })
       .populate('customerId')
       .exec()
@@ -1314,24 +1572,15 @@ export class SalesService {
 
       if (bal <= 0) continue
 
+      const customer = sale.customerId as any
+      if (!customer?._id || !customer.name || !customer.phoneNumber) continue
+
       totalOutstandingAmount += bal
 
-      let custId = 'anonymous'
-      let custName = 'Anonymous Customer'
-      let custPhone = ''
-      let custAvatar = ''
-
-      if (sale.customerId) {
-        const customer = sale.customerId as any
-        custId = customer._id ? customer._id.toString() : 'anonymous'
-        custName = customer.name || 'Anonymous Customer'
-        custPhone = customer.phoneNumber || ''
-        custAvatar = customer.profilePhotoUrl || ''
-      } else if (sale.customerFingerprint) {
-        custId = `fingerprint-${sale.customerFingerprint}`
-        custName =
-          sale.customerType === 'Repeat' ? 'Repeat Customer' : 'New Customer'
-      }
+      const custId = customer._id.toString()
+      const custName = customer.name
+      const custPhone = customer.phoneNumber
+      const custAvatar = customer.profilePhotoUrl || ''
 
       const existing = customerMap.get(custId)
       if (existing) {
@@ -1356,38 +1605,38 @@ export class SalesService {
   }
 
   async recordScan(saleId: string): Promise<Sale> {
-    const sale = await this.saleModel.findById(saleId);
+    const sale = await this.saleModel.findById(saleId)
     if (!sale) {
-      throw new NotFoundException('Sale not found');
+      throw new NotFoundException('Sale not found')
     }
-    sale.isScanned = true;
-    const savedSale = await sale.save();
+    sale.isScanned = true
+    const savedSale = await sale.save()
 
     this.eventsGateway.server
       .to(sale.merchantId.toString())
-      .emit('sale.scanned', savedSale);
+      .emit('sale.scanned', savedSale)
     this.eventsGateway.server
       .to(`sale-${sale._id.toString()}`)
-      .emit('sale.scanned', savedSale);
+      .emit('sale.scanned', savedSale)
 
-    return savedSale;
+    return savedSale
   }
 
   async recordCopy(saleId: string): Promise<Sale> {
-    const sale = await this.saleModel.findById(saleId);
+    const sale = await this.saleModel.findById(saleId)
     if (!sale) {
-      throw new NotFoundException('Sale not found');
+      throw new NotFoundException('Sale not found')
     }
-    sale.isCopied = true;
-    const savedSale = await sale.save();
+    sale.isCopied = true
+    const savedSale = await sale.save()
 
     this.eventsGateway.server
       .to(sale.merchantId.toString())
-      .emit('sale.copied', savedSale);
+      .emit('sale.copied', savedSale)
     this.eventsGateway.server
       .to(`sale-${sale._id.toString()}`)
-      .emit('sale.copied', savedSale);
+      .emit('sale.copied', savedSale)
 
-    return savedSale;
+    return savedSale
   }
 }

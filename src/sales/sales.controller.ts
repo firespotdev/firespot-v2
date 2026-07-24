@@ -6,6 +6,8 @@ import { CreatePendingSaleDto } from './dto/create-pending-sale.dto';
 import { RecordSaleDto } from './dto/record-sale.dto';
 import { EditSaleDto } from './dto/edit-sale.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
+import { CustomerSaleActionDto } from './dto/customer-sale-action.dto';
+import { RecordRepaymentDto } from './dto/record-repayment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '../schemas/user.schema';
@@ -151,8 +153,29 @@ export class SalesController {
       'Unauthenticated, limited view of a sale for the customer paying a dynamic QR. Returns amount, items, status and merchant display info only.',
   })
   @Get(':id/public')
-  async getPublicSale(@Param('id') saleId: string) {
-    return this.salesService.getPublicSaleById(saleId);
+  async getPublicSale(
+    @Param('id') saleId: string,
+    @Query('serialNumber') serialNumber: string,
+  ) {
+    return this.salesService.getPublicSaleById(saleId, serialNumber);
+  }
+
+  @ApiOperation({ summary: 'Cancel a pending dynamic sale as the customer' })
+  @Patch(':id/customer-cancel')
+  async cancelSaleAsCustomer(
+    @Param('id') saleId: string,
+    @Body() dto: CustomerSaleActionDto,
+  ) {
+    return this.salesService.cancelSaleAsCustomer(saleId, dto.serialNumber);
+  }
+
+  @ApiOperation({ summary: 'Tell the merchant that the customer has paid' })
+  @Patch(':id/customer-paid')
+  async markSalePaidByCustomer(
+    @Param('id') saleId: string,
+    @Body() dto: CustomerSaleActionDto,
+  ) {
+    return this.salesService.markSalePaidByCustomer(saleId, dto.serialNumber);
   }
 
   @ApiOperation({ summary: 'Upload customer payment receipt screenshot' })
@@ -206,7 +229,7 @@ export class SalesController {
   async recordRepayment(
     @GetUser() user: User,
     @Param('id') saleId: string,
-    @Body() dto: { amountPaid: number; paymentMethod?: string; customerId?: string },
+    @Body() dto: RecordRepaymentDto,
   ) {
     return this.salesService.recordRepayment(
       (user as any)?.userId,
@@ -215,5 +238,4 @@ export class SalesController {
     );
   }
 }
-
 

@@ -1,4 +1,14 @@
-import { IsNotEmpty, IsMongoId, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export class CreatePendingSaleDto {
   @IsNotEmpty()
@@ -10,7 +20,7 @@ export class CreatePendingSaleDto {
   customerFingerprint?: string;
 
   @IsOptional()
-  @IsEnum(['New', 'Repeat'])
+  @IsEnum(["New", "Repeat"])
   customerType?: string;
 
   @IsOptional()
@@ -22,7 +32,7 @@ export class CreatePendingSaleDto {
   customerUserId?: string;
 
   @IsOptional()
-  @IsEnum(['QR scan', 'Link shared', 'Manual'])
+  @IsEnum(["QR scan", "Link shared", "Manual"])
   source?: string;
   @IsOptional()
   @IsString()
@@ -33,27 +43,39 @@ export class CreatePendingSaleDto {
   serialNumber?: string;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0.01)
   amount?: number;
 
-  @IsOptional()
-  description?: string;
+  @IsNotEmpty()
+  @IsString()
+  description: string;
 
   @IsOptional()
+  @IsArray()
   items?: any[];
 
   @IsOptional()
+  @IsBoolean()
   isPaidInFull?: boolean;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
   amountPaid?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0.01)
   totalDue?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
   balanceOwed?: number;
 
   @IsOptional()
+  @IsMongoId()
   customerId?: string;
 
   @IsOptional()

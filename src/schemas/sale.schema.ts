@@ -107,6 +107,12 @@ export class Sale extends Document {
   receiptPublicId?: string;
 
   @Prop()
+  customerMarkedPaidAt?: Date;
+
+  @Prop({ enum: ['merchant', 'customer'] })
+  cancelledBy?: 'merchant' | 'customer';
+
+  @Prop()
   dueDate?: Date;
 
   @Prop({ default: false, index: true })
@@ -145,4 +151,3 @@ export type SaleDocument = Sale & Document;
 // Indexes
 SaleSchema.index({ merchantId: 1, createdAt: -1 });
 SaleSchema.index({ merchantId: 1, recordedAt: -1 });
-SaleSchema.index({ status: 1 });
