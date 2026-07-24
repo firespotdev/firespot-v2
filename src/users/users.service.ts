@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
+import { Product, ProductDocument } from "../schemas/product.schema";
 import { Agent, AgentDocument } from "../admin/schemas/agent.schema";
 import { PaystackService } from "./services/paystack.service";
 import { CloudinaryService } from "./services/cloudinary.service";
@@ -21,13 +22,20 @@ import {
   isLapsed,
   isInGracePeriod,
   getCollectEligibility,
+  hasCompletedKyc,
 } from "../merchant-plans/constants/plans";
+import {
+  UpdateContactDto,
+  UpdateFulfillmentDto,
+  UpdateLocationDto,
+} from "./dto/shop-setup.dto";
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
@@ -148,6 +156,126 @@ export class UsersService {
         return slug;
       }
     }
+  }
+
+  private async getMerchantOrThrow(userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    return user;
+  }
+
+  /** Contact details step: business email, website, social links. */
+  async updateContact(userId: string, dto: UpdateContactDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    if (dto.businessEmail !== undefined) user.businessEmail = dto.businessEmail;
+    if (dto.website !== undefined) user.website = dto.website;
+    if (dto.socialLinks !== undefined) {
+      // Merge so clearing one field doesn't wipe the others.
+      user.socialLinks = { ...(user.socialLinks || {}), ...dto.socialLinks };
+    }
+
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Fulfilment step: how customers get goods/services. */
+  async updateFulfillment(userId: string, dto: UpdateFulfillmentDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    user.fulfillment = { ...(user.fulfillment || {}), ...dto };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Location step: primary address, branch count, market/plaza flag. */
+  async updateLocation(userId: string, dto: UpdateLocationDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    const { branchCount, ...address } = dto;
+    user.mainAddress = { ...(user.mainAddress || {}), ...address };
+    if (branchCount !== undefined) user.branchCount = branchCount;
+
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Marks the shop live. Reversible only by support for now. */
+  async goLive(userId: string) {
+    const user = await this.getMerchantOrThrow(userId);
+    if (!user.shopIsLive) {
+      user.shopIsLive = true;
+      user.shopWentLiveAt = new Date();
+      await user.save();
+    }
+    return { shopIsLive: true, shopWentLiveAt: user.shopWentLiveAt };
+  }
+
+  /**
+   * The shop-setup checklist. Completion for each actionable item is derived
+   * here so the client renders a single server-owned source of truth. The six
+   * undesigned items are surfaced as `locked` and excluded from the count.
+   */
+  async getShopSetup(userId: string) {
+    const user = await this.getMerchantOrThrow(userId);
+    const merchantId = user._id as Types.ObjectId;
+
+    const [productCount, activeKitCount] = await Promise.all([
+      this.productModel.countDocuments({ merchantId }),
+      this.qrKitModel.countDocuments({
+        merchantId,
+        activationStatus: "activated",
+      }),
+    ]);
+
+    const social = user.socialLinks || {};
+    const hasSocial = Object.values(social).some((v) => Boolean(v));
+
+    const actionable = [
+      {
+        key: "about",
+        done: Boolean(
+          user.businessName &&
+            user.businessDescription &&
+            user.businessIndustry,
+        ),
+      },
+      { key: "bank", done: (user.bankAccounts?.length || 0) > 0 },
+      { key: "verify", done: hasCompletedKyc(user) },
+      {
+        key: "contact",
+        done: Boolean(user.businessEmail || user.website || hasSocial),
+      },
+      {
+        key: "fulfillment",
+        done: Object.values(user.fulfillment || {}).some((v) => Boolean(v)),
+      },
+      {
+        key: "locations",
+        done: Boolean(user.mainAddress?.state && user.mainAddress?.address),
+      },
+      { key: "firstItem", done: productCount > 0 },
+      { key: "qrKit", done: activeKitCount > 0 },
+    ].map((item) => ({ ...item, locked: false }));
+
+    const locked = [
+      "employees",
+      "bookings",
+      "policies",
+      "operatingHours",
+      "charges",
+      "suppliers",
+    ].map((key) => ({ key, done: false, locked: true }));
+
+    const completedCount = actionable.filter((i) => i.done).length;
+
+    return {
+      items: [...actionable, ...locked],
+      completedCount,
+      total: actionable.length,
+      isLive: user.shopIsLive === true,
+    };
   }
 
   async updateProfilePhoto(userId: string, file: Express.Multer.File) {
@@ -540,6 +668,14 @@ export class UsersService {
       businessName: user.businessName,
       businessIndustry: user.businessIndustry,
       businessDescription: user.businessDescription,
+      // Shop setup fields (drive the setup forms' prefill + the checklist)
+      businessEmail: user.businessEmail || null,
+      website: user.website || null,
+      socialLinks: user.socialLinks || null,
+      fulfillment: user.fulfillment || null,
+      mainAddress: user.mainAddress || null,
+      branchCount: user.branchCount ?? null,
+      shopIsLive: user.shopIsLive === true,
       merchantSlug: user.merchantSlug,
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],

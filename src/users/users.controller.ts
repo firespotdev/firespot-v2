@@ -35,6 +35,11 @@ import { UpdateMerchantSlugDto } from "./dto/update-merchant-slug.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
 import { RegisterFcmTokenDto } from "./dto/register-fcm-token.dto";
+import {
+  UpdateContactDto,
+  UpdateFulfillmentDto,
+  UpdateLocationDto,
+} from "./dto/shop-setup.dto";
 
 @ApiTags("users")
 @Controller("users")
@@ -423,6 +428,53 @@ export class UsersController {
   })
   async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.userId, dto);
+  }
+
+  // ---- Shop setup ----
+
+  @Get("me/shop-setup")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Shop-setup checklist state (per-item completion)" })
+  @ApiResponse({ status: 200, description: "Checklist returned" })
+  async getShopSetup(@Request() req) {
+    return this.usersService.getShopSetup(req.user.userId);
+  }
+
+  @Patch("me/contact")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save contact details (email, website, socials)" })
+  @ApiResponse({ status: 200, description: "Contact details saved" })
+  async updateContact(@Request() req, @Body() dto: UpdateContactDto) {
+    return this.usersService.updateContact(req.user.userId, dto);
+  }
+
+  @Patch("me/fulfillment")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save how customers get goods/services" })
+  @ApiResponse({ status: 200, description: "Fulfilment saved" })
+  async updateFulfillment(@Request() req, @Body() dto: UpdateFulfillmentDto) {
+    return this.usersService.updateFulfillment(req.user.userId, dto);
+  }
+
+  @Patch("me/location")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save primary location and branch count" })
+  @ApiResponse({ status: 200, description: "Location saved" })
+  async updateLocation(@Request() req, @Body() dto: UpdateLocationDto) {
+    return this.usersService.updateLocation(req.user.userId, dto);
+  }
+
+  @Post("me/shop/go-live")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Mark the shop live" })
+  @ApiResponse({ status: 201, description: "Shop is live" })
+  async goLive(@Request() req) {
+    return this.usersService.goLive(req.user.userId);
   }
 
   @Post("me/merchant-setup")

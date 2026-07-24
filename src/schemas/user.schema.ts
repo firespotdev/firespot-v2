@@ -86,6 +86,75 @@ export class User extends Document {
   @Prop({ maxlength: 160 })
   businessDescription?: string;
 
+  // ---- Shop setup (contact, fulfilment, location, go-live) ----
+
+  @Prop()
+  businessEmail?: string;
+
+  @Prop()
+  website?: string;
+
+  @Prop({
+    type: {
+      instagram: String,
+      facebook: String,
+      whatsapp: String,
+      tiktok: String,
+      x: String,
+    },
+  })
+  socialLinks?: {
+    instagram?: string;
+    facebook?: string;
+    whatsapp?: string;
+    tiktok?: string;
+    x?: string;
+  };
+
+  // How customers get goods/services. Any flag set counts the step complete.
+  @Prop({
+    type: {
+      walkIn: Boolean,
+      reservations: Boolean,
+      homeService: Boolean,
+      delivery: Boolean,
+    },
+  })
+  fulfillment?: {
+    walkIn?: boolean;
+    reservations?: boolean;
+    homeService?: boolean;
+    delivery?: boolean;
+  };
+
+  // Primary business location. Branches are stored as a flat count for now and
+  // are NOT materialised into Store docs, so they don't affect PRO MAX
+  // per-store billing — that wiring is a later task.
+  @Prop({
+    type: {
+      state: String,
+      city: String,
+      address: String,
+      insideMarket: Boolean,
+    },
+  })
+  mainAddress?: {
+    state?: string;
+    city?: string;
+    address?: string;
+    insideMarket?: boolean;
+  };
+
+  @Prop()
+  branchCount?: number;
+
+  // Set once the merchant taps "Go live and start selling".
+  @Prop({ default: false })
+  shopIsLive?: boolean;
+
+  @Prop()
+  shopWentLiveAt?: Date;
+
   // Merchant slug (6 alphanumeric characters, editable, for direct sharing)
   @Prop({ unique: true, sparse: true, index: true, length: 6 })
   merchantSlug?: string;
