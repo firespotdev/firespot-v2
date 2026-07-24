@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
-import { ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
+import Link from 'next/link'
 import {
   Button,
+  LoaderCircle,
   showNotificationToast,
   PhoneInput,
   Select,
@@ -23,35 +25,49 @@ import {
   STATE_LGA_MAP,
 } from '@/lib/utils/nigerian-states-lgas'
 
-const QUANTITY_CHOICES = [1, 2, 3, 4, 5, 10, 20]
+const formatNaira = (amount: number) =>
+  `NGN ${amount.toLocaleString('en-NG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
 
 export default function OrderQRKitPage() {
-  const router = useRouter()
-  const { openDrawer } = useDrawerStore()
-  const { pricing } = useQRKitPricing()
-
-  const isFree = pricing.kitPrice === 0 && pricing.deliveryFee === 0
-  // Anything above the server's cap would be rejected on submit.
-  const quantityOptions = QUANTITY_CHOICES.filter(
-    (num) => num <= pricing.maxKitsPerOrder,
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-dvh bg-white flex items-center justify-center">
+          <LoaderCircle innerBg="#FFFFFF" />
+        </div>
+      }
+    >
+      <OrderQRKitPageContent />
+    </Suspense>
   )
+}
 
-  const [quantity, setQuantity] = useState<number | ''>('')
+function OrderQRKitPageContent() {
+  const searchParams = useSearchParams()
+  const { openDrawer } = useDrawerStore()
+  const { pricing, isLoading: isPricingLoading } = useQRKitPricing()
+  const qrKitId = searchParams.get('qrKitId') || ''
+  const canChangeQuantity = !qrKitId
+
   const [phoneNumber, setPhoneNumber] = useState('')
   const [state, setState] = useState('')
   const [lga, setLga] = useState('')
   const [address, setAddress] = useState('')
+  const [quantity, setQuantity] = useState(1)
 
   const clearForm = () => {
-    setQuantity('')
     setPhoneNumber('')
     setState('')
     setLga('')
     setAddress('')
+    setQuantity(1)
   }
 
   const handleCheckout = () => {
-    if (!quantity || !phoneNumber || !state || !lga || !address) {
+    if (!phoneNumber || !state || !lga || !address) {
       showNotificationToast({
         message: 'All fields are required',
         duration: 3000,
@@ -62,11 +78,14 @@ export default function OrderQRKitPage() {
     openDrawer({
       type: 'checkout',
       props: {
-        initialQuantity: Number(quantity),
+        qrKitId: qrKitId || undefined,
         phoneNumber,
         state,
         lga,
         address,
+        quantity,
+        canChangeQuantity,
+        onQuantityChange: setQuantity,
         clearForm,
       },
     })
@@ -76,53 +95,40 @@ export default function OrderQRKitPage() {
     <div className="h-dvh flex flex-col bg-white overflow-hidden">
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-[500px] mx-auto pt-8 px-4 pb-32 flex flex-col items-center font-satoshi">
+        <div className="max-w-[500px] mx-auto pb-32 flex flex-col items-center">
+          <div className="w-full py-3.5 px-3">
+            <Link
+              href={qrKitId ? `/qr-kits/${qrKitId}` : '/qr-kits'}
+              className="inline-flex h-6 w-6 items-center justify-center"
+            >
+              <ArrowLeft className="h-5 w-5 text-black" strokeWidth={2} />
+            </Link>
+          </div>
+
           {/* Logo */}
           <Image
             src="/icons/firespot_logo.svg"
             alt="firespot logo"
             width={48}
             height={48}
-            className="mb-6"
+            className="mb-4"
           />
 
           {/* Text */}
           <h1 className="font-bold text-xl text-black -tracking-[0.4px] text-center mb-1">
-            {isFree
-              ? 'Get your QR kit for free'
-              : `Get a QR kit for just NGN ${pricing.kitPrice.toLocaleString()}`}
+            {isPricingLoading
+              ? `Get your physical QR kit${canChangeQuantity ? 's' : ''} delivered`
+              : `Get your physical QR kit${canChangeQuantity ? 's' : ''} delivered for ${formatNaira(
+                  pricing.deliveryFee,
+                )}`}
           </h1>
-          <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-8">
+          <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-6">
             Same day delivery in Lagos state. 3-5 business days for every other
-            state in Nigeria.
+            states in Nigeria.
           </p>
 
           {/* Form fields */}
-          <div className="w-full space-y-6">
-            {/* Quantity */}
-            <div>
-              <Label>Quantity</Label>
-              <Select
-                value={quantity.toString()}
-                onValueChange={(val) => setQuantity(Number(val))}
-              >
-                <SelectTrigger className="font-medium h-11">
-                  <SelectValue placeholder="Select quantity" />
-                </SelectTrigger>
-                <SelectContent>
-                  {quantityOptions.map((num) => (
-                    <SelectItem
-                      key={num}
-                      value={num.toString()}
-                      className="font-medium"
-                    >
-                      {num}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="w-full space-y-6 px-3">
             {/* Phone number */}
             <div>
               <Label>Phone number</Label>
@@ -193,10 +199,10 @@ export default function OrderQRKitPage() {
 
       {/* Sticky footer */}
       <div className="fixed bottom-0 left-0 right-0 w-full z-10">
-        <div className="max-w-[500px] mx-auto bg-white border border-[#E5E7EB] rounded-t-[12px] shadow-[0px_-4px_24px_rgba(0,0,0,0.06)] p-4 flex items-center justify-between">
+        <div className="max-w-[500px] mx-auto bg-white border border-[#F1F1F1] rounded-t-[12px] shadow-[0px_-4px_24px_rgba(0,0,0,0.06)] p-4 flex items-center justify-between">
           <div>
-            <h3 className="text-base font-bold text-black leading-none mb-1">
-              {quantity || '0'} QR kits selected
+            <h3 className="text-sm font-bold text-black leading-none mb-1">
+              {quantity} physical QR kit{quantity === 1 ? '' : 's'}
             </h3>
             <button
               onClick={handleCheckout}
@@ -207,8 +213,8 @@ export default function OrderQRKitPage() {
           </div>
           <Button
             onClick={handleCheckout}
-            disabled={!quantity || !state || !lga || !phoneNumber || !address}
-            className="h-12 px-4 rounded-full text-base font-bold w-fit"
+            disabled={!state || !lga || !phoneNumber || !address}
+            className="rounded-full text-base font-bold w-fit"
           >
             Continue
           </Button>

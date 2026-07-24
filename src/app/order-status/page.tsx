@@ -1,13 +1,21 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Check, ChevronRight, X, MessageCircleHeart } from 'lucide-react'
 import Link from 'next/link'
 import { LoaderCircle, TagFooter } from '@/components/ui'
 import { useVerifyQROrderPayment } from '@/services/qr-orders/qr-ordersHooks'
 
 type PaymentStatus = 'loading' | 'success' | 'failed'
+
+type ApiError = {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+}
 
 export default function OrderStatusPage() {
   return (
@@ -24,7 +32,6 @@ export default function OrderStatusPage() {
 }
 
 function OrderStatusContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   const reference = searchParams.get('reference') || ''
@@ -33,36 +40,30 @@ function OrderStatusContent() {
   const isFreeOrder = searchParams.get('status') === 'success'
 
   const [status, setStatus] = useState<PaymentStatus>(
-    isFreeOrder ? 'success' : 'loading',
+    isFreeOrder ? 'success' : reference ? 'loading' : 'failed',
   )
-  const [errorMessage, setErrorMessage] = useState<string>('')
-  const [hasVerified, setHasVerified] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string>(
+    !isFreeOrder && !reference ? 'We could not find that order.' : '',
+  )
+  const hasVerified = useRef(false)
 
-  const verifyPayment = useVerifyQROrderPayment(reference, {
+  const { refetch: verifyPayment } = useVerifyQROrderPayment(reference, {
     enabled: false,
   })
 
   // Verify payment on mount
   useEffect(() => {
-    if (isFreeOrder || hasVerified) {
+    if (isFreeOrder || !reference || hasVerified.current) {
       return
     }
 
-    // No reference and no success flag: nothing to show. Fail rather than
-    // rendering the success screen, which would misreport an order.
-    if (!reference) {
-      setStatus('failed')
-      setErrorMessage('We could not find that order.')
-      return
-    }
+    hasVerified.current = true
 
-    setHasVerified(true)
-
-    verifyPayment.refetch().then((result) => {
+    verifyPayment().then((result) => {
       if (result.isError) {
         setStatus('failed')
         const message =
-          (result.error as any)?.response?.data?.message ||
+          (result.error as ApiError)?.response?.data?.message ||
           'Payment verification failed. Please try again.'
         setErrorMessage(message)
         return
@@ -75,7 +76,7 @@ function OrderStatusContent() {
         setErrorMessage('This payment has not been completed.')
       }
     })
-  }, [reference, isFreeOrder, hasVerified, verifyPayment])
+  }, [reference, isFreeOrder, verifyPayment])
 
   // Loading state
   if (status === 'loading') {
@@ -111,8 +112,8 @@ function OrderStatusContent() {
               Order submitted successfully
             </h1>
             <p className="text-[14px] text-center text-white max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
-              You would receive your QRkits in a few. Check your email inbox for
-              details on your order.
+              Your physical QR kit order is being processed. Check your email
+              inbox for delivery details.
             </p>
 
             <div className="w-full border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-2xl mt-8 shrink-0">

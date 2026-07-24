@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BrowserMultiFormatReader } from '@zxing/library'
-import { X, Zap, ArrowLeft, ChevronRight, Check } from 'lucide-react'
+import { X, Zap, ArrowLeft, ChevronRight, Check, LinkIcon } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
@@ -15,11 +15,19 @@ import {
   useInitiateActivation,
   useUserProfile,
 } from '@/services/users'
+import { useGenerateDigitalQRKit } from '@/services/qr'
 import { useQRKitPricing } from '@/services/qr-orders'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 
 type ViewMode = 'scan' | 'serial' | 'confirm' | 'callback'
+type ApiError = {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+}
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -69,6 +77,7 @@ function ActivatePageContent() {
   const { data: user } = useUserProfile()
   const checkSerial = useCheckSerialNumber()
   const initiateActivation = useInitiateActivation()
+  const generateDigitalQRKit = useGenerateDigitalQRKit()
   const { pricing } = useQRKitPricing()
 
   // Free either because activation is priced at zero, or because this merchant
@@ -200,7 +209,7 @@ function ActivatePageContent() {
             }
           })
         }
-      } catch (err) {
+      } catch {
         if (isMounted) {
           setScannerError('Camera access denied. Please allow camera access.')
         }
@@ -216,6 +225,9 @@ function ActivatePageContent() {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
     }
+    // Scanner is restarted only when its view opens; serial validation is
+    // intentionally read from the current render callback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
   const toggleFlash = async () => {
@@ -296,10 +308,31 @@ function ActivatePageContent() {
         // Paystack Redirect
         window.location.href = data.authorizationUrl
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const apiError = error as ApiError
         const message =
-          error?.response?.data?.message || 'Failed to initiate payment'
+          apiError.response?.data?.message || 'Failed to initiate payment'
         showNotificationToast({ message })
+      },
+    })
+  }
+
+  const handleProceedWithoutLinking = () => {
+    generateDigitalQRKit.mutate(undefined, {
+      onSuccess: ({ qrKit }) => {
+        showNotificationToast({
+          message: 'Your QR kit is ready',
+          duration: 2000,
+        })
+        router.push(`/qr-kits/${qrKit._id}`)
+      },
+      onError: (error: unknown) => {
+        const apiError = error as ApiError
+        showNotificationToast({
+          message:
+            apiError.response?.data?.message || 'Failed to generate QR kit',
+          duration: 3000,
+        })
       },
     })
   }
@@ -324,6 +357,31 @@ function ActivatePageContent() {
   if (mode === 'scan') {
     return (
       <div className="relative h-dvh bg-white overflow-hidden">
+        {generateDigitalQRKit.isPending && (
+          <div
+            className="fixed inset-0 z-[100] flex min-h-dvh flex-col items-center justify-center bg-white px-6 text-center"
+            aria-busy="true"
+            aria-live="polite"
+          >
+            <Image
+              src="/icons/firespot_logo.svg"
+              alt="Firespot"
+              width={56}
+              height={56}
+              className="mb-8"
+            />
+            <div className="h-10 w-10">
+              <LoaderCircle innerBg="#FFFFFF" />
+            </div>
+            <h2 className="mt-5 text-lg font-bold text-black">
+              Generating your QR kit...
+            </h2>
+            <p className="mt-2 text-sm font-medium text-[#00000080]">
+              Please wait while we prepare it for you.
+            </p>
+          </div>
+        )}
+
         <video
           ref={videoRef}
           autoPlay
@@ -380,13 +438,23 @@ function ActivatePageContent() {
               )}
             </div>
 
-            <div className="p-4 pb-8 bg-white/80 backdrop-blur-sm">
+            <div className="sticky bottom-0 z-50 mt-auto shrink-0 space-y-4 rounded-t-[12px] bg-white p-6 backdrop-blur-sm">
               <button
                 onClick={() => updateMode('serial')}
-                className="w-full text-[#878F98] text-xs font-medium underline underline-offset-4 flex items-center justify-center gap-0.5"
+                className="mx-auto flex px-3.5 h-9 w-fit items-center justify-center gap-2 rounded-full bg-[#0000000A] border border-[#0000000A] shadow-[0px_2px_4px_0px_#0000000A] text-[10px] font-bold tracking-[1px] text-black"
               >
-                Link with serial number instead
-                <ChevronRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
+                <LinkIcon size={16} />
+                LINK WITH SERIAL NUMBER
+              </button>
+
+              <button
+                type="button"
+                onClick={handleProceedWithoutLinking}
+                disabled={generateDigitalQRKit.isPending}
+                className="mx-auto flex items-center justify-center gap-0.5 text-xs font-medium text-[#878F98] underline underline-offset-4 disabled:opacity-50"
+              >
+                Proceed without linking
+                <ChevronRight size={12} className="text-[#878F98] mt-1" />
               </button>
             </div>
           </div>

@@ -2,51 +2,69 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { ChevronDown, Trash2, Minus, Plus } from 'lucide-react'
+import { ChevronDown, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { useCreateQROrder, useQRKitPricing } from '@/services/qr-orders'
 import { useRouter } from 'next/navigation'
 import { showNotificationToast } from '@/components/ui'
 
-const formatNaira = (amount: number) => `NGN ${amount.toLocaleString()}.00`
+const formatNaira = (amount: number) =>
+  `NGN ${amount.toLocaleString('en-NG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`
+type ApiError = {
+  response?: {
+    data?: {
+      message?: string
+    }
+  }
+}
 
 interface CheckoutDrawerProps {
-  initialQuantity: number
+  qrKitId?: string
   phoneNumber: string
   state: string
   lga: string
   address: string
+  quantity: number
+  canChangeQuantity: boolean
+  onQuantityChange: (quantity: number) => void
   clearForm: () => void
 }
 
 export const CheckoutDrawer = ({
-  initialQuantity,
+  qrKitId,
   phoneNumber,
   state,
   lga,
   address,
+  quantity: initialQuantity,
+  canChangeQuantity,
+  onQuantityChange,
   clearForm,
 }: CheckoutDrawerProps) => {
   const { closeDrawer } = useDrawerStore()
   const router = useRouter()
   const createOrderMutation = useCreateQROrder()
   const { pricing, isLoading: isPricingLoading } = useQRKitPricing()
+
   const [quantity, setQuantity] = useState(initialQuantity)
-
-  const subtotal = quantity * pricing.kitPrice
+  const maximumQuantity = Math.max(1, pricing.maxKitsPerOrder)
+  const subtotal = pricing.kitPrice * quantity
   const total = subtotal + pricing.deliveryFee
-  const isFree = total === 0
+  const isFree = !isPricingLoading && total === 0
+  const priceOrPlaceholder = (amount: number) =>
+    isPricingLoading ? '—' : formatNaira(amount)
 
-  const handleIncrement = () =>
-    setQuantity((q) => Math.min(q + 1, pricing.maxKitsPerOrder))
-  const handleDecrement = () => setQuantity((q) => (q > 1 ? q - 1 : 1))
-  const handleRemove = () => {
-    clearForm()
-    closeDrawer()
+  const updateQuantity = (nextQuantity: number) => {
+    setQuantity(nextQuantity)
+    onQuantityChange(nextQuantity)
   }
 
   const handleClear = () => {
+    setQuantity(1)
     clearForm()
     closeDrawer()
   }
@@ -62,6 +80,7 @@ export const CheckoutDrawer = ({
 
     createOrderMutation.mutate(
       {
+        qrKitId,
         quantity,
         phoneNumber,
         state,
@@ -89,9 +108,11 @@ export const CheckoutDrawer = ({
             duration: 3000,
           })
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
+          const apiError = error as ApiError
           showNotificationToast({
-            message: error?.response?.data?.message || 'Failed to create order',
+            message:
+              apiError.response?.data?.message || 'Failed to create order',
             duration: 3000,
           })
         },
@@ -129,13 +150,13 @@ export const CheckoutDrawer = ({
 
       {/* Item Section */}
       <div className="p-4">
-        <div className="flex justify-between items-start mb-4">
+        <div className="flex justify-between items-start mb-2">
           <div className="space-y-1">
-            <h3 className="text-[14px] font-medium text-[#111827]">
-              Firespot QR kit
+            <h3 className="text-[14px] font-bold text-[#111827]">
+              Physical unit of your QR kit
             </h3>
             <p className="text-[14px] text-[#9CA3AF] font-medium">
-              1 QR stand, 1 sticker
+              {quantity} QR kit{quantity === 1 ? '' : 's'}
             </p>
           </div>
           <Image
@@ -147,54 +168,67 @@ export const CheckoutDrawer = ({
           />
         </div>
 
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRemove}
-              className="w-9 h-9 rounded-[10px] bg-[#F1F1F1] flex items-center justify-center text-black"
-            >
-              <Trash2 size={16} />
-            </button>
-            <div className="flex items-center bg-[#F1F1F1] rounded-[10px] px-2 h-9 min-w-[100px] justify-between">
+        <div className="flex items-center">
+          {canChangeQuantity ? (
+            <div className="inline-flex h-9 items-center overflow-hidden rounded-[10px] bg-[#F1F1F1]">
               <button
-                onClick={handleDecrement}
-                className="w-6 h-6 flex items-center justify-center text-black"
+                type="button"
+                aria-label="Decrease quantity"
+                onClick={() => updateQuantity(Math.max(1, quantity - 1))}
+                disabled={
+                  quantity === 1 ||
+                  isPricingLoading ||
+                  createOrderMutation.isPending
+                }
+                className="flex h-9 w-9 items-center justify-center text-black transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-30"
               >
-                <Minus size={16} />
+                <Minus className="h-4 w-4" strokeWidth={2.5} />
               </button>
-              <span className="font-bold text-[14px]">{quantity}</span>
+              <span className="flex h-9 min-w-9 items-center justify-center px-2 text-sm font-bold text-black">
+                {quantity}
+              </span>
               <button
-                onClick={handleIncrement}
-                className="w-6 h-6 flex items-center justify-center text-black"
+                type="button"
+                aria-label="Increase quantity"
+                onClick={() =>
+                  updateQuantity(Math.min(maximumQuantity, quantity + 1))
+                }
+                disabled={
+                  quantity >= maximumQuantity ||
+                  isPricingLoading ||
+                  createOrderMutation.isPending
+                }
+                className="flex h-9 w-9 items-center justify-center text-black transition-colors hover:bg-black/5 disabled:cursor-not-allowed disabled:opacity-30"
               >
-                <Plus size={16} />
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
-          </div>
-          <div className="text-[14px] font-bold text-[#111827]">
-            {isFree ? '-' : formatNaira(subtotal)}
-          </div>
+          ) : (
+            <span className="rounded-[10px] bg-[#F1F1F1] px-4 py-2 text-sm font-bold text-black">
+              Quantity: 1
+            </span>
+          )}
         </div>
       </div>
 
       {/* Pricing Section */}
       <div className="p-4 pb-5 pt-0 space-y-3">
         <div className="flex justify-between text-sm font-medium border-t border-[#F1F1F1] pt-4">
-          <span className="text-[#6B7280]">Subtotal</span>
+          <span className="text-[#6B7280]">QR kit</span>
           <span className="text-[#111827] font-bold">
-            {isFree ? '-' : formatNaira(subtotal)}
+            {priceOrPlaceholder(subtotal)}
           </span>
         </div>
         <div className="flex justify-between text-sm font-medium">
           <span className="text-[#6B7280]">Delivery fee</span>
           <span className="text-[#111827] font-bold">
-            {pricing.deliveryFee === 0 ? '-' : formatNaira(pricing.deliveryFee)}
+            {priceOrPlaceholder(pricing.deliveryFee)}
           </span>
         </div>
         <div className="pt-4 border-t border-[#F1F1F1] flex justify-between items-center">
           <span className="text-[14px] font-bold text-[#111827]">Total</span>
           <span className="text-[14px] font-bold text-[#111827]">
-            {isFree ? 'FREE' : formatNaira(total)}
+            {priceOrPlaceholder(total)}
           </span>
         </div>
       </div>
@@ -206,13 +240,16 @@ export const CheckoutDrawer = ({
           disabled={createOrderMutation.isPending || isPricingLoading}
           className="w-full bg-[#24C166] hover:bg-[#24C166] text-white text-base font-bold mb-4 shadow-sm"
         >
-          {isFree ? 'Place order' : `Pay ${formatNaira(total)}`}
+          {isPricingLoading
+            ? 'Loading price...'
+            : isFree
+              ? 'Place order'
+              : `Pay ${formatNaira(total)}`}
         </Button>
         <div className="flex items-start gap-2 text-[#6B7280]">
           <p className="text-[12px] font-medium leading-tight text-center">
-            {isFree
-              ? '⚠️ Important: Firespot QR kits are free. No one should ever collect a fee from you for a kit or its activation.'
-              : '⚠️ Important: No one should collect activation fees on behalf of Firespot. Payment happens only inside the app.'}
+            ⚠️ Important: No one should collect activation fees on behalf of
+            Firespot. Payment happens only inside the app.
           </p>
         </div>
       </div>

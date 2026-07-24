@@ -52,6 +52,17 @@ export const userQrApi = {
     )
     return response.data
   },
+
+  generateDigitalQRKit: async (): Promise<{
+    message: string
+    qrKit: QRKit
+  }> => {
+    const response = await apiClient.post<{
+      message: string
+      qrKit: QRKit
+    }>('/qr-kits/generate-digital')
+    return response.data
+  },
 }
 
 // Hooks
@@ -111,6 +122,18 @@ export const useUpdateQRKit = () => {
     onSuccess: (data, { id }) => {
       queryClient.setQueryData(['user', 'qr-kit', id], data.qrKit)
       queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
+    },
+  })
+}
+
+export const useGenerateDigitalQRKit = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userQrApi.generateDigitalQRKit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
     },
   })
 }

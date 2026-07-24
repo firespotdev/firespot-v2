@@ -1,4 +1,5 @@
 export interface CreateQROrderPayload {
+  qrKitId?: string;
   quantity: number;
   phoneNumber: string;
   state: string;
