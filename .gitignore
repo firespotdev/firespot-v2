@@ -6,6 +6,8 @@ dist/
 build/
 scripts
 
+scripts
+
 # Environment variables
 .env
 .env.local

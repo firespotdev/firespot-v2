@@ -6,6 +6,9 @@ export class QROrder extends Document {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
   merchantId: Types.ObjectId
 
+  @Prop({ type: Types.ObjectId, ref: 'QRKit', index: true })
+  qrKitId?: Types.ObjectId
+
   @Prop({ required: true })
   quantity: number
 
@@ -55,6 +58,15 @@ export class QROrder extends Document {
 
   @Prop()
   paidAt?: Date
+
+  @Prop()
+  serialSmsSentAt?: Date
+
+  @Prop()
+  fulfilmentError?: string
+
+  @Prop()
+  fulfilmentFailedAt?: Date
 
   createdAt?: Date
   updatedAt?: Date

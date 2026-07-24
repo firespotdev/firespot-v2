@@ -4,6 +4,7 @@ import { QROrdersController } from './qr-orders.controller'
 import { QROrdersService } from './qr-orders.service'
 import { QROrder, QROrderSchema } from '../schemas/qr-order.schema'
 import { User, UserSchema } from '../schemas/user.schema'
+import { QRKit, QRKitSchema } from '../schemas/qrkit.schema'
 import { UsersModule } from '../users/users.module'
 import { QRKitsModule } from '../qr-kits/qr-kits.module'
 
@@ -12,6 +13,7 @@ import { QRKitsModule } from '../qr-kits/qr-kits.module'
     MongooseModule.forFeature([
       { name: QROrder.name, schema: QROrderSchema },
       { name: User.name, schema: UserSchema },
+      { name: QRKit.name, schema: QRKitSchema },
     ]),
     forwardRef(() => UsersModule),
     QRKitsModule,

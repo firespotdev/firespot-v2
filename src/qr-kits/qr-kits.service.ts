@@ -15,11 +15,15 @@ import {
 } from '../scans/utils/device-detector'
 import { QRCodeService } from '../services/qr-code.service'
 import { customAlphabet } from 'nanoid'
+import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
 
 const generateDigitalSerial = customAlphabet(
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
   8,
 )
+
+/** Agent's cut of a paid activation, in naira. */
+const AGENT_COMMISSION_NAIRA = 500
 
 @Injectable()
 export class QRKitsService {
@@ -157,6 +161,16 @@ export class QRKitsService {
       )
     }
 
+    if (
+      qrKit.reservedForMerchantId &&
+      qrKit.reservedForMerchantId.toString() !== userId
+    ) {
+      throw new HttpException(
+        'This QR kit was ordered by another merchant',
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
     // Check if user has completed profile setup
     const user = await this.userModel.findById(userId)
     if (
@@ -171,8 +185,23 @@ export class QRKitsService {
       )
     }
 
-    const activationAmount = qrKit.activationAmount || 200000 // NGN 2,000 in kobo
+    // Config is authoritative, not qrKit.activationAmount: kits created before
+    // activation went free still carry a stale 200000 in the column, and
+    // honouring that would keep charging them with no migration.
+    const pricing = getQRKitPricing(this.configService)
+    const activationAmount = nairaToKobo(pricing.activationAmount)
+
     const reference = `qrkit_${qrKit.serialNumber}_${nanoid(10)}`
+
+    const hasEntitlement =
+      !!user.availableKitEntitlements && user.availableKitEntitlements > 0
+
+    // Free activation, either because it's free for everyone or because this
+    // merchant pre-paid via an order. No Paystack round trip in either case.
+    if (activationAmount === 0 || hasEntitlement) {
+      return this.activateKitFree(qrKit, user, reference)
+    }
+
     const frontendUrl =
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
     const callbackUrl = `${frontendUrl}/activate?mode=callback&reference=${reference}`
@@ -185,14 +214,21 @@ export class QRKitsService {
     let subaccount: string | undefined
     let transactionCharge: number | undefined
 
+    // Agent keeps a fixed commission; the platform takes the rest. Derived from
+    // the configured price so a changed activation fee doesn't skew the split.
+    const platformChargeKobo = Math.max(
+      activationAmount - nairaToKobo(AGENT_COMMISSION_NAIRA),
+      0,
+    )
+
     // Priority 1: Agent assigned to this QR kit
     if (qrKit.agentId) {
       const agent = await this.agentModel.findById(qrKit.agentId)
       if (agent && agent.subaccountCode) {
         subaccount = agent.subaccountCode
-        // Split: 1500 to Firespot (minus fees), 500 to Agent
-        // transactionCharge is the portion for the platform (Firespot) in kobo
-        transactionCharge = 150000
+        // transactionCharge is the platform's (Firespot's) portion in kobo;
+        // the agent's subaccount keeps the remainder.
+        transactionCharge = platformChargeKobo
       }
     }
     // Priority 2: Agent who referred this merchant (via referral code at signup)
@@ -202,8 +238,8 @@ export class QRKitsService {
       )
       if (referringAgent && referringAgent.subaccountCode) {
         subaccount = referringAgent.subaccountCode
-        // Same split: 1500 to Firespot, 500 to referring agent
-        transactionCharge = 150000
+        // Same split, for the agent who referred this merchant
+        transactionCharge = platformChargeKobo
       }
     }
 
@@ -222,47 +258,11 @@ export class QRKitsService {
       },
     })
 
-    // Check for entitlements (skip payment if merchant has pre-paid)
-    if (user.availableKitEntitlements && user.availableKitEntitlements > 0) {
-      user.availableKitEntitlements -= 1
-      await user.save()
-
-      qrKit.merchantId = user._id as any
-      qrKit.paymentStatus = 'successful'
-      qrKit.activationStatus = 'activated'
-      qrKit.paidAt = new Date()
-      qrKit.activatedAt = new Date()
-      qrKit.paystackReference = reference // Store the reference anyway for tracking
-      await qrKit.save()
-
-      // Notify agent who earned the commission (if any)
-      const earningAgentId = qrKit.agentId || user.referredByAgent
-      if (earningAgentId) {
-        await this.notifyAgentOnCommission(
-          earningAgentId.toString(),
-          user.businessName || 'a merchant',
-          qrKit.serialNumber,
-        )
-      }
-
-      // Update user's merchantSlug if not set
-      if (!user.merchantSlug) {
-        user.merchantSlug = nanoid(6).toUpperCase()
-        await user.save()
-      }
-
-      return {
-        message: 'QR kit activated',
-        serialNumber: qrKit.serialNumber,
-        activationAmount: 0,
-        qrKitId: qrKit._id,
-        isAutoActivated: true,
-      }
-    }
-
     // Link QR kit to merchant (pending payment)
     qrKit.merchantId = user._id as any
     qrKit.activationStatus = 'pending'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paystackReference = paystackResponse.reference
     qrKit.paystackAccessCode = paystackResponse.accessCode
     await qrKit.save()
@@ -274,6 +274,65 @@ export class QRKitsService {
       qrKitId: qrKit._id,
       authorizationUrl: paystackResponse.authorizationUrl,
       reference: paystackResponse.reference,
+    }
+  }
+
+  /**
+   * Activate a kit without payment.
+   *
+   * Reached when activation is priced at zero, or when the merchant pre-paid
+   * for kits via an order and holds an entitlement. Note that no agent
+   * commission is settled through Paystack on this path — the agent is still
+   * notified so the commission can be reconciled out of band.
+   */
+  private async activateKitFree(
+    qrKit: QRKitDocument,
+    user: UserDocument,
+    reference: string,
+  ) {
+    // Only consume an entitlement if one exists: when activation is free for
+    // everyone the counter stays put, so it keeps meaning "kits still owed".
+    if (user.availableKitEntitlements && user.availableKitEntitlements > 0) {
+      user.availableKitEntitlements -= 1
+    }
+
+    qrKit.merchantId = user._id as any
+    qrKit.paymentStatus = 'successful'
+    qrKit.activationStatus = 'activated'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
+    qrKit.paidAt = new Date()
+    qrKit.activatedAt = new Date()
+    qrKit.reservationFulfilledAt = qrKit.reservedForOrderId
+      ? new Date()
+      : undefined
+    qrKit.paystackReference = reference // Store the reference anyway for tracking
+    await qrKit.save()
+
+    // Notify the assigned agent. No payment ran, so no commission was earned.
+    const earningAgentId = qrKit.agentId || user.referredByAgent
+    if (earningAgentId) {
+      await this.notifyAgentOnActivation(
+        earningAgentId.toString(),
+        user.businessName || 'a merchant',
+        qrKit.serialNumber,
+        0,
+      )
+    }
+
+    // Update user's merchantSlug if not set
+    if (!user.merchantSlug) {
+      user.merchantSlug = nanoid(6).toUpperCase()
+    }
+
+    await user.save()
+
+    return {
+      message: 'QR kit activated',
+      serialNumber: qrKit.serialNumber,
+      activationAmount: 0,
+      qrKitId: qrKit._id,
+      isAutoActivated: true,
     }
   }
 
@@ -312,8 +371,13 @@ export class QRKitsService {
 
     qrKit.paymentStatus = 'successful'
     qrKit.activationStatus = 'activated'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paidAt = new Date(verification.paidAt)
     qrKit.activatedAt = new Date()
+    qrKit.reservationFulfilledAt = qrKit.reservedForOrderId
+      ? new Date()
+      : undefined
 
     // Auto-assign referring agent to QR kit if unassigned
     const user = await this.userModel.findById(qrKit.merchantId)
@@ -327,10 +391,11 @@ export class QRKitsService {
     // Notify agent who earned the commission
     const earningAgentId = qrKit.agentId || user?.referredByAgent
     if (earningAgentId) {
-      await this.notifyAgentOnCommission(
+      await this.notifyAgentOnActivation(
         earningAgentId.toString(),
         user?.businessName || 'a merchant',
         qrKit.serialNumber,
+        AGENT_COMMISSION_NAIRA,
       )
     }
 
@@ -345,6 +410,9 @@ export class QRKitsService {
       serialNumber: qrKit.serialNumber,
       merchantId: qrKit.merchantId,
       alreadyActivated: false,
+      // What Paystack actually charged, in naira, so the receipt doesn't have
+      // to guess at a price that is now configurable.
+      activationAmount: verification.amount / 100,
     }
   }
 
@@ -363,8 +431,13 @@ export class QRKitsService {
 
     qrKit.paymentStatus = 'successful'
     qrKit.activationStatus = 'activated'
+    qrKit.linkStatus = 'linked'
+    qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paidAt = new Date()
     qrKit.activatedAt = new Date()
+    qrKit.reservationFulfilledAt = qrKit.reservedForOrderId
+      ? new Date()
+      : undefined
 
     // Auto-assign referring agent to QR kit if unassigned
     const user = await this.userModel.findById(qrKit.merchantId)
@@ -378,10 +451,11 @@ export class QRKitsService {
     // Notify agent who earned the commission
     const earningAgentId = qrKit.agentId || user?.referredByAgent
     if (earningAgentId) {
-      await this.notifyAgentOnCommission(
+      await this.notifyAgentOnActivation(
         earningAgentId.toString(),
         user?.businessName || 'a merchant',
         qrKit.serialNumber,
+        AGENT_COMMISSION_NAIRA,
       )
     }
 
@@ -395,23 +469,36 @@ export class QRKitsService {
   }
 
   /**
-   * Notify agent when they earn a commission from QR kit activation
+   * Notify an agent that a QR kit assigned to them was activated.
+   *
+   * Only claim a commission when one was actually settled. Free activations
+   * run no Paystack split, so `commissionNaira` is 0 there and the message
+   * must not promise money that will never arrive.
    */
-  private async notifyAgentOnCommission(
+  private async notifyAgentOnActivation(
     agentId: string,
     businessName: string,
     serialNumber: string,
+    commissionNaira: number,
   ) {
     try {
       const agent = await this.agentModel.findById(agentId)
       if (!agent || !agent.phoneNumber) return
 
-      const message = `Hello ${agent.name}, the QR Kit (${serialNumber}) assigned to you has been activated by ${businessName}. You have earned NGN 500 as commission.`
+      // The split only pays out to a Paystack subaccount. Without one, no
+      // money reached this agent even on a paid activation.
+      const earnedCommission = commissionNaira > 0 && !!agent.subaccountCode
+
+      const activationNote = `Hello ${agent.name}, the QR Kit (${serialNumber}) assigned to you has been activated by ${businessName}.`
+
+      const message = earnedCommission
+        ? `${activationNote} You have earned NGN ${commissionNaira.toLocaleString()} as commission.`
+        : activationNote
 
       await this.smsService.sendSms(agent.phoneNumber, message)
 
       console.log(
-        `Commission notification sent to agent ${agent.name} for QR kit ${serialNumber}`,
+        `Activation notification sent to agent ${agent.name} for QR kit ${serialNumber}`,
       )
     } catch (error) {
       console.error(`Failed to notify agent for QR kit ${serialNumber}:`, error)
@@ -425,6 +512,9 @@ export class QRKitsService {
       .countDocuments({
         merchantId: null,
         agentId: null,
+        activationStatus: 'pending',
+        isDigital: { $ne: true },
+        reservedForOrderId: null,
       })
       .exec()
     return { availableCount }
@@ -439,6 +529,9 @@ export class QRKitsService {
       .find({
         merchantId: null,
         agentId: null,
+        activationStatus: 'pending',
+        isDigital: { $ne: true },
+        reservedForOrderId: null,
       })
       .limit(quantity)
       .exec()
@@ -459,6 +552,8 @@ export class QRKitsService {
       qrKit.merchantId = new Types.ObjectId(merchantId) as any
       qrKit.activationStatus = 'activated'
       qrKit.paymentStatus = 'successful'
+      qrKit.linkStatus = 'linked'
+      qrKit.source = qrKit.source || 'admin-generated'
       qrKit.paidAt = new Date()
       qrKit.activatedAt = new Date()
 
@@ -484,29 +579,91 @@ export class QRKitsService {
   /**
    * Process a successful online order
    */
-  async processOnlineOrder(merchantId: string, quantity: number) {
+  async processOnlineOrder(
+    merchantId: string,
+    orderId: string,
+    quantity: number,
+  ) {
     const user = await this.userModel.findById(merchantId)
     if (!user) {
       throw new HttpException('Merchant not found', HttpStatus.NOT_FOUND)
     }
 
-    // Give entitlements for physical kits
-    user.availableKitEntitlements =
-      (user.availableKitEntitlements || 0) + quantity
-    await user.save()
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const orderObjectId = new Types.ObjectId(orderId)
+    const reservedAt = new Date()
+    const reservedIds: Types.ObjectId[] = []
 
-    // Check if user already has a kit (including digital)
-    const existingKit = await this.qrKitModel.findOne({ merchantId: user._id })
-    const assignedIds: Types.ObjectId[] = []
+    const existingReservations = await this.qrKitModel
+      .find({ reservedForOrderId: orderObjectId })
+      .select('_id')
 
-    if (!existingKit) {
-      // First time order - provide ONE digital kit
-      const digitalKit = await this.createDigitalKit(merchantId)
-      assignedIds.push(digitalKit._id as Types.ObjectId)
+    if (existingReservations.length === quantity) {
+      return existingReservations.map((kit) => kit._id as Types.ObjectId)
     }
 
-    // Note: We don't return physical kits here anymore. Use entitlements.
-    return assignedIds
+    if (existingReservations.length > 0) {
+      await this.qrKitModel.updateMany(
+        { reservedForOrderId: orderObjectId },
+        {
+          $unset: {
+            reservedForOrderId: 1,
+            reservedForMerchantId: 1,
+            reservedAt: 1,
+          },
+        },
+      )
+    }
+
+    try {
+      for (let index = 0; index < quantity; index += 1) {
+        // findOneAndUpdate makes each reservation atomic, so concurrent paid
+        // orders cannot receive the same physical serial number.
+        const qrKit = await this.qrKitModel.findOneAndUpdate(
+          {
+            merchantId: null,
+            agentId: null,
+            activationStatus: 'pending',
+            isDigital: { $ne: true },
+            reservedForOrderId: null,
+          },
+          {
+            $set: {
+              reservedForOrderId: orderObjectId,
+              reservedForMerchantId: merchantObjectId,
+              reservedAt,
+              linkStatus: 'unlinked',
+              source: 'admin-generated',
+            },
+          },
+          { new: true, sort: { createdAt: 1 } },
+        )
+
+        if (!qrKit) {
+          throw new HttpException(
+            `Not enough physical QR kits to fulfil this order. Required: ${quantity}, reserved: ${reservedIds.length}.`,
+            HttpStatus.INTERNAL_SERVER_ERROR,
+          )
+        }
+
+        reservedIds.push(qrKit._id as Types.ObjectId)
+      }
+
+      return reservedIds
+    } catch (error) {
+      // Do not leave a partially fulfilled order holding inventory.
+      await this.qrKitModel.updateMany(
+        { reservedForOrderId: orderObjectId },
+        {
+          $unset: {
+            reservedForOrderId: 1,
+            reservedForMerchantId: 1,
+            reservedAt: 1,
+          },
+        },
+      )
+      throw error
+    }
   }
 
   /**
@@ -527,8 +684,16 @@ export class QRKitsService {
       )
     }
 
-    // Check if user has entitlements
-    if (!user.availableKitEntitlements || user.availableKitEntitlements <= 0) {
+    // Entitlements only gate the digital kit while kits cost money. Once
+    // activation is free, requiring a prior paid order would lock out every
+    // merchant who never ordered.
+    const { activationAmount } = getQRKitPricing(this.configService)
+    const requiresEntitlement = activationAmount > 0
+
+    if (
+      requiresEntitlement &&
+      (!user.availableKitEntitlements || user.availableKitEntitlements <= 0)
+    ) {
       throw new HttpException(
         'No available kit entitlements found. Please order a kit first.',
         HttpStatus.BAD_REQUEST,
@@ -536,13 +701,46 @@ export class QRKitsService {
     }
 
     // Create a digital kit (does not consume an entitlement)
-    return this.createDigitalKit(merchantId)
+    return this.createDigitalKit(merchantId, 'online-order')
+  }
+
+  /**
+   * Generate a new digital kit directly on a merchant's account.
+   *
+   * This is the "proceed without linking" path. It intentionally creates a
+   * fresh kit on every successful request so merchants can run separate QR
+   * kits for separate counters or locations.
+   */
+  async generateDigitalKit(merchantId: string) {
+    const user = await this.userModel.findById(merchantId)
+
+    if (
+      !user ||
+      !user.businessName ||
+      !user.bankAccounts ||
+      user.bankAccounts.length === 0
+    ) {
+      throw new HttpException(
+        'Please complete your profile setup before generating a QR kit',
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    const qrKit = await this.createDigitalKit(merchantId)
+
+    return {
+      message: 'QR kit generated successfully',
+      qrKit,
+    }
   }
 
   /**
    * Create a digital QR kit for immediate use
    */
-  private async createDigitalKit(merchantId: string): Promise<QRKitDocument> {
+  private async createDigitalKit(
+    merchantId: string,
+    source: 'self-generated' | 'online-order' = 'self-generated',
+  ): Promise<QRKitDocument> {
     const user = await this.userModel.findById(merchantId)
     const serialNumber = await this.generateUniqueDigitalSerialNumber()
 
@@ -558,6 +756,8 @@ export class QRKitsService {
       merchantId: user?._id,
       isDigital: true,
       activationStatus: 'activated',
+      linkStatus: 'unlinked',
+      source,
       paymentStatus: 'successful',
       qrCodeSvgUrl: url,
       qrCodeSvgPublicId: publicId,

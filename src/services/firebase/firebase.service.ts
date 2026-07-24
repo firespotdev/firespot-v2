@@ -37,6 +37,20 @@ export class FirebaseService implements OnModuleInit {
     body: string,
     data?: Record<string, string>,
   ) {
+    const mockOtp =
+      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
+      "true";
+
+    if (mockOtp) {
+      console.log("🔧 MOCK MODE: Push notification request:", {
+        tokens: tokens?.length ?? 0,
+        title,
+        body,
+        data,
+      });
+      return;
+    }
+
     if (!this.messaging || !tokens || tokens.length === 0) {
       return;
     }

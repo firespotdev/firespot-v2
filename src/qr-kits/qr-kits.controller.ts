@@ -188,6 +188,26 @@ export class QRKitsController {
     return this.qrKitsService.initiateActivation(serialNumber, req.user.userId);
   }
 
+  @Post("generate-digital")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Generate a merchant-owned digital QR kit",
+    description:
+      "Creates and activates a new digital QR kit for the authenticated merchant without linking a physical serial number.",
+  })
+  @ApiResponse({
+    status: 201,
+    description: "Digital QR kit generated successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Merchant profile is incomplete",
+  })
+  async generateDigital(@Request() req) {
+    return this.qrKitsService.generateDigitalKit(req.user.userId);
+  }
+
   @Get("verify-payment/:reference")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
