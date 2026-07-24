@@ -1,15 +1,6 @@
 'use client'
 
-import {
-  Building2,
-  Check,
-  Fingerprint,
-  Hash,
-  ScanFace,
-  X,
-  type LucideIcon,
-} from 'lucide-react'
-import { ActionList, ActionListItem } from '@/components/ui'
+import { ActionList, ActionListItem, StatusCircle } from '@/components/ui'
 import type { KycCheckStatus, KycStep } from '@/services/kyc'
 // KycCheck is declared in the merchant-plans domain (it mirrors the backend's
 // plan constants); the kyc barrel consumes it without re-exporting.
@@ -18,7 +9,6 @@ import { ReactNode } from 'react'
 import {
   FingerprintIcon,
   HashIcon,
-  HouseIcon,
   ScanSmileyIcon,
 } from '@phosphor-icons/react'
 
@@ -120,29 +110,6 @@ function RowIcon({ Icon, bg }: Pick<RowMeta, 'Icon' | 'bg'>) {
   )
 }
 
-function StatusIndicator({ status }: { status: KycCheckStatus }) {
-  if (status === 'passed') {
-    return (
-      <span className="w-5 h-5 rounded-full bg-[#24C166] flex items-center justify-center">
-        <Check className="w-3.5 h-3.5 text-white stroke-[3px]" />
-      </span>
-    )
-  }
-  if (status === 'failed') {
-    return (
-      <span className="w-5 h-5 rounded-full bg-[#FF002E] flex items-center justify-center">
-        <X className="w-3.5 h-3.5 text-white stroke-[3px]" />
-      </span>
-    )
-  }
-  return (
-    <span
-      className="w-5 h-5 rounded-full border border-[#DFDFDF]"
-      aria-hidden
-    />
-  )
-}
-
 interface VerificationStepListProps {
   rows: VerificationRow[]
   /** Tapping a failed row retries that check. Omit to make rows inert. */
@@ -179,7 +146,11 @@ export function VerificationStepList({
                 </span>
               )
             }
-            trailing={<StatusIndicator status={row.status} />}
+            trailing={
+              <StatusCircle
+                state={row.status === 'pending' ? 'empty' : row.status}
+              />
+            }
             onClick={retry}
             // Only a failed row does anything, so the rest drop the affordance.
             className={

@@ -1,3 +1,25 @@
+export interface ShopSocialLinks {
+  instagram?: string
+  facebook?: string
+  whatsapp?: string
+  tiktok?: string
+  x?: string
+}
+
+export interface ShopFulfillment {
+  walkIn?: boolean
+  reservations?: boolean
+  homeService?: boolean
+  delivery?: boolean
+}
+
+export interface ShopMainAddress {
+  state?: string
+  city?: string
+  address?: string
+  insideMarket?: boolean
+}
+
 export interface User {
   id: string
   phoneNumber: string
@@ -7,6 +29,16 @@ export interface User {
   lastName?: string
   role?: 'merchant' | 'customer'
   businessName?: string
+  businessIndustry?: string
+  businessDescription?: string
+  // Shop setup fields (prefill the setup forms)
+  businessEmail?: string | null
+  website?: string | null
+  socialLinks?: ShopSocialLinks | null
+  fulfillment?: ShopFulfillment | null
+  mainAddress?: ShopMainAddress | null
+  branchCount?: number | null
+  shopIsLive?: boolean
   bankName?: string
   accountNumber?: string
   accountName?: string

@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { UpgradePrompt } from '@/components/merchant/upgrade-prompt'
 import { PlanStatusBanner } from '@/components/merchant/plan-status-banner'
+import { SetupShopCta, useSetupShopCta } from '@/components/merchant/setup-shop-cta'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, VerifiedBadge } from '@/components/ui'
@@ -41,6 +42,7 @@ export default function ProfilePage() {
   const { data: recordedStats } = useSalesStats({ ...filter, mode: 'recorded' })
   const { data: owingSales } = useSales({ status: 'OWING', limit: 1 })
   const updateProfilePhoto = useUpdateProfilePhoto()
+  const setupCta = useSetupShopCta()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
@@ -186,6 +188,8 @@ export default function ProfilePage() {
               unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
               owingCount={owingSales?.pagination?.total ?? 0}
               planStatusBanner={<PlanStatusBanner />}
+              shopSetupBanner={setupCta.show ? <SetupShopCta /> : null}
+              suppressRecentSales={setupCta.show}
               isAmountHidden={isAmountHidden}
               onToggleVisibility={() => setIsAmountHidden((prev) => !prev)}
               currentFilter={filter}

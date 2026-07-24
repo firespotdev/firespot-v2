@@ -39,6 +39,13 @@ interface MerchantInfoStatProps {
    * banner, since a payment problem outranks unconfirmed records.
    */
   planStatusBanner?: React.ReactNode
+  /**
+   * "Set up Shop" onboarding nudge. Shares the banner slot with — and takes
+   * precedence over — the "Recent sales" banner (see `suppressRecentSales`).
+   */
+  shopSetupBanner?: React.ReactNode
+  /** Hides the "Recent sales" banner while the shop-setup nudge is showing. */
+  suppressRecentSales?: boolean
   todaySalesAmount?: number
   collectedAmount?: number
   recordedAmount?: number
@@ -67,6 +74,8 @@ export function MerchantInfoStat({
   isUploadingPhoto = false,
   qrKitStatus,
   planStatusBanner,
+  shopSetupBanner,
+  suppressRecentSales = false,
   todaySalesAmount = 0,
   collectedAmount = 0,
   recordedAmount = 0,
@@ -169,7 +178,10 @@ export function MerchantInfoStat({
       {/* Payment trouble outranks unconfirmed records, so it sits above. */}
       {planStatusBanner}
 
-      {unconfirmedCount > 0 && (
+      {/* Shop-setup nudge shares this slot and outranks "Recent sales". */}
+      {shopSetupBanner}
+
+      {unconfirmedCount > 0 && !suppressRecentSales && (
         <Link
           href="/recents"
           className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-[12px] shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
