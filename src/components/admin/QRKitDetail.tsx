@@ -144,7 +144,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
 
     try {
       if (currentAgentId) {
-        // Reassign from current agent to new agent
+        // Reassign from current agent to new
         await reassignQRKits.mutateAsync({
           fromAgentId: currentAgentId,
           toAgentId: selectedAgentId,
