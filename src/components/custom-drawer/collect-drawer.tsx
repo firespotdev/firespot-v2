@@ -48,9 +48,9 @@ export function CollectPaymentDrawer({
   const activeView = useMemo(() => {
     return (
       overrideView ||
-      // Only a customer-uploaded receipt advances to the confirm phase.
-      // Scanning or copying the account keeps the merchant on "waiting".
-      (sale.receiptUrl
+      // A receipt or an explicit "I have paid" declaration advances the
+      // merchant to confirmation. Scanning/copying alone remains "waiting".
+      (sale.receiptUrl || sale.customerMarkedPaidAt
         ? 'confirm'
         : sale.isScanned || sale.isCopied
           ? 'waiting'
@@ -82,6 +82,14 @@ export function CollectPaymentDrawer({
       }
     }
 
+    const handlePaymentDeclared = (data: any) => {
+      if (data._id === sale._id) {
+        setSale(data)
+        setOverrideView(null)
+        showNotificationToast({ message: 'Customer says they have paid' })
+      }
+    }
+
     const handleSaleConfirmed = (data: any) => {
       if (data._id === sale._id) {
         onRecordConfirm(data)
@@ -105,10 +113,14 @@ export function CollectPaymentDrawer({
     const handleSaleCancelled = (data: any) => {
       if (data._id === sale._id) {
         closeDrawer()
+        if (data.cancelledBy === 'customer') {
+          showNotificationToast({ message: 'Customer cancelled this payment' })
+        }
       }
     }
 
     socket.on('receipt.uploaded', handleReceiptUploaded)
+    socket.on('payment.declared', handlePaymentDeclared)
     socket.on('sale.confirmed', handleSaleConfirmed)
     socket.on('sale.scanned', handleSaleScanned)
     socket.on('sale.copied', handleSaleCopied)
@@ -116,6 +128,7 @@ export function CollectPaymentDrawer({
 
     return () => {
       socket.off('receipt.uploaded', handleReceiptUploaded)
+      socket.off('payment.declared', handlePaymentDeclared)
       socket.off('sale.confirmed', handleSaleConfirmed)
       socket.off('sale.scanned', handleSaleScanned)
       socket.off('sale.copied', handleSaleCopied)
@@ -146,6 +159,7 @@ export function CollectPaymentDrawer({
           showNotificationToast({
             message:
               err?.response?.data?.message || 'Failed to confirm receipt.',
+            mode: 'error',
           })
           setStep('qr')
         },
@@ -163,6 +177,7 @@ export function CollectPaymentDrawer({
         showNotificationToast({
           message:
             err?.response?.data?.message || 'Failed to cancel collect payment.',
+          mode: 'error',
         })
         setStep('qr')
       },
@@ -333,7 +348,16 @@ export function CollectPaymentDrawer({
               })}
             </p>
 
-            <button className="flex items-center gap-px text-sm text-[#00000080] mb-2 mt-2 font-medium hover:opacity-85">
+            <button
+              type="button"
+              onClick={() =>
+                useDrawerStore.getState().openDrawer({
+                  type: 'sale-items',
+                  props: { items: sale.items || [] },
+                })
+              }
+              className="flex items-center gap-px text-sm text-[#00000080] mb-2 mt-2 font-medium hover:opacity-85"
+            >
               <span className="mr-1">For</span>
               <span className="underline underline-offset-3 text-black">
                 {itemCount} item{itemCount !== 1 ? 's' : ''}
@@ -453,6 +477,16 @@ export function CollectPaymentDrawer({
                   </Button>
                 </div>
               )}
+              {!sale.receiptUrl && sale.customerMarkedPaidAt && (
+                <div className="w-full rounded-[12px] border-[3px] border-[#24C1664D] px-4 py-4 text-left shadow-[0px_4px_8px_0px_#0000000A]">
+                  <h4 className="text-sm font-bold text-black">
+                    Customer marked this payment as paid
+                  </h4>
+                  <p className="mt-1 text-xs font-medium text-[#00000080]">
+                    Check your bank account before confirming.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -466,7 +500,10 @@ export function CollectPaymentDrawer({
             <Button
               onClick={() => {
                 navigator.clipboard.writeText(checkoutUrl)
-                showNotificationToast({ message: 'Checkout link copied!' })
+                showNotificationToast({
+                  message: 'Checkout link copied!',
+                  mode: 'success',
+                })
               }}
               className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
             >

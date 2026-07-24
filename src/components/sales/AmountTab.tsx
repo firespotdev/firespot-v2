@@ -10,6 +10,7 @@ interface AmountTabProps {
   formatDisplayAmount: (val: string) => string
   addCustomAmountToCart: () => void
   handleKeyPress: (key: string) => void
+  descriptionError?: boolean
 }
 
 export function AmountTab({
@@ -19,6 +20,7 @@ export function AmountTab({
   formatDisplayAmount,
   addCustomAmountToCart,
   handleKeyPress,
+  descriptionError = false,
 }: AmountTabProps) {
   return (
     <div className="flex-1 flex flex-col justify-between overflow-hidden">
@@ -59,7 +61,13 @@ export function AmountTab({
 
       <div className="w-full flex flex-col pb-20 bg-white">
         <div className="px-3 py-2 w-full mx-auto">
-          <div className="relative flex items-center justify-center w-full border border-[#E5E7EB] rounded-[10px] px-4 py-3 focus-within:border-gray-400 transition-colors overflow-hidden">
+          <div
+            className={`relative flex items-center justify-center w-full rounded-[10px] border px-4 py-3 transition-colors overflow-hidden ${
+              descriptionError
+                ? 'border-red-500'
+                : 'border-[#E5E7EB] focus-within:border-gray-400'
+            }`}
+          >
             {description === '' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <PencilLine
@@ -76,6 +84,8 @@ export function AmountTab({
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              aria-invalid={descriptionError}
+              required
               className="w-full text-center text-[15px] font-medium text-black focus:outline-none bg-transparent relative z-10"
             />
           </div>

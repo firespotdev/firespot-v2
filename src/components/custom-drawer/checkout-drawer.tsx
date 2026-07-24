@@ -105,6 +105,7 @@ export const CheckoutDrawer = ({
 
           showNotificationToast({
             message: 'Error initializing payment',
+            mode: 'error',
             duration: 3000,
           })
         },
@@ -113,6 +114,7 @@ export const CheckoutDrawer = ({
           showNotificationToast({
             message:
               apiError.response?.data?.message || 'Failed to create order',
+            mode: 'error',
             duration: 3000,
           })
         },

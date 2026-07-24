@@ -188,6 +188,7 @@ export function SaleReceiptDrawer({
                       navigator.clipboard.writeText(sale.reference)
                       showNotificationToast({
                         message: 'Reference copied',
+                        mode: 'success',
                         duration: 1500,
                       })
                     }

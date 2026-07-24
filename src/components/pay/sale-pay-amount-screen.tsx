@@ -50,7 +50,15 @@ export function SalePayAmountScreen({
       })
       return
     }
-    onCopy(amountValue, description.trim())
+    const normalizedDescription = description.trim()
+    if (!normalizedDescription) {
+      showNotificationToast({
+        message: 'Enter a description for this payment',
+        duration: 2000,
+      })
+      return
+    }
+    onCopy(amountValue, normalizedDescription)
   }
 
   return (
@@ -148,6 +156,7 @@ export function SalePayAmountScreen({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Payment for..."
+                  required
                   className="flex-1 min-w-0 text-[20px] text-black bg-transparent outline-none placeholder:text-[#9CA3AF] font-bold"
                 />
                 <button

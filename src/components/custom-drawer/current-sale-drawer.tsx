@@ -9,10 +9,15 @@ interface CartItem {
   name: string
   price: number
   quantity: number
+  includesVat?: boolean
   selectedVariant?: {
     size?: string
     color?: string
   }
+}
+
+interface SaleCustomer {
+  name?: string
 }
 
 interface Props {
@@ -23,7 +28,7 @@ interface Props {
   installmentType: 'full' | 'part'
   amountPaid: number
   hasSetInstallment?: boolean
-  customer: any
+  customer: SaleCustomer | null
   totalAmount: number
   dueDate?: string
   mode?: 'record' | 'collect'
@@ -55,9 +60,13 @@ export function CurrentSaleDrawer({
   onConfirmRecord,
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
-  const dateInputRef = useRef<HTMLInputElement>(null)
+  const dueDateInputRef = useRef<HTMLInputElement>(null)
+  const today = new Date()
+  const minimumDueDate = `${today.getFullYear()}-${String(
+    today.getMonth() + 1,
+  ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
-  const formatDueDate = (dateInput: any) => {
+  const formatDueDate = (dateInput: string | Date) => {
     if (!dateInput) return ''
     const date = new Date(dateInput)
     if (isNaN(date.getTime())) return ''
@@ -88,11 +97,23 @@ export function CurrentSaleDrawer({
   }
 
   const getSubtotal = () => {
-    return cartItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0)
+    return (
+      Math.round(
+        cartItems.reduce(
+          (acc, curr) => acc + curr.price * curr.quantity,
+          0,
+        ) * 100,
+      ) / 100
+    )
   }
 
   const getVAT = () => {
-    return Math.round(getSubtotal() * 0.075)
+    const taxableSubtotal = cartItems.reduce(
+      (acc, curr) =>
+        curr.includesVat ? acc : acc + curr.price * curr.quantity,
+      0,
+    )
+    return Math.round(taxableSubtotal * 0.075 * 100) / 100
   }
 
   const formatCurrency = (val: number) => {
@@ -103,6 +124,24 @@ export function CurrentSaleDrawer({
   }
 
   const balanceOwed = Math.max(0, totalAmount - amountPaid)
+  const needsPaymentMethod = mode === 'record' && !paymentMethod
+
+  const openDueDatePicker = () => {
+    const input = dueDateInputRef.current
+    if (!input) return
+
+    try {
+      if (typeof input.showPicker === 'function') {
+        input.showPicker()
+        return
+      }
+    } catch {
+      // iOS browsers may reject showPicker even during a user gesture.
+    }
+
+    input.focus()
+    input.click()
+  }
 
   return (
     <div className="w-full flex flex-col font-satoshi px-3 bg-white max-w-125 mx-auto">
@@ -241,7 +280,7 @@ export function CurrentSaleDrawer({
             <span className="text-sm text-[#00000080] font-medium">Method</span>
             <div className="flex items-center gap-1">
               <span className="text-sm font-medium text-[#111827] capitalize">
-                {paymentMethod}
+                {paymentMethod || 'Select payment method'}
               </span>
               <ChevronRight className="w-4 h-4 text-[#00000080]" />
             </div>
@@ -267,34 +306,26 @@ export function CurrentSaleDrawer({
 
           {/* Due Date */}
           {balanceOwed > 0 && (
-            <>
+            <div className="relative">
               <input
+                ref={dueDateInputRef}
                 type="date"
-                ref={dateInputRef}
-                className="hidden"
+                min={minimumDueDate}
                 value={dueDate || ''}
-                onChange={(e) => {
-                  if (onEditDueDate) {
-                    onEditDueDate(e.target.value)
-                  }
-                }}
+                onChange={(e) => onEditDueDate?.(e.target.value)}
+                aria-label="Balance due date"
+                tabIndex={-1}
+                className="pointer-events-none absolute h-px w-px opacity-0"
               />
               <button
-                onClick={() => {
-                  if (dateInputRef.current) {
-                    if (typeof dateInputRef.current.showPicker === 'function') {
-                      dateInputRef.current.showPicker()
-                    } else {
-                      dateInputRef.current.click()
-                    }
-                  }
-                }}
-                className="flex justify-between items-center hover:opacity-85 transition-opacity"
+                type="button"
+                onClick={openDueDatePicker}
+                className="flex w-full cursor-pointer justify-between items-center hover:opacity-85 transition-opacity"
               >
                 <span className="text-sm text-[#00000080] font-medium">
                   Balance due by
                 </span>
-                <div className="flex items-center gap-1">
+                <div className="pointer-events-none flex items-center gap-1">
                   <span
                     className={
                       dueDate
@@ -307,15 +338,17 @@ export function CurrentSaleDrawer({
                   <ChevronRight className="w-4 h-4 text-[#00000080]" />
                 </div>
               </button>
-            </>
+            </div>
           )}
         </div>
       )}
 
       {/* Main button */}
       <button
-        onClick={onConfirmRecord}
-        disabled={isLoading}
+        onClick={needsPaymentMethod ? onEditPaymentMethod : onConfirmRecord}
+        disabled={
+          isLoading || (installmentType === 'part' && (!dueDate || !customer))
+        }
         className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 disabled:bg-black/60 disabled:cursor-not-allowed text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0 flex items-center justify-center gap-2"
       >
         {isLoading ? (
@@ -325,8 +358,15 @@ export function CurrentSaleDrawer({
           </>
         ) : (
           <span>
-            {mode === 'collect' ? 'Collect' : 'Record'} NGN{' '}
-            {formatCurrency(mode === 'collect' ? totalAmount : amountPaid)}
+            {needsPaymentMethod
+              ? 'Select payment method'
+              : installmentType === 'part' && (!dueDate || !customer)
+              ? !customer
+                ? 'Select who owes you'
+                : 'Set a due date'
+              : `${mode === 'collect' ? 'Collect' : 'Record'} NGN ${formatCurrency(
+                  mode === 'collect' ? totalAmount : amountPaid,
+                )}`}
           </span>
         )}
       </button>

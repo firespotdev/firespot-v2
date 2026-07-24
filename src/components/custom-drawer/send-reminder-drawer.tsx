@@ -83,6 +83,7 @@ export function SendReminderDrawer({
     navigator.clipboard.writeText(draftText)
     showNotificationToast({
       message: 'Reminder message copied to clipboard',
+      mode: 'success',
     })
   }
 

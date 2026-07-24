@@ -4,11 +4,9 @@ import { useRef, useState } from 'react'
 import {
   ArrowUpRight,
   Check,
-  ClipboardList,
   Copy,
   Landmark,
   Loader,
-  Loader2,
   Paperclip,
   Trash2,
   X,
@@ -16,12 +14,12 @@ import {
 import {
   Button,
   GreenSpinner,
-  LoaderCircle,
   showNotificationToast,
   TagFooter,
 } from '@/components/ui'
 import { BankLogo } from '@/components/ui/bank-logo'
 import { useDeleteReceipt, useUploadReceipt } from '@/services/sales/hooks'
+import { useMarkSalePaidByCustomer } from '@/services/sales/hooks'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 
@@ -31,33 +29,41 @@ interface SaleWaitingScreenProps {
   sale: PublicSale
   account?: BankAccount
   fromBankName: string | null
+  serialNumber: string
   onOpenBankApp: () => void
   onChangeMethod: () => void
   onClose: () => void
+  isClosing?: boolean
 }
 
 export function SaleWaitingScreen({
   sale,
   account,
   fromBankName,
+  serialNumber,
   onOpenBankApp,
   onChangeMethod,
   onClose,
+  isClosing = false,
 }: SaleWaitingScreenProps) {
   const uploadReceipt = useUploadReceipt()
   const deleteReceipt = useDeleteReceipt()
+  const markPaid = useMarkSalePaidByCustomer()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [receiptName, setReceiptName] = useState<string | null>(null)
 
   const hasReceipt = Boolean(sale.receiptUrl) || uploadReceipt.isSuccess
+  const hasDeclaredPayment =
+    Boolean(sale.customerMarkedPaidAt) || markPaid.isSuccess
+  const hasPaymentEvidence = hasReceipt || hasDeclaredPayment
   const isUploading = uploadReceipt.isPending
 
-  const title = hasReceipt
+  const title = hasPaymentEvidence
     ? 'Waiting for confirmation...'
     : fromBankName
       ? 'Still checking...'
       : 'Waiting for your payment...'
-  const subtitle = hasReceipt
+  const subtitle = hasPaymentEvidence
     ? 'Your vendor may still be reviewing this.'
     : fromBankName
       ? 'You can paste or upload your transfer receipt to speed this up.'
@@ -75,6 +81,7 @@ export function SaleWaitingScreen({
           setReceiptName(null)
           showNotificationToast({
             message: 'Failed to upload receipt. Please try again.',
+            mode: 'error',
             duration: 2500,
           })
         },
@@ -109,6 +116,7 @@ export function SaleWaitingScreen({
     } catch {
       showNotificationToast({
         message: 'Could not read your clipboard',
+        mode: 'error',
         duration: 2000,
       })
     }
@@ -123,10 +131,27 @@ export function SaleWaitingScreen({
       onError: () => {
         showNotificationToast({
           message: 'Failed to remove receipt',
+          mode: 'error',
           duration: 2000,
         })
       },
     })
+  }
+
+  const handleMarkPaid = () => {
+    markPaid.mutate(
+      { saleId: sale.id, serialNumber },
+      {
+        onError: (error: any) => {
+          showNotificationToast({
+            message:
+              error?.response?.data?.message ||
+              'Could not notify the merchant. Please try again.',
+            mode: 'error',
+          })
+        },
+      },
+    )
   }
 
   return (
@@ -137,6 +162,7 @@ export function SaleWaitingScreen({
           <button
             type="button"
             onClick={onClose}
+            disabled={isClosing}
             aria-label="Close"
             className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
           >
@@ -178,6 +204,7 @@ export function SaleWaitingScreen({
                     navigator.clipboard.writeText(account.accountNumber)
                     showNotificationToast({
                       message: 'Account number copied',
+                      mode: 'success',
                       duration: 1500,
                     })
                   }}
@@ -318,14 +345,23 @@ export function SaleWaitingScreen({
             className="hidden"
           />
 
-          {!hasReceipt && (
-            <Button
-              variant="secondary"
-              onClick={onChangeMethod}
-              className="w-full bg-[#F1F1F1] hover:bg-[#F1F1F1]/90 text-black font-bold text-base rounded-full h-12 mt-4 shrink-0"
-            >
-              Change payment method
-            </Button>
+          {!hasPaymentEvidence && (
+            <div className="mt-4 flex w-full flex-col gap-3">
+              <Button
+                onClick={handleMarkPaid}
+                disabled={markPaid.isPending}
+                className="w-full"
+              >
+                {markPaid.isPending ? 'Notifying merchant...' : 'I have paid'}
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={onChangeMethod}
+                className="w-full bg-[#F1F1F1] hover:bg-[#F1F1F1]/90 text-black font-bold text-base rounded-full h-12 shrink-0"
+              >
+                Change payment method
+              </Button>
+            </div>
           )}
         </div>
 

@@ -116,7 +116,10 @@ export default function AddBankAccountPage() {
       },
       {
         onSuccess: () => {
-          showNotificationToast({ message: 'Bank account added!' })
+          showNotificationToast({
+            message: 'Bank account added!',
+            mode: 'success',
+          })
           router.push('/profile')
         },
         onError: (err: any) => {

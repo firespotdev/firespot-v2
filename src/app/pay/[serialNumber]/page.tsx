@@ -55,11 +55,46 @@ export default function PaymentPage() {
   }, [saleId])
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
-  // Dynamic QR sale (public, limited view). On 404/cancelled we quietly fall
-  // back to the classic account-carousel page below.
-  const { data: publicSale, isLoading: saleLoading } = usePublicSale(
-    saleId || undefined,
-  )
+  // Dynamic QR sale (public, limited view). A failed or cancelled dynamic sale
+  // ends the flow; it must never fall back into static-payment mode.
+  const {
+    data: publicSale,
+    isLoading: saleLoading,
+    isError: saleError,
+  } = usePublicSale(saleId || undefined, serialNumber)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const storageKey = `firespot-active-sale:${serialNumber}`
+    if (saleId) {
+      const activeSaleId = sessionStorage.getItem(storageKey)
+      if (activeSaleId && activeSaleId !== saleId) {
+        router.replace('/home')
+        return
+      }
+      sessionStorage.setItem(storageKey, saleId)
+      return
+    }
+    if (sessionStorage.getItem(storageKey)) {
+      router.replace('/home')
+    }
+  }, [saleId, serialNumber, router])
+
+  useEffect(() => {
+    if (!saleId || saleLoading) return
+    if (saleError || error || publicSale?.status === 'CANCELLED') {
+      sessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
+      router.replace('/home')
+    }
+  }, [
+    saleId,
+    saleLoading,
+    saleError,
+    error,
+    publicSale?.status,
+    serialNumber,
+    router,
+  ])
 
   const qrCodeRef = useRef<HTMLDivElement>(null)
   const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
@@ -111,29 +146,18 @@ export default function PaymentPage() {
           undefined
         claimSalePayer.mutate({ saleId, customerName: payerName })
       }
-    } else if (merchant) {
-      // Get or create a persistent fingerprint for this customer
-      let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
-      if (!fingerprint) {
-        fingerprint =
-          crypto.randomUUID?.() ||
-          `fs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        localStorage.setItem('firespot_customer_fingerprint', fingerprint)
-      }
-
-      createPendingSale.mutate({
-        merchantId: merchant.id,
-        customerFingerprint: fingerprint,
-        source: window.location.search.includes('shared=true')
-          ? 'Link shared'
-          : 'QR scan',
-        targetBankName: bankName,
-        serialNumber: serialNumber,
-      })
     }
   }
 
-  if (isLoading || (saleId && saleLoading)) {
+  if (
+    isLoading ||
+    (saleId &&
+      (saleLoading ||
+        saleError ||
+        error ||
+        !publicSale ||
+        publicSale.status === 'CANCELLED'))
+  ) {
     return <LoadingPage innerBg="#FFFFFF" />
   }
 
@@ -449,7 +473,7 @@ export default function PaymentPage() {
   }
 
   // Dynamic QR sale: stepped payment experience (request -> waiting -> success)
-  if (saleId && publicSale && publicSale.status !== 'CANCELLED') {
+  if (saleId && publicSale) {
     return (
       <SalePaymentFlow
         sale={publicSale}
@@ -501,6 +525,7 @@ export default function PaymentPage() {
     navigator.clipboard.writeText(accountNumber)
     showNotificationToast({
       message: 'Account number copied to clipboard',
+      mode: 'success',
       duration: 2000,
     })
 
@@ -522,7 +547,7 @@ export default function PaymentPage() {
       {
         merchantId: merchant.id,
         amount,
-        description: description || undefined,
+        description,
         customerFingerprint: fingerprint,
         customerName: payerName,
         customerUserId: authUser?.id,
@@ -539,6 +564,7 @@ export default function PaymentPage() {
           if (!newSaleId) {
             showNotificationToast({
               message: 'Failed to start payment. Please try again.',
+              mode: 'error',
             })
             return
           }
@@ -552,6 +578,7 @@ export default function PaymentPage() {
         onError: () => {
           showNotificationToast({
             message: 'Failed to start payment. Please try again.',
+            mode: 'error',
           })
         },
       },

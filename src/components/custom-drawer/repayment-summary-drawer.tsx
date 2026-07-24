@@ -168,7 +168,12 @@ export function RepaymentSummaryDrawer({
   const isBusy = isLoading || isSubmitting
 
   const handleRecordConfirm = async () => {
-    if (isBusy || effectiveAmount < 0) return
+    if (
+      isBusy ||
+      effectiveAmount <= 0 ||
+      effectiveAmount > totalBalance
+    )
+      return
     setIsSubmitting(true)
     try {
       await onConfirmRecord(effectiveAmount, selectedMethod)
@@ -334,7 +339,9 @@ export function RepaymentSummaryDrawer({
       <div className="p-4 shrink-0 border-t border-[#F1F1F1] bg-white">
         <Button
           onClick={handleRecordConfirm}
-          disabled={isBusy || effectiveAmount < 0}
+          disabled={
+            isBusy || effectiveAmount <= 0 || effectiveAmount > totalBalance
+          }
           className="active:scale-[0.98]"
         >
           {isBusy ? (

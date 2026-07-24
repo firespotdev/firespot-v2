@@ -33,6 +33,7 @@ export type DrawerContentType =
   | 'verify-identity'
   | 'plan-checkout'
   | 'cancel-plan'
+  | 'sale-items'
 
 
 

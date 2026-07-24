@@ -5,6 +5,7 @@ interface SaleSocketHandlers {
   onConfirmed?: (sale: unknown) => void
   onCancelled?: (sale: unknown) => void
   onReceiptUploaded?: (sale: unknown) => void
+  onPaymentDeclared?: (sale: unknown) => void
 }
 
 /**
@@ -17,9 +18,11 @@ export const useSaleSocket = (
   saleId: string | undefined,
   handlers: SaleSocketHandlers,
 ) => {
-  const socketRef = useRef<Socket | null>(null)
   const handlersRef = useRef(handlers)
-  handlersRef.current = handlers
+
+  useEffect(() => {
+    handlersRef.current = handlers
+  }, [handlers])
 
   useEffect(() => {
     if (!saleId) return
@@ -45,14 +48,12 @@ export const useSaleSocket = (
     socket.on('receipt.uploaded', (sale: unknown) =>
       handlersRef.current.onReceiptUploaded?.(sale),
     )
-
-    socketRef.current = socket
+    socket.on('payment.declared', (sale: unknown) =>
+      handlersRef.current.onPaymentDeclared?.(sale),
+    )
 
     return () => {
       socket.disconnect()
-      socketRef.current = null
     }
   }, [saleId])
-
-  return socketRef
 }

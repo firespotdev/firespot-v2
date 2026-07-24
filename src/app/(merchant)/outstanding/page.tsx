@@ -56,7 +56,7 @@ function OutstandingPageContent() {
   const customerTotalOwed = useMemo(() => {
     return customerSales.reduce((sum: number, s: any) => {
       const bal = s?.balanceOwed ?? (s?.amount ? Math.max(0, s.amount - (s.amountPaid || 0)) : 0)
-      if (s.status === 'OUTSTANDING' || bal > 0) {
+      if (s.status === 'OUTSTANDING' && bal > 0) {
         return sum + bal
       }
       return sum
@@ -96,7 +96,7 @@ function OutstandingPageContent() {
       const bal =
         s?.balanceOwed ??
         (s?.amount ? Math.max(0, s.amount - (s.amountPaid || 0)) : 0)
-      return s.status === 'OUTSTANDING' || bal > 0
+      return s.status === 'OUTSTANDING' && bal > 0
     })
   }, [customerSales])
 

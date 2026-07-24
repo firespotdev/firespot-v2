@@ -123,17 +123,23 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
     }
     if (isFaved) {
       removeFavorite.mutate(merchant.id)
-      showNotificationToast({ message: `${businessName} removed from Faves` })
+      showNotificationToast({
+        message: `${businessName} removed from Faves`,
+        mode: 'success',
+      })
     } else {
       addFavorite.mutate(merchant.id)
-      showNotificationToast({ message: `${businessName} added to Faves` })
+      showNotificationToast({
+        message: `${businessName} added to Faves`,
+        mode: 'success',
+      })
     }
   }
 
   const handleCopyReference = () => {
     if (reference) {
       navigator.clipboard.writeText(reference)
-      showNotificationToast({ message: 'Reference copied' })
+      showNotificationToast({ message: 'Reference copied', mode: 'success' })
     }
   }
 

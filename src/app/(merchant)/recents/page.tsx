@@ -12,7 +12,7 @@ import { showNotificationToast, StatBanner } from '@/components/ui'
 
 export default function RecentsPage() {
   const router = useRouter()
-  const { data: stats, isLoading: statsLoading } = useSalesStats()
+  const { data: stats } = useSalesStats()
   const { data: pendingData, isLoading: pendingLoading } = useSales({
     status: 'PENDING',
     limit: '3',
@@ -24,6 +24,11 @@ export default function RecentsPage() {
 
   const cancelSaleMutation = useCancelSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+
+  const getRecentDescription = (sale: Sale) => {
+    const firstItemDescription = sale.items?.[0]?.productName?.trim()
+    return firstItemDescription || sale.description || 'New sale'
+  }
 
   const handleCancel = (saleId: string) => {
     openDrawer({
@@ -93,6 +98,7 @@ export default function RecentsPage() {
                   onCancel={() => handleCancel(sale._id)}
                   onClick={() => handleConfirm(sale._id)}
                   className={roundingClass}
+                  descriptionOverride={getRecentDescription(sale)}
                 />
               )
             })
@@ -123,7 +129,12 @@ export default function RecentsPage() {
         <div className="bg-white rounded-xl mb-4 overflow-hidden border border-[#F1F1F1]">
           {confirmedData?.data && confirmedData.data.length > 0 ? (
             confirmedData.data.map((sale: Sale) => (
-              <SaleItem key={sale._id} sale={sale} onClick={() => {}} />
+              <SaleItem
+                key={sale._id}
+                sale={sale}
+                onClick={() => {}}
+                descriptionOverride={getRecentDescription(sale)}
+              />
             ))
           ) : (
             <div className="p-8 text-center text-[#6B7280] text-sm font-medium">

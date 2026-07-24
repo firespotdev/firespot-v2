@@ -4,7 +4,6 @@ import { useState } from 'react'
 import {
   X,
   ArrowLeft,
-  Pencil,
   RotateCcw,
   AlertCircle,
   PenLine,
@@ -16,16 +15,28 @@ import { formatCurrency } from '@/lib/utils'
 
 interface Props {
   totalAmount: number
+  initialInstallmentType?: 'full' | 'part'
+  initialAmountPaid?: number
   onContinue: (installmentType: 'full' | 'part', amountPaid: number) => void
   onBack?: () => void
 }
 
-export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
+export function SplitPaymentDrawer({
+  totalAmount,
+  initialInstallmentType = 'full',
+  initialAmountPaid,
+  onContinue,
+  onBack,
+}: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const [installmentType, setInstallmentType] = useState<'full' | 'part'>(
-    'full',
+    initialInstallmentType,
   )
-  const [amountPaid, setAmountPaid] = useState('')
+  const [amountPaid, setAmountPaid] = useState(
+    initialInstallmentType === 'part' && initialAmountPaid
+      ? String(initialAmountPaid)
+      : '',
+  )
 
   const getBalanceOwed = () => {
     const rawVal = Number(amountPaid.replace(/,/g, '')) || 0
@@ -40,8 +51,13 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
     onContinue(installmentType, rawVal)
   }
 
+  const parsedPartAmount = Number(amountPaid.replace(/,/g, '')) || 0
+  const canContinue =
+    installmentType === 'full' ||
+    (parsedPartAmount > 0 && parsedPartAmount < totalAmount)
+
   return (
-    <div className="w-full flex flex-col font-satoshi p-3 max-w-125 mx-auto">
+    <div className="w-full max-w-125 mx-auto overflow-y-auto overscroll-contain p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] font-satoshi">
       {/* Header with back arrow, tabs, and close button */}
       <div className="flex justify-between items-center mb-2.5">
         <button
@@ -91,9 +107,13 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
                 Paid now
               </span>
               <div className="flex w-full justify-between mt-1">
-                <span className="text-[32px] font-medium font-family-sofia-pro text-[#34C759] leading-none -tracking-[2px]">
+                <button
+                  type="button"
+                  onClick={() => setInstallmentType('part')}
+                  className="text-left text-[32px] font-medium font-family-sofia-pro text-[#34C759] leading-none -tracking-[2px]"
+                >
                   ₦ {formatCurrency(totalAmount)}
-                </span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setInstallmentType('part')}
@@ -113,9 +133,13 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
                 Total due
               </span>
               <div className="flex w-full justify-between mt-1">
-                <span className="text-[32px] font-medium text-black font-family-sofia-pro -tracking-[2px] leading-none">
+                <button
+                  type="button"
+                  onClick={() => setInstallmentType('part')}
+                  className="text-left text-[32px] font-medium text-black font-family-sofia-pro -tracking-[2px] leading-none"
+                >
                   ₦ {formatCurrency(totalAmount)}
-                </span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setInstallmentType('part')}
@@ -161,7 +185,7 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
                     placeholder="0"
                     value={amountPaid}
                     onChange={(e) => {
-                      let val = e.target.value.replace(/[^0-9.]/g, '')
+                      const val = e.target.value.replace(/[^0-9.]/g, '')
                       const parts = val.split('.')
                       if (parts.length > 2) return
                       if (parts[1] && parts[1].length > 2) return
@@ -182,7 +206,7 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
                       setAmountPaid(formattedVal)
                     }}
                     className="w-full bg-transparent focus:outline-none font-medium font-family-sofia-pro text-[#24C166] text-[32px] leading-none -tracking-[2px] p-0 border-none"
-                    autoFocus
+                    autoFocus={false}
                   />
                 </div>
 
@@ -237,7 +261,11 @@ export function SplitPaymentDrawer({ totalAmount, onContinue, onBack }: Props) {
             </span>
           </div>
 
-          <Button onClick={handleContinue} className="active:scale-[0.98]">
+          <Button
+            onClick={handleContinue}
+            disabled={!canContinue}
+            className="active:scale-[0.98]"
+          >
             Continue
           </Button>
         </div>

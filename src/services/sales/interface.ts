@@ -31,6 +31,8 @@ export interface PublicSale {
   recordedAt?: string;
   reference?: string;
   receiptUrl?: string;
+  customerMarkedPaidAt?: string;
+  cancelledBy?: 'merchant' | 'customer';
   isCopied?: boolean;
   targetBankName?: string;
   paymentMethod?: string;
@@ -67,6 +69,8 @@ export interface Sale {
   items?: SaleItem[];
   receiptUrl?: string;
   receiptPublicId?: string;
+  customerMarkedPaidAt?: string | Date;
+  cancelledBy?: 'merchant' | 'customer';
   dueDate?: string | Date;
   isCollection?: boolean;
   location?: string;

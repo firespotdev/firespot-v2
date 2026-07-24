@@ -145,13 +145,16 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
           if (!newPrimaryAccount.isPrimary) {
             setPrimaryBankAccount.mutate(newPrimaryAccount.accountNumber, {
               onSuccess: () => {
-                showNotificationToast({ message: 'Primary account updated' })
+                showNotificationToast({
+                  message: 'Primary account updated',
+                  mode: 'success',
+                })
               },
               onError: (error: any) => {
                 const message =
                   error?.response?.data?.message ||
                   'Failed to update primary account'
-                showNotificationToast({ message })
+                showNotificationToast({ message, mode: 'error' })
               },
             })
           }

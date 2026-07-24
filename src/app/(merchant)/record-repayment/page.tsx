@@ -169,7 +169,11 @@ function RecordRepaymentContent() {
   }
 
   const handleOpenSummaryDrawer = () => {
-    if ((!saleId && !resolvedCustomerId) || effectiveAmount <= 0) return
+    const amountIsValid =
+      mode === 'full'
+        ? balanceOwed > 0
+        : effectiveAmount > 0 && effectiveAmount < balanceOwed
+    if ((!saleId && !resolvedCustomerId) || !amountIsValid) return
 
     openDrawer({
       type: 'repayment-summary',
@@ -195,7 +199,12 @@ function RecordRepaymentContent() {
     amountToRecord: number,
     methodToUse: string,
   ) => {
-    if ((!saleId && !resolvedCustomerId) || amountToRecord < 0) return
+    if (
+      (!saleId && !resolvedCustomerId) ||
+      amountToRecord <= 0 ||
+      amountToRecord > balanceOwed
+    )
+      return
 
     try {
       const result = await recordRepaymentMutation.mutateAsync({
@@ -318,7 +327,9 @@ function RecordRepaymentContent() {
           onClick={handleOpenSummaryDrawer}
           disabled={
             isLoadingDebt ||
-            effectiveAmount < 0 ||
+            balanceOwed <= 0 ||
+            (mode === 'part' &&
+              (effectiveAmount <= 0 || effectiveAmount >= balanceOwed)) ||
             recordRepaymentMutation.isPending
           }
           className="font-bold text-base transition-all cursor-pointer"

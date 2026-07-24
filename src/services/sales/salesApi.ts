@@ -11,7 +11,7 @@ export interface CreatePendingSalePayload {
   targetBankName?: string;
   serialNumber?: string;
   amount?: number;
-  description?: string;
+  description: string;
   items?: any[];
   isPaidInFull?: boolean;
   amountPaid?: number;
@@ -22,7 +22,7 @@ export interface CreatePendingSalePayload {
 
 export interface RecordSalePayload {
   amount: number;
-  description?: string;
+  description: string;
   paymentMethod: string;
   targetBankName?: string;
   isPaidInFull?: boolean;
@@ -105,8 +105,35 @@ export const SalesApi = {
     return data;
   },
 
-  getPublicSale: async (saleId: string): Promise<PublicSale> => {
-    const { data } = await publicApiClient.get(`/sales/${saleId}/public`);
+  getPublicSale: async (
+    saleId: string,
+    serialNumber: string,
+  ): Promise<PublicSale> => {
+    const { data } = await publicApiClient.get(`/sales/${saleId}/public`, {
+      params: { serialNumber },
+    });
+    return data;
+  },
+
+  cancelSaleAsCustomer: async (
+    saleId: string,
+    serialNumber: string,
+  ): Promise<PublicSale> => {
+    const { data } = await publicApiClient.patch(
+      `/sales/${saleId}/customer-cancel`,
+      { serialNumber },
+    );
+    return data;
+  },
+
+  markSalePaidByCustomer: async (
+    saleId: string,
+    serialNumber: string,
+  ): Promise<PublicSale> => {
+    const { data } = await publicApiClient.patch(
+      `/sales/${saleId}/customer-paid`,
+      { serialNumber },
+    );
     return data;
   },
 

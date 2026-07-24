@@ -25,11 +25,15 @@ interface CartItem {
   name: string
   price: number
   quantity: number
+  /** Existing sales without item breakdown already store a final, VAT-inclusive total. */
+  includesVat?: boolean
   selectedVariant?: {
     size?: string
     color?: string
   }
 }
+
+const DRAFT_ITEM_ID = 'custom-current-draft'
 
 export default function RecordSalePage() {
   return (
@@ -84,7 +88,9 @@ function RecordSaleContent() {
   const [activeTab, setActiveTab] = useState<'amount' | 'items'>('amount')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [descriptionError, setDescriptionError] = useState(false)
   const [hasPrefilled, setHasPrefilled] = useState(false)
+  const [prefilledAmountIsFinal, setPrefilledAmountIsFinal] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
 
   // Final confirmation states
@@ -94,7 +100,7 @@ function RecordSaleContent() {
 
   // Checkout summary states
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] =
-    useState<string>('Bank Transfer')
+    useState<string>('')
   const [checkoutInstallmentType, setCheckoutInstallmentType] = useState<
     'full' | 'part'
   >('full')
@@ -106,12 +112,6 @@ function RecordSaleContent() {
     'record',
   )
 
-  useEffect(() => {
-    if (checkoutInstallmentType === 'full') {
-      setCheckoutAmountPaid(getTotal())
-    }
-  }, [cartItems, amount, checkoutInstallmentType, activeTab])
-
   // Reset prefill flag when the target sale id changes
   useEffect(() => {
     setHasPrefilled(false)
@@ -120,8 +120,33 @@ function RecordSaleContent() {
   // Prefill in edit or confirm mode
   useEffect(() => {
     if ((isEditMode || isConfirmMode) && editSaleData && !hasPrefilled) {
-      setAmount(editSaleData.amount?.toString() || '')
-      setDescription(editSaleData.description || '')
+      setCheckoutPaymentMethod(editSaleData.paymentMethod || '')
+      const existingItems = (editSaleData.items || [])
+        .filter((item) => Number(item.price) > 0 && Number(item.quantity) > 0)
+        .map((item, index) => ({
+          id: item.productId || `custom-existing-${index}`,
+          name:
+            item.productName ||
+            editSaleData.description ||
+            `Item ${index + 1}`,
+          price: Number(item.price),
+          quantity: Number(item.quantity),
+          selectedVariant: item.selectedVariant,
+        }))
+
+      if (existingItems.length > 0) {
+        setCartItems(existingItems)
+        setAmount('')
+        setDescription('')
+        setPrefilledAmountIsFinal(false)
+      } else {
+        // A customer-entered/static-QR amount (and older itemless records) is
+        // already the payable total. Preserve it instead of adding VAT again.
+        setCartItems([])
+        setAmount(editSaleData.amount?.toString() || '')
+        setDescription(editSaleData.description || '')
+        setPrefilledAmountIsFinal(true)
+      }
       setHasPrefilled(true)
     }
   }, [editSaleData, isEditMode, isConfirmMode, hasPrefilled])
@@ -144,32 +169,74 @@ function RecordSaleContent() {
   }
 
   // Calculations
-  const getSubtotal = () => {
-    return cartItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0)
-  }
-
-  const getVAT = () => {
-    return Math.round(getSubtotal() * 0.075)
-  }
-
-  const getTotal = () => {
-    if (activeTab === 'amount') {
-      return Number(amount) || 0
+  const getDraftItem = (): CartItem | null => {
+    const value = Number(amount)
+    if (activeTab !== 'amount' || !Number.isFinite(value) || value <= 0) {
+      return null
     }
-    return getSubtotal() + getVAT()
+    return {
+      id: DRAFT_ITEM_ID,
+      name: description.trim() || `Item ${cartItems.length + 1}`,
+      price: value,
+      quantity: 1,
+      includesVat: prefilledAmountIsFinal && cartItems.length === 0,
+    }
+  }
+
+  const getEffectiveItems = (committedItems = cartItems): CartItem[] => {
+    const draft = getDraftItem()
+    return draft ? [...committedItems, draft] : committedItems
+  }
+
+  const calculateSubtotal = (items: CartItem[]) => {
+    return Math.round(
+      items.reduce((acc, curr) => acc + curr.price * curr.quantity, 0) * 100,
+    ) / 100
+  }
+
+  const calculateVAT = (items: CartItem[]) => {
+    const taxableSubtotal = items.reduce(
+      (acc, curr) =>
+        curr.includesVat ? acc : acc + curr.price * curr.quantity,
+      0,
+    )
+    return Math.round(taxableSubtotal * 0.075 * 100) / 100
   }
 
   const calculateTotal = (items: CartItem[]) => {
-    const subtotal = items.reduce(
-      (acc, curr) => acc + curr.price * curr.quantity,
-      0,
+    return (
+      Math.round((calculateSubtotal(items) + calculateVAT(items)) * 100) / 100
     )
-    const vat = Math.round(subtotal * 0.075)
-    return subtotal + vat
   }
 
+  const getTotal = () => calculateTotal(getEffectiveItems())
+
   const updateCartQtyAndSyncDrawer = (id: string, delta: number) => {
+    if (id === DRAFT_ITEM_ID) {
+      setAmount('')
+      setPrefilledAmountIsFinal(false)
+      const updated = [...cartItems]
+      const newTotal = calculateTotal(updated)
+      const nextAmountPaid =
+        checkoutInstallmentType === 'full'
+          ? newTotal
+          : Math.min(checkoutAmountPaid, newTotal)
+      setCheckoutAmountPaid(nextAmountPaid)
+      openCheckoutSaleDrawer(
+        checkoutPaymentMethod,
+        checkoutInstallmentType,
+        nextAmountPaid,
+        checkoutCustomer,
+        updated,
+        newTotal,
+      )
+      return
+    }
+
     setCartItems((prev) => {
+      const removedVatInclusiveItem = prev.some(
+        (item) => item.id === id && item.includesVat,
+      )
       const updated = prev
         .map((item) =>
           item.id === id
@@ -177,8 +244,12 @@ function RecordSaleContent() {
             : item,
         )
         .filter((item) => item.quantity > 0)
+      if (removedVatInclusiveItem && updated.length === 0) {
+        setPrefilledAmountIsFinal(false)
+      }
 
-      const newTotal = calculateTotal(updated)
+      const effectiveUpdated = getEffectiveItems(updated)
+      const newTotal = calculateTotal(effectiveUpdated)
       const nextAmountPaid =
         checkoutInstallmentType === 'full'
           ? newTotal
@@ -190,7 +261,7 @@ function RecordSaleContent() {
         checkoutInstallmentType,
         nextAmountPaid,
         checkoutCustomer,
-        updated,
+        effectiveUpdated,
         newTotal,
       )
 
@@ -219,16 +290,25 @@ function RecordSaleContent() {
   const addCustomAmountToCart = () => {
     const val = Number(amount)
     if (!val) return
+    const normalizedDescription = description.trim()
+    if (!normalizedDescription) {
+      setDescriptionError(true)
+      showNotificationToast({ message: 'Enter a description for this item' })
+      return
+    }
 
+    const draft = getDraftItem()
+    if (!draft) return
     const newItem: CartItem = {
+      ...draft,
       id: `custom-${Date.now()}`,
-      name: description || 'Custom amount',
-      price: val,
-      quantity: 1,
+      name: normalizedDescription,
     }
     setCartItems((prev) => [...prev, newItem])
     setAmount('')
     setDescription('')
+    setDescriptionError(false)
+    setPrefilledAmountIsFinal(false)
   }
 
   const addProductToCart = (
@@ -265,8 +345,10 @@ function RecordSaleContent() {
     setActiveTab('amount')
     setAmount('')
     setDescription('')
+    setDescriptionError(false)
+    setPrefilledAmountIsFinal(false)
     setCheckoutCustomer(null)
-    setCheckoutPaymentMethod('Bank Transfer')
+    setCheckoutPaymentMethod('')
     setCheckoutInstallmentType('full')
     setCheckoutAmountPaid(0)
     setHasSetInstallment(false)
@@ -294,22 +376,14 @@ function RecordSaleContent() {
     }
   }
 
-  const autoConvertKeypadToCartItem = () => {
-    const val = Number(amount)
-    if (activeTab === 'amount' && val > 0) {
-      const newItem: CartItem = {
-        id: `custom-auto-${Date.now()}`,
-        name: description || 'Item 1',
-        price: val,
-        quantity: 1,
-      }
-      const updatedCart = [...cartItems, newItem]
-      setCartItems(updatedCart)
-      setAmount('')
-      setDescription('')
-      return updatedCart
+  const validateDraftDescription = () => {
+    if (getDraftItem() && !description.trim()) {
+      setDescriptionError(true)
+      showNotificationToast({ message: 'Enter a description for this item' })
+      return false
     }
-    return null
+    setDescriptionError(false)
+    return true
   }
 
   const submitConfirmedSale = (
@@ -317,6 +391,8 @@ function RecordSaleContent() {
     installmentType: 'full' | 'part',
     paidVal: number,
     customer: any,
+    itemsList: CartItem[],
+    totalVal: number,
     dueDateVal?: string,
   ) => {
     closeAllDrawers()
@@ -333,40 +409,34 @@ function RecordSaleContent() {
       },
     })
 
-    const totalVal = getTotal()
+    const normalizedDescription = itemsList
+      .map((item) =>
+        item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name,
+      )
+      .join(', ')
     const payload = {
       amount: totalVal,
-      description:
-        activeTab === 'amount'
-          ? description || 'Manual sale'
-          : cartItems
-              .map((i) => (i.quantity > 1 ? `${i.name} x${i.quantity}` : i.name))
-              .join(', '),
+      description: normalizedDescription,
       paymentMethod,
       isPaidInFull: installmentType === 'full',
-      amountPaid: paidVal,
+      amountPaid: installmentType === 'full' ? totalVal : paidVal,
       totalDue: totalVal,
-      balanceOwed: totalVal - paidVal,
+      balanceOwed:
+        installmentType === 'full'
+          ? 0
+          : Math.round((totalVal - paidVal) * 100) / 100,
       customerId: customer?._id,
       dueDate: dueDateVal || undefined,
-      items:
-        activeTab === 'amount'
-          ? [
-              {
-                productName: description || 'Manual sale',
-                price: totalVal,
-                quantity: 1,
-              },
-            ]
-          : cartItems.map((item) => ({
-              productId: item.id.startsWith('custom')
-                ? undefined
-                : item.id.split('-')[0],
-              productName: item.name,
-              price: item.price,
-              quantity: item.quantity,
-              selectedVariant: item.selectedVariant,
-            })),
+      items: itemsList.map((item) => ({
+        productId:
+          item.id.startsWith('custom') || item.id === DRAFT_ITEM_ID
+          ? undefined
+          : item.id.split('-')[0],
+        productName: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        selectedVariant: item.selectedVariant,
+      })),
     }
 
     if (isConfirmMode && confirmId) {
@@ -526,6 +596,8 @@ function RecordSaleContent() {
       type: 'split-payment',
       props: {
         totalAmount: totVal,
+        initialInstallmentType: instType,
+        initialAmountPaid: amountPaidVal,
         onBack: () => {
           closeDrawer('split-payment')
           openPaymentMethodStep(
@@ -660,6 +732,8 @@ function RecordSaleContent() {
             type: 'split-payment',
             props: {
               totalAmount: totVal,
+              initialInstallmentType: instType,
+              initialAmountPaid: amountPaidVal,
               onBack: () =>
                 openCheckoutSaleDrawer(
                   method,
@@ -736,12 +810,9 @@ function RecordSaleContent() {
               description: itemsList
                 .map((i) => (i.quantity > 1 ? `${i.name} x${i.quantity}` : i.name))
                 .join(', '),
-              isPaidInFull: true,
-              amountPaid: 0,
-              totalDue: totVal,
-              balanceOwed: totVal,
               items: itemsList.map((item) => ({
-                productId: item.id.startsWith('custom')
+                productId:
+                  item.id.startsWith('custom') || item.id === DRAFT_ITEM_ID
                   ? undefined
                   : item.id.split('-')[0],
                 productName: item.name,
@@ -780,6 +851,7 @@ function RecordSaleContent() {
                   message:
                     error?.response?.data?.message ||
                     'Failed to initiate collect payment.',
+                  mode: 'error',
                 })
               },
             })
@@ -789,6 +861,8 @@ function RecordSaleContent() {
               instType,
               amountPaidVal,
               cust,
+              itemsList,
+              totVal,
               dueDateVal,
             )
           }
@@ -798,14 +872,10 @@ function RecordSaleContent() {
   }
 
   const handleRecordTapped = () => {
+    if (!validateDraftDescription()) return
     setCheckoutMode('record')
-    const updatedCart = autoConvertKeypadToCartItem() || cartItems
-    const subtotal = updatedCart.reduce(
-      (acc, curr) => acc + curr.price * curr.quantity,
-      0,
-    )
-    const vat = Math.round(subtotal * 0.075)
-    const totVal = subtotal + vat
+    const updatedCart = getEffectiveItems()
+    const totVal = calculateTotal(updatedCart)
 
     setCheckoutAmountPaid(totVal)
     openPaymentMethodStep(
@@ -838,14 +908,10 @@ function RecordSaleContent() {
       return
     }
 
+    if (!validateDraftDescription()) return
     setCheckoutMode('collect')
-    const updatedCart = autoConvertKeypadToCartItem() || cartItems
-    const subtotal = updatedCart.reduce(
-      (acc, curr) => acc + curr.price * curr.quantity,
-      0,
-    )
-    const vat = Math.round(subtotal * 0.075)
-    const totalVal = subtotal + vat
+    const updatedCart = getEffectiveItems()
+    const totalVal = calculateTotal(updatedCart)
 
     setCheckoutAmountPaid(totalVal)
     setCheckoutPaymentMethod('Bank Transfer')
@@ -910,7 +976,11 @@ function RecordSaleContent() {
           <AmountTab
             amount={amount}
             description={description}
-            setDescription={setDescription}
+            setDescription={(value) => {
+              setDescription(value)
+              if (value.trim()) setDescriptionError(false)
+            }}
+            descriptionError={descriptionError}
             formatDisplayAmount={formatDisplayAmount}
             addCustomAmountToCart={addCustomAmountToCart}
             handleKeyPress={handleKeyPress}
@@ -938,12 +1008,25 @@ function RecordSaleContent() {
             {/* Left Column: Selection text */}
             <div className="flex flex-col text-left">
               <span className="text-sm font-bold text-black">
-                {cartItems.length === 1
+                {getEffectiveItems().length === 1
                   ? '1 item selected'
-                  : `${cartItems.length} items selected`}
+                  : `${getEffectiveItems().length} items selected`}
               </span>
               <button
-                onClick={() => openCheckoutSaleDrawer()}
+                onClick={() => {
+                  const items = getEffectiveItems()
+                  const total = calculateTotal(items)
+                  openCheckoutSaleDrawer(
+                    checkoutPaymentMethod,
+                    checkoutInstallmentType,
+                    checkoutInstallmentType === 'full'
+                      ? total
+                      : checkoutAmountPaid,
+                    checkoutCustomer,
+                    items,
+                    total,
+                  )
+                }}
                 className="text-[13px] font-medium flex items-center gap-0.5"
               >
                 <span className="text-[#9CA3AF] leading-none">
@@ -964,7 +1047,7 @@ function RecordSaleContent() {
                       amount !== '0' &&
                       amount !== '.' &&
                       amount !== '0.') ||
-                    cartItems.length > 0
+                    getEffectiveItems().length > 0
                   )
                 }
                 onClick={handleRecordTapped}
@@ -974,7 +1057,7 @@ function RecordSaleContent() {
                     amount !== '0' &&
                     amount !== '.' &&
                     amount !== '0.') ||
-                  cartItems.length > 0
+                  getEffectiveItems().length > 0
                     ? 'bg-[#F4F6F8] text-black border border-[#E9EBED] hover:bg-gray-100 active:bg-gray-250'
                     : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
                 }`}
@@ -992,7 +1075,7 @@ function RecordSaleContent() {
                         amount !== '0' &&
                         amount !== '.' &&
                         amount !== '0.') ||
-                      cartItems.length > 0
+                      getEffectiveItems().length > 0
                     )
                   }
                   onClick={handleCollectTapped}
@@ -1002,7 +1085,7 @@ function RecordSaleContent() {
                       amount !== '0' &&
                       amount !== '.' &&
                       amount !== '0.') ||
-                    cartItems.length > 0
+                    getEffectiveItems().length > 0
                       ? canCollect
                         ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
                         : // Locked, but still tappable so we can explain why.

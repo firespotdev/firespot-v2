@@ -88,7 +88,10 @@ export function MerchantCardCarousel({
 
   const handleCopy = (account: BankAccount) => {
     navigator.clipboard.writeText(account.accountNumber)
-    showNotificationToast({ message: 'Account number copied!' })
+    showNotificationToast({
+      message: 'Account number copied!',
+      mode: 'success',
+    })
 
     if (onCopy) {
       onCopy(account)

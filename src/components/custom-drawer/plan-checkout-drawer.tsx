@@ -86,6 +86,7 @@ export function PlanCheckoutDrawer({
                   ? `Upgraded. You were charged NGN ${formatCurrency(res.amountCharged)} for the rest of this period.`
                   : 'Upgraded — no extra charge for the rest of this period.'
                 : 'Your plan change is scheduled.',
+            mode: res.type === 'upgraded' ? 'success' : 'info',
           })
           close()
 
@@ -101,6 +102,7 @@ export function PlanCheckoutDrawer({
             message:
               err?.response?.data?.message ||
               'Could not start payment. Try again.',
+            mode: 'error',
           })
         },
       },

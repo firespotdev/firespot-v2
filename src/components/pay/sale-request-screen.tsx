@@ -1,14 +1,13 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
-import { ChevronDown, Share, Store, X } from 'lucide-react'
+import { ChevronDown, Share, X } from 'lucide-react'
 import { Button, TagFooter } from '@/components/ui'
 import { BankLogo } from '@/components/ui/bank-logo'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatSaleTime } from './utils'
-import { PageHeader } from '../layout/PageHeader'
+import { useDrawerStore } from '@/services/drawer'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -31,7 +30,7 @@ export function SaleRequestScreen({
   onShare,
   onClose,
 }: SaleRequestScreenProps) {
-  const [itemsExpanded, setItemsExpanded] = useState(false)
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const items = sale.items || []
   const itemsCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
@@ -100,7 +99,12 @@ export function SaleRequestScreen({
             {itemsCount > 0 && (
               <>
                 <button
-                  onClick={() => setItemsExpanded((v) => !v)}
+                  onClick={() =>
+                    openDrawer({
+                      type: 'sale-items',
+                      props: { items },
+                    })
+                  }
                   className="flex items-center gap-px text-sm text-[#00000080] mb-2 font-medium hover:opacity-85"
                 >
                   <span className="mr-1">For</span>
@@ -120,29 +124,6 @@ export function SaleRequestScreen({
               </>
             )}
           </p>
-
-          {itemsExpanded && items.length > 0 && (
-            <div className="mt-3 w-full max-w-80 bg-white border border-[#F1F1F1] rounded-[12px] divide-y divide-[#F1F1F1] text-left">
-              {items.map((item, index) => (
-                <div
-                  key={`${item.productName}-${index}`}
-                  className="flex items-center justify-between px-4 py-2.5"
-                >
-                  <span className="text-sm text-black">
-                    {item.productName || 'Item'}
-                    {item.quantity && item.quantity > 1
-                      ? ` × ${item.quantity}`
-                      : ''}
-                  </span>
-                  {typeof item.price === 'number' && (
-                    <span className="text-sm text-[#00000080]">
-                      ₦{formatAmount(item.price * (item.quantity || 1))}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
 
           <p className="text-sm font-medium text-[#00000066]">
             {formatSaleTime(sale.createdAt)}

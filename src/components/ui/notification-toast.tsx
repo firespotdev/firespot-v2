@@ -8,18 +8,32 @@ import { Button } from './button'
 interface NotificationToastProps {
   message: string
   icon?: LucideIcon
+  mode?: 'success' | 'info' | 'error'
 }
 
 function NotificationToastContent({
   message,
-  icon: Icon = Check,
+  icon,
+  mode = 'info',
   toastId,
 }: NotificationToastProps & { toastId: string | number }) {
+  const Icon = icon || (mode === 'success' ? Check : mode === 'error' ? X : null)
+
   return (
     <div className="flex items-center gap-3 w-fit">
-      <div className="w-6 h-6 rounded-full bg-[#22C55E] flex items-center justify-center shrink-0">
-        <Icon className="w-3 h-3 text-white" strokeWidth={2.5} />
-      </div>
+      {Icon && (
+        <div
+          className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+            mode === 'success'
+              ? 'bg-[#22C55E]'
+              : mode === 'error'
+                ? 'bg-[#EF4444]'
+                : 'bg-[#6B7280]'
+          }`}
+        >
+          <Icon className="w-3 h-3 text-white" strokeWidth={2.5} />
+        </div>
+      )}
 
       <p className="flex-1 text-sm text-black font-medium whitespace-nowrap">
         {message}
@@ -39,11 +53,17 @@ function NotificationToastContent({
 export function showNotificationToast({
   message,
   icon,
+  mode = 'info',
   duration = 3000,
 }: NotificationToastProps & { duration?: number }) {
   return toast.custom(
     (id) => (
-      <NotificationToastContent message={message} icon={icon} toastId={id} />
+      <NotificationToastContent
+        message={message}
+        icon={icon}
+        mode={mode}
+        toastId={id}
+      />
     ),
     {
       duration,

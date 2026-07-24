@@ -12,6 +12,7 @@ import type { MerchantProfile } from '@/services/qr/interface'
 import { SaleRequestScreen } from './sale-request-screen'
 import { SaleWaitingScreen } from './sale-waiting-screen'
 import { SaleSuccessScreen } from './sale-success-screen'
+import { useCancelSaleAsCustomer } from '@/services/sales/hooks'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 type SaleStep = 'request' | 'waiting' | 'success'
@@ -44,6 +45,7 @@ export function SalePaymentFlow({
   const router = useRouter()
   const queryClient = useQueryClient()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const cancelSale = useCancelSaleAsCustomer()
 
   const [step, setStep] = useState<SaleStep>(() => deriveStep(sale))
   const [selectedAccountIndex, setSelectedAccountIndex] = useState(0)
@@ -60,12 +62,24 @@ export function SalePaymentFlow({
     queryClient.invalidateQueries({ queryKey: ['public-sale', sale.id] })
   }
 
-  const handleCancelled = () => {
+  const clearActiveTransaction = () => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
+    }
+  }
+
+  const handleCancelled = (cancelledSale?: unknown) => {
+    clearActiveTransaction()
+    const cancelledBy = (cancelledSale as { cancelledBy?: string } | undefined)
+      ?.cancelledBy
     showNotificationToast({
-      message: 'This payment request was cancelled by the vendor',
+      message:
+        cancelledBy === 'customer'
+          ? 'Transaction cancelled'
+          : 'This payment request was cancelled by the vendor',
       duration: 3000,
     })
-    router.replace(`/pay/${serialNumber}`)
+    router.replace('/home')
   }
 
   // Realtime confirmation; polling via usePublicSale covers socket failures
@@ -76,6 +90,7 @@ export function SalePaymentFlow({
     },
     onCancelled: handleCancelled,
     onReceiptUploaded: invalidateSale,
+    onPaymentDeclared: invalidateSale,
   })
 
   // Polling fallback: react to status changes on the fetched sale
@@ -89,13 +104,30 @@ export function SalePaymentFlow({
   }, [sale.status])
 
   const handleClose = () => {
-    router.replace(`/pay/${serialNumber}`)
+    if (cancelSale.isPending) return
+    cancelSale.mutate(
+      { saleId: sale.id, serialNumber },
+      {
+        onSuccess: () => {
+          clearActiveTransaction()
+          router.replace('/home')
+        },
+        onError: (error: any) => {
+          showNotificationToast({
+            message:
+              error?.response?.data?.message ||
+              'Could not end this transaction. Please try again.',
+          })
+        },
+      },
+    )
   }
 
   // After a completed payment, send the payer to the home scan page.
   // Authenticated users get routed onward by the scanner page's own guard.
   const handleFinish = () => {
-    router.replace('/')
+    clearActiveTransaction()
+    router.replace('/home')
   }
 
   const handleCopy = () => {
@@ -103,6 +135,7 @@ export function SalePaymentFlow({
     navigator.clipboard.writeText(account.accountNumber)
     showNotificationToast({
       message: 'Account number copied to clipboard',
+      mode: 'success',
       duration: 2000,
     })
     onTrackCopy(account.accountNumber, account.bankName)
@@ -164,9 +197,11 @@ export function SalePaymentFlow({
         sale={sale}
         account={account}
         fromBankName={fromBankName}
+        serialNumber={serialNumber}
         onOpenBankApp={handleOpenBankApp}
         onChangeMethod={handleChangeAccount}
         onClose={handleClose}
+        isClosing={cancelSale.isPending}
       />
     )
   }

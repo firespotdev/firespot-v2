@@ -51,7 +51,7 @@ export function CustomerSelectDrawer({
   )
 
   return (
-    <div className="w-full flex flex-col font-satoshi px-3 overflow-y-auto max-w-125 mx-auto">
+    <div className="w-full max-w-125 mx-auto overflow-y-auto overscroll-contain px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] font-satoshi">
       <div className="flex flex-col gap-3 py-2">
         {/* Header */}
         <div className="flex justify-between items-center pb-1">
@@ -145,7 +145,7 @@ export function CustomerSelectDrawer({
           </span>
 
           {/* Customers List Box */}
-          <div className="flex flex-col border border-[#F1F1F1] rounded-[12px] overflow-hidden bg-white max-h-[30vh] overflow-y-auto shadow-[0px_4px_8px_0px_#0000000A]">
+          <div className="flex max-h-64 flex-col overflow-y-auto rounded-[12px] border border-[#F1F1F1] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
             {filtered.map((cust: any, index: number) => {
               const isSelected = selectedCustomer?._id === cust._id
               return (
@@ -154,7 +154,6 @@ export function CustomerSelectDrawer({
                   type="button"
                   onClick={() => {
                     setSelectedCustomer(cust)
-                    onSelect(cust)
                   }}
                   className={`w-full flex items-center justify-between p-3 transition-all text-left group cursor-pointer
                   ${index > 0 ? 'border-t border-[#EBEBEB]' : ''}

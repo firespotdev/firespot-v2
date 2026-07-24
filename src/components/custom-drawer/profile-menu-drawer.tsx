@@ -65,7 +65,10 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl)
-    showNotificationToast({ message: 'Link copied to clipboard' })
+    showNotificationToast({
+      message: 'Link copied to clipboard',
+      mode: 'success',
+    })
   }
 
   const handleShare = async () => {

@@ -51,6 +51,7 @@ export default function QRKitDetailPage() {
       })
       showNotificationToast({
         message: 'Name updated successfully',
+        mode: 'success',
         duration: 2000,
       })
       setIsEditingName(false)
@@ -58,6 +59,7 @@ export default function QRKitDetailPage() {
       console.error('Failed to update name:', error)
       showNotificationToast({
         message: 'Failed to update name',
+        mode: 'error',
         duration: 2000,
       })
     }
@@ -111,12 +113,14 @@ export default function QRKitDetailPage() {
       })
       showNotificationToast({
         message: 'PDF downloaded successfully',
+        mode: 'success',
         duration: 2000,
       })
     } catch (error) {
       console.error('Failed to download PDF:', error)
       showNotificationToast({
         message: 'Failed to download PDF',
+        mode: 'error',
         duration: 2000,
       })
     } finally {
@@ -490,6 +494,7 @@ export default function QRKitDetailPage() {
                       navigator.clipboard.writeText(qrKit.serialNumber)
                       showNotificationToast({
                         message: 'Copied',
+                        mode: 'success',
                         duration: 2000,
                       })
                     }}

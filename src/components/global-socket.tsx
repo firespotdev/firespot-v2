@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   showNewPaymentToast,
   showReceiptUploadedToast,
+  showNotificationToast,
 } from '@/components/ui'
 import { usePreference } from '@/hooks/usePreference'
 import { Sale } from '@/services/sales/interface'
@@ -59,6 +60,9 @@ export function GlobalSocket() {
   useEffect(() => {
     const unsubscribe = onForegroundMessage(async (payload) => {
       if (!payload?.notification) return
+      if (payload.data?.type === 'sale.pending' && user?.role !== 'merchant') {
+        return
+      }
       // Use the SW registration to show a real OS-level notification
       // even when the tab is focused (new Notification() is unreliable in some browsers)
       if ('serviceWorker' in navigator) {
@@ -75,10 +79,10 @@ export function GlobalSocket() {
     })
 
     return () => unsubscribe?.()
-  }, [queryClient])
+  }, [queryClient, user?.role])
 
   useEffect(() => {
-    if (!socket) return
+    if (!socket || user?.role !== 'merchant') return
 
     // True when the merchant already has this sale's collect drawer open.
     const isViewingSale = (saleId?: string) =>
@@ -152,14 +156,44 @@ export function GlobalSocket() {
       invalidateSales()
     }
 
+    const handlePaymentDeclared = (sale: Sale) => {
+      if (isViewingSale(sale._id)) {
+        invalidateSales()
+        return
+      }
+      showNotificationToast({
+        message: 'Customer says they have paid',
+        duration: 3000,
+      })
+      invalidateSales()
+    }
+
+    const handleSaleCancelled = (sale: Sale) => {
+      if (isViewingSale(sale._id)) {
+        invalidateSales()
+        return
+      }
+      if (sale.cancelledBy === 'customer') {
+        showNotificationToast({
+          message: 'Customer cancelled this payment',
+          duration: 3000,
+        })
+      }
+      invalidateSales()
+    }
+
     socket.on('sale.pending', handleSalePending)
     socket.on('receipt.uploaded', handleReceiptUploaded)
+    socket.on('payment.declared', handlePaymentDeclared)
+    socket.on('sale.cancelled', handleSaleCancelled)
 
     return () => {
       socket.off('sale.pending', handleSalePending)
       socket.off('receipt.uploaded', handleReceiptUploaded)
+      socket.off('payment.declared', handlePaymentDeclared)
+      socket.off('sale.cancelled', handleSaleCancelled)
     }
-  }, [socket, queryClient, router])
+  }, [socket, queryClient, router, user?.role])
 
   return null
 }

@@ -118,13 +118,45 @@ export const useUploadReceipt = () => {
  * Public sale view for the customer pay page. Polls every 5s while the sale
  * is PENDING as a fallback for the confirmation socket.
  */
-export const usePublicSale = (saleId?: string) => {
+export const usePublicSale = (saleId?: string, serialNumber?: string) => {
   return useQuery({
-    queryKey: ['public-sale', saleId],
-    queryFn: () => SalesApi.getPublicSale(saleId!),
-    enabled: !!saleId,
+    queryKey: ['public-sale', saleId, serialNumber],
+    queryFn: () => SalesApi.getPublicSale(saleId!, serialNumber!),
+    enabled: !!saleId && !!serialNumber,
     refetchInterval: (query) =>
       query.state.data?.status === 'PENDING' ? 5000 : false,
+  });
+};
+
+export const useCancelSaleAsCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.cancelSaleAsCustomer(saleId, serialNumber),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+    },
+  });
+};
+
+export const useMarkSalePaidByCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.markSalePaidByCustomer(saleId, serialNumber),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+    },
   });
 };
 
@@ -202,4 +234,3 @@ export const useRecordCopy = () => {
     },
   });
 };
-

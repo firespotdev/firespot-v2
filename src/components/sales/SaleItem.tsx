@@ -21,6 +21,7 @@ interface SaleItemProps {
   onClick?: (sale: Sale) => void
   className?: string
   variant?: 'default' | 'minimal'
+  descriptionOverride?: string
 }
 
 export function SaleItem({
@@ -31,6 +32,7 @@ export function SaleItem({
   onClick,
   className,
   variant = 'default',
+  descriptionOverride,
 }: SaleItemProps) {
   const isArchivedItem = getMerchantStatus(sale) === 'Archived'
 
@@ -47,7 +49,7 @@ export function SaleItem({
         <MerchantAvatar bankName={sale.targetBankName} size={36} />
         <div className="min-w-0">
           <h4 className="text-[13px] font-bold text-[#111827] mb-0.5 capitalize truncate">
-            {getStatusDescription(sale)}
+            {descriptionOverride || getStatusDescription(sale)}
           </h4>
           <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
             {formatDate(sale.createdAt)}

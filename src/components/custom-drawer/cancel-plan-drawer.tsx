@@ -59,6 +59,7 @@ export function CancelPlanDrawer({}: CancelPlanDrawerProps) {
           message:
             err?.response?.data?.message ||
             'Could not cancel. Please try again.',
+          mode: 'error',
         })
       },
     })

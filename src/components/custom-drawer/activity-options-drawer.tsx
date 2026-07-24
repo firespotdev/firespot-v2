@@ -63,10 +63,16 @@ export function ActivityOptionsDrawer({ sale }: ActivityOptionsDrawerProps) {
     }
     if (isFaved) {
       removeFavorite.mutate(merchant.id)
-      showNotificationToast({ message: `${businessName} removed from Faves` })
+      showNotificationToast({
+        message: `${businessName} removed from Faves`,
+        mode: 'success',
+      })
     } else {
       addFavorite.mutate(merchant.id)
-      showNotificationToast({ message: `${businessName} added to Faves` })
+      showNotificationToast({
+        message: `${businessName} added to Faves`,
+        mode: 'success',
+      })
     }
     close()
   }

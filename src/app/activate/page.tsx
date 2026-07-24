@@ -317,6 +317,7 @@ function ActivatePageContent() {
         if (data.isAutoActivated || !data.authorizationUrl) {
           showNotificationToast({
             message: data.message || 'QR kit activated!',
+            mode: 'success',
           })
           //router.push('/profile')
           window.location.href = '/profile'
@@ -330,7 +331,7 @@ function ActivatePageContent() {
         const apiError = error as ApiError
         const message =
           apiError.response?.data?.message || 'Failed to initiate payment'
-        showNotificationToast({ message })
+        showNotificationToast({ message, mode: 'error' })
       },
     })
   }
@@ -340,6 +341,7 @@ function ActivatePageContent() {
       onSuccess: ({ qrKit }) => {
         showNotificationToast({
           message: 'Your QR kit is ready',
+          mode: 'success',
           duration: 2000,
         })
         router.push(`/qr-kits/${qrKit._id}`)
@@ -349,6 +351,7 @@ function ActivatePageContent() {
         showNotificationToast({
           message:
             apiError.response?.data?.message || 'Failed to generate QR kit',
+          mode: 'error',
           duration: 3000,
         })
       },

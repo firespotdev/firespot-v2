@@ -71,6 +71,7 @@ export function PageHeader({
           )
           showNotificationToast({
             message: 'Link copied to clipboard!',
+            mode: 'success',
             duration: 2000,
           })
         }

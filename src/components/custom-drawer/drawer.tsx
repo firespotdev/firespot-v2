@@ -46,6 +46,7 @@ import { ActivityOptionsDrawer } from './activity-options-drawer'
 import { VerifyIdentityDrawer } from './verify-identity-drawer'
 import { PlanCheckoutDrawer } from './plan-checkout-drawer'
 import { CancelPlanDrawer } from './cancel-plan-drawer'
+import { SaleItemsDrawer } from './sale-items-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -172,6 +173,12 @@ const DRAWER_CONFIG: Record<
   'cancel-plan': {
     title: '',
     Content: CancelPlanDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'sale-items': {
+    title: '',
+    Content: SaleItemsDrawer,
     noHeader: true,
     direction: 'bottom',
   },
@@ -319,6 +326,7 @@ export function CustomDrawer() {
             }
           }}
           direction={drawerDirection}
+          repositionInputs={false}
         >
           <DrawerContent
             hideHandle={hideHandle}
@@ -344,6 +352,8 @@ export function CustomDrawer() {
             }
           }}
           direction={drawerDirection}
+          fixed
+          repositionInputs={false}
         >
           <DrawerContent
             hideHandle={hideHandle}
@@ -408,6 +418,8 @@ export function CustomDrawer() {
           }
         }}
         direction={drawerDirection}
+        fixed={drawerDirection === 'bottom'}
+        repositionInputs={false}
       >
         <DrawerContent
           hideHandle={hideHandle}
@@ -426,7 +438,7 @@ export function CustomDrawer() {
             ].includes(config.type)
               ? 'bg-white'
               : 'bg-[#f5f6f8]'
-          } max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80vh]`}
+          } max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80dvh] data-[vaul-drawer-direction=bottom]:overscroll-contain`}
         >
           {noHeader ? (
             <>
