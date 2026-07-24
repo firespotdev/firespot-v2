@@ -197,7 +197,6 @@ function OrderQRKitPageContent() {
         </div>
       </div>
 
-      {/* Sticky footer */}
       <div className="fixed bottom-0 left-0 right-0 w-full z-10">
         <div className="max-w-[500px] mx-auto bg-white border border-[#F1F1F1] rounded-t-[12px] shadow-[0px_-4px_24px_rgba(0,0,0,0.06)] p-4 flex items-center justify-between">
           <div>
