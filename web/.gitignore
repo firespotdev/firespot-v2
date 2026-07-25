@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Cache
+.eslintcache
+tsconfig.tsbuildinfo
+.swc/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Temp
+*.tmp
+*.temp
+.vercel
+changes.txt
+/scripts
