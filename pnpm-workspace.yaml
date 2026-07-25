@@ -4,15 +4,17 @@ packages:
   - api
 
 onlyBuiltDependencies:
+  - '@firebase/util'
   - '@nestjs/core'
   - '@scarf/scarf'
   - '@swc/core'
   - bcrypt
   - core-js
+  - protobufjs
   - sharp
   - unrs-resolver
 
-# Not built in the current live deployments either; ignore to match prod behavior.
+# smile-identity-core ships prebuilt (dist/) with no native addons; its only
+# install script is a `preinstall` guard that aborts unless `npm ci` is used.
 ignoredBuiltDependencies:
-  - '@firebase/util'
-  - protobufjs
+  - smile-identity-core
