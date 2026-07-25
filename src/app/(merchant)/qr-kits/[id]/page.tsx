@@ -65,7 +65,6 @@ export default function QRKitDetailPage() {
     }
   }
 
-  // Apply gradient branding to SVG
   const brandedSvg = useMemo(() => {
     if (!svgContent) return null
     return applyBrandingToSVG(svgContent, GRADIENT_START, GRADIENT_END, null, 0)
