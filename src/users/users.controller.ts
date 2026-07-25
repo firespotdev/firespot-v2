@@ -349,6 +349,27 @@ export class UsersController {
     return this.usersService.updateProfilePhoto(req.user.userId, file);
   }
 
+  @Patch("banner")
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor("banner"))
+  @ApiBearerAuth("JWT-auth")
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Update merchant profile banner" })
+  async updateBanner(
+    @Request() req,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.usersService.updateProfileBanner(req.user.userId, file);
+  }
+
   @Post("fcm-token")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")

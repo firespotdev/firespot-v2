@@ -204,7 +204,7 @@ export class QRKitsService {
 
     const frontendUrl =
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
-    const callbackUrl = `${frontendUrl}/activate?mode=callback&reference=${reference}`
+    const callbackUrl = `${frontendUrl}/payment-status?reference=${reference}`
 
     // Use phone number as pseudo-email for Paystack
     const email = `${user.phoneNumber}@firespot.co`

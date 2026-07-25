@@ -304,6 +304,28 @@ export class UsersService {
     };
   }
 
+  async updateProfileBanner(userId: string, file: Express.Multer.File) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (user.profileBannerPublicId) {
+      await this.cloudinaryService.deleteImage(user.profileBannerPublicId);
+    }
+
+    const upload = await this.cloudinaryService.uploadBanner(file.buffer);
+    user.profileBannerUrl = upload.url;
+    user.profileBannerPublicId = upload.publicId;
+    await user.save();
+
+    return {
+      message: "Profile banner updated successfully",
+      profileBannerUrl: user.profileBannerUrl,
+    };
+  }
+
   async getUserProfile(userId: string) {
     const user = await this.userModel
       .findById(userId)
@@ -680,6 +702,7 @@ export class UsersService {
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],
       profilePhotoUrl: user.profilePhotoUrl,
+      profileBannerUrl: user.profileBannerUrl,
       // Merchant plan + verification state (drives the badge and upgrade UI)
       planTier: user.planTier || null,
       planStatus: user.planStatus || "none",

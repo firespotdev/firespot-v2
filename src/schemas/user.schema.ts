@@ -170,6 +170,12 @@ export class User extends Document {
   @Prop()
   profilePhotoPublicId?: string;
 
+  @Prop()
+  profileBannerUrl?: string;
+
+  @Prop()
+  profileBannerPublicId?: string;
+
   // Referral - now links to Agent who referred this merchant
   @Prop({ type: Types.ObjectId, ref: "Agent" })
   referredByAgent?: Types.ObjectId;

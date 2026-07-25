@@ -103,6 +103,41 @@ export class CloudinaryService {
     });
   }
 
+  async uploadBanner(
+    fileBuffer: Buffer,
+  ): Promise<{ url: string; publicId: string }> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "flare/banners",
+          resource_type: "image",
+          transformation: [
+            { width: 1200, height: 480, crop: "fill", gravity: "auto" },
+            { quality: "auto", fetch_format: "auto" },
+          ],
+        },
+        (error, result) => {
+          if (error) {
+            reject(
+              new HttpException(
+                "Failed to upload banner",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+              ),
+            );
+          }
+          if (result) {
+            resolve({ url: result.secure_url, publicId: result.public_id });
+          }
+        },
+      );
+
+      const readableStream = new Readable();
+      readableStream.push(fileBuffer);
+      readableStream.push(null);
+      readableStream.pipe(uploadStream);
+    });
+  }
+
   async deleteImage(publicId: string): Promise<void> {
     try {
       await cloudinary.uploader.destroy(publicId);
