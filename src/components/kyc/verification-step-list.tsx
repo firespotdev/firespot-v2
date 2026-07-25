@@ -59,6 +59,7 @@ const ROW_META: Record<VerificationRowKey, RowMeta> = {
 export interface VerificationRow {
   key: VerificationRowKey
   status: KycCheckStatus
+  isVerifying: boolean
   reason: string | null
   /** The API step behind this row — two rows can share one check. */
   sourceKey: KycCheck
@@ -77,6 +78,7 @@ export function buildVerificationRows(steps: KycStep[]): VerificationRow[] {
   for (const step of steps) {
     const shared = {
       status: step.status,
+      isVerifying: step.isVerifying,
       reason: step.reason,
       sourceKey: step.key,
     }
@@ -148,7 +150,13 @@ export function VerificationStepList({
             }
             trailing={
               <StatusCircle
-                state={row.status === 'pending' ? 'empty' : row.status}
+                state={
+                  row.isVerifying
+                    ? 'loading'
+                    : row.status === 'pending'
+                      ? 'empty'
+                      : row.status
+                }
               />
             }
             onClick={retry}

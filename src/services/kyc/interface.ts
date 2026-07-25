@@ -18,6 +18,8 @@ export interface KycStep {
   /** true when the step captures a selfie (biometric) */
   requiresSelfie: boolean
   status: KycCheckStatus
+  /** A job has been submitted and its result is still being confirmed. */
+  isVerifying: boolean
   checkedAt: string | null
   /** Why it failed, so the merchant can correct and retry. */
   reason: string | null

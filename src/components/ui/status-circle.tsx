@@ -1,7 +1,7 @@
-import { Check, X } from 'lucide-react'
+import { Check, LoaderCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type StatusCircleState = 'passed' | 'failed' | 'empty'
+export type StatusCircleState = 'passed' | 'failed' | 'loading' | 'empty'
 
 interface StatusCircleProps {
   state: StatusCircleState
@@ -47,6 +47,24 @@ export function StatusCircle({
         style={box}
       >
         <X style={{ width: icon, height: icon }} className="text-white stroke-[3px]" />
+      </span>
+    )
+  }
+
+  if (state === 'loading') {
+    return (
+      <span
+        className={cn(
+          'rounded-full border border-[#DFDFDF] flex items-center justify-center shrink-0',
+          className,
+        )}
+        style={box}
+        aria-label="Verification in progress"
+      >
+        <LoaderCircle
+          className="animate-spin text-[#0075FF]"
+          style={{ width: icon, height: icon }}
+        />
       </span>
     )
   }

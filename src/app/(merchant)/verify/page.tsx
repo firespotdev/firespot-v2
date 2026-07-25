@@ -71,6 +71,7 @@ function VerifyContent() {
 
   const { steps, nextStep, nextStepMode, isComplete } = status
   const rows = buildVerificationRows(steps)
+  const isVerificationConfirming = rows.some((row) => row.isVerifying)
 
   // The cap is what the merchant is unlocking, so it comes from their tier
   // rather than being hardcoded.
@@ -210,7 +211,7 @@ function VerifyContent() {
 
                   <Button
                     onClick={handlePrimary}
-                    disabled={isSubmitting || !nextStep}
+                    disabled={isSubmitting || isVerificationConfirming || !nextStep}
                     className="w-full mt-4 font-bold"
                   >
                     {isSubmitting ? <Spinner /> : 'Start verification'}
