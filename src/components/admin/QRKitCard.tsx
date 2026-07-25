@@ -11,7 +11,6 @@ interface QRKitCardProps {
 
 /**
  * Reusable QR Kit Card component for PDF generation.
- * This matches the layout used in QRKitDetail for consistent branding.
  */
 const QRKitCard = forwardRef<HTMLDivElement, QRKitCardProps>(function QRKitCard(
   { brandedSvg },
