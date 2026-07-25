@@ -1,5 +1,5 @@
 {
-  "name": "firespot-transfer-page-admin",
+  "name": "@firespot/admin",
   "version": "0.1.0",
   "private": true,
   "scripts": {

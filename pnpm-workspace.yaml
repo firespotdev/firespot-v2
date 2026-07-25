@@ -1,0 +1,18 @@
+packages:
+  - web
+  - admin
+  - api
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@scarf/scarf'
+  - '@swc/core'
+  - bcrypt
+  - core-js
+  - sharp
+  - unrs-resolver
+
+# Not built in the current live deployments either; ignore to match prod behavior.
+ignoredBuiltDependencies:
+  - '@firebase/util'
+  - protobufjs

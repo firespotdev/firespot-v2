@@ -1,0 +1,17 @@
+# dependencies
+node_modules/
+
+# pnpm
+.pnpm-store/
+
+# env
+.env
+.env*.local
+
+# os / editor
+.DS_Store
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
