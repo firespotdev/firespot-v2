@@ -18,6 +18,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
+    // Only accept access tokens issued by the new flow. Pre-cutover 7-day
+    // tokens (and any refresh token) lack this claim and are rejected.
+    if (payload.type !== "access") {
+      throw new UnauthorizedException();
+    }
     const user = await this.authService.validateUser(payload.sub);
     if (!user) {
       throw new UnauthorizedException();

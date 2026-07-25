@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, Length, Matches } from "class-validator";
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  Length,
+  Matches,
+} from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 export class VerifyOtpDto {
@@ -13,6 +19,19 @@ export class VerifyOtpDto {
     message: "Phone number must be 10 or 11 digits",
   })
   phoneNumber: string;
+
+  @ApiProperty({
+    description: "Country code with + prefix",
+    example: "+234",
+    default: "+234",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+[0-9]{1,4}$/, {
+    message: "Country code must start with + followed by 1-4 digits",
+  })
+  phoneCountryCode?: string;
 
   @ApiProperty({
     description: "OTP code received via SMS (4-8 digits)",

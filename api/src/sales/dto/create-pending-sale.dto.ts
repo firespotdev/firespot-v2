@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsMongoId, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsMongoId,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 
 export class CreatePendingSaleDto {
   @IsNotEmpty()
@@ -10,11 +19,15 @@ export class CreatePendingSaleDto {
   customerFingerprint?: string;
 
   @IsOptional()
-  @IsEnum(['New', 'Repeat'])
+  @IsEnum(["New", "Repeat"])
   customerType?: string;
 
   @IsOptional()
-  @IsEnum(['QR scan', 'Link shared', 'Manual'])
+  @IsString()
+  customerName?: string;
+
+  @IsOptional()
+  @IsEnum(["QR scan", "Link shared", "Manual"])
   source?: string;
   @IsOptional()
   @IsString()
@@ -23,4 +36,21 @@ export class CreatePendingSaleDto {
   @IsOptional()
   @IsString()
   serialNumber?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0.01)
+  amount?: number;
+
+  @IsNotEmpty()
+  @IsString()
+  description: string;
+
+  @IsOptional()
+  @IsArray()
+  items?: any[];
+
+  @IsOptional()
+  @IsMongoId()
+  customerId?: string;
 }

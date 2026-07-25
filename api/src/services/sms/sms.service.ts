@@ -8,16 +8,29 @@ import axios from "axios";
 
 @Injectable()
 export class SmsService {
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) {
+    // MOCK_OTP accepts any numeric code as valid — it must never run in
+    // production. Fail fast at boot rather than silently authenticating anyone.
+    if (this.isMockMode() && process.env.NODE_ENV === "production") {
+      throw new Error(
+        "MOCK_OTP must not be enabled in production. Remove MOCK_OTP or set it to false.",
+      );
+    }
+  }
+
+  private isMockMode(): boolean {
+    return (
+      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
+      "true"
+    );
+  }
 
   /**
    * Send a generic SMS via Termii
    */
   async sendSms(to: string, message: string): Promise<any> {
     const formattedTo = this.formatPhoneNumber(to);
-    const mockOtp =
-      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
-      "true";
+    const mockOtp = this.isMockMode();
 
     if (mockOtp) {
       console.log("🔧 MOCK MODE: SMS request:", {
@@ -70,9 +83,7 @@ export class SmsService {
     messageTemplate: string,
   ): Promise<string> {
     const formattedPhone = this.formatPhoneNumber(phoneNumber);
-    const mockOtp =
-      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
-      "true";
+    const mockOtp = this.isMockMode();
 
     if (mockOtp) {
       const mockPinId = `mock-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -133,9 +144,7 @@ export class SmsService {
    * Verify OTP via Termii
    */
   async verifyOtp(pinId: string, pin: string): Promise<boolean> {
-    const mockOtp =
-      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
-      "true";
+    const mockOtp = this.isMockMode();
 
     if (mockOtp) {
       const isValid = /^\d+$/.test(pin);

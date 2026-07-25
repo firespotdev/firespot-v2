@@ -2,7 +2,17 @@ import { IsOptional, IsEnum, IsString, IsNumberString } from 'class-validator';
 
 export class SalesQueryDto {
   @IsOptional()
-  @IsEnum(['ALL', 'PENDING', 'CONFIRMED', 'CANCELLED'])
+  @IsEnum([
+    'ALL',
+    'PENDING',
+    'CONFIRMED',
+    'CANCELLED',
+    'OUTSTANDING',
+    'OWING',
+    'UNCONFIRMED',
+    'PAID',
+    'ARCHIVED',
+  ])
   status?: string;
 
   @IsOptional()
@@ -28,5 +38,25 @@ export class SalesQueryDto {
   @IsOptional()
   @IsNumberString()
   limit?: string;
+
+  @IsOptional()
+  @IsString()
+  mode?: 'collected' | 'recorded';
+
+  @IsOptional()
+  @IsString()
+  paymentMethod?: string;
+
+  @IsOptional()
+  @IsString()
+  qrKitName?: string;
+
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @IsOptional()
+  @IsString()
+  customerId?: string;
 }
 

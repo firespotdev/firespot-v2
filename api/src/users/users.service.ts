@@ -3,19 +3,39 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
+import { Product, ProductDocument } from "../schemas/product.schema";
 import { Agent, AgentDocument } from "../admin/schemas/agent.schema";
 import { PaystackService } from "./services/paystack.service";
 import { CloudinaryService } from "./services/cloudinary.service";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
+import { customAlphabet } from "nanoid";
+
+const nanoidAlphanumeric = customAlphabet(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+);
 import { AddBankAccountDto } from "./dto/add-bank-account.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
+import {
+  getEffectiveTier,
+  isLapsed,
+  isInGracePeriod,
+  getCollectEligibility,
+  hasCompletedKyc,
+} from "../merchant-plans/constants/plans";
+import {
+  UpdateContactDto,
+  UpdateFulfillmentDto,
+  UpdateLocationDto,
+} from "./dto/shop-setup.dto";
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
@@ -30,6 +50,28 @@ export class UsersService {
     return {
       accountName: result.accountName,
       accountNumber: result.accountNumber,
+    };
+  }
+
+  /**
+   * Post-signup onboarding: saves the user's name and marks onboarding
+   * complete.
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    user.firstName = dto.firstName.trim();
+    user.lastName = dto.lastName.trim();
+    user.onboardingCompleted = true;
+    await user.save();
+
+    return {
+      message: "Profile updated successfully",
+      user: this.sanitizeUser(user),
     };
   }
 
@@ -74,6 +116,8 @@ export class UsersService {
 
     // Update user with permanent bank details
     user.businessName = dto.businessName;
+    user.businessIndustry = dto.industry;
+    user.businessDescription = dto.description;
     if (!user.bankAccounts) {
       user.bankAccounts = [];
     }
@@ -89,11 +133,148 @@ export class UsersService {
       user.referredByAgent = referringAgent._id;
     }
 
+    // Becoming a merchant: upgrade role and assign a shareable slug
+    user.role = "merchant";
+    user.onboardingCompleted = true;
+    if (!user.merchantSlug) {
+      user.merchantSlug = await this.generateUniqueMerchantSlug();
+    }
+
     await user.save();
 
     return {
       message: "Profile setup completed successfully",
       user: this.sanitizeUser(user),
+    };
+  }
+
+  private async generateUniqueMerchantSlug(): Promise<string> {
+    while (true) {
+      const slug = nanoidAlphanumeric(6);
+      const existing = await this.userModel.findOne({ merchantSlug: slug });
+      if (!existing) {
+        return slug;
+      }
+    }
+  }
+
+  private async getMerchantOrThrow(userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    return user;
+  }
+
+  /** Contact details step: business email, website, social links. */
+  async updateContact(userId: string, dto: UpdateContactDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    if (dto.businessEmail !== undefined) user.businessEmail = dto.businessEmail;
+    if (dto.website !== undefined) user.website = dto.website;
+    if (dto.socialLinks !== undefined) {
+      // Merge so clearing one field doesn't wipe the others.
+      user.socialLinks = { ...(user.socialLinks || {}), ...dto.socialLinks };
+    }
+
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Fulfilment step: how customers get goods/services. */
+  async updateFulfillment(userId: string, dto: UpdateFulfillmentDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    user.fulfillment = { ...(user.fulfillment || {}), ...dto };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Location step: primary address, branch count, market/plaza flag. */
+  async updateLocation(userId: string, dto: UpdateLocationDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    const { branchCount, ...address } = dto;
+    user.mainAddress = { ...(user.mainAddress || {}), ...address };
+    if (branchCount !== undefined) user.branchCount = branchCount;
+
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Marks the shop live. Reversible only by support for now. */
+  async goLive(userId: string) {
+    const user = await this.getMerchantOrThrow(userId);
+    if (!user.shopIsLive) {
+      user.shopIsLive = true;
+      user.shopWentLiveAt = new Date();
+      await user.save();
+    }
+    return { shopIsLive: true, shopWentLiveAt: user.shopWentLiveAt };
+  }
+
+  /**
+   * The shop-setup checklist. Completion for each actionable item is derived
+   * here so the client renders a single server-owned source of truth. The six
+   * undesigned items are surfaced as `locked` and excluded from the count.
+   */
+  async getShopSetup(userId: string) {
+    const user = await this.getMerchantOrThrow(userId);
+    const merchantId = user._id as Types.ObjectId;
+
+    const [productCount, activeKitCount] = await Promise.all([
+      this.productModel.countDocuments({ merchantId }),
+      this.qrKitModel.countDocuments({
+        merchantId,
+        activationStatus: "activated",
+      }),
+    ]);
+
+    const social = user.socialLinks || {};
+    const hasSocial = Object.values(social).some((v) => Boolean(v));
+
+    const actionable = [
+      {
+        key: "about",
+        done: Boolean(
+          user.businessName &&
+            user.businessDescription &&
+            user.businessIndustry,
+        ),
+      },
+      { key: "bank", done: (user.bankAccounts?.length || 0) > 0 },
+      { key: "verify", done: hasCompletedKyc(user) },
+      {
+        key: "contact",
+        done: Boolean(user.businessEmail || user.website || hasSocial),
+      },
+      {
+        key: "fulfillment",
+        done: Object.values(user.fulfillment || {}).some((v) => Boolean(v)),
+      },
+      {
+        key: "locations",
+        done: Boolean(user.mainAddress?.state && user.mainAddress?.address),
+      },
+      { key: "firstItem", done: productCount > 0 },
+      { key: "qrKit", done: activeKitCount > 0 },
+    ].map((item) => ({ ...item, locked: false }));
+
+    const locked = [
+      "employees",
+      "bookings",
+      "policies",
+      "operatingHours",
+      "charges",
+      "suppliers",
+    ].map((key) => ({ key, done: false, locked: true }));
+
+    const completedCount = actionable.filter((i) => i.done).length;
+
+    return {
+      items: [...actionable, ...locked],
+      completedCount,
+      total: actionable.length,
+      isLive: user.shopIsLive === true,
     };
   }
 
@@ -120,6 +301,28 @@ export class UsersService {
     return {
       message: "Profile photo updated successfully",
       profilePhotoUrl: user.profilePhotoUrl,
+    };
+  }
+
+  async updateProfileBanner(userId: string, file: Express.Multer.File) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (user.profileBannerPublicId) {
+      await this.cloudinaryService.deleteImage(user.profileBannerPublicId);
+    }
+
+    const upload = await this.cloudinaryService.uploadBanner(file.buffer);
+    user.profileBannerUrl = upload.url;
+    user.profileBannerPublicId = upload.publicId;
+    await user.save();
+
+    return {
+      message: "Profile banner updated successfully",
+      profileBannerUrl: user.profileBannerUrl,
     };
   }
 
@@ -417,17 +620,109 @@ export class UsersService {
     return { message: "FCM token registered successfully" };
   }
 
+  private toMerchantSummary(merchant: any) {
+    return {
+      id: merchant._id,
+      businessName: merchant.businessName,
+      merchantSlug: merchant.merchantSlug,
+      profilePhotoUrl: merchant.profilePhotoUrl,
+      businessIndustry: merchant.businessIndustry,
+    };
+  }
+
+  async getFavoriteMerchants(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .populate(
+        "favoriteMerchants",
+        "businessName merchantSlug profilePhotoUrl businessIndustry",
+      )
+      .exec();
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    const favorites = (user.favoriteMerchants || []) as any[];
+    return { favorites: favorites.map((m) => this.toMerchantSummary(m)) };
+  }
+
+  async addFavoriteMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      throw new HttpException("Invalid merchant id", HttpStatus.BAD_REQUEST);
+    }
+    const merchant = await this.userModel
+      .findOne({ _id: merchantId, role: "merchant" })
+      .exec();
+    if (!merchant) {
+      throw new HttpException("Merchant not found", HttpStatus.NOT_FOUND);
+    }
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        { $addToSet: { favoriteMerchants: new Types.ObjectId(merchantId) } },
+      )
+      .exec();
+    return this.getFavoriteMerchants(userId);
+  }
+
+  async removeFavoriteMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      throw new HttpException("Invalid merchant id", HttpStatus.BAD_REQUEST);
+    }
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        { $pull: { favoriteMerchants: new Types.ObjectId(merchantId) } },
+      )
+      .exec();
+    return this.getFavoriteMerchants(userId);
+  }
+
   private sanitizeUser(user: UserDocument) {
     return {
       id: user._id,
       phoneNumber: user.phoneNumber,
       phoneCountryCode: user.phoneCountryCode,
       fullPhoneNumber: user.fullPhoneNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      onboardingCompleted: user.onboardingCompleted === true,
       businessName: user.businessName,
+      businessIndustry: user.businessIndustry,
+      businessDescription: user.businessDescription,
+      // Shop setup fields (drive the setup forms' prefill + the checklist)
+      businessEmail: user.businessEmail || null,
+      website: user.website || null,
+      socialLinks: user.socialLinks || null,
+      fulfillment: user.fulfillment || null,
+      mainAddress: user.mainAddress || null,
+      branchCount: user.branchCount ?? null,
+      shopIsLive: user.shopIsLive === true,
       merchantSlug: user.merchantSlug,
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],
       profilePhotoUrl: user.profilePhotoUrl,
+      profileBannerUrl: user.profileBannerUrl,
+      // Merchant plan + verification state (drives the badge and upgrade UI)
+      planTier: user.planTier || null,
+      planStatus: user.planStatus || "none",
+      verificationLevel: user.verificationLevel || null,
+      planCurrentPeriodEnd: user.planCurrentPeriodEnd || null,
+      // Lapse state. `effectiveTier` is what the merchant can actually use
+      // right now; `effectiveVerificationLevel` is null while lapsed so the
+      // badge disappears without the UI needing its own rule.
+      planGraceUntil: user.planGraceUntil || null,
+      effectiveTier: getEffectiveTier(user) || null,
+      isLapsed: isLapsed(user),
+      isInGracePeriod: isInGracePeriod(user),
+      effectiveVerificationLevel: isLapsed(user)
+        ? null
+        : user.verificationLevel || null,
+      // Collecting needs a plan AND completed KYC; recording never does.
+      canCollect: getCollectEligibility(user).canCollect,
+      collectBlockedReason: getCollectEligibility(user).reason,
+      // Used by the client to re-surface the upgrade prompt once per login
+      lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };

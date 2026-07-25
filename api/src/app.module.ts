@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
+import { APP_GUARD } from "@nestjs/core";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
+import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { AuthModule } from "./auth/auth.module";
@@ -17,6 +19,12 @@ import { SalesModule } from './sales/sales.module';
 import { QROrdersModule } from './qr-orders/qr-orders.module';
 import { EventsModule } from './events/events.module';
 import { FirebaseModule } from './services/firebase/firebase.module';
+import { CustomersModule } from './customers/customers.module';
+import { ProductsModule } from './products/products.module';
+import { ReportsModule } from './reports/reports.module';
+import { StoresModule } from './stores/stores.module';
+import { MerchantPlansModule } from './merchant-plans/merchant-plans.module';
+import { KycModule } from './kyc/kyc.module';
 
 @Module({
   imports: [
@@ -29,6 +37,14 @@ import { FirebaseModule } from './services/firebase/firebase.module';
       inject: [ConfigService],
       useFactory: getDatabaseConfig,
     }),
+    // Global IP-based rate limiting; stricter per-route limits are set with
+    // @Throttle on sensitive endpoints (OTP request, admin login).
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
     AuthModule,
     UsersModule,
     QRKitsModule,
@@ -42,8 +58,20 @@ import { FirebaseModule } from './services/firebase/firebase.module';
     QROrdersModule,
     EventsModule,
     FirebaseModule,
+    CustomersModule,
+    ProductsModule,
+    ReportsModule,
+    StoresModule,
+    MerchantPlansModule,
+    KycModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

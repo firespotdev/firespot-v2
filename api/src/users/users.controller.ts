@@ -28,10 +28,18 @@ import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { UsersService } from "./users.service";
 import { PaystackService } from "./services/paystack.service";
 import { AddBankAccountDto } from "./dto/add-bank-account.dto";
+import { BUSINESS_INDUSTRIES } from "./constants/business-industries";
+import { SetupProfileDto } from "./dto/setup-profile.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdateMerchantSlugDto } from "./dto/update-merchant-slug.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
 import { RegisterFcmTokenDto } from "./dto/register-fcm-token.dto";
+import {
+  UpdateContactDto,
+  UpdateFulfillmentDto,
+  UpdateLocationDto,
+} from "./dto/shop-setup.dto";
 
 @ApiTags("users")
 @Controller("users")
@@ -40,6 +48,29 @@ export class UsersController {
     private readonly usersService: UsersService,
     private readonly paystackService: PaystackService,
   ) {}
+
+  @Get("industries")
+  @ApiOperation({
+    summary: "Get list of business industries",
+    description:
+      "Canonical list of industries for merchant setup. The industry submitted to merchant-setup must be one of these values.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "List of industries",
+    schema: {
+      type: "object",
+      properties: {
+        industries: {
+          type: "array",
+          items: { type: "string", example: "Food & Drinks" },
+        },
+      },
+    },
+  })
+  getIndustries() {
+    return { industries: BUSINESS_INDUSTRIES };
+  }
 
   @Get("banks")
   @ApiOperation({
@@ -318,6 +349,27 @@ export class UsersController {
     return this.usersService.updateProfilePhoto(req.user.userId, file);
   }
 
+  @Patch("banner")
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor("banner"))
+  @ApiBearerAuth("JWT-auth")
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Update merchant profile banner" })
+  async updateBanner(
+    @Request() req,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.usersService.updateProfileBanner(req.user.userId, file);
+  }
+
   @Post("fcm-token")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
@@ -335,6 +387,140 @@ export class UsersController {
   })
   async registerFcmToken(@Request() req, @Body() dto: RegisterFcmTokenDto) {
     return this.usersService.registerFcmToken(req.user.userId, dto.token);
+  }
+
+  @Get("favorites")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "List saved (Faves) merchants",
+    description:
+      "Returns the merchants the authenticated user has saved to their Faves.",
+  })
+  @ApiResponse({ status: 200, description: "Favorite merchants returned" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async getFavorites(@Request() req) {
+    return this.usersService.getFavoriteMerchants(req.user.userId);
+  }
+
+  @Post("favorites/:merchantId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Add a merchant to Faves",
+    description: "Saves a merchant to the authenticated user's Faves.",
+  })
+  @ApiParam({ name: "merchantId", description: "Merchant user id" })
+  @ApiResponse({ status: 201, description: "Merchant added to Faves" })
+  @ApiResponse({ status: 404, description: "Merchant not found" })
+  async addFavorite(@Request() req, @Param("merchantId") merchantId: string) {
+    return this.usersService.addFavoriteMerchant(req.user.userId, merchantId);
+  }
+
+  @Delete("favorites/:merchantId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Remove a merchant from Faves",
+    description: "Removes a merchant from the authenticated user's Faves.",
+  })
+  @ApiParam({ name: "merchantId", description: "Merchant user id" })
+  @ApiResponse({ status: 200, description: "Merchant removed from Faves" })
+  @ApiResponse({ status: 401, description: "Unauthorized" })
+  async removeFavorite(@Request() req, @Param("merchantId") merchantId: string) {
+    return this.usersService.removeFavoriteMerchant(req.user.userId, merchantId);
+  }
+
+  @Patch("me/profile")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Update name (onboarding)",
+    description:
+      "Saves the user's first and last name and marks onboarding as completed.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Profile updated successfully",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - Invalid or missing JWT token",
+  })
+  async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.userId, dto);
+  }
+
+  // ---- Shop setup ----
+
+  @Get("me/shop-setup")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Shop-setup checklist state (per-item completion)" })
+  @ApiResponse({ status: 200, description: "Checklist returned" })
+  async getShopSetup(@Request() req) {
+    return this.usersService.getShopSetup(req.user.userId);
+  }
+
+  @Patch("me/contact")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save contact details (email, website, socials)" })
+  @ApiResponse({ status: 200, description: "Contact details saved" })
+  async updateContact(@Request() req, @Body() dto: UpdateContactDto) {
+    return this.usersService.updateContact(req.user.userId, dto);
+  }
+
+  @Patch("me/fulfillment")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save how customers get goods/services" })
+  @ApiResponse({ status: 200, description: "Fulfilment saved" })
+  async updateFulfillment(@Request() req, @Body() dto: UpdateFulfillmentDto) {
+    return this.usersService.updateFulfillment(req.user.userId, dto);
+  }
+
+  @Patch("me/location")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save primary location and branch count" })
+  @ApiResponse({ status: 200, description: "Location saved" })
+  async updateLocation(@Request() req, @Body() dto: UpdateLocationDto) {
+    return this.usersService.updateLocation(req.user.userId, dto);
+  }
+
+  @Post("me/shop/go-live")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Mark the shop live" })
+  @ApiResponse({ status: 201, description: "Shop is live" })
+  async goLive(@Request() req) {
+    return this.usersService.goLive(req.user.userId);
+  }
+
+  @Post("me/merchant-setup")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Set up business (merchant onboarding)",
+    description:
+      "Adds a business to the account: verifies the bank account with Paystack, stores business name and bank details, upgrades the user to merchant, and assigns a merchant slug. Can only be done once.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Business setup completed successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description:
+      "Setup already completed, invalid referral code, or bank verification failed",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized - Invalid or missing JWT token",
+  })
+  async merchantSetup(@Request() req, @Body() dto: SetupProfileDto) {
+    return this.usersService.setupProfile(req.user.userId, dto);
   }
 
   @Get("me")
