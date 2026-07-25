@@ -92,6 +92,9 @@ export class KycService {
           : state?.status === 'failed'
             ? 'failed'
             : 'pending',
+        // `pending` also describes an untouched requirement. Expose whether
+        // this row has actually been submitted and is awaiting SmileID/CAC.
+        isVerifying: !satisfied && state?.status === 'pending' && !!state?.jobId,
         checkedAt: state?.checkedAt || null,
         reason: state?.reason || null,
       }
