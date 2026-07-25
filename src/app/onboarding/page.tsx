@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button, Input, Label, Spinner } from '@/components/ui'
 import { useUpdateProfile, useAuthStore, useAuthReady } from '@/services/auth'
+import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
 
 function OnboardingPageContent() {
   const router = useRouter()
@@ -29,7 +30,7 @@ function OnboardingPageContent() {
       router.replace('/login')
       return
     }
-    if (onboardingCompleted) {
+    if (onboardingCompleted && hasPersonalIdentity(user)) {
       router.replace(
         redirectPath || (user?.role === 'merchant' ? '/profile' : '/home'),
       )
@@ -44,7 +45,12 @@ function OnboardingPageContent() {
   ])
 
   const handleBack = () => {
-    // Onboarding is the first authenticated screen; going back returns to login
+    // Merchants can reach this screen later when entering their personal side.
+    // In that case return them to their business instead of signing them out.
+    if (user?.role === 'merchant') {
+      router.replace('/profile')
+      return
+    }
     logout()
     router.replace('/login')
   }

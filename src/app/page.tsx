@@ -10,7 +10,7 @@ import { ClockCounterClockwiseIcon } from '@phosphor-icons/react'
 import { CTACarousel } from '@/components/ui/cta-carousel'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { useAuthStore, useAuthReady } from '@/services/auth'
-import { isTokenExpired } from '@/lib/utils/auth-redirect'
+import { hasPersonalIdentity, isTokenExpired } from '@/lib/utils/auth-redirect'
 
 export default function ScannerPage() {
   const router = useRouter()
@@ -25,6 +25,7 @@ export default function ScannerPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const token = useAuthStore((state) => state.token)
   const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+  const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
   const authReady = useAuthReady()
 
@@ -50,9 +51,13 @@ export default function ScannerPage() {
       // onboarding still redirects.
       if (!onboardingCompleted) {
         router.replace('/onboarding')
+        return
+      }
+      if (!hasPersonalIdentity(user)) {
+        router.replace('/onboarding?redirect=/')
       }
     }
-  }, [authReady, isAuthenticated, token, onboardingCompleted, router, logout])
+  }, [authReady, isAuthenticated, token, onboardingCompleted, user, router, logout])
 
   // Extract serial number from QR code content
   const extractSerialNumber = useCallback(

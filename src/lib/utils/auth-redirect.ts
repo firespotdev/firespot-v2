@@ -9,6 +9,11 @@ interface PostAuthDestinationParams {
   merchantDraft?: string | null
 }
 
+/** A merchant may complete business setup before ever setting a personal name. */
+export function hasPersonalIdentity(user: User | null | undefined): boolean {
+  return Boolean(user?.firstName?.trim() && user?.lastName?.trim())
+}
+
 /**
  * Decides where an authenticated user should land.
  * - Merchant intent (QR kit claim / old signup links) goes straight to
@@ -39,6 +44,16 @@ export function getPostAuthDestination({
   }
 
   if (!onboardingCompleted) {
+    return redirectPath
+      ? `/onboarding?redirect=${encodeURIComponent(redirectPath)}`
+      : '/onboarding'
+  }
+
+  // A completed account can still be missing its personal identity (for
+  // example, merchants created through business-first onboarding). Personal
+  // users complete it at login; merchants are prompted only when entering
+  // their personal side by the personal-surface guards.
+  if (user?.role !== 'merchant' && !hasPersonalIdentity(user)) {
     return redirectPath
       ? `/onboarding?redirect=${encodeURIComponent(redirectPath)}`
       : '/onboarding'

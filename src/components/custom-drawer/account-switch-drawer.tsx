@@ -18,6 +18,7 @@ import {
 } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
 import { useUserProfile } from '@/services/users'
+import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
 
 interface AccountSwitchDrawerProps {
   closeDrawer: () => void
@@ -49,6 +50,10 @@ export function AccountSwitchDrawer({
 
   const handleSwitchToPersonal = () => {
     closeDrawer()
+    if (!hasPersonalIdentity(profile ?? authUser)) {
+      router.push('/onboarding?redirect=/home')
+      return
+    }
     router.push('/home')
   }
 
