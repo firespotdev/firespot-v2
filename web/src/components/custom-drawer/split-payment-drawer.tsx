@@ -102,54 +102,46 @@ export function SplitPaymentDrawer({
           {/* Integrated Combined Card */}
           <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] border border-[#F1F1F1] overflow-hidden text-left mb-1">
             {/* Paid now */}
-            <div className="p-3.5">
+            <button
+              type="button"
+              onClick={() => setInstallmentType('part')}
+              className="block w-full p-3.5 text-left transition-colors hover:bg-[#F9FAFB] active:bg-[#F4F6F8]"
+            >
               <span className="text-[13px] font-medium text-[#6B7280]">
                 Paid now
               </span>
               <div className="flex w-full justify-between mt-1">
-                <button
-                  type="button"
-                  onClick={() => setInstallmentType('part')}
-                  className="text-left text-[32px] font-medium font-family-sofia-pro text-[#34C759] leading-none -tracking-[2px]"
-                >
+                <span className="text-left text-[32px] font-medium font-family-sofia-pro text-[#34C759] leading-none -tracking-[2px]">
                   ₦ {formatCurrency(totalAmount)}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInstallmentType('part')}
-                  className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black cursor-pointer transition-colors"
-                >
+                </span>
+                <span className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black">
                   <PenLine size={14} />
                   <span>Edit</span>
-                </button>
+                </span>
               </div>
-            </div>
+            </button>
 
             <div className="border-t border-[#F1F1F1]" />
 
             {/* Total due */}
-            <div className="p-3.5">
+            <button
+              type="button"
+              onClick={() => setInstallmentType('part')}
+              className="block w-full p-3.5 text-left transition-colors hover:bg-[#F9FAFB] active:bg-[#F4F6F8]"
+            >
               <span className="text-[13px] font-medium text-[#6B7280]">
                 Total due
               </span>
               <div className="flex w-full justify-between mt-1">
-                <button
-                  type="button"
-                  onClick={() => setInstallmentType('part')}
-                  className="text-left text-[32px] font-medium text-black font-family-sofia-pro -tracking-[2px] leading-none"
-                >
+                <span className="text-left text-[32px] font-medium text-black font-family-sofia-pro -tracking-[2px] leading-none">
                   ₦ {formatCurrency(totalAmount)}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInstallmentType('part')}
-                  className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black cursor-pointer transition-colors"
-                >
+                </span>
+                <span className="inline-flex h-8 items-center gap-1.5 px-3 py-1.5 rounded-[6px] bg-[#F4F6F8] font-medium text-sm text-black">
                   <PenLine size={14} />
                   <span>Edit</span>
-                </button>
+                </span>
               </div>
-            </div>
+            </button>
           </div>
 
           {/* Info Alert Box */}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, AlertCircle, ChevronRight, Loader2 } from 'lucide-react'
-import { Button, ClockFillIcon } from '@/components/ui'
+import { Button, ClockFillIcon, Spinner } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { formatCurrency, cn } from '@/lib/utils'
 import { format, differenceInDays } from 'date-fns'
@@ -168,12 +168,7 @@ export function RepaymentSummaryDrawer({
   const isBusy = isLoading || isSubmitting
 
   const handleRecordConfirm = async () => {
-    if (
-      isBusy ||
-      effectiveAmount <= 0 ||
-      effectiveAmount > totalBalance
-    )
-      return
+    if (isBusy || effectiveAmount <= 0 || effectiveAmount > totalBalance) return
     setIsSubmitting(true)
     try {
       await onConfirmRecord(effectiveAmount, selectedMethod)
@@ -345,9 +340,7 @@ export function RepaymentSummaryDrawer({
           className="active:scale-[0.98]"
         >
           {isBusy ? (
-            <div className="flex items-center justify-center gap-2">
-              <span>Recording...</span>
-            </div>
+            <Spinner />
           ) : (
             `Record NGN ${formatCurrency(effectiveAmount)}`
           )}

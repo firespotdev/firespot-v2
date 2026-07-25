@@ -12,6 +12,12 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { Button, LoaderCircle, TabSwitch } from '@/components/ui'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from '@/components/ui/carousel'
 import { TierIcon } from '@/components/merchant/tier-icon'
 import { useDrawerStore } from '@/services/drawer'
 import {
@@ -64,8 +70,9 @@ function PlansContent() {
   const [activeTier, setActiveTier] = useState<PlanTier>('LITE')
   const [interval, setInterval] = useState<BillingInterval>('monthly')
   const [freqOpen, setFreqOpen] = useState(false)
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>()
 
-  const plans = data?.plans || []
+  const plans = useMemo(() => data?.plans || [], [data?.plans])
   const current = data?.current
   const plan = useMemo(
     () => plans.find((p) => p.tier === activeTier),
@@ -84,6 +91,24 @@ function PlansContent() {
   useEffect(() => {
     if (isOnYearly) setInterval('annually')
   }, [isOnYearly])
+
+  useEffect(() => {
+    if (!carouselApi) return
+
+    const syncTierFromCarousel = () => {
+      const selectedPlan = plans[carouselApi.selectedScrollSnap()]
+      if (selectedPlan) setActiveTier(selectedPlan.tier)
+    }
+
+    syncTierFromCarousel()
+    carouselApi.on('select', syncTierFromCarousel)
+    carouselApi.on('reInit', syncTierFromCarousel)
+
+    return () => {
+      carouselApi.off('select', syncTierFromCarousel)
+      carouselApi.off('reInit', syncTierFromCarousel)
+    }
+  }, [carouselApi, plans])
   const holdsThisTier = current?.planTier === activeTier
   // Switching billing cycle on the tier you already hold is a plan change,
   // not a repurchase — the old subscription is superseded server-side.
@@ -131,6 +156,12 @@ function PlansContent() {
     })
   }
 
+  const handleTierChange = (tier: PlanTier) => {
+    setActiveTier(tier)
+    const index = plans.findIndex((item) => item.tier === tier)
+    if (index >= 0) carouselApi?.scrollTo(index)
+  }
+
   if (isLoading || !plan) {
     return (
       <div className="h-dvh bg-black flex items-center justify-center">
@@ -154,7 +185,7 @@ function PlansContent() {
           </button>
           <TabSwitch<PlanTier>
             value={activeTier}
-            onChange={setActiveTier}
+            onChange={handleTierChange}
             options={plans.map((p) => ({
               label: TIER_LABELS[p.tier],
               value: p.tier,
@@ -169,78 +200,92 @@ function PlansContent() {
         </header>
 
         <div className="flex-1 px-4 pt-4 pb-38">
-          {/* Tier icon (dynamic per tier) */}
-          <div className="flex justify-center mb-4">
-            <TierIcon tier={plan.tier} size={40} />
-          </div>
-
-          <h1 className="text-center text-[20px] -tracking-[0.4px] font-bold flex items-center justify-center gap-1.5 flex-wrap">
-            Upgrade to Firespot Business
-            <span
-              className={`text-[10px] font-bold px-1 rounded-[4px] h-4 flex justify-center items-center ${TIER_BADGE[plan.tier]}`}
-            >
-              {TIER_LABELS[plan.tier]}
-            </span>
-          </h1>
-
-          <p className="text-center text-sm font-medium text-[#FFFFFFB2] mt-1 px-2">
-            {plan.tagline}
-          </p>
-
-          {/* Page dots */}
-          <div className="flex justify-center gap-1.5 mt-4">
-            {plans.map((p) => (
-              <span
-                key={p.tier}
-                className={`w-1.5 h-1.5 rounded-full ${
-                  p.tier === activeTier ? 'bg-white' : 'bg-[#FFFFFF66]'
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Feature list */}
-          <div className="bg-[#FFFFFF0D] rounded-[12px] mt-6 p-3 space-y-4 border border-[#F1F1F114] shadow-[0px_4px_8px_0px_#0000000A]">
-            {plan.features.map((feature) => (
-              <div key={feature.label} className="flex items-center gap-3">
-                {feature.icon ? (
-                  <Image
-                    src={`/icons/${feature.icon}.svg`}
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="w-5 h-5 shrink-0"
-                  />
-                ) : (
-                  <span
-                    className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                      feature.included
-                        ? TIER_ACCENT[plan.tier]
-                        : 'bg-[#FFFFFF26] text-[#FFFFFF66]'
-                    }`}
-                  >
-                    <Check className="w-3 h-3 stroke-[3px]" />
-                  </span>
-                )}
-                <span
-                  className={`flex-1 font-medium text-[14px] text-[#FFFFFFB2]`}
-                >
-                  {feature.label}
-                </span>
-                {feature.inheritsFrom && (
-                  <ChevronRight className="w-4 h-4 text-[#FFFFFF66] shrink-0" />
-                )}
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            className="mx-auto my-6 flex items-center font-medium gap-1 text-xs text-white underline underline-offset-4"
+          <Carousel
+            setApi={setCarouselApi}
+            opts={{ align: 'start', loop: false }}
           >
-            Learn more
-            <ArrowUpRight className="w-4 h-4" />
-          </button>
+            <CarouselContent className="ml-0">
+              {plans.map((slidePlan) => (
+                <CarouselItem key={slidePlan.tier} className="pl-0">
+                  {/* Tier icon (dynamic per tier) */}
+                  <div className="flex justify-center mb-4">
+                    <TierIcon tier={slidePlan.tier} size={40} />
+                  </div>
+
+                  <h1 className="text-center text-[20px] -tracking-[0.4px] font-bold flex items-center justify-center gap-1.5 flex-wrap">
+                    Upgrade to Firespot Business
+                    <span
+                      className={`text-[10px] font-bold px-1 rounded-[4px] h-4 flex justify-center items-center ${TIER_BADGE[slidePlan.tier]}`}
+                    >
+                      {TIER_LABELS[slidePlan.tier]}
+                    </span>
+                  </h1>
+
+                  <p className="text-center text-sm font-medium text-[#FFFFFFB2] mt-1 px-2">
+                    {slidePlan.tagline}
+                  </p>
+
+                  {/* Page dots */}
+                  <div className="flex justify-center gap-1.5 mt-4">
+                    {plans.map((dotPlan) => (
+                      <span
+                        key={dotPlan.tier}
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          dotPlan.tier === activeTier
+                            ? 'bg-white'
+                            : 'bg-[#FFFFFF66]'
+                        }`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Feature list */}
+                  <div className="bg-[#FFFFFF0D] rounded-[12px] mt-6 p-3 space-y-4 border border-[#F1F1F114] shadow-[0px_4px_8px_0px_#0000000A]">
+                    {slidePlan.features.map((feature) => (
+                      <div
+                        key={feature.label}
+                        className="flex items-center gap-3"
+                      >
+                        {feature.icon ? (
+                          <Image
+                            src={`/icons/${feature.icon}.svg`}
+                            alt=""
+                            width={20}
+                            height={20}
+                            className="w-5 h-5 shrink-0"
+                          />
+                        ) : (
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                              feature.included
+                                ? TIER_ACCENT[slidePlan.tier]
+                                : 'bg-[#FFFFFF26] text-[#FFFFFF66]'
+                            }`}
+                          >
+                            <Check className="w-3 h-3 stroke-[3px]" />
+                          </span>
+                        )}
+                        <span className="flex-1 font-medium text-[14px] text-[#FFFFFFB2]">
+                          {feature.label}
+                        </span>
+                        {feature.inheritsFrom && (
+                          <ChevronRight className="w-4 h-4 text-[#FFFFFF66] shrink-0" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="mx-auto my-6 flex items-center font-medium gap-1 text-xs text-white underline underline-offset-4"
+                  >
+                    Learn more
+                    <ArrowUpRight className="w-4 h-4" />
+                  </button>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+          </Carousel>
         </div>
 
         {/* Sticky price + CTA */}

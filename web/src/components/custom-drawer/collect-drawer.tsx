@@ -371,7 +371,7 @@ export function CollectPaymentDrawer({
             </button>
 
             {/* Gradient Border QR Wrapper */}
-            <div className="p-0.75 rounded-4xl bg-linear-to-tr from-[#D72483] to-[#FB5012]">
+            <div className="p-0.75 rounded-[20px] bg-linear-to-tr from-[#D72483] to-[#FB5012]">
               <div className="p-3.5 rounded-[18px] bg-white flex items-center justify-center">
                 <GradientQRCode value={checkoutUrl} size={210} />
               </div>
@@ -527,10 +527,7 @@ export function CollectPaymentDrawer({
               </span>
             </Button>
 
-            <Button
-              onClick={handleConfirmReceipt}
-              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
-            >
+            <Button className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2">
               <PenLine size={16} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">
                 Record sale

@@ -1,6 +1,6 @@
 'use client'
 
-import { Delete, PencilLine, Plus } from 'lucide-react'
+import { PencilLine, Plus } from 'lucide-react'
 import { Keypad } from './Keypad'
 
 interface AmountTabProps {
@@ -11,6 +11,7 @@ interface AmountTabProps {
   addCustomAmountToCart: () => void
   handleKeyPress: (key: string) => void
   descriptionError?: boolean
+  showAddButton?: boolean
 }
 
 export function AmountTab({
@@ -21,6 +22,7 @@ export function AmountTab({
   addCustomAmountToCart,
   handleKeyPress,
   descriptionError = false,
+  showAddButton = true,
 }: AmountTabProps) {
   return (
     <div className="flex-1 flex flex-col justify-between overflow-hidden">
@@ -45,7 +47,8 @@ export function AmountTab({
           )}
 
           {/* Add custom amount to cart */}
-          {amount &&
+          {showAddButton &&
+            amount &&
             amount !== '0' &&
             amount !== '0.' &&
             amount !== '.' && (
@@ -76,7 +79,7 @@ export function AmountTab({
                   className="mr-1.5"
                 />
                 <span className="text-[14px] font-medium leading-[120%] text-[#9CA3AF]">
-                  What's this payment for?
+                  What&apos;s this payment for?
                 </span>
               </div>
             )}

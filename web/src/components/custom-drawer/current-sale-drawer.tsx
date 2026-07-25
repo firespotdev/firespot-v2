@@ -1,8 +1,15 @@
 'use client'
 
-import { useRef } from 'react'
+import { useState } from 'react'
 import { ChevronDown, Minus, ChevronRight, Loader2 } from 'lucide-react'
+import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
+import { Calendar } from '@/components/ui/calendar'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 
 interface CartItem {
   id: string
@@ -31,7 +38,7 @@ interface Props {
   customer: SaleCustomer | null
   totalAmount: number
   dueDate?: string
-  mode?: 'record' | 'collect'
+  mode?: 'record' | 'collect' | 'preview'
   isLoading?: boolean
   onEditPaymentMethod: () => void
   onEditInstallment: () => void
@@ -60,40 +67,18 @@ export function CurrentSaleDrawer({
   onConfirmRecord,
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
-  const dueDateInputRef = useRef<HTMLInputElement>(null)
+  const [dueDateOpen, setDueDateOpen] = useState(false)
   const today = new Date()
-  const minimumDueDate = `${today.getFullYear()}-${String(
-    today.getMonth() + 1,
-  ).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  today.setHours(0, 0, 0, 0)
 
   const formatDueDate = (dateInput: string | Date) => {
     if (!dateInput) return ''
-    const date = new Date(dateInput)
+    const date =
+      typeof dateInput === 'string'
+        ? new Date(`${dateInput.slice(0, 10)}T00:00:00`)
+        : new Date(dateInput)
     if (isNaN(date.getTime())) return ''
-    const day = date.getDate()
-    const monthNames = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ]
-    const month = monthNames[date.getMonth()]
-    const year = date.getFullYear()
-
-    let suffix = 'th'
-    if (day === 1 || day === 21 || day === 31) suffix = 'st'
-    else if (day === 2 || day === 22) suffix = 'nd'
-    else if (day === 3 || day === 23) suffix = 'rd'
-
-    return `${day}${suffix} ${month}, ${year}`
+    return format(date, 'do MMMM, yyyy')
   }
 
   const getSubtotal = () => {
@@ -125,23 +110,13 @@ export function CurrentSaleDrawer({
 
   const balanceOwed = Math.max(0, totalAmount - amountPaid)
   const needsPaymentMethod = mode === 'record' && !paymentMethod
-
-  const openDueDatePicker = () => {
-    const input = dueDateInputRef.current
-    if (!input) return
-
-    try {
-      if (typeof input.showPicker === 'function') {
-        input.showPicker()
-        return
-      }
-    } catch {
-      // iOS browsers may reject showPicker even during a user gesture.
-    }
-
-    input.focus()
-    input.click()
-  }
+  const selectedDueDate = dueDate
+    ? new Date(`${dueDate.slice(0, 10)}T00:00:00`)
+    : undefined
+  const isContinueDisabled =
+    isLoading ||
+    needsPaymentMethod ||
+    (installmentType === 'part' && (!dueDate || !customer))
 
   return (
     <div className="w-full flex flex-col font-satoshi px-3 bg-white max-w-125 mx-auto">
@@ -227,7 +202,7 @@ export function CurrentSaleDrawer({
       </div>
 
       {/* Checkout Metadata fields (Clickable to edit) */}
-      {mode !== 'collect' && (
+      {mode === 'record' && (
         <div className="flex flex-col gap-3 py-4 shrink-0 text-left">
           {/* Paid now / Paid in full (Only display when set) */}
           {hasSetInstallment && (
@@ -280,24 +255,28 @@ export function CurrentSaleDrawer({
             <span className="text-sm text-[#00000080] font-medium">Method</span>
             <div className="flex items-center gap-1">
               <span className="text-sm font-medium text-[#111827] capitalize">
-                {paymentMethod || 'Select payment method'}
+                {paymentMethod || 'Not selected'}
               </span>
               <ChevronRight className="w-4 h-4 text-[#00000080]" />
             </div>
           </button>
 
           {/* Customer */}
-          {customer && (
+          {(customer || installmentType === 'part') && (
             <button
               onClick={onEditCustomer}
-              className="flex justify-between items-center hover:opacity-85 transition-opacity"
+              className="flex w-full justify-between items-center hover:opacity-85 transition-opacity"
             >
               <span className="text-sm text-[#00000080] font-medium">
                 Customer
               </span>
               <div className="flex items-center gap-1">
-                <span className="text-sm font-medium text-[#111827]">
-                  {customer.name}
+                <span
+                  className={`text-sm font-medium text-[#111827] ${
+                    customer ? '' : 'underline'
+                  }`}
+                >
+                  {customer?.name || 'Select who owes you'}
                 </span>
                 <ChevronRight className="w-4 h-4 text-[#00000080]" />
               </div>
@@ -306,70 +285,69 @@ export function CurrentSaleDrawer({
 
           {/* Due Date */}
           {balanceOwed > 0 && (
-            <div className="relative">
-              <input
-                ref={dueDateInputRef}
-                type="date"
-                min={minimumDueDate}
-                value={dueDate || ''}
-                onChange={(e) => onEditDueDate?.(e.target.value)}
-                aria-label="Balance due date"
-                tabIndex={-1}
-                className="pointer-events-none absolute h-px w-px opacity-0"
-              />
-              <button
-                type="button"
-                onClick={openDueDatePicker}
-                className="flex w-full cursor-pointer justify-between items-center hover:opacity-85 transition-opacity"
-              >
-                <span className="text-sm text-[#00000080] font-medium">
-                  Balance due by
-                </span>
-                <div className="pointer-events-none flex items-center gap-1">
-                  <span
-                    className={
-                      dueDate
-                        ? 'text-sm font-medium text-[#111827]'
-                        : 'text-sm font-medium text-[#111827] underline'
-                    }
-                  >
-                    {dueDate ? formatDueDate(dueDate) : 'Set a due date'}
+            <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex w-full cursor-pointer justify-between items-center hover:opacity-85 transition-opacity"
+                >
+                  <span className="text-sm text-[#00000080] font-medium">
+                    Balance due by
                   </span>
-                  <ChevronRight className="w-4 h-4 text-[#00000080]" />
-                </div>
-              </button>
-            </div>
+                  <div className="pointer-events-none flex items-center gap-1">
+                    <span
+                      className={
+                        dueDate
+                          ? 'text-sm font-medium text-[#111827]'
+                          : 'text-sm font-medium text-[#111827] underline'
+                      }
+                    >
+                      {dueDate ? formatDueDate(dueDate) : 'Set a due date'}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-[#00000080]" />
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto p-0"
+                align="end"
+                side="top"
+              >
+                <Calendar
+                  mode="single"
+                  selected={selectedDueDate}
+                  disabled={{ before: today }}
+                  onSelect={(date) => {
+                    if (!date) return
+                    onEditDueDate?.(format(date, 'yyyy-MM-dd'))
+                    setDueDateOpen(false)
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           )}
         </div>
       )}
 
-      {/* Main button */}
-      <button
-        onClick={needsPaymentMethod ? onEditPaymentMethod : onConfirmRecord}
-        disabled={
-          isLoading || (installmentType === 'part' && (!dueDate || !customer))
-        }
-        className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 disabled:bg-black/60 disabled:cursor-not-allowed text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0 flex items-center justify-center gap-2"
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin text-white" />
-            <span>Loading...</span>
-          </>
-        ) : (
-          <span>
-            {needsPaymentMethod
-              ? 'Select payment method'
-              : installmentType === 'part' && (!dueDate || !customer)
-              ? !customer
-                ? 'Select who owes you'
-                : 'Set a due date'
-              : `${mode === 'collect' ? 'Collect' : 'Record'} NGN ${formatCurrency(
-                  mode === 'collect' ? totalAmount : amountPaid,
-                )}`}
-          </span>
-        )}
-      </button>
+      {/* Preview has no checkout action; Record and Collect remain the
+          explicit actions on the sale screen. */}
+      {mode !== 'preview' && (
+        <button
+          onClick={onConfirmRecord}
+          disabled={isContinueDisabled}
+          className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 disabled:bg-black/60 disabled:cursor-not-allowed text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0 flex items-center justify-center gap-2"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+              <span>Loading...</span>
+            </>
+          ) : (
+            <span>Continue</span>
+          )}
+        </button>
+      )}
     </div>
   )
 }

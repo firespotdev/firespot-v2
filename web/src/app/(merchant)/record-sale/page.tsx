@@ -33,6 +33,8 @@ interface CartItem {
   }
 }
 
+type CheckoutMode = 'record' | 'collect' | 'preview'
+
 const DRAFT_ITEM_ID = 'custom-current-draft'
 
 export default function RecordSalePage() {
@@ -91,6 +93,7 @@ function RecordSaleContent() {
   const [descriptionError, setDescriptionError] = useState(false)
   const [hasPrefilled, setHasPrefilled] = useState(false)
   const [prefilledAmountIsFinal, setPrefilledAmountIsFinal] = useState(false)
+  const [amountMirrorsCartTotal, setAmountMirrorsCartTotal] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
 
   // Final confirmation states
@@ -142,9 +145,11 @@ function RecordSaleContent() {
 
       if (existingItems.length > 0) {
         setCartItems(existingItems)
-        setAmount('')
-        setDescription('')
+        setActiveTab('amount')
+        setAmount(editSaleData.amount?.toString() || '')
+        setDescription(editSaleData.description || '')
         setPrefilledAmountIsFinal(false)
+        setAmountMirrorsCartTotal(true)
       } else {
         // A customer-entered/static-QR amount (and older itemless records) is
         // already the payable total. Preserve it instead of adding VAT again.
@@ -152,6 +157,7 @@ function RecordSaleContent() {
         setAmount(editSaleData.amount?.toString() || '')
         setDescription(editSaleData.description || '')
         setPrefilledAmountIsFinal(true)
+        setAmountMirrorsCartTotal(false)
       }
       setHasPrefilled(true)
     }
@@ -159,6 +165,22 @@ function RecordSaleContent() {
 
   // Keypad keys handler
   const handleKeyPress = (key: string) => {
+    if (amountMirrorsCartTotal) {
+      setCartItems([])
+      setAmountMirrorsCartTotal(false)
+      setPrefilledAmountIsFinal(true)
+      setDescription(
+        (current) =>
+          current ||
+          editSaleData?.description ||
+          cartItems
+            .map((item) =>
+              item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name,
+            )
+            .join(', '),
+      )
+    }
+
     if (key === 'backspace') {
       setAmount((prev) => prev.slice(0, -1))
       return
@@ -177,7 +199,12 @@ function RecordSaleContent() {
   // Calculations
   const getDraftItem = (): CartItem | null => {
     const value = Number(amount)
-    if (activeTab !== 'amount' || !Number.isFinite(value) || value <= 0) {
+    if (
+      amountMirrorsCartTotal ||
+      activeTab !== 'amount' ||
+      !Number.isFinite(value) ||
+      value <= 0
+    ) {
       return null
     }
     return {
@@ -217,24 +244,38 @@ function RecordSaleContent() {
 
   const getTotal = () => calculateTotal(getEffectiveItems())
 
-  const updateCartQtyAndSyncDrawer = (id: string, delta: number) => {
+  const updateCartQtyAndSyncDrawer = (
+    id: string,
+    delta: number,
+    method = checkoutPaymentMethod,
+    instType = checkoutInstallmentType,
+    amountPaidVal = checkoutAmountPaid,
+    cust = checkoutCustomer,
+    dueDateVal = checkoutDueDate,
+    mode: CheckoutMode = checkoutMode,
+    installmentConfigured = hasSetInstallment,
+  ) => {
     if (id === DRAFT_ITEM_ID) {
       setAmount('')
       setPrefilledAmountIsFinal(false)
       const updated = [...cartItems]
       const newTotal = calculateTotal(updated)
+      if (amountMirrorsCartTotal) setAmount(String(newTotal))
       const nextAmountPaid =
-        checkoutInstallmentType === 'full'
+        instType === 'full'
           ? newTotal
-          : Math.min(checkoutAmountPaid, newTotal)
+          : Math.min(amountPaidVal, newTotal)
       setCheckoutAmountPaid(nextAmountPaid)
       openCheckoutSaleDrawer(
-        checkoutPaymentMethod,
-        checkoutInstallmentType,
+        method,
+        instType,
         nextAmountPaid,
-        checkoutCustomer,
+        cust,
         updated,
         newTotal,
+        dueDateVal,
+        mode,
+        installmentConfigured,
       )
       return
     }
@@ -256,19 +297,23 @@ function RecordSaleContent() {
 
       const effectiveUpdated = getEffectiveItems(updated)
       const newTotal = calculateTotal(effectiveUpdated)
+      if (amountMirrorsCartTotal) setAmount(String(newTotal))
       const nextAmountPaid =
-        checkoutInstallmentType === 'full'
+        instType === 'full'
           ? newTotal
-          : Math.min(checkoutAmountPaid, newTotal)
+          : Math.min(amountPaidVal, newTotal)
       setCheckoutAmountPaid(nextAmountPaid)
 
       openCheckoutSaleDrawer(
-        checkoutPaymentMethod,
-        checkoutInstallmentType,
+        method,
+        instType,
         nextAmountPaid,
-        checkoutCustomer,
+        cust,
         effectiveUpdated,
         newTotal,
+        dueDateVal,
+        mode,
+        installmentConfigured,
       )
 
       return updated
@@ -315,6 +360,7 @@ function RecordSaleContent() {
     setDescription('')
     setDescriptionError(false)
     setPrefilledAmountIsFinal(false)
+    setAmountMirrorsCartTotal(false)
   }
 
   const addProductToCart = (
@@ -666,6 +712,9 @@ function RecordSaleContent() {
             newCust,
             itemsList,
             totVal,
+            checkoutDueDate,
+            checkoutMode,
+            true,
           )
         },
       },
@@ -680,7 +729,8 @@ function RecordSaleContent() {
     itemsList = cartItems,
     totVal = getTotal(),
     dueDateVal = checkoutDueDate,
-    mode = checkoutMode,
+    mode: CheckoutMode = checkoutMode,
+    installmentConfigured = hasSetInstallment,
   ) => {
     openDrawer({
       type: 'checkout-sale',
@@ -690,11 +740,22 @@ function RecordSaleContent() {
           clearCart()
           closeDrawer()
         },
-        onUpdateQty: updateCartQtyAndSyncDrawer,
+        onUpdateQty: (id: string, delta: number) =>
+          updateCartQtyAndSyncDrawer(
+            id,
+            delta,
+            method,
+            instType,
+            amountPaidVal,
+            cust,
+            dueDateVal,
+            mode,
+            installmentConfigured,
+          ),
         paymentMethod: method,
         installmentType: instType,
         amountPaid: amountPaidVal,
-        hasSetInstallment,
+        hasSetInstallment: installmentConfigured,
         customer: cust,
         totalAmount: totVal,
         dueDate: dueDateVal,
@@ -711,6 +772,7 @@ function RecordSaleContent() {
             totVal,
             newDueDate,
             mode,
+            installmentConfigured,
           )
         },
         onEditPaymentMethod: () => {
@@ -728,6 +790,7 @@ function RecordSaleContent() {
                   totVal,
                   dueDateVal,
                   mode,
+                  installmentConfigured,
                 )
               },
             },
@@ -750,6 +813,7 @@ function RecordSaleContent() {
                   totVal,
                   dueDateVal,
                   mode,
+                  installmentConfigured,
                 ),
               onContinue: (
                 newInstType: 'full' | 'part',
@@ -771,6 +835,7 @@ function RecordSaleContent() {
                   totVal,
                   finalDueDate,
                   mode,
+                  true,
                 )
               },
             },
@@ -791,6 +856,7 @@ function RecordSaleContent() {
                   totVal,
                   dueDateVal,
                   mode,
+                  installmentConfigured,
                 ),
               onSelect: (newCust: any) => {
                 setCheckoutCustomer(newCust)
@@ -803,12 +869,27 @@ function RecordSaleContent() {
                   totVal,
                   dueDateVal,
                   mode,
+                  installmentConfigured,
                 )
               },
             },
           })
         },
         onConfirmRecord: () => {
+          if (mode === 'preview') return
+
+          if (mode === 'record' && !installmentConfigured) {
+            openSplitPaymentStep(
+              method,
+              instType,
+              amountPaidVal,
+              cust,
+              itemsList,
+              totVal,
+            )
+            return
+          }
+
           if (mode === 'collect') {
             const payload = {
               merchantId: profile?.id || '',
@@ -933,6 +1014,7 @@ function RecordSaleContent() {
       totalVal,
       '',
       'collect',
+      true,
     )
   }
 
@@ -990,6 +1072,7 @@ function RecordSaleContent() {
             formatDisplayAmount={formatDisplayAmount}
             addCustomAmountToCart={addCustomAmountToCart}
             handleKeyPress={handleKeyPress}
+            showAddButton={!amountMirrorsCartTotal}
           />
         )}
 
@@ -1020,6 +1103,7 @@ function RecordSaleContent() {
               </span>
               <button
                 onClick={() => {
+                  if (!validateDraftDescription()) return
                   const items = getEffectiveItems()
                   const total = calculateTotal(items)
                   openCheckoutSaleDrawer(
@@ -1031,6 +1115,9 @@ function RecordSaleContent() {
                     checkoutCustomer,
                     items,
                     total,
+                    checkoutDueDate,
+                    'preview',
+                    hasSetInstallment,
                   )
                 }}
                 className="text-[13px] font-medium flex items-center gap-0.5"
