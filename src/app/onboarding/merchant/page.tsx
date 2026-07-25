@@ -6,8 +6,35 @@ import { ArrowLeft } from 'lucide-react'
 import { BusinessAboutForm } from '@/components/auth/business-about-form'
 import { BusinessPaymentsForm } from '@/components/auth/business-payments-form'
 import { useMerchantSetup, useAuthStore, useAuthReady } from '@/services/auth'
+import { useInitiateActivation } from '@/services/users'
+import { showNotificationToast } from '@/components/ui'
 
 type Step = 'about' | 'payments'
+
+const DRAFT_KEY = 'firespot:merchant-onboarding-draft'
+
+type MerchantOnboardingDraft = {
+  phoneNumber: string
+  bankName: string
+  bankCode: string
+  accountNumber: string
+  referralCode?: string
+  serialNumber?: string
+}
+
+type ApiError = {
+  response?: { data?: { message?: string } }
+}
+
+function readMerchantOnboardingDraft(): MerchantOnboardingDraft | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const savedDraft = sessionStorage.getItem(DRAFT_KEY)
+    return savedDraft ? JSON.parse(savedDraft) : null
+  } catch {
+    return null
+  }
+}
 
 function MerchantOnboardingPageContent() {
   const router = useRouter()
@@ -17,6 +44,7 @@ function MerchantOnboardingPageContent() {
   const redirectPath = searchParams.get('redirect')
   // Agent referral from QR kit links — applied silently, no visible field
   const referralCode = searchParams.get('ref')?.toUpperCase()
+  const hasDraft = searchParams.get('draft') === '1'
 
   const [step, setStep] = useState<Step>('about')
   const [businessName, setBusinessName] = useState('')
@@ -28,10 +56,12 @@ function MerchantOnboardingPageContent() {
   const [aboutError, setAboutError] = useState<string | undefined>()
   const [error, setError] = useState<string | undefined>()
   const [accountError, setAccountError] = useState<string | undefined>()
+  const [draft, setDraft] = useState<MerchantOnboardingDraft | null>(null)
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
   const merchantSetup = useMerchantSetup()
+  const initiateActivation = useInitiateActivation()
   const hydrated = useAuthReady()
 
   // Guard: must be authenticated; existing merchants have nothing to set up
@@ -41,10 +71,20 @@ function MerchantOnboardingPageContent() {
       router.replace('/login')
       return
     }
-    if (user?.role === 'merchant') {
+    if (user?.role === 'merchant' && !hasDraft) {
       router.replace(redirectPath || '/profile')
     }
-  }, [hydrated, isAuthenticated, user, router, redirectPath])
+  }, [hydrated, isAuthenticated, user, router, redirectPath, hasDraft])
+
+  useEffect(() => {
+    if (!hasDraft) return
+    const savedDraft = readMerchantOnboardingDraft()
+    if (!savedDraft) {
+      router.replace('/onboarding/merchant/start')
+      return
+    }
+    setDraft(savedDraft)
+  }, [hasDraft, router])
 
   const handleBack = () => {
     if (step === 'payments') {
@@ -72,7 +112,58 @@ function MerchantOnboardingPageContent() {
       return
     }
 
-    setStep('payments')
+    if (!hasDraft || !draft) {
+      setStep('payments')
+      return
+    }
+
+    merchantSetup.mutate(
+      {
+        businessName: businessName.trim(),
+        industry,
+        description: description.trim(),
+        bankName: draft.bankName,
+        bankCode: draft.bankCode,
+        accountNumber: draft.accountNumber,
+        referralCode: draft.referralCode || referralCode || undefined,
+      },
+      {
+        onSuccess: () => {
+          sessionStorage.removeItem(DRAFT_KEY)
+          if (!draft.serialNumber) {
+            router.replace('/profile')
+            return
+          }
+          initiateActivation.mutate(draft.serialNumber, {
+            onSuccess: (activation) => {
+              if (activation.isAutoActivated || !activation.authorizationUrl) {
+                showNotificationToast({
+                  message: activation.message || 'QR kit activated!',
+                  mode: 'success',
+                })
+                router.replace('/profile')
+                return
+              }
+              window.location.href = activation.authorizationUrl
+            },
+            onError: (activationError: unknown) => {
+              const apiError = activationError as ApiError
+              setError(
+                apiError.response?.data?.message ||
+                  'Your shop was set up, but we could not start QR kit activation.',
+              )
+            },
+          })
+        },
+        onError: (setupError: unknown) => {
+          const apiError = setupError as ApiError
+          setAboutError(
+            apiError.response?.data?.message ||
+              'Failed to set up your business. Please try again.',
+          )
+        },
+      },
+    )
   }
 
   const handlePaymentsSubmit = (e: React.FormEvent) => {
@@ -99,9 +190,10 @@ function MerchantOnboardingPageContent() {
         onSuccess: () => {
           router.replace(redirectPath || '/profile')
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
+          const apiError = err as ApiError
           const message =
-            err?.response?.data?.message ||
+            apiError.response?.data?.message ||
             'Failed to set up your business. Please try again.'
 
           const lowerMessage = message.toLowerCase()
@@ -131,7 +223,7 @@ function MerchantOnboardingPageContent() {
         onClick={handleBack}
         className="self-start h-[52px] w-full px-4 shrink-0"
         type="button"
-        disabled={merchantSetup.isPending}
+      disabled={merchantSetup.isPending || initiateActivation.isPending}
       >
         <ArrowLeft className="w-6 h-6 text-black" />
       </button>
@@ -149,7 +241,7 @@ function MerchantOnboardingPageContent() {
               description={description}
               onDescriptionChange={setDescription}
               onSubmit={handleAboutSubmit}
-              error={aboutError}
+              error={aboutError || (hasDraft ? error : undefined)}
             />
           </>
         ) : (

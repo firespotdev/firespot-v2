@@ -43,6 +43,7 @@ export interface User {
   accountNumber?: string
   accountName?: string
   profilePhotoUrl?: string
+  profileBannerUrl?: string
   referralCode?: string
   merchantSlug?: string
   // Merchant plan + verification state

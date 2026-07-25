@@ -7,7 +7,10 @@ import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { UpgradePrompt } from '@/components/merchant/upgrade-prompt'
 import { PlanStatusBanner } from '@/components/merchant/plan-status-banner'
-import { SetupShopCta, useSetupShopCta } from '@/components/merchant/setup-shop-cta'
+import {
+  SetupShopCta,
+  useSetupShopCta,
+} from '@/components/merchant/setup-shop-cta'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, VerifiedBadge } from '@/components/ui'
@@ -175,7 +178,7 @@ export default function ProfilePage() {
             <MerchantInfoStat
               merchantInfo={{
                 profilePhotoUrl: profile?.profilePhotoUrl,
-                businessName: profile?.businessName || 'Your Business Name',
+                businessName: 'Your online Shop on firespot',
                 bankAccountCount: sortedBankAccounts.length,
               }}
               showCameraButton={true}
@@ -202,7 +205,7 @@ export default function ProfilePage() {
                     onClick={() => openDrawer({ type: 'obtain-kit' })}
                     className="text-sm text-[#00000080] h-6 font-medium p-0 flex items-center gap-1"
                   >
-                    1 more step: Activate your QR kit{' '}
+                    Next step: Activate your QR kit{' '}
                     <ChevronRight className="w-4 h-4 text-[#747576]" />
                   </Button>
                 ) : (

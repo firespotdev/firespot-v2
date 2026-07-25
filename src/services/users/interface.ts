@@ -44,3 +44,8 @@ export interface UpdateProfilePhotoResponse {
   message: string
   profilePhotoUrl: string
 }
+
+export interface UpdateProfileBannerResponse {
+  message: string
+  profileBannerUrl: string
+}

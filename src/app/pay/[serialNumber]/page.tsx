@@ -447,9 +447,15 @@ export default function PaymentPage() {
             <div className="max-w-125 mx-auto">
               <Button asChild className="w-full">
                 <Link
-                  href={`/login?intent=merchant&redirect=/activate&serial=${serialNumber}`}
+                  href={
+                    authUser?.role === 'merchant'
+                      ? `/activate?serial=${encodeURIComponent(serialNumber)}`
+                      : `/onboarding/merchant/start?serial=${encodeURIComponent(serialNumber)}`
+                  }
                 >
-                  Login and activate this QR kit
+                  {authUser?.role === 'merchant'
+                    ? 'Activate this QR kit'
+                    : 'Login and activate this QR kit'}
                 </Link>
               </Button>
 

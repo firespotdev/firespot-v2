@@ -19,7 +19,9 @@ function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [step, setStep] = useState<1 | 2>(1)
-  const [phoneNumber, setPhoneNumber] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState(
+    () => searchParams.get('phone') || '',
+  )
   const [loginError, setLoginError] = useState<string | undefined>()
   const [otpError, setOtpError] = useState<string | undefined>()
 
@@ -40,6 +42,7 @@ function LoginPageContent() {
   // 'merchant' intent (QR kit claim / old signup links) skips personal onboarding
   const intent = searchParams.get('intent')
   const referralCode = searchParams.get('ref')
+  const merchantDraft = searchParams.get('draft')
 
   // Build deep-link redirect (e.g. /pay?serial=XYZ) if present
   const getDeepLinkRedirect = () => {
@@ -66,6 +69,7 @@ function LoginPageContent() {
           redirectPath: getDeepLinkRedirect(),
           intent,
           referralCode,
+          merchantDraft,
         }),
       )
     }
@@ -120,6 +124,7 @@ function LoginPageContent() {
               redirectPath: getDeepLinkRedirect(),
               intent,
               referralCode,
+              merchantDraft,
             }),
           )
         },

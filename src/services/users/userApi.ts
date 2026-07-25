@@ -6,6 +6,7 @@ import type {
   UserProfile,
   QRKitActivationResponse,
   UpdateProfilePhotoResponse,
+  UpdateProfileBannerResponse,
   SerialCheckResponse,
   PaymentVerificationResponse,
   BankAccount,
@@ -83,6 +84,20 @@ export const userApi = {
           'Content-Type': 'multipart/form-data',
         },
       },
+    )
+    return response.data
+  },
+
+  updateProfileBanner: async (
+    file: File,
+  ): Promise<UpdateProfileBannerResponse> => {
+    const formData = new FormData()
+    formData.append('banner', file)
+
+    const response = await apiClient.patch<UpdateProfileBannerResponse>(
+      '/users/banner',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
     )
     return response.data
   },
@@ -194,6 +209,22 @@ export function useUpdateProfilePhoto() {
             profilePhotoUrl: data.profilePhotoUrl,
           }
         },
+      )
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useUpdateProfileBanner() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.updateProfileBanner,
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ['user', 'profile'],
+        (oldData: UserProfile | undefined) =>
+          oldData ? { ...oldData, profileBannerUrl: data.profileBannerUrl } : oldData,
       )
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
     },

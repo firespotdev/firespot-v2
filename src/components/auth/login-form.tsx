@@ -62,7 +62,7 @@ export function LoginForm({
         <p className="font-bold text-sm text-[#00000080] mt-8">
           Do you run a business in Nigeria?{' '}
           <Link
-            href="#"
+            href="/onboarding/merchant/start"
             className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text cursor-pointer hover:opacity-80"
           >
             Open a Shop

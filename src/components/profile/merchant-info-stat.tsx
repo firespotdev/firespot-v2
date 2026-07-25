@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  ArrowUpRight,
 } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,7 @@ import {
   DATE_RANGE_LABELS,
   type DateRangePreset,
 } from '@/services/insights'
+import { ArrowUpRightIcon } from '@phosphor-icons/react'
 
 interface MerchantInfo {
   profilePhotoUrl?: string
@@ -118,7 +120,7 @@ export function MerchantInfoStat({
 
   return (
     <div className={cn('w-full flex flex-col items-center', className)}>
-      <div className="flex flex-col items-center px-4 mb-6">
+      <div className="flex flex-col items-center w-full mb-6">
         <div className="relative">
           {merchantInfo.profilePhotoUrl ? (
             <Image
@@ -160,9 +162,19 @@ export function MerchantInfoStat({
           )}
         </div>
 
-        <h1 className="font-bold text-xl text-black mt-4 text-center leading-none">
-          {merchantInfo.businessName.toUpperCase()}
-        </h1>
+        <Link
+          href="/profile"
+          className="flex items-center gap-1 mt-4 text-center"
+        >
+          <h1 className="font-bold text-xl text-black -tracking-[0.4px] leading-none">
+            {merchantInfo.businessName}
+          </h1>
+          <ArrowUpRight
+            size={16}
+            className="text-[#6B7280] mt-1"
+            strokeWidth={2}
+          />
+        </Link>
 
         {qrKitStatus ? (
           qrKitStatus

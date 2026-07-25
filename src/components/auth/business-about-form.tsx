@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import Image from 'next/image'
-import { Store, Upload } from 'lucide-react'
+import { ImageIcon, Upload } from 'lucide-react'
 import {
   Label,
   Input,
@@ -14,7 +14,11 @@ import {
   Button,
   Spinner,
 } from '@/components/ui'
-import { useIndustries, useUpdateProfilePhoto } from '@/services/users'
+import {
+  useIndustries,
+  useUpdateProfileBanner,
+  useUpdateProfilePhoto,
+} from '@/services/users'
 
 const DESCRIPTION_MAX_LENGTH = 160
 
@@ -42,8 +46,11 @@ export function BusinessAboutForm({
   const { data: industries = [], isLoading: industriesLoading } =
     useIndustries()
   const updatePhoto = useUpdateProfilePhoto()
+  const updateBanner = useUpdateProfileBanner()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const bannerInputRef = useRef<HTMLInputElement>(null)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null)
 
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -52,52 +59,97 @@ export function BusinessAboutForm({
     updatePhoto.mutate(file)
   }
 
+  const handleBannerSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBannerPreview(URL.createObjectURL(file))
+    updateBanner.mutate(file)
+  }
+
   return (
     <form onSubmit={onSubmit} className="flex-1 min-h-0 flex flex-col w-full">
       <div className="flex-1 min-h-0 overflow-y-auto">
-        {/* Logo upload */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-16 h-16 rounded-full bg-[#CED7E1] flex items-center justify-center overflow-hidden shrink-0">
-            {logoPreview ? (
-              <Image
-                src={logoPreview}
-                alt="Business logo"
-                width={56}
-                height={56}
-                unoptimized
-                className="object-cover w-full h-full"
-              />
-            ) : (
-              <Image
-                src="/icons/store_solid.svg"
-                alt="Business logo"
-                width={40}
-                height={40}
-              />
-            )}
+        <div className="flex items-end justify-center gap-5 mb-6">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-24 h-24 rounded-full bg-[#CED7E1] flex items-center justify-center overflow-hidden">
+              {logoPreview ? (
+                <Image
+                  src={logoPreview}
+                  alt="Business logo"
+                  width={96}
+                  height={96}
+                  unoptimized
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <Image
+                  src="/icons/store_solid.svg"
+                  alt="Business logo"
+                  width={48}
+                  height={48}
+                />
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={updatePhoto.isPending}
+              className="bg-[#F1F1F1] rounded-full h-9 px-4 flex items-center gap-2 text-[10px] font-bold tracking-[1px] text-black uppercase disabled:opacity-50"
+            >
+              {updatePhoto.isPending ? (
+                'Uploading...'
+              ) : (
+                <>
+                  <Upload size={16} /> Upload logo
+                </>
+              )}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleLogoSelect}
+              className="hidden"
+            />
           </div>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={updatePhoto.isPending}
-            className="bg-[#F1F1F1] rounded-full h-9 px-4 flex items-center gap-2 text-[10px] font-bold tracking-[1px] text-black uppercase disabled:opacity-50"
-          >
-            {updatePhoto.isPending ? (
-              <Spinner />
-            ) : (
-              <>
-                <Upload size={16} />
-                Upload your logo
-              </>
-            )}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            onChange={handleLogoSelect}
-            className="hidden"
-          />
+          <div className="w-px h-[148px] bg-[#F1F1F1]" />
+          <div className="flex flex-col items-center gap-6">
+            <div className="w-[120px] h-20 rounded-[10px] bg-[#CED7E1] flex items-center justify-center overflow-hidden">
+              {bannerPreview ? (
+                <Image
+                  src={bannerPreview}
+                  alt="Business banner"
+                  width={120}
+                  height={80}
+                  unoptimized
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <ImageIcon size={44} className="text-white" strokeWidth={1.5} />
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => bannerInputRef.current?.click()}
+              disabled={updateBanner.isPending}
+              className="bg-[#F1F1F1] rounded-full h-9 px-4 flex items-center gap-2 text-[10px] font-bold tracking-[1px] text-black uppercase disabled:opacity-50"
+            >
+              {updateBanner.isPending ? (
+                'Uploading...'
+              ) : (
+                <>
+                  <Upload size={16} /> Upload banner
+                </>
+              )}
+            </button>
+            <input
+              ref={bannerInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleBannerSelect}
+              className="hidden"
+            />
+          </div>
         </div>
 
         <div className="space-y-6">

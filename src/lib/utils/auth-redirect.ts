@@ -6,6 +6,7 @@ interface PostAuthDestinationParams {
   redirectPath?: string | null
   intent?: string | null
   referralCode?: string | null
+  merchantDraft?: string | null
 }
 
 /**
@@ -24,11 +25,13 @@ export function getPostAuthDestination({
   redirectPath,
   intent,
   referralCode,
+  merchantDraft,
 }: PostAuthDestinationParams): string {
   if (intent === 'merchant' && user?.role !== 'merchant') {
     const params = new URLSearchParams()
     if (redirectPath) params.set('redirect', redirectPath)
     if (referralCode) params.set('ref', referralCode)
+    if (merchantDraft) params.set('draft', merchantDraft)
     const queryString = params.toString()
     return queryString
       ? `/onboarding/merchant?${queryString}`
