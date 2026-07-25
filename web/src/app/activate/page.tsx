@@ -117,12 +117,30 @@ function ActivatePageContent() {
     return () => clearTimeout(timer)
   }, [mode])
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (merchant intent: kit claimants
+  // go straight to business setup, never personal onboarding)
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/login')
+      const params = new URLSearchParams()
+      params.set('intent', 'merchant')
+      params.set('redirect', '/activate')
+      if (initialSerial) params.set('serial', initialSerial)
+      router.push(`/login?${params.toString()}`)
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, router, initialSerial])
+
+  // Activation requires a business (bank account + name). Personal users
+  // claiming a kit are sent through merchant setup first, then back here.
+  useEffect(() => {
+    if (isAuthenticated && user && !user.businessName) {
+      const returnUrl = initialSerial
+        ? `/activate?serial=${initialSerial}`
+        : '/activate'
+      router.replace(
+        `/onboarding/merchant?redirect=${encodeURIComponent(returnUrl)}`,
+      )
+    }
+  }, [isAuthenticated, user, initialSerial, router])
 
   // Handle callback from Paystack - redirect to payment-status page
   useEffect(() => {
@@ -299,6 +317,7 @@ function ActivatePageContent() {
         if (data.isAutoActivated || !data.authorizationUrl) {
           showNotificationToast({
             message: data.message || 'QR kit activated!',
+            mode: 'success',
           })
           //router.push('/profile')
           window.location.href = '/profile'
@@ -312,7 +331,7 @@ function ActivatePageContent() {
         const apiError = error as ApiError
         const message =
           apiError.response?.data?.message || 'Failed to initiate payment'
-        showNotificationToast({ message })
+        showNotificationToast({ message, mode: 'error' })
       },
     })
   }
@@ -322,6 +341,7 @@ function ActivatePageContent() {
       onSuccess: ({ qrKit }) => {
         showNotificationToast({
           message: 'Your QR kit is ready',
+          mode: 'success',
           duration: 2000,
         })
         router.push(`/qr-kits/${qrKit._id}`)
@@ -331,6 +351,7 @@ function ActivatePageContent() {
         showNotificationToast({
           message:
             apiError.response?.data?.message || 'Failed to generate QR kit',
+          mode: 'error',
           duration: 3000,
         })
       },
@@ -425,7 +446,7 @@ function ActivatePageContent() {
               </p>
 
               {scannerError ? (
-                <div className="text-center p-6 bg-white/20 rounded-2xl max-w-sm">
+                <div className="text-center p-6 bg-white/20 rounded-[12px] max-w-sm">
                   <p className="text-white text-sm mb-2">{scannerError}</p>
                 </div>
               ) : (
@@ -568,7 +589,7 @@ function ActivatePageContent() {
                     'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                   backdropFilter: 'blur(125.30880737304688px)',
                 }}
-                className="py-6 px-6 rounded-2xl flex flex-col items-center relative w-full max-w-75"
+                className="py-6 px-6 rounded-[12px] flex flex-col items-center relative w-full max-w-75"
               >
                 <h2 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
                   SCAN TO TRANSFER
@@ -602,7 +623,7 @@ function ActivatePageContent() {
 
                   {/* Gradient Border Container */}
                   <div
-                    className="rounded-2xl p-1"
+                    className="rounded-[12px] p-1"
                     style={{
                       background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                     }}
@@ -817,7 +838,7 @@ function ActivatePageContent() {
             </div>
           </div>
 
-          <div className="p-4 pb-6 border-t border-[#F1F1F1] rounded-2xl">
+          <div className="p-4 pb-6 border-t border-[#F1F1F1] rounded-[12px]">
             <Button
               onClick={handlePayment}
               disabled={initiateActivation.isPending}

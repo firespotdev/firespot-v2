@@ -104,8 +104,8 @@ function OrderStatusContent() {
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center mb-12">
-            <div className="w-[64px] h-[64px] rounded-full border-4 border-white flex items-center justify-center mb-5 shrink-0">
-              <Check className="w-[32px] h-[32px] text-white" strokeWidth={3} />
+            <div className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center mb-5 shrink-0">
+              <Check className="w-8 h-8 text-white" strokeWidth={3} />
             </div>
 
             <h1 className="text-[20px] font-bold text-white -tracking-[0.4px] mb-1.5 text-center shrink-0">
@@ -116,7 +116,7 @@ function OrderStatusContent() {
               inbox for delivery details.
             </p>
 
-            <div className="w-full border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-2xl mt-8 shrink-0">
+            <div className="w-full border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-[12px] mt-8 shrink-0">
               <Link
                 href="/qr-kits"
                 className="flex items-center gap-4 border-b border-[#F1F1F1] p-3"

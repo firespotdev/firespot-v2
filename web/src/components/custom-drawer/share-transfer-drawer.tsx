@@ -69,7 +69,7 @@ export function ShareTransferDrawer({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl)
-    showNotificationToast({ message: 'Link copied!' })
+    showNotificationToast({ message: 'Link copied!', mode: 'success' })
   }
 
   const handleShare = async () => {
@@ -91,8 +91,8 @@ export function ShareTransferDrawer({
   }
 
   return (
-    <div className="flex flex-col items-center px-4 pb-6 pt-3">
-      <div className="w-full flex items-center justify-between border-b border-[#F1F1F1] pb-3">
+    <div className="flex flex-col items-center pb-4">
+      <header className="w-full flex items-center px-4 justify-between border-b border-[#F1F1F1] py-2">
         <div className="w-9 h-9" />
         <span className="border border-black rounded-full text-base leading-none -tracking-[0.4px] font-medium py-1 px-2.5">
           Pay4me
@@ -104,10 +104,10 @@ export function ShareTransferDrawer({
         >
           <X className="w-6 h-6 text-black" />
         </button>
-      </div>
+      </header>
       <div className="px-12 w-full py-6">
         <div
-          className="rounded-[24px] p-1 w-full max-w-[280px] mx-auto aspect-square"
+          className="rounded-[24px] p-1 w-full max-w-70 mx-auto aspect-square"
           style={{
             background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
           }}
@@ -166,23 +166,24 @@ export function ShareTransferDrawer({
         transfer.
       </p>
 
-      <div className="w-full flex items-center gap-2 bg-[#F1F1F1] rounded-xl p-2 mb-3">
-        <p className="flex-1 text-sm text-[#6B7280] font-medium truncate">
-          {shareUrl}
-        </p>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="flex items-center gap-1 text-sm font-semibold text-black bg-white rounded-[24px] shadow-[0px_2px_8px_0px_#00000014] py-2.5 px-4"
-        >
-          <Copy size={15} />
-          <span className="text-[10px] font-bold">COPY</span>
-        </button>
+      <div className="px-4 w-full">
+        <div className="w-full flex items-center gap-2 bg-[#F1F1F1] rounded-[10px] p-2 mb-3">
+          <p className="flex-1 text-sm text-[#6B7280] font-medium truncate">
+            {shareUrl}
+          </p>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-sm font-semibold text-black bg-white rounded-[24px] shadow-[0px_2px_8px_0px_#00000014] py-2.5 px-4"
+          >
+            <Copy size={15} />
+            <span className="text-[10px] font-bold">COPY</span>
+          </button>
+        </div>
+        <Button className="w-full" onClick={handleShare}>
+          Share transfer link
+        </Button>
       </div>
-
-      <Button className="w-full" onClick={handleShare}>
-        Share transfer link
-      </Button>
     </div>
   )
 }

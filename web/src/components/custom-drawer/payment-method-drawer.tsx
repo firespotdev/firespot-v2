@@ -3,7 +3,9 @@ import { useDrawerStore } from '@/services/drawer'
 import { AlertCircle, ArrowLeft, Check } from 'lucide-react'
 
 interface Props {
-  onSubmit: (method: string) => void
+  onSubmit?: (method: string) => void
+  onSelectMethod?: (method: string) => void
+  currentMethod?: string
 }
 
 const paymentMethods = [
@@ -13,9 +15,23 @@ const paymentMethods = [
   { id: 'Other', label: 'Other' },
 ]
 
-export function PaymentMethodDrawer({ onSubmit }: Props) {
+export function PaymentMethodDrawer({
+  onSubmit,
+  onSelectMethod,
+  currentMethod,
+}: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
-  const [selectedMethod, setSelectedMethod] = useState('')
+  const [selectedMethod, setSelectedMethod] = useState(currentMethod || '')
+
+  const handleSelect = (methodId: string) => {
+    setSelectedMethod(methodId)
+    if (onSubmit) {
+      onSubmit(methodId)
+    } else if (onSelectMethod) {
+      onSelectMethod(methodId)
+      closeDrawer()
+    }
+  }
 
   return (
     <div className="w-full flex flex-col font-satoshi relative pb-6 overflow-y-auto">
@@ -24,21 +40,21 @@ export function PaymentMethodDrawer({ onSubmit }: Props) {
           onClick={closeDrawer}
           color="#000000"
           strokeWidth={2}
-          className="w-5.5 h-5.5"
+          className="w-5.5 h-5.5 cursor-pointer"
         />
         <h2 className="text-[16px] font-bold text-black flex-1 text-center">
           How were you paid
         </h2>
         <button
-          onClick={() => onSubmit('Other')}
-          className="text-[13px] font-medium text-black border-b border-black shrink-0 pb-px mr-1 hover:opacity-80"
+          onClick={() => handleSelect('Other')}
+          className="text-[13px] font-medium text-black border-b border-black shrink-0 pb-px mr-1 hover:opacity-80 cursor-pointer"
         >
           Skip
         </button>
       </div>
 
       <div className="p-3">
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3">
           {paymentMethods
             .filter((method) => method.id !== 'Other')
             .map((method) => {
@@ -47,12 +63,9 @@ export function PaymentMethodDrawer({ onSubmit }: Props) {
               return (
                 <button
                   key={method.id}
-                  onClick={() => {
-                    setSelectedMethod(method.id)
-                    onSubmit(method.id)
-                  }}
+                  onClick={() => handleSelect(method.id)}
                   type="button"
-                  className="w-full flex items-center justify-between gap-3 py-5 px-4 border-b border-[#EBEBEB] last:border-b-0"
+                  className="w-full flex items-center justify-between gap-3 py-5 px-4 border-b border-[#EBEBEB] last:border-b-0 cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center text-black">
@@ -161,7 +174,7 @@ export function PaymentMethodDrawer({ onSubmit }: Props) {
                   </div>
 
                   <div
-                    className={`w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
+                    className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
                       isSelected
                         ? 'border-[#0075FF] bg-[#0075FF]'
                         : 'border-[#D1D5DB] bg-white'
@@ -179,7 +192,7 @@ export function PaymentMethodDrawer({ onSubmit }: Props) {
             })}
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-4">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-4">
           {paymentMethods
             .filter((method) => method.id === 'Other')
             .map((method) => {
@@ -188,12 +201,9 @@ export function PaymentMethodDrawer({ onSubmit }: Props) {
               return (
                 <button
                   key={method.id}
-                  onClick={() => {
-                    setSelectedMethod(method.id)
-                    onSubmit(method.id)
-                  }}
+                  onClick={() => handleSelect(method.id)}
                   type="button"
-                  className="w-full flex items-center justify-between gap-3 py-5 px-4 border-b border-[#EBEBEB] last:border-b-0"
+                  className="w-full flex items-center justify-between gap-3 py-5 px-4 border-b border-[#EBEBEB] last:border-b-0 cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 flex items-center justify-center text-black">
@@ -302,7 +312,7 @@ export function PaymentMethodDrawer({ onSubmit }: Props) {
                   </div>
 
                   <div
-                    className={`w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
+                    className={`w-5.5 h-5.5 rounded-full border-[1.5px] flex items-center justify-center transition-colors ${
                       isSelected
                         ? 'border-[#0075FF] bg-[#0075FF]'
                         : 'border-[#D1D5DB] bg-white'

@@ -6,6 +6,7 @@ import type {
   UserProfile,
   QRKitActivationResponse,
   UpdateProfilePhotoResponse,
+  UpdateProfileBannerResponse,
   SerialCheckResponse,
   PaymentVerificationResponse,
   BankAccount,
@@ -87,6 +88,20 @@ export const userApi = {
     return response.data
   },
 
+  updateProfileBanner: async (
+    file: File,
+  ): Promise<UpdateProfileBannerResponse> => {
+    const formData = new FormData()
+    formData.append('banner', file)
+
+    const response = await apiClient.patch<UpdateProfileBannerResponse>(
+      '/users/banner',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+    return response.data
+  },
+
   // Bank account management
   getBankAccounts: async (): Promise<BankAccountsResponse> => {
     const response = await apiClient.get<BankAccountsResponse>(
@@ -130,6 +145,13 @@ export const userApi = {
     )
     return response.data
   },
+
+  getIndustries: async (): Promise<{ industries: string[] }> => {
+    const response = await apiClient.get<{ industries: string[] }>(
+      '/users/industries',
+    )
+    return response.data
+  },
 }
 
 // Hooks
@@ -137,6 +159,15 @@ export function useUserProfile() {
   return useQuery({
     queryKey: ['user', 'profile'],
     queryFn: userApi.getProfile,
+  })
+}
+
+export function useIndustries() {
+  return useQuery({
+    queryKey: ['industries'],
+    queryFn: userApi.getIndustries,
+    select: (data) => data.industries,
+    staleTime: Infinity,
   })
 }
 
@@ -178,6 +209,22 @@ export function useUpdateProfilePhoto() {
             profilePhotoUrl: data.profilePhotoUrl,
           }
         },
+      )
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useUpdateProfileBanner() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.updateProfileBanner,
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ['user', 'profile'],
+        (oldData: UserProfile | undefined) =>
+          oldData ? { ...oldData, profileBannerUrl: data.profileBannerUrl } : oldData,
       )
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
     },

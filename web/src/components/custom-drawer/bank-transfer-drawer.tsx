@@ -3,9 +3,22 @@
 import { BankLogo } from '@/components/ui/bank-logo'
 import { ALL_BANK_NAMES, sortBanksByPopularity, openBankingApp } from '@/lib/utils/bank-registry'
 
-export function BankTransferDrawer() {
+interface BankTransferDrawerProps {
+  /** Notifies the opener which bank the customer is sending from */
+  onBankSelect?: (bankName: string) => void
+  closeDrawer?: () => void
+}
+
+export function BankTransferDrawer({
+  onBankSelect,
+  closeDrawer,
+}: BankTransferDrawerProps) {
   const handleBankClick = (bankName: string) => {
+    onBankSelect?.(bankName)
     openBankingApp(bankName)
+    if (onBankSelect) {
+      closeDrawer?.()
+    }
   }
 
   // Sort banks with popular ones first

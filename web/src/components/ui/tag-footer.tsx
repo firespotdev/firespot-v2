@@ -1,14 +1,17 @@
+import { cn } from '@/lib/utils'
 import Image from 'next/image'
 
 const TagFooter = ({
   color = '#64748B',
   icon = 'brand_black',
+  className,
 }: {
   color?: string
   icon?: string
+  className?: string
 }) => {
   return (
-    <div className="p-4 py-6 flex justify-center">
+    <div className={cn('p-4 py-6 flex justify-center', className)}>
       <div className="flex items-center gap-1">
         <span style={{ color: color }} className="text-xs font-medium">
           Powered by

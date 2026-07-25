@@ -58,7 +58,8 @@ export default function PreviewPage() {
 
           <div className="flex-1 flex flex-col items-center justify-center px-4">
             <p className="text-center text-[#00000080] font-medium">
-              Add a bank account to see what your customers would see when they scan your QR code.
+              Add a bank account to see what your customers would see when they
+              scan your QR code.
             </p>
             <Button
               className="mt-4"
@@ -105,6 +106,7 @@ export default function PreviewPage() {
       navigator.clipboard.writeText(accountNumber)
       showNotificationToast({
         message: 'Account number copied!',
+        mode: 'success',
         duration: 2000,
       })
 
@@ -152,6 +154,7 @@ export default function PreviewPage() {
                 navigator.clipboard.writeText(account.accountNumber)
                 showNotificationToast({
                   message: 'Account number copied!',
+                  mode: 'success',
                   duration: 2000,
                 })
                 openDrawer({
@@ -168,7 +171,7 @@ export default function PreviewPage() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
+        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-[12px]">
           <div className="max-w-125 mx-auto p-4 pb-6">
             <Button
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"

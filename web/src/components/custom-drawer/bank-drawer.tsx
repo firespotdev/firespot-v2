@@ -145,13 +145,16 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
           if (!newPrimaryAccount.isPrimary) {
             setPrimaryBankAccount.mutate(newPrimaryAccount.accountNumber, {
               onSuccess: () => {
-                showNotificationToast({ message: 'Primary account updated' })
+                showNotificationToast({
+                  message: 'Primary account updated',
+                  mode: 'success',
+                })
               },
               onError: (error: any) => {
                 const message =
                   error?.response?.data?.message ||
                   'Failed to update primary account'
-                showNotificationToast({ message })
+                showNotificationToast({ message, mode: 'error' })
               },
             })
           }
@@ -176,7 +179,7 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
             </p>
           </div>
         ) : (
-          <div className="border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-2xl">
+          <div className="border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-[12px]">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}

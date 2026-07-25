@@ -1,19 +1,27 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { ArrowUpRight, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMerchantBySerial } from '@/services/qr'
 import { useRecordAccountCopy } from '@/services/scans'
-import { LoaderCircle, showNotificationToast } from '@/components/ui'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { showNotificationToast } from '@/components/ui'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
+import { useAuthStore } from '@/services/auth'
 import type { MerchantProfile } from '@/services/qr/interface'
-import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
-import { useCreatePendingSale } from '@/services/sales/hooks'
+import {
+  useCreatePendingSale,
+  useRecordScan,
+  useRecordCopy,
+  useClaimSalePayer,
+  usePublicSale,
+} from '@/services/sales/hooks'
+import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
+import { SalePayAmountScreen } from '@/components/pay/sale-pay-amount-screen'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
@@ -25,14 +33,68 @@ const GRADIENT_END = '#D72483'
 
 export default function PaymentPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const serialNumber = params.serialNumber as string
+  const saleId = searchParams.get('saleId') || ''
+
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const createPendingSale = useCreatePendingSale()
+  const recordSaleScan = useRecordScan()
+  const recordSaleCopy = useRecordCopy()
+  const claimSalePayer = useClaimSalePayer()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const authUser = useAuthStore((state) => state.user)
+
+  useEffect(() => {
+    if (saleId) {
+      recordSaleScan.mutate(saleId)
+    }
+  }, [saleId])
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
+  // Dynamic QR sale (public, limited view). A failed or cancelled dynamic sale
+  // ends the flow; it must never fall back into static-payment mode.
+  const {
+    data: publicSale,
+    isLoading: saleLoading,
+    isError: saleError,
+  } = usePublicSale(saleId || undefined, serialNumber)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const storageKey = `firespot-active-sale:${serialNumber}`
+    if (saleId) {
+      const activeSaleId = sessionStorage.getItem(storageKey)
+      if (activeSaleId && activeSaleId !== saleId) {
+        router.replace('/home')
+        return
+      }
+      sessionStorage.setItem(storageKey, saleId)
+      return
+    }
+    if (sessionStorage.getItem(storageKey)) {
+      router.replace('/home')
+    }
+  }, [saleId, serialNumber, router])
+
+  useEffect(() => {
+    if (!saleId || saleLoading) return
+    if (saleError || error || publicSale?.status === 'CANCELLED') {
+      sessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
+      router.replace('/home')
+    }
+  }, [
+    saleId,
+    saleLoading,
+    saleError,
+    error,
+    publicSale?.status,
+    serialNumber,
+    router,
+  ])
 
   const qrCodeRef = useRef<HTMLDivElement>(null)
   const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
@@ -74,34 +136,26 @@ export default function PaymentPage() {
       },
     )
 
-    if (merchant) {
-      // Get or create a persistent fingerprint for this customer
-      let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
-      if (!fingerprint) {
-        fingerprint =
-          crypto.randomUUID?.() ||
-          `fs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+    if (saleId) {
+      recordSaleCopy.mutate(saleId)
+      // Dynamic QR: link this merchant-initiated sale to the logged-in payer so
+      // it appears in their Activity once confirmed. No-op when logged out.
+      if (authUser?.id) {
+        claimSalePayer.mutate({ saleId })
       }
-
-      createPendingSale.mutate({
-        merchantId: merchant.id,
-        customerFingerprint: fingerprint,
-        source: window.location.search.includes('shared=true')
-          ? 'Link shared'
-          : 'QR scan',
-        targetBankName: bankName,
-        serialNumber: serialNumber,
-      })
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh bg-white flex items-center justify-center">
-        <LoaderCircle innerBg="#FFFFFF" />
-      </div>
-    )
+  if (
+    isLoading ||
+    (saleId &&
+      (saleLoading ||
+        saleError ||
+        error ||
+        !publicSale ||
+        publicSale.status === 'CANCELLED'))
+  ) {
+    return <LoadingPage innerBg="#FFFFFF" />
   }
 
   if (error || !merchant) {
@@ -135,7 +189,7 @@ export default function PaymentPage() {
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                 backdropFilter: 'blur(125.30880737304688px)',
               }}
-              className="p-4 rounded-2xl flex flex-col items-center relative w-full max-w-75 mb-5"
+              className="p-4 rounded-[12px] flex flex-col items-center relative w-full max-w-75 mb-5"
             >
               <h3 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
                 SCAN TO TRANSFER
@@ -166,7 +220,7 @@ export default function PaymentPage() {
                 </svg>
 
                 <div
-                  className="rounded-2xl p-1"
+                  className="rounded-[12px] p-1"
                   style={{
                     background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                   }}
@@ -393,9 +447,15 @@ export default function PaymentPage() {
             <div className="max-w-125 mx-auto">
               <Button asChild className="w-full">
                 <Link
-                  href={`/signup?redirect=/activate&serial=${serialNumber}`}
+                  href={
+                    authUser?.role === 'merchant'
+                      ? `/activate?serial=${encodeURIComponent(serialNumber)}`
+                      : `/onboarding/merchant/start?serial=${encodeURIComponent(serialNumber)}`
+                  }
                 >
-                  Login and activate this QR kit
+                  {authUser?.role === 'merchant'
+                    ? 'Activate this QR kit'
+                    : 'Login and activate this QR kit'}
                 </Link>
               </Button>
 
@@ -415,7 +475,21 @@ export default function PaymentPage() {
     )
   }
 
-  const sortedBankAccounts = sortBankAccounts(merchant.bankAccounts)
+  // Dynamic QR sale: stepped payment experience (request -> waiting -> success)
+  if (saleId && publicSale) {
+    return (
+      <SalePaymentFlow
+        sale={publicSale}
+        merchant={merchant}
+        serialNumber={serialNumber}
+        onTrackCopy={trackCopyEvent}
+      />
+    )
+  }
+
+  const sortedBankAccounts = sortBankAccounts(
+    merchant.bankAccounts,
+  ) as BankAccount[]
   const bankAccount =
     sortedBankAccounts[selectedBankIndex] || sortedBankAccounts[0]
 
@@ -445,98 +519,104 @@ export default function PaymentPage() {
     })
   }
 
-  const handleSendWithBankApp = () => {
-    if (bankAccount) {
-      const { accountNumber, bankName, accountName } = bankAccount
+  // Payer enters an amount, copies the account, and hands off to the shared
+  // waiting/confirmation flow via ?saleId (the pending sale we just created).
+  const handlePayAmountCopy = (amount: number, description: string) => {
+    if (!bankAccount || createPendingSale.isPending) return
 
-      navigator.clipboard.writeText(accountNumber)
-      showNotificationToast({
-        message: 'Account number copied to clipboard',
-        duration: 2000,
-      })
-      trackCopyEvent(accountNumber, bankName)
+    const { accountNumber, bankName } = bankAccount
+    navigator.clipboard.writeText(accountNumber)
+    showNotificationToast({
+      message: 'Account number copied to clipboard',
+      mode: 'success',
+      duration: 2000,
+    })
 
-      openDrawer({
-        type: 'bank-transfer',
-        props: {
-          accountNumber,
-          bankName,
-          accountName,
-          onCopy: () => trackCopyEvent(accountNumber, bankName),
-        },
-      })
+    let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
+    if (!fingerprint) {
+      fingerprint =
+        crypto.randomUUID?.() ||
+        `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+      localStorage.setItem('firespot_customer_fingerprint', fingerprint)
     }
+
+    // If a logged-in personal account is paying, attach their name so the
+    // merchant sees it instead of "New".
+    const payerName =
+      [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
+      undefined
+
+    createPendingSale.mutate(
+      {
+        merchantId: merchant.id,
+        amount,
+        description,
+        customerFingerprint: fingerprint,
+        customerName: payerName,
+        source: window.location.search.includes('shared=true')
+          ? 'Link shared'
+          : 'QR scan',
+        targetBankName: bankName,
+        serialNumber,
+      },
+      {
+        onSuccess: (sale: any) => {
+          const newSaleId = sale?._id
+          if (!newSaleId) {
+            showNotificationToast({
+              message: 'Failed to start payment. Please try again.',
+              mode: 'error',
+            })
+            return
+          }
+
+          const continueToWaiting = () => {
+            recordCopy.mutate({ serialNumber, accountNumber, bankName })
+            // Mark copied so the flow resumes at "waiting", then hand off.
+            recordSaleCopy.mutate(newSaleId, {
+              onSettled: () => {
+                router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
+              },
+            })
+          }
+
+          if (authUser?.id) {
+            claimSalePayer.mutate(
+              { saleId: newSaleId },
+              { onSettled: continueToWaiting },
+            )
+          } else {
+            continueToWaiting()
+          }
+        },
+        onError: () => {
+          showNotificationToast({
+            message: 'Failed to start payment. Please try again.',
+            mode: 'error',
+          })
+        },
+      },
+    )
   }
 
   return (
-    <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
-      <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
-        <PageHeader
-          title="Transfer to"
-          showDropdown
-          onTitleClick={handleOpenBankDrawer}
-          onShareClick={() => {
-            openDrawer({
-              type: 'share-transfer',
-              props: {
-                businessName: merchant.businessName,
-                serialNumber,
-                profilePhotoUrl: merchant.profilePhotoUrl,
-              },
-            })
-          }}
-        />
-
-        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
-          {sortedBankAccounts.length > 0 && (
-            <MerchantCardCarousel
-              bankAccounts={sortedBankAccounts}
-              merchantInfo={{
-                profilePhotoUrl: merchant.profilePhotoUrl,
-                businessName: merchant.businessName,
-                bankAccountCount: merchant.bankAccounts?.length || 0,
-              }}
-              variant="payment-centered"
-              initialIndex={selectedBankIndex}
-              onIndexChange={setSelectedBankIndex}
-              clickableCard={true}
-              onBankAccountsClick={handleOpenBankDrawer}
-              onCopy={(account) => {
-                trackCopyEvent(account.accountNumber, account.bankName)
-                openDrawer({
-                  type: 'bank-transfer',
-                  props: {
-                    accountNumber: account.accountNumber,
-                    bankName: account.bankName,
-                    accountName: account.accountName,
-                    onCopy: () =>
-                      trackCopyEvent(account.accountNumber, account.bankName),
-                  },
-                })
-              }}
-            />
-          )}
-        </div>
-
-        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
-          <div className="max-w-125 mx-auto p-4 pb-6">
-            <Button
-              className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
-              onClick={handleSendWithBankApp}
-            >
-              Send with my bank app
-            </Button>
-
-            <Link
-              href="/signup"
-              className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
-            >
-              I want something like this for my business
-              <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+    <SalePayAmountScreen
+      merchant={merchant}
+      account={bankAccount}
+      onChangeAccount={handleOpenBankDrawer}
+      onCopy={handlePayAmountCopy}
+      onShare={() => {
+        openDrawer({
+          type: 'share-transfer',
+          props: {
+            businessName: merchant.businessName,
+            serialNumber,
+            profilePhotoUrl: merchant.profilePhotoUrl,
+          },
+        })
+      }}
+      onClose={() => router.push('/')}
+      isSubmitting={createPendingSale.isPending || recordSaleCopy.isPending}
+    />
   )
 }

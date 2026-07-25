@@ -139,6 +139,33 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Glassmorphism gradient border: bright along the top-left / bottom-right
+     diagonal, fading out at the top-right and bottom-left corners. Uses a
+     masked pseudo-element so the fill stays clear. Element needs its own
+     border-radius (inherited here). */
+  .glass-border {
+    position: relative;
+  }
+  .glass-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      to bottom right,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0) 50%,
+      rgba(255, 255, 255, 0.6) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
 }
 
 /* Override Sonner toast width to fit content and ensure perfect centering within 500px layout */

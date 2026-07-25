@@ -42,12 +42,14 @@ export function ReceiptDrawer({
       })
       showNotificationToast({
         message: 'Receipt downloaded successfully',
+        mode: 'success',
         duration: 2000,
       })
     } catch (error) {
       console.error('Failed to download receipt:', error)
       showNotificationToast({
         message: 'Failed to download receipt',
+        mode: 'error',
         duration: 2000,
       })
     } finally {

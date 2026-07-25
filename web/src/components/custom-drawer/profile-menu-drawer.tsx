@@ -13,7 +13,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useAuthStore } from '@/services/auth'
+import { logoutEverywhere } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { useUserQRKits } from '@/services/qr'
 import { useUserProfile } from '@/services/users'
@@ -29,7 +29,6 @@ interface ProfileMenuDrawerProps {
 export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const { data: profile } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
-  const logout = useAuthStore((state) => state.logout)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: salesStats } = useSalesStats()
   const [soundEnabled, setSoundEnabled] = usePreference('soundEnabled', true)
@@ -56,15 +55,20 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
   const handleSignOut = () => {
     closeDrawer()
-    logout()
-    window.location.href = '/'
+    // Revoke the refresh token server-side, then clear local state.
+    logoutEverywhere().finally(() => {
+      window.location.href = '/'
+    })
   }
 
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${qrKitsData?.data?.[0]?.serialNumber || 'profile'}`
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl)
-    showNotificationToast({ message: 'Link copied to clipboard' })
+    showNotificationToast({
+      message: 'Link copied to clipboard',
+      mode: 'success',
+    })
   }
 
   const handleShare = async () => {
@@ -113,7 +117,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         <Link
           href="/profile"
           onClick={closeDrawer}
-          className="w-full bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
+          className="w-full bg-white rounded-[12px] p-3 flex items-center gap-3 shadow-[0px_4px_8px_0px_#0000000A]"
         >
           <div className="w-12 h-12 rounded-full bg-[#ced7e1] flex items-center justify-center">
             {profile?.profilePhotoUrl ? (
@@ -263,7 +267,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           <Link
             href="/recents"
             onClick={closeDrawer}
-            className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D]"
+            className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-[12px] shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D]"
           >
             <Image
               src="/icons/history_brown.svg"
@@ -287,7 +291,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
       {/* Menu Sections */}
       <div className="flex-1 px-4 space-y-3">
         {/* Section 1: Main navigation */}
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <Link
             href="/record-sale"
             onClick={closeDrawer}
@@ -367,7 +371,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             onClick={handleBankAccountsClick}
@@ -430,7 +434,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-2.5 px-4 border-b border-[#F1F1F1]"
@@ -463,7 +467,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         </div>
 
         {/* Section 2: Support */}
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-3.5 px-4 border-b border-[#F1F1F1]"
@@ -499,8 +503,10 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
           </button>
 
-          <button
-            type="button"
+          {/* Entry point into the merchant plans (LITE / PRO / PRO MAX) */}
+          <Link
+            href="/plans"
+            onClick={closeDrawer}
             className="w-full flex items-center justify-between gap-3 py-3.5 px-4"
           >
             <div className="flex items-center gap-2">
@@ -526,11 +532,11 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
               </p>
               <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
             </div>
-          </button>
+          </Link>
         </div>
 
         {/* Section 3: Social */}
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden">
           <button
             type="button"
             className="w-full flex items-center gap-3 py-3.5 px-4 border-b border-[#F1F1F1]"
@@ -582,7 +588,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </a>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
+        <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-7">
           <button
             type="button"
             onClick={handleSignOut}

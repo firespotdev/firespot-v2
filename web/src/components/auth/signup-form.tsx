@@ -14,6 +14,7 @@ import {
   SelectItem,
   Button,
   PhoneInput,
+  Spinner,
 } from '@/components/ui'
 import { useBanks, useResolveAccount } from '@/services/paystack'
 
@@ -35,6 +36,8 @@ interface SignupFormProps {
   onAccountErrorChange?: (error: string | undefined) => void
   onReferralErrorChange?: (error: string | undefined) => void
   loginUrl?: string
+  title?: string
+  loginPrompt?: string
 }
 
 export function SignupForm({
@@ -55,6 +58,8 @@ export function SignupForm({
   onAccountErrorChange,
   onReferralErrorChange,
   loginUrl = '/login',
+  title = 'Get your own Firespot QRKit',
+  loginPrompt = 'Already have one?',
 }: SignupFormProps) {
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const resolveAccount = useResolveAccount()
@@ -142,7 +147,7 @@ export function SignupForm({
 
   return (
     <div className="h-dvh bg-white">
-      <div className="max-w-[500px] mx-auto h-full pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
+      <div className="max-w-125 mx-auto h-full pt-8 pb-4 px-4 flex flex-col items-center font-satoshi">
         <Image
           src="/icons/firespot_logo.svg"
           alt="firespot logo"
@@ -151,7 +156,7 @@ export function SignupForm({
           className="mb-6"
         />
         <h1 className="font-bold text-xl text-black -tracking-[0.4px]">
-          Get your own Firespot QRKit
+          {title}
         </h1>
         <p className="font-medium text-sm text-[#00000080] max-w-[345px] text-center mb-6">
           Customers send money faster. You look more professional.
@@ -217,7 +222,7 @@ export function SignupForm({
             />
 
             {resolveAccount.isSuccess && (
-              <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-[8px] px-4">
+              <div className="h-11 bg-[#E9F9F0] flex items-center gap-2 mt-2 rounded-xl px-4">
                 <CircleCheck
                   className="w-5 h-5 text-[#ffffff]"
                   fill="#24C166"
@@ -271,11 +276,11 @@ export function SignupForm({
           )}
 
           <Button type="submit" disabled={isLoading}>
-            {isLoading ? 'Creating account...' : 'Continue'}
+            {isLoading ? <Spinner /> : 'Continue'}
           </Button>
         </form>
         <p className="text-sm text-[#00000080] mt-4 font-bold font-satoshi">
-          Already have one?{' '}
+          {loginPrompt}{' '}
           <Link
             href={loginUrl}
             className="bg-linear-to-r from-[#D72483] to-[#FB5012] text-transparent bg-clip-text"

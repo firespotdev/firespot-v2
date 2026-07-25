@@ -13,7 +13,28 @@ export type DrawerContentType =
   | 'obtain-kit'
   | 'transaction-details'
   | 'checkout'
+  | 'checkout-sale'
   | 'confirm-cancel'
+  | 'variant-selector'
+  | 'split-payment'
+  | 'customer-select'
+  | 'collect-payment'
+  | 'customer-checkout'
+  | 'transaction-options'
+  | 'confirm-archive'
+  | 'send-reminder'
+  | 'repayment-summary'
+  | 'repayment-success'
+  | 'add-customer'
+  | 'account-switch'
+  | 'sale-receipt'
+  | 'activity-details'
+  | 'activity-options'
+  | 'verify-identity'
+  | 'plan-checkout'
+  | 'cancel-plan'
+  | 'sale-items'
+
 
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
@@ -27,6 +48,8 @@ export interface DrawerConfig {
 export interface DrawerState {
   isOpen: boolean
   config: DrawerConfig | null
+  configs: DrawerConfig[]
   openDrawer: (config: DrawerConfig) => void
-  closeDrawer: () => void
+  closeDrawer: (type?: DrawerContentType | unknown) => void
+  closeAllDrawers: () => void
 }
