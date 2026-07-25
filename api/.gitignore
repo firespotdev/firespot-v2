@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+build/
+
+scripts
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Cache
+.eslintcache
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+pnpm-debug.log*
+
+# Temp
+*.tmp
+*.temp
+
+src/admin/README.md
+changes.txt
