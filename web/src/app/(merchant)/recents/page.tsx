@@ -25,11 +25,6 @@ export default function RecentsPage() {
   const cancelSaleMutation = useCancelSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
-  const getRecentDescription = (sale: Sale) => {
-    const firstItemDescription = sale.items?.[0]?.productName?.trim()
-    return firstItemDescription || sale.description || 'New sale'
-  }
-
   const handleCancel = (saleId: string) => {
     openDrawer({
       type: 'confirm-cancel',
@@ -98,7 +93,6 @@ export default function RecentsPage() {
                   onCancel={() => handleCancel(sale._id)}
                   onClick={() => handleConfirm(sale._id)}
                   className={roundingClass}
-                  descriptionOverride={getRecentDescription(sale)}
                 />
               )
             })
@@ -133,7 +127,6 @@ export default function RecentsPage() {
                 key={sale._id}
                 sale={sale}
                 onClick={() => {}}
-                descriptionOverride={getRecentDescription(sale)}
               />
             ))
           ) : (

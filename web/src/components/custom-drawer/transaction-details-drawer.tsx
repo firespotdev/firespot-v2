@@ -13,6 +13,7 @@ import {
   PlusCircle,
   Bell,
   ChevronRight,
+  Loader2,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
@@ -26,7 +27,7 @@ import {
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
-import { getMerchantStatus } from '@/lib/utils/sales'
+import { getMerchantStatus, getSaleDescription } from '@/lib/utils/sales'
 
 import { cn, formatCurrency } from '@/lib/utils'
 
@@ -54,6 +55,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
   const isOutstanding = merchantStatus === 'Owing'
   const isConfirmed = merchantStatus === 'Paid'
   const isArchived = merchantStatus === 'Archived'
+  const isUnconfirmed = merchantStatus === 'Unconfirmed'
 
   const amountPaid = useMemo(() => {
     if (sale.amountPaid !== undefined && sale.amountPaid !== null) {
@@ -96,7 +98,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
     <div className="flex flex-col h-full font-satoshi bg-white">
       {/* Header */}
       <div className="shrink-0 p-3 text-black border-b border-[#f1f1f1] w-full text-center flex justify-between items-center bg-white">
-        <CircularIconButton icon="arrow-left" size="sm" onClick={closeDrawer} />
+        <CircularIconButton icon="arrow-left" size="md" onClick={closeDrawer} />
         <h2 className="text-base font-bold">Transaction details</h2>
         <CircularIconButton
           icon={<MoreVertical size={20} />}
@@ -160,12 +162,14 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                     {isConfirmed ? '+ ' : ''}NGN{' '}
                     {formatCurrency(sale.amount || 0)}
                   </h3>
-                  {merchantStatus === 'Paid' ? null : (
+                  {merchantStatus === 'Paid' || isUnconfirmed ? null : (
                     <StatusBadge status={merchantStatus} />
                   )}
                 </div>
                 <p className="text-[14px] text-[#898A8D] font-medium">
-                  Sale recorded successfully
+                  {isUnconfirmed
+                    ? 'Waiting for confirmation'
+                    : 'Sale recorded successfully'}
                 </p>
               </>
             )}
@@ -284,7 +288,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                     Description
                   </span>
                   <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
-                    {sale.description || 'New sale'}
+                    {getSaleDescription(sale)}
                   </span>
                 </div>
               </>
@@ -299,18 +303,30 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                     <div
                       className={cn(
                         'w-4 h-4 rounded-full flex items-center justify-center',
-                        isArchived ? 'bg-[#9CA3AF]' : 'bg-[#24C166]',
+                        isArchived
+                          ? 'bg-[#9CA3AF]'
+                          : isUnconfirmed
+                            ? 'bg-[#BB8123]'
+                            : 'bg-[#24C166]',
                       )}
                     >
-                      <Check className="w-2.5 h-2.5 text-white stroke-[3.5px]" />
+                      {isUnconfirmed ? (
+                        <Loader2 className="w-2.5 h-2.5 text-white stroke-[3px] animate-spin" />
+                      ) : (
+                        <Check className="w-2.5 h-2.5 text-white stroke-[3.5px]" />
+                      )}
                     </div>
                     <span
                       className={cn(
                         'text-[14px] font-medium',
-                        isArchived ? 'text-[#9CA3AF]' : 'text-[#24C166]',
+                        isArchived
+                          ? 'text-[#9CA3AF]'
+                          : isUnconfirmed
+                            ? 'text-[#BB8123]'
+                            : 'text-[#24C166]',
                       )}
                     >
-                      {isArchived ? 'Archived' : 'Paid'}
+                      {merchantStatus}
                     </span>
                   </div>
                 </div>
@@ -342,7 +358,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
                     Description
                   </span>
                   <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
-                    {sale.description || 'No description'}
+                    {getSaleDescription(sale, 'No description')}
                   </span>
                 </div>
               </>

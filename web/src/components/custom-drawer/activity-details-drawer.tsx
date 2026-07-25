@@ -26,8 +26,9 @@ import {
   useAddFavorite,
   useRemoveFavorite,
 } from '@/services/favorites'
-import { resolveSaleMerchant, saleItemCount } from '@/lib/utils/customer-sale'
+import { resolveSaleMerchant } from '@/lib/utils/customer-sale'
 import { formatCurrency } from '@/lib/utils'
+import { getSaleDescription } from '@/lib/utils/sales'
 
 interface ActivityDetailsDrawerProps {
   sale: CustomerSale
@@ -81,7 +82,6 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
   )
 
   const amount = sale.amount || 0
-  const itemCount = saleItemCount(sale)
 
   const formattedDate = useMemo(() => {
     const raw = sale.recordedAt || sale.createdAt
@@ -248,9 +248,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
               <DetailRow label="Location">{sale.location}</DetailRow>
             )}
             <DetailRow label="Description">
-              {itemCount > 0
-                ? `${itemCount} item${itemCount === 1 ? '' : 's'}`
-                : sale.description || 'Payment'}
+              {getSaleDescription(sale, 'Payment')}
             </DetailRow>
             <DetailRow label="Via">{viaLabel}</DetailRow>
             {sale.paymentMethod && (

@@ -54,8 +54,27 @@ export const getAmountLabel = (sale: Sale) => {
   return 'Enter amount'
 }
 
-export const getStatusDescription = (sale: Sale) => {
-  if (sale.description) return sale.description
-  return 'New sale'
+type SaleDescriptionSource = Pick<Sale, 'description' | 'items'>
+
+export const getSaleDescription = (
+  sale?: SaleDescriptionSource | null,
+  fallback = 'New sale',
+) => {
+  const firstItem = sale?.items?.[0]?.productName?.trim()
+
+  if (firstItem) {
+    const otherItemCount = Math.max(0, (sale?.items?.length || 0) - 1)
+    if (otherItemCount > 0) {
+      return `${firstItem} + ${otherItemCount} ${
+        otherItemCount === 1 ? 'other' : 'others'
+      }`
+    }
+    return firstItem
+  }
+
+  return sale?.description?.trim() || fallback
 }
 
+export const getStatusDescription = (sale: Sale) => {
+  return getSaleDescription(sale)
+}

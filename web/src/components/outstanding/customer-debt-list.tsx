@@ -11,6 +11,7 @@ import {
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { formatCurrency } from '@/lib/utils'
+import { getSaleDescription } from '@/lib/utils/sales'
 import Link from 'next/link'
 
 interface CustomerDebtListProps {
@@ -143,9 +144,7 @@ export function CustomerDebtList({
                   (sale.amount
                     ? Math.max(0, sale.amount - (sale.amountPaid || 0))
                     : 0)
-                const desc =
-                  sale.description ||
-                  `${sale.items?.length || 0} item${sale.items?.length !== 1 ? 's' : ''}`
+                const desc = getSaleDescription(sale)
                 const dateText = sale.dueDate
                   ? `Due on ${new Date(sale.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
                   : 'No due date'
@@ -201,9 +200,7 @@ export function CustomerDebtList({
             <AppCard rounded="16" divided className="flex flex-col">
               {repaidSales.map((sale: any) => {
                 const salePaid = sale.amountPaid ?? sale.amount ?? 0
-                const desc =
-                  sale.description ||
-                  `${sale.items?.length || 0} item${sale.items?.length !== 1 ? 's' : ''}`
+                const desc = getSaleDescription(sale)
                 const dateText = new Date(
                   sale.recordedAt || sale.createdAt,
                 ).toLocaleDateString('en-US', {

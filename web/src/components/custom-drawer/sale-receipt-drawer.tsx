@@ -7,6 +7,7 @@ import { showNotificationToast } from '@/components/ui'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatCurrency } from '@/lib/utils'
+import { getSaleDescription } from '@/lib/utils/sales'
 
 interface SaleReceiptDrawerProps {
   sale: PublicSale
@@ -129,7 +130,7 @@ export function SaleReceiptDrawer({
                 Description
               </span>
               <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
-                {sale.description || 'No description'}
+                {getSaleDescription(sale, 'No description')}
               </span>
             </div>
           </div>

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { useSale } from '@/services/sales/hooks'
 import { useSubmitReport } from '@/services/reports/hooks'
 import { showNotificationToast } from '@/components/ui'
+import { getSaleDescription } from '@/lib/utils/sales'
 
 const DISPUTE_CATEGORIES = [
   'Payment not credited to my bank',
@@ -172,7 +173,7 @@ function DisputeReportPageContent() {
               </span>
             </div>
             <p className="text-xs text-[#00000060] mt-1 italic">
-              {sale.description || 'Firespot scan-to-pay transfer'}
+              {getSaleDescription(sale, 'Firespot scan-to-pay transfer')}
             </p>
           </div>
 
