@@ -36,9 +36,12 @@ import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
 import { RegisterFcmTokenDto } from "./dto/register-fcm-token.dto";
 import {
+  UpdateActiveHoursSetupDto,
   UpdateContactDto,
+  UpdateEmployeeSetupDto,
   UpdateFulfillmentDto,
   UpdateLocationDto,
+  UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
 
 @ApiTags("users")
@@ -487,6 +490,41 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "Location saved" })
   async updateLocation(@Request() req, @Body() dto: UpdateLocationDto) {
     return this.usersService.updateLocation(req.user.userId, dto);
+  }
+
+  @Patch("me/employees")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save employee setup roster draft" })
+  @ApiResponse({ status: 200, description: "Employee setup saved" })
+  async updateEmployeeSetup(
+    @Request() req,
+    @Body() dto: UpdateEmployeeSetupDto,
+  ) {
+    return this.usersService.updateEmployeeSetup(req.user.userId, dto);
+  }
+
+  @Patch("me/policies")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save shop policy choices" })
+  @ApiResponse({ status: 200, description: "Shop policies saved" })
+  async updateShopPolicies(@Request() req, @Body() dto: UpdateShopPoliciesDto) {
+    return this.usersService.updateShopPolicies(req.user.userId, dto);
+  }
+
+  @Patch("me/active-hours")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Save opening hours and appointment/reservation settings",
+  })
+  @ApiResponse({ status: 200, description: "Active hours setup saved" })
+  async updateActiveHoursSetup(
+    @Request() req,
+    @Body() dto: UpdateActiveHoursSetupDto,
+  ) {
+    return this.usersService.updateActiveHoursSetup(req.user.userId, dto);
   }
 
   @Post("me/shop/go-live")

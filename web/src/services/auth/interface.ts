@@ -20,6 +20,61 @@ export interface ShopMainAddress {
   insideMarket?: boolean
 }
 
+export type ShopDay = 'SUN' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT'
+
+export interface ShopDaySchedule {
+  day: ShopDay
+  enabled: boolean
+  opensAt?: string
+  closesAt?: string
+  closesNextDay: boolean
+}
+
+export interface EmployeeSetup {
+  employeeCount: number
+  staff: Array<{
+    name: string
+    phoneNumber: string
+    source: 'contacts'
+  }>
+  configuredAt?: string
+}
+
+export interface ShopPolicies {
+  returns: boolean
+  exchanges: boolean
+  cancellations: boolean
+  refunds: boolean
+  configuredAt?: string
+}
+
+export interface ActiveHoursSetup {
+  openingHours: {
+    useDifferentTimes: boolean
+    timezone: string
+    days: ShopDaySchedule[]
+  }
+  appointmentAndReservation: {
+    bookingType: 'SPACE' | 'APPOINTMENT'
+    bookableHours: {
+      days: ShopDaySchedule[]
+    }
+    capacity: {
+      guestsAtOnce?: number
+      largestGroup?: number
+      customersAtOnce?: number
+    }
+    instantConfirmation: boolean
+    freeCancellations: boolean
+    deposit: {
+      amount: number
+      depositType: 'FIXED' | 'PERCENTAGE'
+    }
+    freeCancellationHours?: number
+  }
+  configuredAt?: string
+}
+
 export interface User {
   id: string
   phoneNumber: string
@@ -38,6 +93,9 @@ export interface User {
   fulfillment?: ShopFulfillment | null
   mainAddress?: ShopMainAddress | null
   branchCount?: number | null
+  employeeSetup?: EmployeeSetup | null
+  shopPolicies?: ShopPolicies | null
+  activeHoursSetup?: ActiveHoursSetup | null
   shopIsLive?: boolean
   bankName?: string
   accountNumber?: string

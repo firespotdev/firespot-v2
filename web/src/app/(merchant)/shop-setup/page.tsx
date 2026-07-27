@@ -54,7 +54,17 @@ export default function ShopSetupPage() {
     ? Math.round((setup.completedCount / setup.total) * 100)
     : 0
 
-  const go = (destination: ChecklistDestination) => {
+  const go = (
+    destination: ChecklistDestination,
+    requiredTier?: 'PROMAX',
+  ) => {
+    if (
+      requiredTier === 'PROMAX' &&
+      catalog?.current.effectiveTier !== 'PROMAX'
+    ) {
+      router.push('/plans')
+      return
+    }
     if (destination.kind === 'route') router.push(destination.href)
     else if (destination.kind === 'drawer') {
       if (destination.drawer === 'bank-accounts') {
@@ -150,7 +160,11 @@ export default function ShopSetupPage() {
                   }
                   trailing={<StatusCircle state={done ? 'passed' : 'empty'} />}
                   disabled={locked}
-                  onClick={tappable ? () => go(meta.destination) : undefined}
+                  onClick={
+                    tappable
+                      ? () => go(meta.destination, meta.requiredTier)
+                      : undefined
+                  }
                   className={
                     tappable
                       ? 'p-3'

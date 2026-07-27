@@ -562,7 +562,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           <ChevronRight className="h-4 w-4 text-[#BDBDBD]" />
         </Link>
 
-        {merchantDataEnabled && <SetupShopCta />}
+        {merchantDataEnabled && <SetupShopCta onNavigate={closeDrawer} />}
 
         {/* Existing share card and actions intentionally remain unchanged. */}
         <div className="relative mb-3 flex items-center gap-4 overflow-hidden rounded-[12px] bg-white p-4 shadow-[0px_4px_8px_0px_#0000000A]">

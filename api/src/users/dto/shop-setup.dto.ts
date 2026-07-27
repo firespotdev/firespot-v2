@@ -1,9 +1,15 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
   IsEmail,
+  IsIn,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
+  Matches,
+  Max,
   MaxLength,
   Min,
   ValidateNested,
@@ -120,4 +126,164 @@ export class UpdateLocationDto {
   @IsInt()
   @Min(1)
   branchCount?: number;
+}
+
+class EmployeeContactDto {
+  @IsString()
+  @MaxLength(120)
+  name: string;
+
+  @IsString()
+  @Matches(/^\+234\d{10}$/, {
+    message: "Employee phone number must be a Nigerian number",
+  })
+  phoneNumber: string;
+
+  @IsIn(["contacts"])
+  source: "contacts";
+}
+
+export class UpdateEmployeeSetupDto {
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  employeeCount: number;
+
+  @IsArray()
+  @ArrayMaxSize(99)
+  @ValidateNested({ each: true })
+  @Type(() => EmployeeContactDto)
+  staff: EmployeeContactDto[];
+}
+
+export class UpdateShopPoliciesDto {
+  @IsBoolean()
+  returns: boolean;
+
+  @IsBoolean()
+  exchanges: boolean;
+
+  @IsBoolean()
+  cancellations: boolean;
+
+  @IsBoolean()
+  refunds: boolean;
+}
+
+export const SHOP_DAYS = [
+  "SUN",
+  "MON",
+  "TUE",
+  "WED",
+  "THU",
+  "FRI",
+  "SAT",
+] as const;
+
+class DayScheduleDto {
+  @IsIn(SHOP_DAYS)
+  day: (typeof SHOP_DAYS)[number];
+
+  @IsBoolean()
+  enabled: boolean;
+
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: "Opening time must use HH:mm",
+  })
+  opensAt?: string;
+
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/, {
+    message: "Closing time must use HH:mm",
+  })
+  closesAt?: string;
+
+  @IsBoolean()
+  closesNextDay: boolean;
+}
+
+class OpeningHoursDto {
+  @IsBoolean()
+  useDifferentTimes: boolean;
+
+  @IsString()
+  @MaxLength(80)
+  timezone: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DayScheduleDto)
+  days: DayScheduleDto[];
+}
+
+class BookableHoursDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DayScheduleDto)
+  days: DayScheduleDto[];
+}
+
+class BookingCapacityDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  guestsAtOnce?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  largestGroup?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  customersAtOnce?: number;
+}
+
+class BookingDepositDto {
+  @IsNumber()
+  @Min(0)
+  amount: number;
+
+  @IsIn(["FIXED", "PERCENTAGE"])
+  depositType: "FIXED" | "PERCENTAGE";
+}
+
+class AppointmentAndReservationDto {
+  @IsIn(["SPACE", "APPOINTMENT"])
+  bookingType: "SPACE" | "APPOINTMENT";
+
+  @ValidateNested()
+  @Type(() => BookableHoursDto)
+  bookableHours: BookableHoursDto;
+
+  @ValidateNested()
+  @Type(() => BookingCapacityDto)
+  capacity: BookingCapacityDto;
+
+  @IsBoolean()
+  instantConfirmation: boolean;
+
+  @IsBoolean()
+  freeCancellations: boolean;
+
+  @ValidateNested()
+  @Type(() => BookingDepositDto)
+  deposit: BookingDepositDto;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  freeCancellationHours?: number;
+}
+
+export class UpdateActiveHoursSetupDto {
+  @ValidateNested()
+  @Type(() => OpeningHoursDto)
+  openingHours: OpeningHoursDto;
+
+  @ValidateNested()
+  @Type(() => AppointmentAndReservationDto)
+  appointmentAndReservation: AppointmentAndReservationDto;
 }

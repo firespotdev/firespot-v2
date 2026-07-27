@@ -5,9 +5,12 @@ import { apiClient } from '@/lib/utils/axios'
 import type {
   GoLiveResponse,
   ShopSetupResponse,
+  UpdateActiveHoursSetupPayload,
   UpdateContactPayload,
+  UpdateEmployeeSetupPayload,
   UpdateFulfillmentPayload,
   UpdateLocationPayload,
+  UpdateShopPoliciesPayload,
 } from './interface'
 
 export const SHOP_SETUP_KEY = ['shop', 'setup']
@@ -28,6 +31,18 @@ export const shopApi = {
   },
   updateLocation: async (payload: UpdateLocationPayload) => {
     const res = await apiClient.patch('/users/me/location', payload)
+    return res.data
+  },
+  updateEmployeeSetup: async (payload: UpdateEmployeeSetupPayload) => {
+    const res = await apiClient.patch('/users/me/employees', payload)
+    return res.data
+  },
+  updatePolicies: async (payload: UpdateShopPoliciesPayload) => {
+    const res = await apiClient.patch('/users/me/policies', payload)
+    return res.data
+  },
+  updateActiveHours: async (payload: UpdateActiveHoursSetupPayload) => {
+    const res = await apiClient.patch('/users/me/active-hours', payload)
     return res.data
   },
   goLive: async (): Promise<GoLiveResponse> => {
@@ -63,6 +78,15 @@ export const useUpdateFulfillment = () =>
 
 export const useUpdateLocation = () =>
   useShopMutation<UpdateLocationPayload>(shopApi.updateLocation)
+
+export const useUpdateEmployeeSetup = () =>
+  useShopMutation<UpdateEmployeeSetupPayload>(shopApi.updateEmployeeSetup)
+
+export const useUpdatePolicies = () =>
+  useShopMutation<UpdateShopPoliciesPayload>(shopApi.updatePolicies)
+
+export const useUpdateActiveHours = () =>
+  useShopMutation<UpdateActiveHoursSetupPayload>(shopApi.updateActiveHours)
 
 export const useGoLive = () => {
   const queryClient = useQueryClient()

@@ -7,6 +7,8 @@ export type DrawerContentType =
   | 'profile-share'
   | 'recommend-business'
   | 'recommend-business-sms'
+  | 'day-time-editor'
+  | 'active-hours-booking'
   | 'receipt'
   | 'date-range-filter'
   | 'custom'

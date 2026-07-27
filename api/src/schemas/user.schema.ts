@@ -86,7 +86,7 @@ export class User extends Document {
   @Prop({ maxlength: 160 })
   businessDescription?: string;
 
-  // ---- Shop setup (contact, fulfilment, location, go-live) ----
+  // ---- Shop setup ----
 
   @Prop()
   businessEmail?: string;
@@ -147,6 +147,153 @@ export class User extends Document {
 
   @Prop()
   branchCount?: number;
+
+  // Employee setup is intentionally a persisted roster draft for now. It does
+  // not grant authentication or merchant permissions until the staff-access
+  // domain is implemented.
+  @Prop({
+    type: {
+      employeeCount: Number,
+      staff: [
+        {
+          name: String,
+          phoneNumber: String,
+          source: {
+            type: String,
+            enum: ["contacts"],
+            default: "contacts",
+          },
+          _id: false,
+        },
+      ],
+      configuredAt: Date,
+    },
+    _id: false,
+  })
+  employeeSetup?: {
+    employeeCount: number;
+    staff: Array<{
+      name: string;
+      phoneNumber: string;
+      source: "contacts";
+    }>;
+    configuredAt: Date;
+  };
+
+  @Prop({
+    type: {
+      returns: Boolean,
+      exchanges: Boolean,
+      cancellations: Boolean,
+      refunds: Boolean,
+      configuredAt: Date,
+    },
+    _id: false,
+  })
+  shopPolicies?: {
+    returns: boolean;
+    exchanges: boolean;
+    cancellations: boolean;
+    refunds: boolean;
+    configuredAt: Date;
+  };
+
+  @Prop({
+    type: {
+      openingHours: {
+        useDifferentTimes: Boolean,
+        timezone: String,
+        days: [
+          {
+            day: String,
+            enabled: Boolean,
+            opensAt: String,
+            closesAt: String,
+            closesNextDay: Boolean,
+            _id: false,
+          },
+        ],
+        _id: false,
+      },
+      appointmentAndReservation: {
+        bookingType: {
+          type: String,
+          enum: ["SPACE", "APPOINTMENT"],
+        },
+        bookableHours: {
+          days: [
+            {
+              day: String,
+              enabled: Boolean,
+              opensAt: String,
+              closesAt: String,
+              closesNextDay: Boolean,
+              _id: false,
+            },
+          ],
+          _id: false,
+        },
+        capacity: {
+          guestsAtOnce: Number,
+          largestGroup: Number,
+          customersAtOnce: Number,
+          _id: false,
+        },
+        instantConfirmation: Boolean,
+        freeCancellations: Boolean,
+        deposit: {
+          amount: Number,
+          depositType: {
+            type: String,
+            enum: ["FIXED", "PERCENTAGE"],
+          },
+          _id: false,
+        },
+        freeCancellationHours: Number,
+        _id: false,
+      },
+      configuredAt: Date,
+    },
+    _id: false,
+  })
+  activeHoursSetup?: {
+    openingHours: {
+      useDifferentTimes: boolean;
+      timezone: string;
+      days: Array<{
+        day: string;
+        enabled: boolean;
+        opensAt?: string;
+        closesAt?: string;
+        closesNextDay: boolean;
+      }>;
+    };
+    appointmentAndReservation: {
+      bookingType: "SPACE" | "APPOINTMENT";
+      bookableHours: {
+        days: Array<{
+          day: string;
+          enabled: boolean;
+          opensAt?: string;
+          closesAt?: string;
+          closesNextDay: boolean;
+        }>;
+      };
+      capacity: {
+        guestsAtOnce?: number;
+        largestGroup?: number;
+        customersAtOnce?: number;
+      };
+      instantConfirmation: boolean;
+      freeCancellations: boolean;
+      deposit: {
+        amount: number;
+        depositType: "FIXED" | "PERCENTAGE";
+      };
+      freeCancellationHours?: number;
+    };
+    configuredAt: Date;
+  };
 
   // Set once the merchant taps "Go live and start selling".
   @Prop({ default: false })

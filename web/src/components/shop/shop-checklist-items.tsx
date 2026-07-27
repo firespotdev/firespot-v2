@@ -30,6 +30,7 @@ export interface ChecklistItemMeta {
   /** Any CSS `background` — solid or gradient. */
   bg: string
   destination: ChecklistDestination
+  requiredTier?: 'PROMAX'
 }
 
 /**
@@ -78,7 +79,8 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
     subtitle: 'Give controlled access to your staff',
     Icon: <UsersThreeIcon weight="fill" size={24} color="white" />,
     bg: '#3B9BF5',
-    destination: { kind: 'none' },
+    destination: { kind: 'route', href: '/settings/employees' },
+    requiredTier: 'PROMAX',
   },
   contact: {
     title: 'Add contact details',
@@ -106,14 +108,14 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
     subtitle: 'Set your shop policies',
     Icon: <ScrollIcon weight="fill" size={24} color="white" />,
     bg: '#3B9BF5',
-    destination: { kind: 'none' },
+    destination: { kind: 'route', href: '/settings/policies' },
   },
   operatingHours: {
     title: 'Operating hours',
     subtitle: 'Setup opening and closing times',
     Icon: <HourglassMediumIcon weight="fill" size={24} color="white" />,
     bg: '#3B9BF5',
-    destination: { kind: 'none' },
+    destination: { kind: 'route', href: '/settings/active-hours' },
   },
   charges: {
     title: 'Charges & taxes',

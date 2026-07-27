@@ -26,8 +26,11 @@ import {
 } from "../merchant-plans/constants/plans";
 import {
   UpdateContactDto,
+  UpdateActiveHoursSetupDto,
+  UpdateEmployeeSetupDto,
   UpdateFulfillmentDto,
   UpdateLocationDto,
+  UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
 
 @Injectable()
@@ -201,6 +204,138 @@ export class UsersService {
     return { user: this.sanitizeUser(user) };
   }
 
+  async updateEmployeeSetup(userId: string, dto: UpdateEmployeeSetupDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    if (getEffectiveTier(user) !== "PROMAX") {
+      throw new HttpException(
+        "Employee setup is available on PRO MAX",
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    if (dto.staff.length !== dto.employeeCount - 1) {
+      throw new HttpException(
+        "Select one contact for every employee slot after the owner",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const normalizedPhones = dto.staff.map((staff) => staff.phoneNumber);
+    if (new Set(normalizedPhones).size !== normalizedPhones.length) {
+      throw new HttpException(
+        "The same employee cannot be added twice",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (normalizedPhones.includes(user.fullPhoneNumber)) {
+      throw new HttpException(
+        "The shop owner is already included",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    user.employeeSetup = {
+      employeeCount: dto.employeeCount,
+      staff: dto.staff,
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  async updateShopPolicies(userId: string, dto: UpdateShopPoliciesDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    user.shopPolicies = {
+      ...dto,
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  async updateActiveHoursSetup(userId: string, dto: UpdateActiveHoursSetupDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    const openingDays = dto.openingHours.days;
+    const bookingDays = dto.appointmentAndReservation.bookableHours.days;
+
+    const validateDays = (days: typeof openingDays, label: string) => {
+      if (days.length !== 7 || new Set(days.map((day) => day.day)).size !== 7) {
+        throw new HttpException(
+          `${label} must contain each day of the week`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const enabled = days.filter((day) => day.enabled);
+      if (enabled.length === 0) {
+        throw new HttpException(
+          `${label} must include at least one open day`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      for (const day of enabled) {
+        if (!day.opensAt || !day.closesAt || day.opensAt === day.closesAt) {
+          throw new HttpException(
+            `${label} requires different opening and closing times`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        day.closesNextDay = day.closesAt < day.opensAt;
+      }
+    };
+
+    validateDays(openingDays, "Opening hours");
+    validateDays(bookingDays, "Bookable hours");
+
+    const appointment = dto.appointmentAndReservation;
+    if (appointment.bookingType === "SPACE") {
+      if (
+        !appointment.capacity.guestsAtOnce ||
+        !appointment.capacity.largestGroup
+      ) {
+        throw new HttpException(
+          "Guest capacity and largest group are required",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (
+        appointment.capacity.largestGroup > appointment.capacity.guestsAtOnce
+      ) {
+        throw new HttpException(
+          "Largest group cannot exceed guests at once",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      appointment.capacity.customersAtOnce = undefined;
+    } else {
+      if (!appointment.capacity.customersAtOnce) {
+        throw new HttpException(
+          "Customer capacity is required",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      appointment.capacity.guestsAtOnce = undefined;
+      appointment.capacity.largestGroup = undefined;
+    }
+
+    if (
+      appointment.deposit.depositType === "PERCENTAGE" &&
+      appointment.deposit.amount > 100
+    ) {
+      throw new HttpException(
+        "Percentage deposit cannot exceed 100",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    user.activeHoursSetup = {
+      openingHours: dto.openingHours,
+      appointmentAndReservation: appointment,
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
   /** Marks the shop live. Reversible only by support for now. */
   async goLive(userId: string) {
     const user = await this.getMerchantOrThrow(userId);
@@ -214,8 +349,8 @@ export class UsersService {
 
   /**
    * The shop-setup checklist. Completion for each actionable item is derived
-   * here so the client renders a single server-owned source of truth. The six
-   * undesigned items are surfaced as `locked` and excluded from the count.
+   * here so the client renders a single server-owned source of truth. Items
+   * without an implemented setup flow remain locked and excluded from totals.
    */
   async getShopSetup(userId: string) {
     const user = await this.getMerchantOrThrow(userId);
@@ -232,6 +367,7 @@ export class UsersService {
     const social = user.socialLinks || {};
     const hasSocial = Object.values(social).some((v) => Boolean(v));
 
+    const employeeEligible = getEffectiveTier(user) === "PROMAX";
     const actionable = [
       {
         key: "about",
@@ -257,21 +393,38 @@ export class UsersService {
       },
       { key: "firstItem", done: productCount > 0 },
       { key: "qrKit", done: activeKitCount > 0 },
+      {
+        key: "policies",
+        done: Boolean(user.shopPolicies?.configuredAt),
+      },
+      {
+        key: "operatingHours",
+        done: Boolean(user.activeHoursSetup?.configuredAt),
+      },
+      ...(employeeEligible
+        ? [
+            {
+              key: "employees",
+              done: Boolean(user.employeeSetup?.configuredAt),
+            },
+          ]
+        : []),
     ].map((item) => ({ ...item, locked: false }));
 
-    const locked = [
-      "employees",
-      "bookings",
-      "policies",
-      "operatingHours",
-      "charges",
-      "suppliers",
-    ].map((key) => ({ key, done: false, locked: true }));
+    const locked = ["bookings", "charges", "suppliers"].map((key) => ({
+      key,
+      done: false,
+      locked: true,
+    }));
+
+    const gated = employeeEligible
+      ? []
+      : [{ key: "employees", done: false, locked: false }];
 
     const completedCount = actionable.filter((i) => i.done).length;
 
     return {
-      items: [...actionable, ...locked],
+      items: [...actionable, ...gated, ...locked],
       completedCount,
       total: actionable.length,
       isLive: user.shopIsLive === true,
@@ -697,6 +850,9 @@ export class UsersService {
       fulfillment: user.fulfillment || null,
       mainAddress: user.mainAddress || null,
       branchCount: user.branchCount ?? null,
+      employeeSetup: user.employeeSetup || null,
+      shopPolicies: user.shopPolicies || null,
+      activeHoursSetup: user.activeHoursSetup || null,
       shopIsLive: user.shopIsLive === true,
       merchantSlug: user.merchantSlug,
       availableKitEntitlements: user.availableKitEntitlements || 0,

@@ -49,6 +49,8 @@ import { VerifyIdentityDrawer } from './verify-identity-drawer'
 import { PlanCheckoutDrawer } from './plan-checkout-drawer'
 import { CancelPlanDrawer } from './cancel-plan-drawer'
 import { SaleItemsDrawer } from './sale-items-drawer'
+import { DayTimeEditorDrawer } from './day-time-editor-drawer'
+import { ActiveHoursBookingDrawer } from './active-hours-booking-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -110,6 +112,19 @@ const DRAWER_CONFIG: Record<
     title: '',
     direction: 'bottom',
     Content: RecommendBusinessSmsDrawer,
+    noHeader: true,
+  },
+  'day-time-editor': {
+    title: '',
+    direction: 'bottom',
+    Content: DayTimeEditorDrawer,
+    noHeader: true,
+  },
+  'active-hours-booking': {
+    title: '',
+    direction: 'bottom',
+    Content: ActiveHoursBookingDrawer,
+    fullScreen: true,
     noHeader: true,
   },
   receipt: {

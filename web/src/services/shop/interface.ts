@@ -1,6 +1,9 @@
 import type {
+  ActiveHoursSetup,
+  EmployeeSetup,
   ShopFulfillment,
   ShopMainAddress,
+  ShopPolicies,
   ShopSocialLinks,
 } from '../auth/interface'
 
@@ -20,13 +23,13 @@ export type ShopSetupKey =
   | 'contact'
   | 'fulfillment'
   | 'locations'
+  | 'employees'
+  | 'policies'
+  | 'operatingHours'
   | 'firstItem'
   | 'qrKit'
   // locked / coming soon
-  | 'employees'
   | 'bookings'
-  | 'policies'
-  | 'operatingHours'
   | 'charges'
   | 'suppliers'
 
@@ -49,6 +52,13 @@ export type UpdateFulfillmentPayload = ShopFulfillment
 export interface UpdateLocationPayload extends ShopMainAddress {
   branchCount?: number
 }
+
+export type UpdateEmployeeSetupPayload = Omit<EmployeeSetup, 'configuredAt'>
+export type UpdateShopPoliciesPayload = Omit<ShopPolicies, 'configuredAt'>
+export type UpdateActiveHoursSetupPayload = Omit<
+  ActiveHoursSetup,
+  'configuredAt'
+>
 
 export interface GoLiveResponse {
   shopIsLive: boolean

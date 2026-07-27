@@ -10,34 +10,12 @@ import {
   showNotificationToast,
 } from '@/components/ui'
 import { ShopAdd } from 'iconsax-reactjs'
+import { useContactPicker } from '@/hooks/use-contact-picker'
 
 interface RecommendBusinessSmsDrawerProps {
   recommendUrl: string
   businessName: string
   closeDrawer: () => void
-}
-
-interface ContactPickerNavigator extends Navigator {
-  contacts?: {
-    select: (
-      properties: string[],
-      options?: { multiple?: boolean },
-    ) => Promise<Array<{ tel?: string[] }>>
-  }
-}
-
-function normalizePhoneNumber(phoneNumber: string) {
-  const digits = phoneNumber.replace(/\D/g, '')
-
-  if (digits.startsWith('234')) {
-    return digits.slice(3)
-  }
-
-  if (digits.startsWith('0')) {
-    return digits.slice(1)
-  }
-
-  return digits
 }
 
 export function RecommendBusinessSmsDrawer({
@@ -46,37 +24,29 @@ export function RecommendBusinessSmsDrawer({
   closeDrawer,
 }: RecommendBusinessSmsDrawerProps) {
   const [phoneNumber, setPhoneNumber] = useState('')
+  const { selectContacts } = useContactPicker()
   const isValid = phoneNumber.length >= 10
 
   const smsBody = `${businessName} recommends Firespot for your business. Continue here: ${recommendUrl}`
 
   const handleSelectContact = async () => {
-    const contactNavigator = navigator as ContactPickerNavigator
-
-    if (!contactNavigator.contacts?.select) {
+    const result = await selectContacts()
+    if (result.status === 'unsupported') {
       showNotificationToast({
         message: 'Contact selection is not supported on this device',
         mode: 'error',
       })
       return
     }
-
-    try {
-      const contacts = await contactNavigator.contacts.select(['tel'], {
-        multiple: false,
+    if (result.status === 'error') {
+      showNotificationToast({
+        message: 'Could not select contact',
+        mode: 'error',
       })
-      const selectedPhone = contacts[0]?.tel?.[0]
-
-      if (selectedPhone) {
-        setPhoneNumber(normalizePhoneNumber(selectedPhone))
-      }
-    } catch (error) {
-      if ((error as Error).name !== 'AbortError') {
-        showNotificationToast({
-          message: 'Could not select contact',
-          mode: 'error',
-        })
-      }
+      return
+    }
+    if (result.status === 'selected') {
+      setPhoneNumber(result.contacts[0].phoneNumber.replace(/^\+234/, ''))
     }
   }
 
