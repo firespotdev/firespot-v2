@@ -38,7 +38,7 @@ export function SetupShopCta() {
   return (
     <Link
       href="/shop-setup"
-      className="w-full flex items-center gap-3 px-3 py-2.5 border-[3px] border-[#FFFFFF99] rounded-[16px] mb-2 bg-linear-to-r from-[#FB5012] to-[#D72483] shadow-[0px_4px_8px_0px_#0000000A]"
+      className="w-full flex items-center gap-3 px-3 py-2.5 border-[3px] border-[#FFFFFF99] rounded-[16px] mb-3 bg-linear-to-r from-[#FB5012] to-[#D72483] shadow-[0px_4px_8px_0px_#0000000A]"
     >
       <span className="w-9 h-9 rounded-[10px] bg-[#0000003D] flex items-center justify-center">
         <Shop size={24} color="white" />

@@ -5,6 +5,8 @@ export type DrawerContentType =
   | 'bank-transfer'
   | 'share-transfer'
   | 'profile-share'
+  | 'recommend-business'
+  | 'recommend-business-sms'
   | 'receipt'
   | 'date-range-filter'
   | 'custom'

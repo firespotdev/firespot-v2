@@ -114,7 +114,7 @@ export function ProfileShareDrawer({
               <QRCodeSVG
                 value={shareUrl}
                 size={240}
-                level="H"
+                level="L"
                 fgColor="#000000"
                 includeMargin={false}
                 style={{ width: '100%', height: 'auto' }}

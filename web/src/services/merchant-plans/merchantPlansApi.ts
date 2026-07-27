@@ -62,10 +62,11 @@ export const MerchantPlansApi = {
 
 export const PLAN_CATALOG_KEY = ['merchant-plans']
 
-export const usePlanCatalog = () => {
+export const usePlanCatalog = (enabled = true) => {
   return useQuery({
     queryKey: PLAN_CATALOG_KEY,
     queryFn: () => MerchantPlansApi.getCatalog(),
+    enabled,
   })
 }
 

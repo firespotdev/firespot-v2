@@ -39,10 +39,17 @@ export const useCustomerHistory = () => {
   });
 };
 
-export const useSalesStats = (params?: Record<string, any>) => {
+export const useSalesStats = <TParams extends object = Record<string, never>>(
+  params?: TParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: ['sales-stats', params],
-    queryFn: () => SalesApi.getSalesStats(params),
+    queryFn: () =>
+      SalesApi.getSalesStats(
+        params as Record<string, string | number | boolean | undefined>,
+      ),
+    enabled: options?.enabled,
   });
 };
 
@@ -195,10 +202,11 @@ export const useCustomerOutstandingSales = (customerId?: string) => {
   });
 };
 
-export const useOutstandingSummary = () => {
+export const useOutstandingSummary = (enabled = true) => {
   return useQuery({
     queryKey: ['sales-outstanding-summary'],
     queryFn: () => SalesApi.getOutstandingSummary(),
+    enabled,
   });
 };
 

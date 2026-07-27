@@ -19,6 +19,8 @@ import { SelectBankDrawer } from './select-bank-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
 import { ShareTransferDrawer } from './share-transfer-drawer'
 import { ProfileShareDrawer } from './profile-share-drawer'
+import { RecommendBusinessDrawer } from './recommend-business-drawer'
+import { RecommendBusinessSmsDrawer } from './recommend-business-sms-drawer'
 import { ReceiptDrawer } from './receipt-drawer'
 import { DateRangeFilterDrawer } from './date-range-filter-drawer'
 import { PaymentMethodDrawer } from './payment-method-drawer'
@@ -55,7 +57,7 @@ const DRAWER_CONFIG: Record<
     title: string
     direction?: DrawerDirection
     HeaderLeft?: React.ComponentType
-    Content: React.ComponentType<any>
+    Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
     hideHandle?: boolean
@@ -94,6 +96,20 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     Content: ProfileShareDrawer,
     fullScreen: true,
+    noHeader: true,
+  },
+  'recommend-business': {
+    title: '',
+    direction: 'right',
+    Content: RecommendBusinessDrawer,
+    fullScreen: true,
+    noHeader: true,
+    hideHandle: true,
+  },
+  'recommend-business-sms': {
+    title: '',
+    direction: 'bottom',
+    Content: RecommendBusinessSmsDrawer,
     noHeader: true,
   },
   receipt: {
@@ -432,6 +448,7 @@ export function CustomDrawer() {
               'variant-selector',
               'repayment-summary',
               'send-reminder',
+              'recommend-business-sms',
               'add-customer',
               'plan-checkout',
               'cancel-plan',
