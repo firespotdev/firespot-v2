@@ -22,6 +22,7 @@ export function hasPersonalIdentity(user: User | null | undefined): boolean {
  * - Incomplete onboarding otherwise goes to the name screen first (preserving
  *   any deep-link redirect for after onboarding).
  * - Deep links (e.g. /pay/XYZ from a scanned QR) take priority.
+ * - Merchants with an unsatisfied requirement for their paid tier resume KYC.
  * - Otherwise merchants land on their business profile, personal users on home.
  */
 export function getPostAuthDestination({
@@ -61,6 +62,10 @@ export function getPostAuthDestination({
 
   if (redirectPath) {
     return redirectPath
+  }
+
+  if (user?.role === 'merchant' && user.nextKycStep) {
+    return '/verify'
   }
 
   return user?.role === 'merchant' ? '/profile' : '/home'

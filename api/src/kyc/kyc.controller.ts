@@ -8,7 +8,12 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger'
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { KycService } from './kyc.service'
@@ -23,6 +28,12 @@ class VerifyCacDto {
   @IsString()
   @IsOptional()
   businessType?: string
+}
+
+class MarkKycSessionSubmittedDto {
+  @IsString()
+  @IsNotEmpty()
+  jobId: string
 }
 
 @ApiTags('kyc')
@@ -53,6 +64,17 @@ export class KycController {
     return this.kycService.createSession(req.user.userId)
   }
 
+  @Post('session/submitted')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Mark a hosted SmileID session as submitted' })
+  async markSessionSubmitted(
+    @Request() req,
+    @Body() dto: MarkKycSessionSubmittedDto,
+  ) {
+    return this.kycService.markSessionSubmitted(req.user.userId, dto.jobId)
+  }
+
   @Post('cac')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
@@ -64,7 +86,9 @@ export class KycController {
   @Post('reconcile/:check')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Re-poll SmileID for a check whose callback was missed' })
+  @ApiOperation({
+    summary: 'Re-poll SmileID for a check whose callback was missed',
+  })
   async reconcile(@Request() req, @Param('check') check: string) {
     return this.kycService.reconcile(req.user.userId, check as KycCheck)
   }
@@ -79,7 +103,10 @@ export class KycController {
   @Post(['callback', 'smileid/callback'])
   @ApiOperation({ summary: 'SmileID async job result callback' })
   @ApiResponse({ status: 201, description: 'Callback received' })
-  async callback(@Body() payload: any, @Headers() headers: Record<string, string>) {
+  async callback(
+    @Body() payload: any,
+    @Headers() headers: Record<string, string>,
+  ) {
     const signature = payload?.signature || headers['x-smile-signature']
     const timestamp = payload?.timestamp || headers['x-smile-timestamp']
 

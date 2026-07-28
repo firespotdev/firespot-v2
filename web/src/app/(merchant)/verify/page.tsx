@@ -3,9 +3,8 @@
 import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from '@bprogress/next/app'
-import { ArrowLeft, ShieldCheck } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import {
-  AppCard,
   Button,
   LoaderCircle,
   Spinner,
@@ -15,6 +14,7 @@ import {
 import {
   useKycStatus,
   useCreateKycSession,
+  useMarkKycSessionSubmitted,
   useVerifyCac,
   type KycSessionResponse,
 } from '@/services/kyc'
@@ -32,15 +32,26 @@ function compactNaira(amount: number): string {
   return `₦${amount}`
 }
 
+function apiErrorMessage(error: unknown, fallback: string): string {
+  return (
+    (error as { response?: { data?: { message?: string } } })?.response?.data
+      ?.message || fallback
+  )
+}
+
 function VerifyContent() {
   const router = useRouter()
   // Poll while incomplete so async SmileID callbacks land without a refresh.
   const { data: status, isLoading, refetch } = useKycStatus(true)
   const { data: catalog } = usePlanCatalog()
   const createSession = useCreateKycSession()
+  const markSessionSubmitted = useMarkKycSessionSubmitted()
   const verifyCac = useVerifyCac()
 
   const [session, setSession] = useState<KycSessionResponse | null>(null)
+  const [locallySubmittedCheck, setLocallySubmittedCheck] = useState<
+    KycSessionResponse['check'] | null
+  >(null)
   const [rcValue, setRcValue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -70,8 +81,15 @@ function VerifyContent() {
   }
 
   const { steps, nextStep, nextStepMode, isComplete } = status
-  const rows = buildVerificationRows(steps)
+  const rows = buildVerificationRows(steps).map((row) =>
+    row.sourceKey === locallySubmittedCheck
+      ? { ...row, isVerifying: true, isResumable: false }
+      : row,
+  )
   const isVerificationConfirming = rows.some((row) => row.isVerifying)
+  const isResuming = rows.some(
+    (row) => row.sourceKey === nextStep?.key && row.isResumable,
+  )
 
   // The cap is what the merchant is unlocking, so it comes from their tier
   // rather than being hardcoded.
@@ -86,10 +104,8 @@ function VerifyContent() {
     setError(null)
     createSession.mutate(undefined, {
       onSuccess: (res) => setSession(res),
-      onError: (err: any) =>
-        setError(
-          err?.response?.data?.message || 'Could not start verification.',
-        ),
+      onError: (err: unknown) =>
+        setError(apiErrorMessage(err, 'Could not start verification.')),
     })
   }
 
@@ -109,8 +125,8 @@ function VerifyContent() {
           setRcValue('')
           refetch()
         },
-        onError: (err: any) =>
-          setError(err?.response?.data?.message || 'Could not verify CAC.'),
+        onError: (err: unknown) =>
+          setError(apiErrorMessage(err, 'Could not verify CAC.')),
       },
     )
   }
@@ -153,9 +169,17 @@ function VerifyContent() {
             <SmileIdEmbed
               session={session}
               onSuccess={() => {
+                const submittedSession = session
+                setLocallySubmittedCheck(submittedSession.check)
                 setSession(null)
-                //showNotificationToast({ message: 'Submitted — checking…' })
-                refetch()
+                markSessionSubmitted.mutate(
+                  { jobId: submittedSession.jobId },
+                  {
+                    onSettled: () => {
+                      refetch().finally(() => setLocallySubmittedCheck(null))
+                    },
+                  },
+                )
               }}
               onClose={() => {
                 setSession(null)
@@ -185,7 +209,7 @@ function VerifyContent() {
 
             <div className="mt-auto pt-6">
               {isComplete ? (
-                <div className="border-t border-[#F1F1F1] rounded-t-[12px] px-4 pt-4 pb-2">
+                <div className="border-t border-[#F1F1F1] rounded-t-[12px] p-4">
                   <div className="flex flex-col items-center text-center">
                     <p className="text-xl font-bold text-black">
                       You&apos;re verified
@@ -197,7 +221,7 @@ function VerifyContent() {
                     </p>
                     <Button
                       onClick={() => router.push('/profile')}
-                      className="w-full h-14 mt-6 font-bold"
+                      className="w-full mt-4 font-bold"
                     >
                       Done
                     </Button>
@@ -211,10 +235,18 @@ function VerifyContent() {
 
                   <Button
                     onClick={handlePrimary}
-                    disabled={isSubmitting || isVerificationConfirming || !nextStep}
+                    disabled={
+                      isSubmitting || isVerificationConfirming || !nextStep
+                    }
                     className="w-full mt-4 font-bold"
                   >
-                    {isSubmitting ? <Spinner /> : 'Start verification'}
+                    {isSubmitting ? (
+                      <Spinner />
+                    ) : isResuming ? (
+                      'Continue verification'
+                    ) : (
+                      'Start verification'
+                    )}
                   </Button>
 
                   <TagFooter className="py-4" />

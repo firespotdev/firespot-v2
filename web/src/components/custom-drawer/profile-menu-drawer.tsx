@@ -19,6 +19,7 @@ import { useUserQRKits } from '@/services/qr'
 import { useOutstandingSummary, useSalesStats } from '@/services/sales/hooks'
 import { useUserProfile } from '@/services/users'
 import { SetupShopCta } from '@/components/merchant/setup-shop-cta'
+import { TierIcon } from '@/components/merchant/tier-icon'
 import { showNotificationToast, Switch } from '@/components/ui'
 import { usePreference } from '@/hooks/usePreference'
 import { cn } from '@/lib/utils'
@@ -165,6 +166,11 @@ const PLAN_LABELS: Record<PlanTier, string> = {
   PROMAX: 'PRO MAX',
 }
 
+const NEXT_PLAN_TIER: Partial<Record<PlanTier, PlanTier>> = {
+  LITE: 'PRO',
+  PRO: 'PROMAX',
+}
+
 const GRADIENT_TEXT_CLASS =
   'bg-linear-to-br from-[#FB5012] to-[#D72483] bg-clip-text text-transparent'
 
@@ -195,6 +201,16 @@ function HeaderPlanBadge({ label }: { label: string }) {
     <span className="rounded-[4px] border border-black p-0.5 text-[10px] font-bold leading-none text-black">
       {label}
     </span>
+  )
+}
+
+function PlanBrandIcon({ tier }: { tier: PlanTier | null }) {
+  if (tier) {
+    return <TierIcon tier={tier} size={24} />
+  }
+
+  return (
+    <Image src="/images/lite_logo.png" alt="Firespot" width={24} height={24} />
   )
 }
 
@@ -435,9 +451,16 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const outstandingAmount = outstandingSummary?.totalOutstandingAmount || 0
   const outstandingCustomerCount = outstandingSummary?.customers?.length || 0
   const showOutstanding = outstandingAmount > 0 || outstandingCustomerCount > 0
-  const planTier =
-    planCatalog?.current?.effectiveTier || profile?.planTier || 'LITE'
-  const hasProAccess = planTier === 'PRO' || planTier === 'PROMAX'
+  const planTier: PlanTier | null = planCatalog
+    ? planCatalog.current.planTier
+    : profile?.planTier || null
+  const effectivePlanTier = planCatalog
+    ? planCatalog.current.effectiveTier
+    : planTier
+  const hasProAccess =
+    effectivePlanTier === 'PRO' || effectivePlanTier === 'PROMAX'
+  const nextPlanTier = planTier ? NEXT_PLAN_TIER[planTier] : 'PRO'
+  const planActionLabel = planTier ? 'Upgrade to' : 'Get started with'
   const menuSections = MENU_SECTIONS_BY_AUDIENCE[audience]
 
   const businessName =
@@ -508,16 +531,11 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
     <div className="h-full overflow-y-auto bg-[#F4F6F8] font-satoshi">
       <header className="flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-1">
-          <Image
-            src="/images/lite_logo.png"
-            alt="firespot logo"
-            width={24}
-            height={24}
-          />
+          <PlanBrandIcon tier={planTier} />
           <span className="text-xl font-bold leading-none text-black">
             firespot
           </span>
-          <HeaderPlanBadge label={PLAN_LABELS[planTier]} />
+          {planTier && <HeaderPlanBadge label={PLAN_LABELS[planTier]} />}
         </div>
         <button
           type="button"
@@ -767,33 +785,28 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
               className="flex min-h-13 w-full items-center justify-between gap-3 border-b border-[#F1F1F1] px-4 py-3"
             >
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-6 w-6 items-center justify-center p-1 rounded-[8px] border border-[#DFDFDF] bg-white shadow-[0px_2px_4px_0px_#0000000A]">
-                  <Image
-                    src="/images/firespot_alt.png"
-                    alt="firespot alt"
-                    width={20}
-                    height={20}
-                  />
-                </span>
+                <PlanBrandIcon tier={planTier} />
                 <div className="flex items-center">
                   <span className="text-base font-medium text-black mr-1">
                     Your plan
                   </span>
-                  <span className="rounded-[4px] border border-black p-0.5 text-[10px] font-bold leading-none text-black">
-                    {PLAN_LABELS[planTier]}
-                  </span>
+                  {planTier && (
+                    <span className="rounded-[4px] border border-black p-0.5 text-[10px] font-bold leading-none text-black">
+                      {PLAN_LABELS[planTier]}
+                    </span>
+                  )}
                 </div>
               </div>
               <div
                 className={cn(
                   'flex shrink-0 items-center gap-1.5 text-xs font-bold',
-                  !hasProAccess && GRADIENT_TEXT_CLASS,
+                  nextPlanTier && GRADIENT_TEXT_CLASS,
                 )}
               >
-                {!hasProAccess && (
+                {nextPlanTier && (
                   <>
-                    Upgrade to
-                    <ProGradientBadge />
+                    {planActionLabel}
+                    <ProGradientBadge label={PLAN_LABELS[nextPlanTier]} />
                   </>
                 )}
                 <ChevronRight
@@ -859,22 +872,17 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
               type="button"
               className="flex min-h-13 w-full items-center justify-between gap-3 px-4 py-3"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Image
                   src="/images/lite_logo.png"
                   alt="Firespot"
                   width={24}
                   height={24}
+                  className="object-cover"
                 />
                 <span className="text-left text-base font-medium text-black">
                   About Firespot
                 </span>
-                <Image
-                  src="/icons/lite.png"
-                  alt="Lite"
-                  width={24}
-                  height={24}
-                />
               </div>
               <ChevronRight className="h-4 w-4 text-[#BDBDBD]" />
             </button>

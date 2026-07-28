@@ -60,6 +60,7 @@ export interface VerificationRow {
   key: VerificationRowKey
   status: KycCheckStatus
   isVerifying: boolean
+  isResumable: boolean
   reason: string | null
   /** The API step behind this row — two rows can share one check. */
   sourceKey: KycCheck
@@ -79,6 +80,7 @@ export function buildVerificationRows(steps: KycStep[]): VerificationRow[] {
     const shared = {
       status: step.status,
       isVerifying: step.isVerifying,
+      isResumable: step.isResumable,
       reason: step.reason,
       sourceKey: step.key,
     }

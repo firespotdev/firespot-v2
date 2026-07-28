@@ -7,6 +7,12 @@ export interface KycCheckState {
   status?: "pending" | "passed" | "failed";
   jobId?: string;
   checkedAt?: Date;
+  /**
+   * Set only after the hosted SmileID flow reports a successful submission.
+   * A job id without this timestamp is a created/abandoned session, not a job
+   * that should leave the merchant behind a permanent loading state.
+   */
+  submittedAt?: Date;
   attempts?: number;
   /** Why the check failed, surfaced to the merchant so they can correct it. */
   reason?: string;
@@ -379,9 +385,9 @@ export class User extends Document {
   // how it was proven, so a stronger tier can reopen a weaker pass.
   @Prop({
     type: {
-      bvn: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
-      nin: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
-      cac: { status: String, jobId: String, checkedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      bvn: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      nin: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      cac: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
     },
     default: {},
   })

@@ -94,7 +94,19 @@ export class KycService {
             : 'pending',
         // `pending` also describes an untouched requirement. Expose whether
         // this row has actually been submitted and is awaiting SmileID/CAC.
-        isVerifying: !satisfied && state?.status === 'pending' && !!state?.jobId,
+        isVerifying:
+          !satisfied &&
+          state?.status === 'pending' &&
+          !!state?.jobId &&
+          (!!state?.submittedAt || !isClientSideStep(step)),
+        // A hosted session was created but never submitted. The merchant can
+        // restart this one check without losing any checks that already passed.
+        isResumable:
+          !satisfied &&
+          isClientSideStep(step) &&
+          state?.status === 'pending' &&
+          !!state?.jobId &&
+          !state?.submittedAt,
         checkedAt: state?.checkedAt || null,
         reason: state?.reason || null,
       }
@@ -145,7 +157,9 @@ export class KycService {
       if (!state?.jobId || state.status === 'passed') continue
 
       // Give the job a moment to land before polling it.
-      const checkedAt = state.checkedAt ? new Date(state.checkedAt).getTime() : 0
+      const checkedAt = state.checkedAt
+        ? new Date(state.checkedAt).getTime()
+        : 0
       if (Date.now() - checkedAt < 5000) continue
 
       try {
@@ -155,25 +169,51 @@ export class KycService {
           state.smileUserId || `${merchantId}-${check}`,
           state.jobId,
         )
-        // null → the user hasn't submitted the flow yet (no job exists);
-        // job_complete false → submitted but still processing. Either way the
-        // check stays pending.
-        if (!result || result.job_complete === false) continue
+        // null → the user hasn't submitted the flow yet (no job exists). It is
+        // intentionally left restartable rather than presented as processing.
+        if (!result) continue
 
-        const passed = this.smileIdService.isSuccessfulResult(result)
+        // SmileID knows the job, so it was submitted even if the browser's
+        // success notification never reached this API.
+        if (result.job_complete === false) {
+          if (!state.submittedAt) {
+            await this.markSubmittedCheck(merchantId, check, state.jobId)
+            changed = true
+          }
+          continue
+        }
+
+        // Human-review/provisional results are progress updates. SmileID sends
+        // a later callback with the final verdict, so keep the loader visible.
+        if (this.smileIdService.isPendingResult(result, step.product)) {
+          if (!state.submittedAt) {
+            await this.markSubmittedCheck(merchantId, check, state.jobId)
+            changed = true
+          }
+          continue
+        }
+
+        const passed = this.smileIdService.isSuccessfulResult(
+          result,
+          step.product,
+        )
         if (!passed && state.status === 'failed') continue
 
-        await this.recordCheck(
+        const recorded = await this.recordCheck(
           merchantId,
           check,
           passed ? 'passed' : 'failed',
           state.jobId,
           passed ? undefined : this.smileIdService.describeResult(result),
           step.product,
+          undefined,
+          state.jobId,
         )
-        changed = true
+        if (recorded) changed = true
       } catch (err) {
-        this.logger.warn(`Could not reconcile ${check} for ${merchantId}: ${err}`)
+        this.logger.warn(
+          `Could not reconcile ${check} for ${merchantId}: ${err}`,
+        )
       }
     }
 
@@ -197,6 +237,15 @@ export class KycService {
       throw new BadRequestException(
         `Step "${step.key}" runs server-side; call its endpoint instead`,
       )
+    }
+
+    const currentState = ((user.kyc || {}) as Record<string, any>)[step.key]
+    if (
+      currentState?.status === 'pending' &&
+      currentState?.jobId &&
+      currentState?.submittedAt
+    ) {
+      throw new BadRequestException('Verification is still being processed')
     }
 
     const jobId = this.smileIdService.buildJobId(merchantId, step.key)
@@ -255,6 +304,67 @@ export class KycService {
     }
   }
 
+  /**
+   * The Web SDK has accepted the hosted flow. Only now does the check become
+   * "verifying"; minting a token alone is not evidence of a submitted job.
+   */
+  async markSessionSubmitted(merchantId: string, jobId: string) {
+    const user = await this.getMerchant(merchantId)
+    const kyc = (user.kyc || {}) as Record<string, any>
+    const check = (['bvn', 'nin'] as KycCheck[]).find(
+      (key) => kyc[key]?.jobId === jobId,
+    )
+
+    if (!check) {
+      throw new BadRequestException('Verification session is no longer active')
+    }
+
+    if (kyc[check]?.status !== 'pending') {
+      return { check, status: kyc[check]?.status }
+    }
+
+    const marked = await this.markSubmittedCheck(merchantId, check, jobId)
+    if (!marked) {
+      throw new BadRequestException('Verification session is no longer active')
+    }
+
+    return { check, status: 'pending' as const }
+  }
+
+  private async markSubmittedCheck(
+    merchantId: string,
+    check: KycCheck,
+    jobId: string,
+  ): Promise<boolean> {
+    const result = await this.userModel
+      .updateOne(
+        {
+          _id: merchantId,
+          [`kyc.${check}.jobId`]: jobId,
+          [`kyc.${check}.status`]: { $in: ['pending', 'failed'] },
+        },
+        {
+          $set: {
+            [`kyc.${check}.status`]: 'pending',
+            [`kyc.${check}.submittedAt`]: new Date(),
+            [`kyc.${check}.reason`]: null,
+          },
+        },
+      )
+      .exec()
+
+    if (result.matchedCount > 0) {
+      await this.userModel
+        .updateOne(
+          { _id: merchantId, planStatus: 'paid' },
+          { $set: { planStatus: 'verifying' } },
+        )
+        .exec()
+    }
+
+    return result.matchedCount > 0
+  }
+
   /** Server-side CAC / business verification (KYB, async → callback). */
   async verifyCac(
     merchantId: string,
@@ -288,6 +398,8 @@ export class KycService {
         undefined,
         cacStep.product,
         smileUserId,
+        undefined,
+        true,
       )
       return { check: 'cac', status: 'pending' }
     } catch (error) {
@@ -309,7 +421,8 @@ export class KycService {
    * the user id carries our merchant id as its first segment.
    */
   async handleCallback(payload: any) {
-    const partnerParams = payload?.PartnerParams || payload?.partner_params || {}
+    const partnerParams =
+      payload?.PartnerParams || payload?.partner_params || {}
     const merchantId = SmileIdService.parseMerchantId(partnerParams.user_id)
     const jobId = String(partnerParams.job_id || '')
 
@@ -326,24 +439,41 @@ export class KycService {
 
     // Attribute the result to the product this tier asked for, so a biometric
     // pass is recorded as biometric (and satisfies weaker tiers later).
-    const tier = (await this.getMerchant(merchantId))?.planTier as
-      | PlanTier
-      | undefined
-    const product = tier
-      ? PLANS[tier].requiredSteps.find((s) => s.key === check)?.product
-      : undefined
+    const user = await this.getMerchant(merchantId)
+    const state = ((user.kyc || {}) as Record<string, any>)[check]
 
-    const passed = this.smileIdService.isSuccessfulResult(payload)
-    await this.recordCheck(
+    // A merchant may restart an abandoned hosted session. A late result from
+    // that superseded job must never overwrite the newer active attempt.
+    if (!state?.jobId || state.jobId !== jobId) {
+      this.logger.warn(`Ignoring stale SmileID callback for job ${jobId}`)
+      return { received: true, stale: true }
+    }
+
+    const tier = user.planTier as PlanTier | undefined
+    const product =
+      state.product ||
+      (tier
+        ? PLANS[tier].requiredSteps.find((s) => s.key === check)?.product
+        : undefined)
+
+    if (this.smileIdService.isPendingResult(payload, product)) {
+      await this.markSubmittedCheck(merchantId, check, jobId)
+      return { received: true, pending: true }
+    }
+
+    const passed = this.smileIdService.isSuccessfulResult(payload, product)
+    const recorded = await this.recordCheck(
       merchantId,
       check,
       passed ? 'passed' : 'failed',
       jobId,
       passed ? undefined : this.smileIdService.describeResult(payload),
       product,
+      undefined,
+      jobId,
     )
 
-    if (passed) await this.finalizeIfComplete(merchantId)
+    if (recorded && passed) await this.finalizeIfComplete(merchantId)
 
     return { received: true }
   }
@@ -357,7 +487,9 @@ export class KycService {
     reason?: string,
     product?: string,
     smileUserId?: string,
-  ) {
+    expectedJobId?: string,
+    submitted = false,
+  ): Promise<boolean> {
     const set: Record<string, unknown> = {
       [`kyc.${check}.status`]: status,
       [`kyc.${check}.checkedAt`]: new Date(),
@@ -371,14 +503,27 @@ export class KycService {
     // that an older, weaker pass no longer satisfies its requirement.
     if (product) set[`kyc.${check}.product`] = product
 
-    await this.userModel
-      .updateOne(
-        { _id: merchantId },
-        { $set: set, $inc: { [`kyc.${check}.attempts`]: 1 } },
-      )
-      .exec()
+    const filter: Record<string, unknown> = { _id: merchantId }
+    if (expectedJobId) {
+      filter[`kyc.${check}.jobId`] = expectedJobId
+    }
 
-    if (status === 'pending') return
+    const update: Record<string, unknown> = {
+      $set: set,
+      $inc: { [`kyc.${check}.attempts`]: 1 },
+    }
+    if (status === 'pending') {
+      if (submitted) {
+        set[`kyc.${check}.submittedAt`] = new Date()
+      } else {
+        update.$unset = { [`kyc.${check}.submittedAt`]: 1 }
+      }
+    }
+
+    const result = await this.userModel.updateOne(filter, update).exec()
+
+    if (result.matchedCount === 0) return false
+    if (status === 'pending') return true
 
     // Reflect in-progress verification on the plan status.
     await this.userModel
@@ -387,6 +532,8 @@ export class KycService {
         { $set: { planStatus: 'verifying' } },
       )
       .exec()
+
+    return true
   }
 
   /**
@@ -427,31 +574,45 @@ export class KycService {
       jobId,
     )
 
-    // No job on SmileID's side yet — the user hasn't completed the flow, so
-    // there is nothing to apply. Leave the check pending.
-    if (!status || status.job_complete === false) {
+    const tier = user.planTier as PlanTier | undefined
+    const product =
+      state?.product ||
+      (tier
+        ? PLANS[tier].requiredSteps.find((s) => s.key === check)?.product
+        : undefined)
+
+    // No job on SmileID's side yet — the hosted flow was abandoned before
+    // submission. It remains restartable rather than becoming an endless load.
+    if (!status) {
       return { check, passed: false, status: 'pending' as const }
     }
 
-    const passed = this.smileIdService.isSuccessfulResult(status)
+    if (status.job_complete === false) {
+      await this.markSubmittedCheck(merchantId, check, jobId)
+      return { check, passed: false, status: 'pending' as const }
+    }
+
+    if (this.smileIdService.isPendingResult(status, product)) {
+      await this.markSubmittedCheck(merchantId, check, jobId)
+      return { check, passed: false, status: 'pending' as const }
+    }
+
+    const passed = this.smileIdService.isSuccessfulResult(status, product)
     const reason = passed
       ? undefined
       : this.smileIdService.describeResult(status)
 
-    const tier = user.planTier as PlanTier | undefined
-    const product = tier
-      ? PLANS[tier].requiredSteps.find((s) => s.key === check)?.product
-      : undefined
-
-    await this.recordCheck(
+    const recorded = await this.recordCheck(
       merchantId,
       check,
       passed ? 'passed' : 'failed',
       jobId,
       reason,
       product,
+      undefined,
+      jobId,
     )
-    if (passed) await this.finalizeIfComplete(merchantId)
+    if (recorded && passed) await this.finalizeIfComplete(merchantId)
     return { check, passed, status: passed ? 'passed' : 'failed', reason }
   }
 }

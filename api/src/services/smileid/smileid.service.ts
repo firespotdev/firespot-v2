@@ -281,6 +281,41 @@ export class SmileIdService {
     return payload.message || (resultText ? String(resultText) : undefined)
   }
 
+  /**
+   * SmileID can send provisional callbacks before human review finishes.
+   * These are progress updates, not failures, even when `job_complete` is true
+   * for the machine phase. A later callback carries the final human verdict.
+   */
+  isPendingResult(payload: any, product?: string): boolean {
+    if (!payload) return false
+    if (payload.job_complete === false) return true
+
+    const result = payload.result || payload
+    const code = String(result.ResultCode || '')
+    // Biometric KYC sends a separate 1012 ID-information callback. It proves
+    // the BVN lookup only; the selfie/liveness action callback must still land.
+    if (product === 'biometric_kyc' && code === '1012') return true
+    if (['0812', '0814', '0815', '1213'].includes(code)) return true
+
+    const resultText = String(result.ResultText || result.message || '')
+    if (
+      /under review|provisional|pending approval|awaiting review/i.test(
+        resultText,
+      )
+    ) {
+      return true
+    }
+
+    const actions = result.Actions
+    if (!actions || typeof actions !== 'object') return false
+
+    return Object.values(actions).some((value) =>
+      /under review|provisionally approved|unable to determine/i.test(
+        String(value),
+      ),
+    )
+  }
+
   /** Verifies the signature on an inbound SmileID callback. */
   confirmSignature(timestamp: string | number, signature: string): boolean {
     if (!this.isConfigured) return false
@@ -302,7 +337,7 @@ export class SmileIdService {
    *  - v2 (job_type 5)  → ResultCode / ResultText / Actions
    *  - job-status polls → job_success / job_complete
    */
-  isSuccessfulResult(payload: any): boolean {
+  isSuccessfulResult(payload: any, product?: string): boolean {
     if (!payload) return false
 
     // ---- v3: explicit disposition wins over everything else ----
@@ -320,6 +355,7 @@ export class SmileIdService {
     // Rejected: 1013 invalid, 1014 bad format, 1015 authority down,
     // 1016 not enabled, 1022 no match. ----
     const code = String(payload.ResultCode || payload.result?.ResultCode || '')
+    if (product === 'biometric_kyc' && code === '1012') return false
     if (['0810', '1012', '1020', '1021'].includes(code)) return true
     if (['1013', '1014', '1015', '1016', '1022'].includes(code)) return false
 

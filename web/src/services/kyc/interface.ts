@@ -20,6 +20,8 @@ export interface KycStep {
   status: KycCheckStatus
   /** A job has been submitted and its result is still being confirmed. */
   isVerifying: boolean
+  /** A hosted session was opened but never submitted, so this check can restart. */
+  isResumable: boolean
   checkedAt: string | null
   /** Why it failed, so the merchant can correct and retry. */
   reason: string | null
@@ -60,4 +62,8 @@ export interface KycSessionResponse {
 export interface VerifyCacPayload {
   rcNumber: string
   businessType?: string
+}
+
+export interface MarkKycSessionSubmittedPayload {
+  jobId: string
 }

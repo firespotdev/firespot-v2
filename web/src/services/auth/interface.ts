@@ -107,6 +107,7 @@ export interface User {
   // Merchant plan + verification state
   planTier?: 'LITE' | 'PRO' | 'PROMAX' | null
   planStatus?: 'none' | 'paid' | 'verifying' | 'verified' | 'failed'
+  nextKycStep?: 'bvn' | 'nin' | 'cac' | null
   verificationLevel?: 'PRO' | 'PROMAX' | null
   /** Null while lapsed — bind badges to this, not verificationLevel. */
   effectiveVerificationLevel?: 'PRO' | 'PROMAX' | null

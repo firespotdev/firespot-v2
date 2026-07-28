@@ -22,7 +22,9 @@ import {
   isLapsed,
   isInGracePeriod,
   getCollectEligibility,
+  getNextStep,
   hasCompletedKyc,
+  PlanTier,
 } from "../merchant-plans/constants/plans";
 import {
   UpdateContactDto,
@@ -875,6 +877,10 @@ export class UsersService {
       // Merchant plan + verification state (drives the badge and upgrade UI)
       planTier: user.planTier || null,
       planStatus: user.planStatus || "none",
+      nextKycStep: user.planTier
+        ? getNextStep(user.planTier as PlanTier, (user.kyc || {}) as any)
+            ?.key || null
+        : null,
       verificationLevel: user.verificationLevel || null,
       planCurrentPeriodEnd: user.planCurrentPeriodEnd || null,
       // Lapse state. `effectiveTier` is what the merchant can actually use
