@@ -244,8 +244,13 @@ export function ActiveHoursBookingDrawer({
               <div className="flex bg-white">
                 <div className="relative flex-1">
                   <span className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-base font-medium text-[#111827]">
-                    NGN
+                    {value.deposit.depositType === 'PERCENTAGE' ? '' : 'NGN'}
                   </span>
+                  {value.deposit.depositType === 'PERCENTAGE' && (
+                    <span className="absolute right-4 top-1/2 z-10 -translate-y-1/2 text-base font-medium text-[#111827]">
+                      %
+                    </span>
+                  )}
                   <Input
                     type="number"
                     min={0}
@@ -269,7 +274,11 @@ export function ActiveHoursBookingDrawer({
                         },
                       }))
                     }
-                    className="h-11 rounded-r-none pl-14 text-base font-medium"
+                    className={`h-11 rounded-r-none text-base font-medium ${
+                      value.deposit.depositType === 'PERCENTAGE'
+                        ? 'pl-4 pr-9'
+                        : 'pl-14'
+                    }`}
                   />
                 </div>
                 <Select

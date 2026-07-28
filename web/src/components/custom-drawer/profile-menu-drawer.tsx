@@ -98,6 +98,7 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
       {
         label: 'Payouts',
         icon: <ArrowCircleDown2 size={24} />,
+        href: '/payouts',
         proGateLabel: 'Available in',
       },
     ],
@@ -126,6 +127,8 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
             alt="heart-tag"
           />
         ),
+        href: '/feedback',
+        proGateLabel: 'Available in',
       },
       {
         label: 'Events',

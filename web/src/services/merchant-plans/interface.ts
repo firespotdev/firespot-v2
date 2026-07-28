@@ -2,6 +2,7 @@ export type PlanTier = 'LITE' | 'PRO' | 'PROMAX'
 export type KycCheck = 'bvn' | 'nin' | 'cac'
 export type BillingType = 'one_time' | 'monthly'
 export type BillingInterval = 'monthly' | 'annually'
+export type PlanPaymentMethod = 'SAVED_AUTHORIZATION' | 'PAYSTACK_CHECKOUT'
 export type PlanStatus = 'none' | 'paid' | 'verifying' | 'verified' | 'failed'
 
 /** Why a merchant may not collect. null when they can. */
@@ -70,15 +71,27 @@ export interface PlanCatalogResponse {
   current: CurrentPlanState
 }
 
+export interface PlanPaymentMethodOption {
+  id: PlanPaymentMethod
+  label: string
+  description: string
+}
+
+export interface PlanPaymentMethodsResponse {
+  methods: PlanPaymentMethodOption[]
+  defaultMethod: PlanPaymentMethod
+}
+
 /**
- * Purchasing can resolve four ways, so the redirect URL is optional:
+ * Purchasing can resolve through several paths, so the redirect URL is optional:
  *  - checkout            → send to Paystack (full price, or prorated fallback)
+ *  - purchased           → charged a saved method for a fresh purchase
  *  - upgraded            → charged the saved card, tier applied immediately
  *  - scheduled_downgrade → free, lands at period end
  *  - cancellation        → PRO→LITE, which is just a cancel
  */
 export interface PurchasePlanResponse {
-  type?: 'checkout' | 'upgraded' | 'scheduled_downgrade'
+  type?: 'checkout' | 'purchased' | 'upgraded' | 'scheduled_downgrade'
   /** Null when nothing needs paying in a browser. */
   authorizationUrl?: string | null
   reference?: string

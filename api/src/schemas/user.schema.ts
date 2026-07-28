@@ -498,6 +498,26 @@ export class User extends Document {
   @Prop()
   paystackAuthorizationCode?: string;
 
+  @Prop({
+    type: {
+      channel: String,
+      brand: String,
+      last4: String,
+      bank: String,
+      cardType: String,
+      reusable: Boolean,
+    },
+    _id: false,
+  })
+  paystackAuthorizationDetails?: {
+    channel?: string;
+    brand?: string;
+    last4?: string;
+    bank?: string;
+    cardType?: string;
+    reusable?: boolean;
+  };
+
   // Timestamps (automatically added by Mongoose)
   createdAt?: Date;
   updatedAt?: Date;

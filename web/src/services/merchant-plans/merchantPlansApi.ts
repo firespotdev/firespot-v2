@@ -10,11 +10,14 @@ import type {
   VerifyPlanResponse,
   PlanTier,
   BillingInterval,
+  PlanPaymentMethod,
+  PlanPaymentMethodsResponse,
 } from './interface'
 
 export interface PurchaseArgs {
   tier: PlanTier
   interval?: BillingInterval
+  paymentMethod?: PlanPaymentMethod
 }
 
 export const MerchantPlansApi = {
@@ -23,13 +26,20 @@ export const MerchantPlansApi = {
     return data
   },
 
+  getPaymentMethods: async (): Promise<PlanPaymentMethodsResponse> => {
+    const { data } = await apiClient.get('/merchant-plans/payment-methods')
+    return data
+  },
+
   purchase: async ({
     tier,
     interval,
+    paymentMethod,
   }: PurchaseArgs): Promise<PurchasePlanResponse> => {
     const { data } = await apiClient.post('/merchant-plans/purchase', {
       tier,
       interval,
+      paymentMethod,
     })
     return data
   },
@@ -61,12 +71,20 @@ export const MerchantPlansApi = {
 }
 
 export const PLAN_CATALOG_KEY = ['merchant-plans']
+export const PLAN_PAYMENT_METHODS_KEY = ['merchant-plan-payment-methods']
 
 export const usePlanCatalog = (enabled = true) => {
   return useQuery({
     queryKey: PLAN_CATALOG_KEY,
     queryFn: () => MerchantPlansApi.getCatalog(),
     enabled,
+  })
+}
+
+export const usePlanPaymentMethods = () => {
+  return useQuery({
+    queryKey: PLAN_PAYMENT_METHODS_KEY,
+    queryFn: MerchantPlansApi.getPaymentMethods,
   })
 }
 

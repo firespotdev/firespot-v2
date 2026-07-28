@@ -1,5 +1,10 @@
 export type PlanTier = 'LITE' | 'PRO' | 'PROMAX'
 export type BillingType = 'one_time' | 'monthly'
+export const PLAN_PAYMENT_METHODS = [
+  'SAVED_AUTHORIZATION',
+  'PAYSTACK_CHECKOUT',
+] as const
+export type PlanPaymentMethod = (typeof PLAN_PAYMENT_METHODS)[number]
 
 /** Identity documents a tier can require. One stored record per key. */
 export type KycCheck = 'bvn' | 'nin' | 'cac'

@@ -34,6 +34,7 @@ export interface QRKit {
   createdAt: string
   updatedAt: string
   name?: string
+  collectFeedback: boolean
 }
 
 export interface QRKitListResponse {

@@ -753,8 +753,9 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
-    summary: "Update QR kit name",
-    description: "Allows a merchant to update the custom name of their QR kit.",
+    summary: "Update QR kit settings",
+    description:
+      "Allows a merchant to update the custom name and feedback preference of their QR kit.",
   })
   @ApiParam({
     name: "id",

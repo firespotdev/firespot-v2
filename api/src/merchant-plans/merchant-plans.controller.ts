@@ -11,7 +11,11 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { MerchantPlansService } from './merchant-plans.service'
-import { PLAN_TIERS } from './constants/plans'
+import {
+  PLAN_PAYMENT_METHODS,
+  PLAN_TIERS,
+  type PlanPaymentMethod,
+} from './constants/plans'
 
 class PurchasePlanDto {
   @IsString()
@@ -22,6 +26,10 @@ class PurchasePlanDto {
   @IsOptional()
   @IsIn(['monthly', 'annually'], { message: 'Invalid billing interval' })
   interval?: 'monthly' | 'annually'
+
+  @IsOptional()
+  @IsIn(PLAN_PAYMENT_METHODS, { message: 'Invalid payment method' })
+  paymentMethod?: PlanPaymentMethod
 }
 
 @ApiTags('merchant-plans')
@@ -38,6 +46,15 @@ export class MerchantPlansController {
     return this.merchantPlansService.getCatalog(req.user.userId)
   }
 
+  @Get('payment-methods')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Payment methods available for plan checkout' })
+  @ApiResponse({ status: 200, description: 'Payment methods returned' })
+  async getPaymentMethods(@Request() req) {
+    return this.merchantPlansService.getPaymentMethods(req.user.userId)
+  }
+
   @Post('purchase')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
@@ -48,6 +65,7 @@ export class MerchantPlansController {
       req.user.userId,
       dto.tier,
       dto.interval,
+      dto.paymentMethod,
     )
   }
 

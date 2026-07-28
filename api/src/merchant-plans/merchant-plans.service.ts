@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  HttpException,
   Injectable,
   Logger,
   NotFoundException,
@@ -30,6 +31,7 @@ import {
   classifyPlanChange,
   resolvePeriodWindow,
   MIN_CHARGE_NAIRA,
+  type PlanPaymentMethod,
 } from './constants/plans'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -127,6 +129,52 @@ export class MerchantPlansService {
           : null,
       },
     }
+  }
+
+  async getPaymentMethods(merchantId: string) {
+    const user = await this.userModel.findById(merchantId).exec()
+    if (!user) {
+      throw new NotFoundException('User not found')
+    }
+
+    const saved = this.hasReusableAuthorization(user)
+      ? {
+          id: 'SAVED_AUTHORIZATION' as const,
+          label: this.savedMethodLabel(user),
+          description: 'Use without opening Paystack Checkout',
+        }
+      : null
+
+    return {
+      methods: [
+        ...(saved ? [saved] : []),
+        {
+          id: 'PAYSTACK_CHECKOUT' as const,
+          label: 'Paystack checkout',
+          description: 'Complete payment securely with Paystack',
+        },
+      ],
+      defaultMethod: saved?.id || ('PAYSTACK_CHECKOUT' as const),
+    }
+  }
+
+  private savedMethodLabel(user: UserDocument) {
+    const details = user.paystackAuthorizationDetails
+    const brand = details?.brand || details?.cardType
+    if (brand && details?.last4) {
+      return `${brand} •••• ${details.last4}`
+    }
+    if (details?.last4) {
+      return `Card •••• ${details.last4}`
+    }
+    return 'Saved payment method'
+  }
+
+  private hasReusableAuthorization(user: UserDocument) {
+    return Boolean(
+      user.paystackAuthorizationCode &&
+        user.paystackAuthorizationDetails?.reusable !== false,
+    )
   }
 
   private planCodeFor(
@@ -272,6 +320,7 @@ export class MerchantPlansService {
     merchantId: string,
     tier: string,
     interval: 'monthly' | 'annually' = 'monthly',
+    paymentMethod?: PlanPaymentMethod,
   ) {
     const plan = getPlan(tier)
     if (!plan) {
@@ -340,6 +389,7 @@ export class MerchantPlansService {
           interval: effectiveInterval,
           newAmount: amount,
           storeCount,
+          paymentMethod,
         })
 
       case 'cadence_extension':
@@ -351,6 +401,7 @@ export class MerchantPlansService {
           newAmount: amount,
           storeCount,
           resetsPeriod: true,
+          paymentMethod,
         })
 
       // 'purchase' → falls through to the normal full-price checkout below.
@@ -372,6 +423,56 @@ export class MerchantPlansService {
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
 
     try {
+      if (paymentMethod === 'SAVED_AUTHORIZATION') {
+        if (!this.hasReusableAuthorization(user)) {
+          throw new BadRequestException({
+            code: 'SAVED_PAYMENT_METHOD_UNAVAILABLE',
+            message: 'Your saved payment method is no longer available.',
+          })
+        }
+
+        const reference = `${PLAN_REFERENCE_PREFIX}${order._id}-${Date.now()}`
+        const charge = await this.paystackService.chargeAuthorization({
+          email,
+          amount: amount * 100,
+          authorizationCode: user.paystackAuthorizationCode,
+          reference,
+          metadata: {
+            merchantId,
+            tier: plan.tier,
+            planOrderId: order._id.toString(),
+            type: 'PLAN',
+          },
+        })
+
+        if (!charge.success) {
+          throw new BadRequestException({
+            code: 'SAVED_PAYMENT_METHOD_FAILED',
+            message:
+              charge.message ||
+              'Your saved payment method could not be charged. Choose another card.',
+          })
+        }
+
+        order.paymentStatus = 'SUCCESSFUL'
+        order.paystackReference = charge.reference || reference
+        order.paidAt = new Date()
+        await order.save()
+        user.planGraceUntil = undefined
+        user.cancelAtPeriodEnd = false
+        await this.applyUpgrade(user, plan.tier, effectiveInterval, {
+          resetsPeriod: plan.billingType === 'monthly',
+        })
+
+        return {
+          type: 'purchased' as const,
+          authorizationUrl: null,
+          tier: plan.tier,
+          amountCharged: amount,
+          nextStep: this.outstandingStep(user, plan.tier),
+        }
+      }
+
       const payment = await this.paystackService.initializeTransaction({
         email,
         amount: amount * 100, // kobo
@@ -398,6 +499,7 @@ export class MerchantPlansService {
         amount,
       }
     } catch (error) {
+      if (error instanceof HttpException) throw error
       this.logger.error(`Failed to initialize plan payment: ${error}`)
       throw new BadRequestException('Could not initialize payment for plan')
     }
@@ -448,6 +550,7 @@ export class MerchantPlansService {
       storeCount: number
       /** monthly → yearly: buys a fresh period instead of riding out this one */
       resetsPeriod?: boolean
+      paymentMethod?: PlanPaymentMethod
     },
   ) {
     const currentPlan = getPlan(user.planTier || '')
@@ -512,7 +615,10 @@ export class MerchantPlansService {
     }
 
     // Preferred path: charge the saved card in place, no redirect.
-    if (user.paystackAuthorizationCode) {
+    if (
+      params.paymentMethod !== 'PAYSTACK_CHECKOUT' &&
+      this.hasReusableAuthorization(user)
+    ) {
       const charge = await this.paystackService.chargeAuthorization({
         email,
         amount: amountDue * 100,
@@ -532,8 +638,8 @@ export class MerchantPlansService {
         order.paidAt = new Date()
         await order.save()
         await this.applyUpgrade(user, params.tier, params.interval, {
-        resetsPeriod: params.resetsPeriod,
-      })
+          resetsPeriod: params.resetsPeriod,
+        })
         return {
           type: 'upgraded' as const,
           tier: params.tier,
@@ -543,7 +649,16 @@ export class MerchantPlansService {
           nextStep: this.outstandingStep(user, params.tier),
         }
       }
-      // Declined — fall through to checkout for the same amount.
+      if (params.paymentMethod === 'SAVED_AUTHORIZATION') {
+        throw new BadRequestException({
+          code: 'SAVED_PAYMENT_METHOD_FAILED',
+          message:
+            charge.message ||
+            'Your saved payment method could not be charged. Choose another card.',
+        })
+      }
+      // Legacy clients did not make an explicit choice, so retain their
+      // existing checkout fallback when a saved charge is declined.
       this.logger.warn(
         `Saved-card proration failed for ${user._id}: ${charge.message}`,
       )
@@ -705,6 +820,10 @@ export class MerchantPlansService {
         if (verification.authorizationCode) {
           user.paystackAuthorizationCode = verification.authorizationCode
         }
+        if (verification.authorizationDetails) {
+          user.paystackAuthorizationDetails =
+            verification.authorizationDetails
+        }
         if (verification.customerCode) {
           user.paystackCustomerCode = verification.customerCode
         }
@@ -740,6 +859,9 @@ export class MerchantPlansService {
     // instead of sending the merchant through checkout again.
     if (verification.authorizationCode) {
       update.paystackAuthorizationCode = verification.authorizationCode
+    }
+    if (verification.authorizationDetails) {
+      update.paystackAuthorizationDetails = verification.authorizationDetails
     }
     if (plan?.billingType === 'monthly') {
       const periodStart = new Date()

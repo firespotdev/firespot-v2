@@ -44,7 +44,7 @@ export const userQrApi = {
 
   updateUserQRKit: async (
     id: string,
-    data: { name: string },
+    data: { name?: string; collectFeedback?: boolean },
   ): Promise<{ message: string; qrKit: QRKit }> => {
     const response = await apiClient.patch<{ message: string; qrKit: QRKit }>(
       `/users/me/qr-kits/${id}`,
@@ -117,7 +117,13 @@ export const useUserQRKit = (id: string | null) => {
 export const useUpdateQRKit = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { name: string } }) =>
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string
+      data: { name?: string; collectFeedback?: boolean }
+    }) =>
       userQrApi.updateUserQRKit(id, data),
     onSuccess: (data, { id }) => {
       queryClient.setQueryData(['user', 'qr-kit', id], data.qrKit)

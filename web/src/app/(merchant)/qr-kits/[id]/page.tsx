@@ -1,18 +1,24 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { useRouter } from '@bprogress/next/app'
-import { ArrowLeft, Check, Copy, Download, Share } from 'lucide-react'
+import { ArrowLeft, Check, Copy, Download } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useUserQRKit, useQRCodeSVG, useUpdateQRKit } from '@/services/qr'
-import { Button, LoaderCircle, showNotificationToast } from '@/components/ui'
+import {
+  Button,
+  LoaderCircle,
+  Switch,
+  showNotificationToast,
+} from '@/components/ui'
 import { Pencil } from 'lucide-react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { useUserProfile } from '@/services/users'
 import { getInitials } from '@/lib/utils'
 import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
+import { usePlanCatalog } from '@/services/merchant-plans'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -25,18 +31,13 @@ export default function QRKitDetailPage() {
   const { data: qrKit, isLoading, error } = useUserQRKit(id)
   const { data: svgContent } = useQRCodeSVG(qrKit?.qrCodeSvgUrl)
   const { data: profile } = useUserProfile()
+  const { data: planCatalog } = usePlanCatalog()
 
   const [isDownloading, setIsDownloading] = useState(false)
   const [isEditingName, setIsEditingName] = useState(false)
   const [kitName, setKitName] = useState('')
   const cardRef = useRef<HTMLDivElement>(null)
   const updateQRKit = useUpdateQRKit()
-
-  useEffect(() => {
-    if (qrKit?.name) {
-      setKitName(qrKit.name)
-    }
-  }, [qrKit?.name])
 
   const handleUpdateName = async () => {
     if (!kitName.trim() || kitName === qrKit?.name) {
@@ -98,7 +99,28 @@ export default function QRKitDetailPage() {
   }
 
   const isActive = qrKit.activationStatus === 'activated'
+  const effectiveTier = planCatalog?.current.effectiveTier
+  const canCollectFeedback =
+    effectiveTier === 'PRO' || effectiveTier === 'PROMAX'
   const displayId = qrKit.serialNumber.slice(-8)
+
+  const handleFeedbackToggle = (collectFeedback: boolean) => {
+    if (!canCollectFeedback) {
+      router.push('/plans')
+      return
+    }
+
+    updateQRKit.mutate(
+      { id, data: { collectFeedback } },
+      {
+        onError: () =>
+          showNotificationToast({
+            message: 'Could not update feedback collection',
+            mode: 'error',
+          }),
+      },
+    )
+  }
 
   const handleDownloadPDF = async () => {
     if (!cardRef.current || isDownloading) return
@@ -450,7 +472,10 @@ export default function QRKitDetailPage() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setIsEditingName(true)}
+                        onClick={() => {
+                          setKitName(qrKit.name || '')
+                          setIsEditingName(true)
+                        }}
                         className="p-1"
                       >
                         <Pencil className="w-3.5 h-3.5 text-[#00000066]" />
@@ -477,6 +502,29 @@ export default function QRKitDetailPage() {
                     </span>
                   )}
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-b border-[#F1F1F1] pb-5">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-[#00000080]">
+                      Collect feedback
+                    </span>
+                    {!canCollectFeedback && (
+                      <span className="rounded-[4px] bg-[#9CA3AF] px-1 py-0.5 text-[10px] font-bold leading-none text-white">
+                        PRO
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-xs font-medium text-[#9CA3AF]">
+                    Ask after a completed payment
+                  </p>
+                </div>
+                <Switch
+                  checked={qrKit.collectFeedback === true}
+                  onCheckedChange={handleFeedbackToggle}
+                  disabled={updateQRKit.isPending}
+                />
               </div>
 
               <div className="flex items-center justify-between border-b border-[#F1F1F1] pb-5">

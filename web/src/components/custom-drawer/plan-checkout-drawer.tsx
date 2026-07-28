@@ -10,11 +10,13 @@ import {
   usePlanCatalog,
   usePurchasePlan,
   usePlanPreview,
+  usePlanPaymentMethods,
   planTotal,
   planUnitPrice,
   frequencyLabel,
   type PlanTier,
   type BillingInterval,
+  type PlanPaymentMethod,
 } from '@/services/merchant-plans'
 import { formatCurrency } from '@/lib/utils'
 import Image from 'next/image'
@@ -32,6 +34,7 @@ export function PlanCheckoutDrawer({
   const router = useRouter()
   const { closeDrawer } = useDrawerStore()
   const { data } = usePlanCatalog()
+  const { data: paymentMethodsData } = usePlanPaymentMethods()
   const purchase = usePurchasePlan()
   // Quoted by the same code that charges, so the figure shown is the figure
   // taken — a mid-cycle change is credited and differs from list price.
@@ -53,24 +56,27 @@ export function PlanCheckoutDrawer({
   const subtotal = preview?.subtotal ?? listTotal
   const frequency = frequencyLabel(plan, interval)
 
-  // Paying while another subscription is live replaces it — say so, since the
-  // old one is cancelled automatically once this payment clears.
-  const current = data?.current
-  const supersedesExisting =
-    !isOneTime &&
-    Boolean(current?.planTier) &&
-    !current?.isLapsed &&
-    Boolean(current?.currentInterval)
-
   const isBlocked = preview?.blocked === true
   const isDeferred = preview?.deferred === true
   const resetsPeriod = preview?.resetsPeriod === true
+  const paymentMethod =
+    paymentMethodsData?.defaultMethod || ('PAYSTACK_CHECKOUT' as const)
+  const paymentMethodLabel =
+    paymentMethodsData?.methods.find((method) => method.id === paymentMethod)
+      ?.label || 'Paystack checkout'
 
   const close = () => closeDrawer('plan-checkout')
 
-  const handlePay = () => {
+  const startPayment = (
+    method: PlanPaymentMethod,
+    fallBackToPaystack = true,
+  ) => {
     purchase.mutate(
-      { tier, interval: isOneTime ? undefined : interval },
+      {
+        tier,
+        interval: isOneTime ? undefined : interval,
+        paymentMethod: method,
+      },
       {
         onSuccess: (res) => {
           if (res.authorizationUrl) {
@@ -81,27 +87,57 @@ export function PlanCheckoutDrawer({
           // Charged the saved card (or nothing to pay) — no redirect needed.
           showNotificationToast({
             message:
-              res.type === 'upgraded'
+              res.type === 'upgraded' || res.type === 'purchased'
                 ? res.amountCharged
-                  ? `Upgraded. You were charged NGN ${formatCurrency(res.amountCharged)} for the rest of this period.`
+                  ? res.type === 'purchased'
+                    ? `Plan activated. You were charged NGN ${formatCurrency(res.amountCharged)}.`
+                    : `Upgraded. You were charged NGN ${formatCurrency(res.amountCharged)} for the rest of this period.`
                   : 'Upgraded — no extra charge for the rest of this period.'
                 : 'Your plan change is scheduled.',
-            mode: res.type === 'upgraded' ? 'success' : 'info',
+            mode:
+              res.type === 'upgraded' || res.type === 'purchased'
+                ? 'success'
+                : 'info',
           })
           close()
 
           // The new tier needs checks the merchant hasn't done (PRO → PRO MAX
           // adds CAC). This path never visits Paystack, so without an explicit
           // push they'd be left on the plans page never knowing.
-          if (res.type === 'upgraded' && res.nextStep) {
+          if (
+            (res.type === 'upgraded' || res.type === 'purchased') &&
+            res.nextStep
+          ) {
             router.push('/verify')
           }
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
+          const response = (
+            err as {
+              response?: {
+                data?: { code?: string; message?: string }
+              }
+            }
+          ).response?.data
+          const code = response?.code
+          const message =
+            response?.message || 'Could not start payment. Try again.'
+          if (
+            code === 'SAVED_PAYMENT_METHOD_FAILED' ||
+            code === 'SAVED_PAYMENT_METHOD_UNAVAILABLE'
+          ) {
+            if (fallBackToPaystack) {
+              startPayment('PAYSTACK_CHECKOUT', false)
+              return
+            }
+            showNotificationToast({
+              message: `${message} Try Paystack Checkout again.`,
+              mode: 'error',
+            })
+            return
+          }
           showNotificationToast({
-            message:
-              err?.response?.data?.message ||
-              'Could not start payment. Try again.',
+            message,
             mode: 'error',
           })
         },
@@ -223,28 +259,33 @@ export function PlanCheckoutDrawer({
       </div>
 
       <div className="px-4 w-full border-t border-[#F1F1F1] rounded-t-[12px]">
-        {/* Payment method */}
-        <div className="mt-4 flex items-center gap-3">
-          <span className="w-6 h-6 rounded-[6px] bg-[#0B1220] flex items-center justify-center shrink-0">
-            <ScrollText className="w-5 h-5 text-[#3B82F6]" />
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs text-[#64748B] font-medium">Payment method</p>
-            <p className="text-[14px] font-bold text-black">
-              Multiple payment options
-            </p>
+        {!isDeferred && (
+          <div className="mt-4 flex items-center gap-3">
+            <span className="w-6 h-6 rounded-[6px] bg-[#0B1220] flex items-center justify-center shrink-0">
+              <ScrollText className="w-5 h-5 text-[#3B82F6]" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-[#64748B] font-medium">
+                Payment method
+              </p>
+              <p className="truncate text-[14px] font-bold text-black">
+                {paymentMethodLabel}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => startPayment('PAYSTACK_CHECKOUT', false)}
+              disabled={purchase.isPending || isBlocked}
+              className="shrink-0 text-[10px] font-bold tracking-[1px] text-black bg-[#F1F1F1] rounded-full px-4 h-9 disabled:opacity-50"
+            >
+              CHANGE
+            </button>
           </div>
-          <button
-            onClick={() => showNotificationToast({ message: 'Coming soon' })}
-            className="shrink-0 text-[10px] font-bold tracking-[1px] text-black bg-[#F1F1F1] rounded-full px-4 h-9"
-          >
-            CHANGE
-          </button>
-        </div>
+        )}
 
         {/* Pay */}
         <Button
-          onClick={handlePay}
+          onClick={() => startPayment(paymentMethod)}
           disabled={purchase.isPending || isBlocked}
           className="w-full h-12 mt-4 rounded-full bg-[#24C166] hover:bg-[#24C166]/90 text-white text-[16px] font-bold disabled:opacity-60"
         >

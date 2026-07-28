@@ -49,7 +49,15 @@ interface VerifyTransactionResponse {
     // Present when the transaction was tied to a plan (subscription tiers)
     customer?: { customer_code?: string };
     plan?: string | { plan_code?: string };
-    authorization?: { authorization_code?: string };
+    authorization?: {
+      authorization_code?: string;
+      channel?: string;
+      brand?: string;
+      last4?: string;
+      bank?: string;
+      card_type?: string;
+      reusable?: boolean;
+    };
   };
 }
 
@@ -269,6 +277,14 @@ export class PaystackService {
     customerCode?: string;
     planCode?: string;
     authorizationCode?: string;
+    authorizationDetails?: {
+      channel?: string;
+      brand?: string;
+      last4?: string;
+      bank?: string;
+      cardType?: string;
+      reusable?: boolean;
+    };
   }> {
     try {
       const response = await axios.get<VerifyTransactionResponse>(
@@ -292,6 +308,16 @@ export class PaystackService {
           customerCode: d.customer?.customer_code,
           planCode,
           authorizationCode: d.authorization?.authorization_code,
+          authorizationDetails: d.authorization
+            ? {
+                channel: d.authorization.channel,
+                brand: d.authorization.brand,
+                last4: d.authorization.last4,
+                bank: d.authorization.bank,
+                cardType: d.authorization.card_type,
+                reusable: d.authorization.reusable,
+              }
+            : undefined,
         };
       }
 

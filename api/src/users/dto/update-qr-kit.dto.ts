@@ -1,4 +1,10 @@
-import { IsString, IsOptional, MaxLength, MinLength } from "class-validator";
+import {
+  IsBoolean,
+  IsString,
+  IsOptional,
+  MaxLength,
+  MinLength,
+} from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
 
 export class UpdateQRKitDto {
@@ -13,4 +19,11 @@ export class UpdateQRKitDto {
   @MinLength(1)
   @MaxLength(50)
   name?: string;
+
+  @ApiPropertyOptional({
+    description: "Ask eligible customers for feedback after a confirmed sale",
+  })
+  @IsBoolean()
+  @IsOptional()
+  collectFeedback?: boolean;
 }

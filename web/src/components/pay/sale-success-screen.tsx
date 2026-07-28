@@ -6,6 +6,7 @@ import { useDrawerStore } from '@/services/drawer'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatConfirmationDate } from './utils'
+import { FeedbackPrompt } from './feedback-prompt'
 
 interface SaleSuccessScreenProps {
   sale: PublicSale
@@ -96,6 +97,12 @@ export function SaleSuccessScreen({
               RECEIPT
             </span>
           </Button>
+
+          <FeedbackPrompt
+            saleId={sale.id}
+            serialNumber={sale.serialNumber}
+            merchantName={merchantName}
+          />
         </div>
 
         <div className="shrink-0 py-5">
