@@ -29,7 +29,7 @@ export function TierIcon({ tier, size = 40, className }: TierIconProps) {
       alt={`Firespot ${tier}`}
       width={inner}
       height={inner}
-      className={boxed ? undefined : 'rounded-[12px]'}
+      className={boxed ? undefined : 'rounded-[10px]'}
     />
   )
 

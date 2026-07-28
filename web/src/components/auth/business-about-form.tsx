@@ -30,6 +30,7 @@ interface BusinessAboutFormProps {
   description: string
   onDescriptionChange: (value: string) => void
   onSubmit: (e: React.FormEvent) => void
+  isPending?: boolean
   error?: string
 }
 
@@ -41,6 +42,7 @@ export function BusinessAboutForm({
   description,
   onDescriptionChange,
   onSubmit,
+  isPending = false,
   error,
 }: BusinessAboutFormProps) {
   const { data: industries = [], isLoading: industriesLoading } =
@@ -217,7 +219,9 @@ export function BusinessAboutForm({
 
       {/* Bottom-stuck footer: divider sits 16px above the button */}
       <div className="shrink-0 -mx-4 border-t border-[#F1F1F1] px-4 pt-4 rounded-t-[12px]">
-        <Button type="submit">Continue</Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending ? <Spinner /> : 'Continue'}
+        </Button>
       </div>
     </form>
   )

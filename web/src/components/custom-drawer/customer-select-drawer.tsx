@@ -1,51 +1,86 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Search, ChevronRight, ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { X, Search, ChevronRight, ArrowLeft, ContactRound } from 'lucide-react'
+import { Button, showNotificationToast } from '@/components/ui'
 import { useCustomers } from '@/services/customers/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
+import { PickedContact, useContactPicker } from '@/hooks/use-contact-picker'
+import type { Customer } from '@/services/customers/customersApi'
+import { AddressBookIcon } from '@phosphor-icons/react'
 
 interface Props {
-  onSelect: (customer: any) => void
+  onSelect: (customer: Customer | null) => void
   onBack?: () => void
   /** Part payments must be attributed to a customer — disables skip/Continue. */
   requireCustomer?: boolean
+  title?: string
 }
 
 export function CustomerSelectDrawer({
   onSelect,
   onBack,
   requireCustomer = false,
+  title = 'Who paid you?',
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: customers = [] } = useCustomers()
+  const { selectContacts } = useContactPicker()
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
+    null,
+  )
 
-  const handleOpenAddCustomer = () => {
+  const handleOpenAddCustomer = ({
+    initialContact,
+    focusPhone = false,
+  }: {
+    initialContact?: PickedContact
+    focusPhone?: boolean
+  } = {}) => {
     closeDrawer('customer-select')
     openDrawer({
       type: 'add-customer',
       props: {
-        onSelect: (newCust: any) => {
+        initialContact,
+        focusPhone,
+        onSelect: (newCust: Customer) => {
           onSelect(newCust)
         },
         onBack: () => {
           openDrawer({
             type: 'customer-select',
-            props: { onSelect, onBack, requireCustomer },
+            props: { onSelect, onBack, requireCustomer, title },
           })
         },
       },
     })
   }
 
+  const handleSelectFromContacts = async () => {
+    const result = await selectContacts()
+    if (result.status === 'selected') {
+      handleOpenAddCustomer({ initialContact: result.contacts[0] })
+      return
+    }
+    if (result.status === 'unsupported') {
+      handleOpenAddCustomer({ focusPhone: true })
+      return
+    }
+    if (result.status === 'error') {
+      showNotificationToast({
+        message: 'Unable to open your contacts. Enter the details manually.',
+        mode: 'error',
+      })
+      handleOpenAddCustomer({ focusPhone: true })
+    }
+  }
+
   const filtered = customers.filter(
-    (c: any) =>
+    (c) =>
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.phoneNumber.includes(searchQuery),
   )
@@ -64,7 +99,7 @@ export function CustomerSelectDrawer({
           </button>
 
           <h2 className="text-[16px] font-bold text-black flex-1 text-center">
-            Who owes you?
+            {title}
           </h2>
 
           <button
@@ -90,7 +125,7 @@ export function CustomerSelectDrawer({
 
         {/* Add new customer Card */}
         <button
-          onClick={handleOpenAddCustomer}
+          onClick={() => handleOpenAddCustomer()}
           type="button"
           className="w-full flex items-center justify-between p-3 bg-white border border-[#F4F6F8] rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] text-left hover:bg-gray-50/50 transition-colors cursor-pointer"
         >
@@ -131,13 +166,33 @@ export function CustomerSelectDrawer({
           <ChevronRight className="w-4 h-4 text-[#64748B]" />
         </button>
 
-        {/* Informational Box */}
-        <div className="bg-[#F4F4F4] border border-[#00000014] rounded-[12px] py-2.5 px-3 text-left">
-          <p className="text-xs text-[#00000066] font-medium">
+        <button
+          onClick={handleSelectFromContacts}
+          type="button"
+          className="w-full flex items-center justify-between p-3 bg-white border border-[#F4F6F8] rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] text-left hover:bg-gray-50/50 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#087CFF] text-white">
+              <AddressBookIcon size={24} weight="fill" color="white" />
+            </div>
+            <div className="flex flex-col text-left">
+              <span className="text-sm font-bold text-[#0F172A]">
+                Select from contacts
+              </span>
+              <span className="text-[12px] font-medium text-[#64748B]">
+                See contacts already on firespot
+              </span>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-[#64748B]" />
+        </button>
+
+        {requireCustomer && (
+          <p className="border border-[#00000014] bg-[#F4F4F4] text-xs rounded-[12px] text-[#00000066] font-medium p-3">
             A balance needs a name. Select the customer so you can collect the
             balance later.
           </p>
-        </div>
+        )}
 
         <div>
           <span className="text-[13px] text-[#00000066] font-medium text-left px-0.5 select-none shrink-0 mb-2 inline-block">
@@ -146,7 +201,7 @@ export function CustomerSelectDrawer({
 
           {/* Customers List Box */}
           <div className="flex max-h-64 flex-col overflow-y-auto rounded-[12px] border border-[#F1F1F1] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
-            {filtered.map((cust: any, index: number) => {
+            {filtered.map((cust, index) => {
               const isSelected = selectedCustomer?._id === cust._id
               return (
                 <button

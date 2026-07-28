@@ -78,3 +78,18 @@ export const getSaleDescription = (
 export const getStatusDescription = (sale: Sale) => {
   return getSaleDescription(sale)
 }
+
+/** Compact recents label: "₦5,000 for 2 items" or "₦1,500 for Bread". */
+export const getRecentSaleSummary = (sale: Sale) => {
+  const itemCount =
+    sale.items?.reduce(
+      (total, item) => total + Math.max(1, Number(item.quantity) || 1),
+      0,
+    ) || 0
+  const subject =
+    itemCount > 1
+      ? `${itemCount} items`
+      : getSaleDescription(sale, itemCount === 1 ? '1 item' : 'New sale')
+
+  return `₦${formatCurrency(sale.amount || 0)} for ${subject}`
+}

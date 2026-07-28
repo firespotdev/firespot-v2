@@ -412,6 +412,16 @@ function RecordSaleContent() {
     resetSaleState()
   }
 
+  const openRecordedSaleDetails = (sale: any) => {
+    resetSaleState()
+    closeAllDrawers()
+    if (!sale) return
+    openDrawer({
+      type: 'transaction-details',
+      props: { sale, justRecorded: true },
+    })
+  }
+
   const handleProductAddTapped = (product: any) => {
     if (product.variants && product.variants.length > 0) {
       openDrawer({
@@ -498,20 +508,8 @@ function RecordSaleContent() {
         { saleId: confirmId, payload },
         {
           onSuccess: (data) => {
-            resetSaleState()
             router.replace('/record-sale')
-            closeAllDrawers()
-            openDrawer({
-              type: 'record-success',
-              props: {
-                successDetails: data,
-                status: 'success',
-                setStep,
-                setAmount,
-                setDescription,
-                onRecordAnother: resetSaleState,
-              },
-            })
+            openRecordedSaleDetails(data)
           },
           onError: (error: any) => {
             const msg =
@@ -537,20 +535,8 @@ function RecordSaleContent() {
         { saleId: editId, payload },
         {
           onSuccess: (data) => {
-            resetSaleState()
             router.replace('/record-sale')
-            closeAllDrawers()
-            openDrawer({
-              type: 'record-success',
-              props: {
-                successDetails: data,
-                status: 'success',
-                setStep,
-                setAmount,
-                setDescription,
-                onRecordAnother: resetSaleState,
-              },
-            })
+            openRecordedSaleDetails({ ...data, isEdit: true })
           },
           onError: (error: any) => {
             const msg =
@@ -574,19 +560,7 @@ function RecordSaleContent() {
     } else {
       createManualSaleMutation.mutate(payload, {
         onSuccess: (data) => {
-          resetSaleState()
-          closeAllDrawers()
-          openDrawer({
-            type: 'record-success',
-            props: {
-              successDetails: data,
-              status: 'success',
-              setStep,
-              setAmount,
-              setDescription,
-              onRecordAnother: resetSaleState,
-            },
-          })
+          openRecordedSaleDetails(data)
         },
         onError: (error: any) => {
           const msg =
@@ -691,6 +665,7 @@ function RecordSaleContent() {
       type: 'customer-select',
       props: {
         requireCustomer: instType === 'part',
+        title: instType === 'part' ? 'Who owes you?' : 'Who paid you?',
         onBack: () => {
           closeDrawer('customer-select')
           openSplitPaymentStep(
@@ -846,6 +821,7 @@ function RecordSaleContent() {
             type: 'customer-select',
             props: {
               requireCustomer: instType === 'part',
+              title: instType === 'part' ? 'Who owes you?' : 'Who paid you?',
               onBack: () =>
                 openCheckoutSaleDrawer(
                   method,
@@ -909,39 +885,32 @@ function RecordSaleContent() {
               })),
             }
 
-            collectSaleMutation.mutate(payload, {
-              onSuccess: (data) => {
+            return collectSaleMutation
+              .mutateAsync(payload)
+              .then((data) => {
                 openDrawer({
                   type: 'collect-payment',
                   props: {
                     sale: data,
                     onRecordConfirm: (recordedSale: any) => {
-                      resetSaleState()
-                      closeAllDrawers()
-                      openDrawer({
-                        type: 'record-success',
-                        props: {
-                          successDetails: recordedSale,
-                          status: 'success',
-                          setStep,
-                          setAmount,
-                          setDescription,
-                          onRecordAnother: resetSaleState,
-                        },
-                      })
+                      if (!recordedSale) {
+                        resetSaleState()
+                        closeAllDrawers()
+                        return
+                      }
+                      openRecordedSaleDetails(recordedSale)
                     },
                   },
                 })
-              },
-              onError: (error: any) => {
+              })
+              .catch((error: any) => {
                 showNotificationToast({
                   message:
                     error?.response?.data?.message ||
                     'Failed to initiate collect payment.',
                   mode: 'error',
                 })
-              },
-            })
+              })
           } else {
             submitConfirmedSale(
               method,

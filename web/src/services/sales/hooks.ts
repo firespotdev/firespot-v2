@@ -91,8 +91,13 @@ export const useEditSale = () => {
 };
 
 export const useCreatePendingCollectSale = () => {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: CreatePendingSalePayload) => SalesApi.createPendingCollectSale(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
   });
 };
 

@@ -34,6 +34,22 @@ export function normalizeNigerianPhoneNumber(value: string) {
   return local.length === 10 ? `+234${local}` : null
 }
 
+export function toLocalNigerianPhoneNumber(value: string) {
+  return normalizeNigerianPhoneNumber(value)?.replace('+234', '') || ''
+}
+
+export function splitContactName(value: string) {
+  const [firstName = '', ...lastNameParts] = value
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  return {
+    firstName,
+    lastName: lastNameParts.join(' '),
+  }
+}
+
 export function useContactPicker() {
   const isSupported =
     typeof navigator !== 'undefined' &&

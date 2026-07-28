@@ -241,6 +241,9 @@ function MerchantOnboardingPageContent() {
               description={description}
               onDescriptionChange={setDescription}
               onSubmit={handleAboutSubmit}
+              isPending={
+                merchantSetup.isPending || initiateActivation.isPending
+              }
               error={aboutError || (hasDraft ? error : undefined)}
             />
           </>

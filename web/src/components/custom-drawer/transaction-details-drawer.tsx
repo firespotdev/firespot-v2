@@ -9,11 +9,11 @@ import {
   MoreVertical,
   Archive,
   Check,
-  Clock,
   PlusCircle,
   Bell,
   ChevronRight,
   Loader2,
+  MoreHorizontal,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import {
@@ -34,19 +34,21 @@ import { cn, formatCurrency } from '@/lib/utils'
 interface TransactionDetailsDrawerProps {
   sale: Sale
   onClose: () => void
+  justRecorded?: boolean
 }
 
-const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
+const TransactionDetailsDrawer = ({
+  sale,
+  justRecorded = false,
+}: TransactionDetailsDrawerProps) => {
   const router = useRouter()
   const { openDrawer, closeDrawer } = useDrawerStore()
-
-  if (!sale) return null
 
   const formatDate = (date: string | Date | undefined) => {
     if (!date) return 'N/A'
     try {
       return format(new Date(date), 'MMMM do, yyyy . h:mm a')
-    } catch (e) {
+    } catch {
       return String(date)
     }
   }
@@ -84,36 +86,84 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
 
   const handleRecordRepayment = () => {
     try {
-      // @ts-ignore
-      if (typeof window !== 'undefined' && window.bprogress) {
-        // @ts-ignore
-        window.bprogress.start()
+      const progressWindow = window as Window & {
+        bprogress?: { start: () => void }
       }
-    } catch (e) {}
+      if (typeof window !== 'undefined' && progressWindow.bprogress) {
+        progressWindow.bprogress.start()
+      }
+    } catch {}
     closeDrawer()
     router.push(`/record-repayment?id=${sale._id}`)
   }
 
+  const handleShareReceipt = () => {
+    if (!navigator.share) return
+    void navigator
+      .share({
+        title: 'Firespot Receipt',
+        text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDate(sale.createdAt)}`,
+        url: window.location.href,
+      })
+      .catch(() => {})
+  }
+
+  const recordedAt = sale.recordedAt || sale.createdAt
+  const recordedDate = recordedAt
+    ? format(new Date(recordedAt), "EEEE do 'of' MMMM, yyyy 'at' h:mm a")
+    : 'the recorded time'
+  const recordedTitle = (sale as Sale & { isEdit?: boolean }).isEdit
+    ? 'Sale updated successfully'
+    : isOutstanding
+      ? 'Partial payment recorded'
+      : 'Full payment recorded'
+  const recordedSummary = isOutstanding
+    ? `${sale.paymentMethod || 'Payment'} payment of NGN ${formatCurrency(amountPaid)} on ${recordedDate}. NGN ${formatCurrency(sale.balanceOwed || 0)} outstanding${sale.dueDate ? ` balance due by ${format(new Date(sale.dueDate), 'do MMMM, yyyy')}` : ''}.`
+    : `${sale.paymentMethod || 'Payment'} payment of NGN ${formatCurrency(sale.amount || 0)} on ${recordedDate}.`
+
   return (
     <div className="flex flex-col h-full font-satoshi bg-white">
       {/* Header */}
-      <div className="shrink-0 p-3 text-black border-b border-[#f1f1f1] w-full text-center flex justify-between items-center bg-white">
-        <CircularIconButton icon="arrow-left" size="md" onClick={closeDrawer} />
-        <h2 className="text-base font-bold">Transaction details</h2>
-        <CircularIconButton
-          icon={<MoreVertical size={20} />}
-          size="sm"
-          onClick={() => {
-            openDrawer({
-              type: 'transaction-options',
-              props: { sale },
-            })
-          }}
-        />
+      <div className="shrink-0 px-3 py-2 text-black w-full text-center flex justify-between items-center bg-white">
+        {justRecorded ? (
+          <>
+            <CircularIconButton
+              icon={<MoreHorizontal size={20} />}
+              size="sm"
+              onClick={() => {
+                openDrawer({
+                  type: 'transaction-options',
+                  props: { sale },
+                })
+              }}
+            />
+            <span />
+            <CircularIconButton icon="x" size="md" onClick={closeDrawer} />
+          </>
+        ) : (
+          <>
+            <CircularIconButton
+              icon="arrow-left"
+              size="md"
+              onClick={closeDrawer}
+            />
+            <h2 className="text-base font-bold">Transaction details</h2>
+            <CircularIconButton
+              icon={<MoreVertical size={20} />}
+              size="sm"
+              onClick={() => {
+                openDrawer({
+                  type: 'transaction-options',
+                  props: { sale },
+                })
+              }}
+            />
+          </>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-center pt-8 px-4">
+        <div className="flex flex-col items-center pt-6 px-4">
           {/* Status Icon Ring */}
           {isOutstanding ? (
             <div className="mb-2 shrink-0 -mt-1">
@@ -146,7 +196,16 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
 
           {/* Amount and Status Message */}
           <div className="mb-6 text-center">
-            {isOutstanding ? (
+            {justRecorded ? (
+              <>
+                <h3 className="text-[20px] font-bold text-black -tracking-[0.4px]">
+                  {recordedTitle}
+                </h3>
+                <p className="mx-auto mt-1.5 max-w-[360px] text-[14px] font-medium leading-[135%] text-[#898A8D]">
+                  {recordedSummary}
+                </p>
+              </>
+            ) : isOutstanding ? (
               <>
                 <h3 className="text-[20px] font-bold text-black -tracking-[0.4px] leading-none mb-1">
                   + NGN {formatCurrency(amountPaid)}
@@ -176,11 +235,49 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
           </div>
 
           {/* Action Buttons */}
-          {isOutstanding ? (
+          {justRecorded ? (
+            <div className="scrollbar-hide mb-6 flex w-full gap-2 overflow-x-auto px-1">
+              <Button
+                variant="outline"
+                className="h-9 w-fit shrink-0 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3.5 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
+                onClick={
+                  isOutstanding ? handleRecordRepayment : handleShareReceipt
+                }
+              >
+                {isOutstanding ? <PlusCircle size={16} /> : <Share size={16} />}
+                {isOutstanding ? 'RECORD REPAYMENT' : 'SHARE RECEIPT'}
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-fit shrink-0 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3.5 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
+                onClick={() => {
+                  if (isOutstanding) {
+                    openDrawer({ type: 'send-reminder', props: { sale } })
+                    return
+                  }
+                  closeDrawer()
+                  router.push(`/record-sale?id=${sale._id}&edit=true`)
+                }}
+              >
+                {isOutstanding ? <Bell size={16} /> : <PencilLine size={16} />}
+                {isOutstanding ? 'SEND REMINDER' : 'EDIT SALE'}
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-fit shrink-0 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3.5 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
+                onClick={() =>
+                  openDrawer({ type: 'confirm-archive', props: { sale } })
+                }
+              >
+                <Archive size={16} />
+                ARCHIVE SALE
+              </Button>
+            </div>
+          ) : isOutstanding ? (
             <div className="flex gap-2 justify-center mb-6 w-full px-1">
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
                 onClick={handleRecordRepayment}
               >
                 <PlusCircle size={16} className="text-black" />
@@ -188,7 +285,7 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
               </Button>
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
                 onClick={() => {
                   openDrawer({
                     type: 'send-reminder',
@@ -204,23 +301,15 @@ const TransactionDetailsDrawer = ({ sale }: TransactionDetailsDrawerProps) => {
             <div className="flex gap-2 justify-center mb-6 w-full">
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
-                onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({
-                      title: 'Firespot Receipt',
-                      text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDate(sale.createdAt)}`,
-                      url: window.location.href,
-                    })
-                  }
-                }}
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
+                onClick={handleShareReceipt}
               >
                 <Share size={16} className="text-black" />
                 SHARE RECEIPT
               </Button>
               <Button
                 variant="outline"
-                className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
+                className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
                 onClick={() => window.print()}
               >
                 <Download size={16} className="text-black" />

@@ -1,13 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  X,
-  ArrowLeft,
-  RotateCcw,
-  AlertCircle,
-  PenLine,
-} from 'lucide-react'
+import { X, ArrowLeft, RotateCcw, AlertCircle, PenLine } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { TabSwitch } from '../ui'
@@ -146,7 +140,7 @@ export function SplitPaymentDrawer({
 
           {/* Info Alert Box */}
           <div className="bg-[#F4F4F4] rounded-[12px] p-3 border-2 border-[#0000000A] flex items-start gap-2 text-left mt-1">
-            <AlertCircle color="#00000066" size={18} className="mt-0.5" />
+            <AlertCircle color="#00000066" size={24} className="mt-0.5" />
             <p className="text-[12px] text-[#00000066] font-medium">
               Customer paid everything. Click “Paid in part” or “Edit” only if
               they’re owing you a balance payment.

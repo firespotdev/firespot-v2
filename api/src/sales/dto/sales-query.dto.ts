@@ -11,6 +11,7 @@ export class SalesQueryDto {
     'OWING',
     'UNCONFIRMED',
     'PAID',
+    'RECORDED',
     'ARCHIVED',
   ])
   status?: string;
@@ -59,4 +60,3 @@ export class SalesQueryDto {
   @IsString()
   customerId?: string;
 }
-

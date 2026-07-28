@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/constants'
 import {
   getAmountLabel,
+  getRecentSaleSummary,
   getStatusDescription,
   getMerchantStatus,
 } from '@/lib/utils/sales'
@@ -20,7 +21,7 @@ interface SaleItemProps {
   onCancel?: () => void
   onClick?: (sale: Sale) => void
   className?: string
-  variant?: 'default' | 'minimal'
+  variant?: 'default' | 'minimal' | 'recent-unconfirmed' | 'recent-confirmed'
 }
 
 export function SaleItem({
@@ -33,6 +34,17 @@ export function SaleItem({
   variant = 'default',
 }: SaleItemProps) {
   const isArchivedItem = getMerchantStatus(sale) === 'Archived'
+  const isRecent = variant.startsWith('recent-')
+  const customerLabel =
+    (typeof sale.customerId === 'object' && sale.customerId?.name) ||
+    sale.customerName ||
+    (sale.customerType === 'Repeat' ? 'Repeat customer' : 'New customer')
+  const title =
+    variant === 'recent-unconfirmed'
+      ? getRecentSaleSummary(sale)
+      : variant === 'recent-confirmed'
+        ? customerLabel
+        : getStatusDescription(sale)
 
   const content = (
     <div
@@ -46,10 +58,20 @@ export function SaleItem({
       <div className="flex items-center gap-2 min-w-0">
         <MerchantAvatar bankName={sale.targetBankName} size={36} />
         <div className="min-w-0">
-          <h4 className="text-[13px] font-bold text-[#111827] mb-0.5 capitalize truncate">
-            {getStatusDescription(sale)}
+          <h4
+            className={cn(
+              'font-bold text-[#111827] mb-0.5 capitalize truncate',
+              isRecent ? 'text-[14px]' : 'text-[13px]',
+            )}
+          >
+            {title}
           </h4>
-          <p className="text-[#6B7280] text-[11px] font-medium uppercase tracking-tight">
+          <p
+            className={cn(
+              'text-[#6B7280] font-medium tracking-tight',
+              isRecent ? 'text-[12px]' : 'text-[11px] uppercase',
+            )}
+          >
             {formatDate(sale.createdAt)}
           </p>
         </div>

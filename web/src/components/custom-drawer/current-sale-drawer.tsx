@@ -44,7 +44,7 @@ interface Props {
   onEditInstallment: () => void
   onEditCustomer: () => void
   onEditDueDate?: (dueDate: string) => void
-  onConfirmRecord: () => void
+  onConfirmRecord: () => void | Promise<void>
 }
 
 export function CurrentSaleDrawer({
@@ -68,6 +68,7 @@ export function CurrentSaleDrawer({
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const [dueDateOpen, setDueDateOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -84,10 +85,8 @@ export function CurrentSaleDrawer({
   const getSubtotal = () => {
     return (
       Math.round(
-        cartItems.reduce(
-          (acc, curr) => acc + curr.price * curr.quantity,
-          0,
-        ) * 100,
+        cartItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0) *
+          100,
       ) / 100
     )
   }
@@ -113,10 +112,27 @@ export function CurrentSaleDrawer({
   const selectedDueDate = dueDate
     ? new Date(`${dueDate.slice(0, 10)}T00:00:00`)
     : undefined
+  const isPending = isLoading || isSubmitting
   const isContinueDisabled =
-    isLoading ||
+    isPending ||
     needsPaymentMethod ||
     (installmentType === 'part' && (!dueDate || !customer))
+
+  const handleContinue = async () => {
+    if (isContinueDisabled) return
+    setIsSubmitting(true)
+    try {
+      await onConfirmRecord()
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const gradientStyle = {
+    background: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+    WebkitBackgroundClip: 'text' as const,
+    WebkitTextFillColor: 'transparent' as const,
+  }
 
   return (
     <div className="w-full flex flex-col font-satoshi px-3 bg-white max-w-125 mx-auto">
@@ -236,7 +252,8 @@ export function CurrentSaleDrawer({
                   </span>
                   <div className="flex items-center gap-1">
                     <span
-                      className={`text-sm font-medium ${balanceOwed > 0 ? 'text-[#D97706]' : 'text-[#111827]'}`}
+                      className={`text-sm font-medium`}
+                      style={gradientStyle}
                     >
                       NGN {formatCurrency(balanceOwed)}
                     </span>
@@ -308,11 +325,7 @@ export function CurrentSaleDrawer({
                   </div>
                 </button>
               </PopoverTrigger>
-              <PopoverContent
-                className="w-auto p-0"
-                align="end"
-                side="top"
-              >
+              <PopoverContent className="w-auto p-0" align="end" side="top">
                 <Calendar
                   mode="single"
                   selected={selectedDueDate}
@@ -334,14 +347,14 @@ export function CurrentSaleDrawer({
           explicit actions on the sale screen. */}
       {mode !== 'preview' && (
         <button
-          onClick={onConfirmRecord}
+          onClick={handleContinue}
           disabled={isContinueDisabled}
           className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 disabled:bg-black/60 disabled:cursor-not-allowed text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0 flex items-center justify-center gap-2"
         >
-          {isLoading ? (
+          {isPending ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin text-white" />
-              <span>Loading...</span>
+              <span>Continue</span>
             </>
           ) : (
             <span>Continue</span>

@@ -106,6 +106,7 @@ export interface TrendData {
 
 export interface SalesStats {
   pendingSalesCount: number;
+  pendingSalesAmount: number;
   todaySalesCount: number;
   todaySalesAmount: number;
   totalSalesAmount: number;

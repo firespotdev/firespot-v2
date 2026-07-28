@@ -510,6 +510,8 @@ export class SalesService {
       const upperStatus = status.toUpperCase()
       if (upperStatus === 'PAID' || upperStatus === 'CONFIRMED') {
         filter.status = 'CONFIRMED'
+      } else if (upperStatus === 'RECORDED') {
+        filter.status = { $in: ['CONFIRMED', 'OUTSTANDING'] }
       } else if (upperStatus === 'UNCONFIRMED' || upperStatus === 'PENDING') {
         filter.status = 'PENDING'
       } else if (upperStatus === 'ARCHIVED' || upperStatus === 'CANCELLED') {
@@ -710,7 +712,20 @@ export class SalesService {
     } else if (query?.mode === 'collected') {
       pendingFilter.isCollection = true
     }
-    const pendingCount = await this.saleModel.countDocuments(pendingFilter)
+    const [pendingSummary] = await this.saleModel
+      .aggregate([
+        { $match: pendingFilter },
+        {
+          $group: {
+            _id: null,
+            count: { $sum: 1 },
+            amount: { $sum: { $ifNull: ['$amount', 0] } },
+          },
+        },
+      ])
+      .exec()
+    const pendingCount = pendingSummary?.count || 0
+    const pendingSalesAmount = pendingSummary?.amount || 0
 
     // Helper to get actual recorded money from a sale
     const getSaleRecordedAmount = (sale: any) => {
@@ -799,6 +814,7 @@ export class SalesService {
 
     const response: any = {
       pendingSalesCount: pendingCount,
+      pendingSalesAmount,
       todaySalesCount: filteredConfirmed.filter(
         (s) => getSaleRecordedAmount(s) > 0 || s.status === 'CONFIRMED',
       ).length,

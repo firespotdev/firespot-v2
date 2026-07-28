@@ -126,7 +126,7 @@ function HistoryContent() {
   // Group sales by month/year with merchant status filtering
   const groupedSales = useMemo(() => {
     let filtered = sales
-    if (selectedStatus !== 'ALL') {
+    if (selectedStatus !== 'ALL' && selectedStatus !== 'RECORDED') {
       filtered = filtered.filter(
         (s) => getMerchantStatus(s).toUpperCase() === selectedStatus,
       )

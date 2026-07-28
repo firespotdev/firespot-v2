@@ -54,10 +54,7 @@ export default function ShopSetupPage() {
     ? Math.round((setup.completedCount / setup.total) * 100)
     : 0
 
-  const go = (
-    destination: ChecklistDestination,
-    requiredTier?: 'PROMAX',
-  ) => {
+  const go = (destination: ChecklistDestination, requiredTier?: 'PROMAX') => {
     if (
       requiredTier === 'PROMAX' &&
       catalog?.current.effectiveTier !== 'PROMAX'
@@ -193,7 +190,7 @@ export default function ShopSetupPage() {
           <Button
             onClick={handleGoLive}
             disabled={goLive.isPending}
-            className="w-full h-14 font-bold"
+            className="w-full font-bold"
           >
             {goLive.isPending ? 'Going live…' : 'Go live and start selling'}
           </Button>

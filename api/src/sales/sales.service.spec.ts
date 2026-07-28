@@ -301,6 +301,56 @@ describe("SalesService amount invariants", () => {
     });
   });
 
+  describe("recent sales queries", () => {
+    const merchantId = "507f1f77bcf86cd799439012";
+
+    it("returns confirmed and outstanding sales for the recorded view", async () => {
+      const execSales = jest.fn().mockResolvedValue([]);
+      const find = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockReturnValue({
+              populate: jest.fn().mockReturnValue({ exec: execSales }),
+            }),
+          }),
+        }),
+      });
+      const countDocuments = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(0),
+      });
+      const service = createService({ find, countDocuments });
+
+      await service.getSales(merchantId, { status: "RECORDED" });
+
+      expect(find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: { $in: ["CONFIRMED", "OUTSTANDING"] },
+        }),
+      );
+    });
+
+    it("returns the amount and count of pending sales", async () => {
+      const aggregate = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([{ count: 2, amount: 1500 }]),
+      });
+      const find = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([]),
+        }),
+      });
+      const service = createService({ aggregate, find });
+
+      await expect(
+        service.getSalesStats(merchantId, { preset: "all_time" }),
+      ).resolves.toEqual(
+        expect.objectContaining({
+          pendingSalesCount: 2,
+          pendingSalesAmount: 1500,
+        }),
+      );
+    });
+  });
+
   describe("authenticated payer identity", () => {
     it("claims a pending sale using the server-authenticated user identity", async () => {
       const save = jest.fn().mockResolvedValue(undefined);
