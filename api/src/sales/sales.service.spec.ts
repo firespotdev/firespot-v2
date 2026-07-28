@@ -25,6 +25,7 @@ describe("SalesService amount invariants", () => {
       {} as any,
       {} as any,
       customersService as any,
+      { evaluateReferredMerchant: jest.fn().mockResolvedValue(null) } as any,
     );
 
   describe("recorded sale normalization", () => {

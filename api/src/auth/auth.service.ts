@@ -21,7 +21,6 @@ const nanoidAlphanumeric = customAlphabet(
   "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
 );
 import { User } from "../schemas/user.schema";
-import { Agent } from "../admin/schemas/agent.schema";
 import { normalizeNigerianPhone } from "../common/phone";
 import {
   getNextStep,
@@ -33,6 +32,7 @@ import { VerifyOtpDto } from "./dto/verify-otp.dto";
 import { SignupDto } from "./dto/signup.dto";
 import { PaystackService } from "../users/services/paystack.service";
 import { SmsService } from "../services/sms/sms.service";
+import { MerchantReferralsService } from "../merchant-referrals/merchant-referrals.service";
 
 // Rate limiting constants
 const OTP_RATE_LIMIT_WINDOW_MINUTES = 60; // 1 hour window
@@ -46,13 +46,13 @@ const REFRESH_TOKEN_TTL_DAYS = 30; // Refresh cookie lifetime
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Agent.name) private agentModel: Model<Agent>,
     @InjectModel(RefreshToken.name)
     private refreshTokenModel: Model<RefreshTokenDocument>,
     private jwtService: JwtService,
     private configService: ConfigService,
     private paystackService: PaystackService,
     private smsService: SmsService,
+    private merchantReferralsService: MerchantReferralsService,
   ) {}
 
   /**
@@ -182,6 +182,7 @@ export class AuthService {
       bankCode,
       accountNumber,
       referralCode,
+      merchantReferralCode,
     } = signupDto;
 
     const normalizedPhone = this.normalizePhoneNumber(
@@ -199,6 +200,11 @@ export class AuthService {
       );
     }
 
+    await this.merchantReferralsService.validateOnboardingAttribution({
+      referralCode,
+      merchantReferralCode,
+    });
+
     // Verify bank account with Paystack
     const verification = await this.paystackService.verifyBankAccount(
       accountNumber,
@@ -206,18 +212,6 @@ export class AuthService {
     );
 
     const businessName = verification.accountName;
-
-    // Look up agent by referral code (agents have referral codes, not users)
-    let referringAgent: Agent | null = null;
-    if (referralCode) {
-      referringAgent = await this.agentModel.findOne({
-        referralCode: referralCode.toUpperCase(),
-      });
-
-      if (!referringAgent) {
-        throw new BadRequestException("Invalid referral code");
-      }
-    }
 
     const fullPhoneNumber = `${phoneCountryCode}${normalizedPhone}`;
     const termiiPhoneNumber = fullPhoneNumber.replace("+", "");
@@ -273,7 +267,10 @@ export class AuthService {
       otpRequestCount: 1,
       otpRequestWindowStart: now,
       lastOtpRequestAt: now,
-      referredByAgent: referringAgent?._id,
+    });
+    await this.merchantReferralsService.applyOnboardingAttribution(user._id, {
+      referralCode,
+      merchantReferralCode,
     });
 
     return {

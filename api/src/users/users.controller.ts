@@ -594,7 +594,12 @@ export class UsersController {
           },
         },
         profilePhotoUrl: { type: "string", nullable: true },
-        referralCode: { type: "string" },
+        merchantReferralCode: { type: "string", example: "FSM-7K9NPQ" },
+        referralSource: {
+          type: "string",
+          enum: ["agent", "merchant"],
+          nullable: true,
+        },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
       },

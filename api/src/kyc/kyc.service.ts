@@ -19,6 +19,7 @@ import {
   getNextStep,
   isStepSatisfied,
 } from '../merchant-plans/constants/plans'
+import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
 
 /**
  * Identity products run in the browser via SmileID's hosted flow: they need
@@ -37,6 +38,7 @@ export class KycService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private smileIdService: SmileIdService,
+    private merchantReferralsService: MerchantReferralsService,
   ) {}
 
   private async getMerchant(merchantId: string): Promise<UserDocument> {
@@ -554,6 +556,14 @@ export class KycService {
     const badge = PLANS[tier].badge
     if (badge) user.verificationLevel = badge
     await user.save()
+    void this.merchantReferralsService
+      .reevaluateReferrer(merchantId)
+      .catch((error) =>
+        this.logger.error(
+          `Could not re-evaluate referral rewards for ${merchantId}`,
+          error,
+        ),
+      )
 
     this.logger.log(`Merchant ${merchantId} fully verified on ${tier}`)
   }

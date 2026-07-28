@@ -4,9 +4,9 @@ import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { Product, ProductDocument } from "../schemas/product.schema";
-import { Agent, AgentDocument } from "../admin/schemas/agent.schema";
 import { PaystackService } from "./services/paystack.service";
 import { CloudinaryService } from "./services/cloudinary.service";
+import { MerchantReferralsService } from "../merchant-referrals/merchant-referrals.service";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
@@ -41,9 +41,9 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
-    @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
+    private merchantReferralsService: MerchantReferralsService,
   ) {}
 
   async verifyBankAccount(dto: VerifyAccountDto) {
@@ -98,26 +98,19 @@ export class UsersService {
       );
     }
 
+    await this.merchantReferralsService.validateOnboardingAttribution(
+      {
+        referralCode: dto.referralCode,
+        merchantReferralCode: dto.merchantReferralCode,
+      },
+      user._id,
+    );
+
     // Verify account number with Paystack
     const verification = await this.paystackService.verifyBankAccount(
       dto.accountNumber,
       dto.bankCode,
     );
-
-    // Handle referral code if provided (referral codes belong to agents)
-    let referringAgent: AgentDocument | null = null;
-    if (dto.referralCode) {
-      referringAgent = await this.agentModel.findOne({
-        referralCode: dto.referralCode.toUpperCase(),
-      });
-
-      if (!referringAgent) {
-        throw new HttpException(
-          "Invalid referral code",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
 
     // Update user with permanent bank details
     user.businessName = dto.businessName;
@@ -134,10 +127,6 @@ export class UsersService {
       isPrimary: true,
     } as any);
 
-    if (referringAgent) {
-      user.referredByAgent = referringAgent._id;
-    }
-
     // Becoming a merchant: upgrade role and assign a shareable slug
     user.role = "merchant";
     user.onboardingCompleted = true;
@@ -146,10 +135,15 @@ export class UsersService {
     }
 
     await user.save();
+    await this.merchantReferralsService.applyOnboardingAttribution(user._id, {
+      referralCode: dto.referralCode,
+      merchantReferralCode: dto.merchantReferralCode,
+    });
+    const updatedUser = await this.userModel.findById(user._id).exec();
 
     return {
       message: "Profile setup completed successfully",
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(updatedUser || user),
     };
   }
 
@@ -870,6 +864,8 @@ export class UsersService {
       activeHoursSetup: user.activeHoursSetup || null,
       shopIsLive: user.shopIsLive === true,
       merchantSlug: user.merchantSlug,
+      merchantReferralCode: user.merchantReferralCode || null,
+      referralSource: user.referralSource || null,
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],
       profilePhotoUrl: user.profilePhotoUrl,

@@ -103,6 +103,8 @@ export interface User {
   profilePhotoUrl?: string
   profileBannerUrl?: string
   referralCode?: string
+  merchantReferralCode?: string
+  referralSource?: 'agent' | 'merchant' | null
   merchantSlug?: string
   // Merchant plan + verification state
   planTier?: 'LITE' | 'PRO' | 'PROMAX' | null
@@ -166,6 +168,7 @@ export interface SignupPayload {
   bankCode: string
   accountNumber: string
   referralCode?: string
+  merchantReferralCode?: string
 }
 
 export interface VerifyOtpPayload {
@@ -192,6 +195,7 @@ export interface MerchantSetupPayload {
   bankCode: string
   accountNumber: string
   referralCode?: string
+  merchantReferralCode?: string
 }
 
 export interface MerchantSetupResponse {

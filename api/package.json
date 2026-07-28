@@ -9,6 +9,7 @@
     "plans:create": "ts-node -T scripts/create-paystack-plans.ts",
     "merchant:reset": "ts-node -T scripts/reset-merchant-verification.ts",
     "customers:migrate-identities": "ts-node -T scripts/migrate-customer-identities.ts",
+    "merchants:backfill-referrals": "ts-node -T scripts/backfill-merchant-referral-codes.ts",
     "plans:fix-periods": "ts-node -T scripts/fix-plan-periods.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",

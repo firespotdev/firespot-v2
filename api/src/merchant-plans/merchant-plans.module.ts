@@ -6,6 +6,7 @@ import { UsersModule } from '../users/users.module'
 import { StoresModule } from '../stores/stores.module'
 import { MerchantPlansController } from './merchant-plans.controller'
 import { MerchantPlansService } from './merchant-plans.service'
+import { MerchantReferralsModule } from '../merchant-referrals/merchant-referrals.module'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { MerchantPlansService } from './merchant-plans.service'
     ]),
     UsersModule,
     StoresModule,
+    MerchantReferralsModule,
   ],
   controllers: [MerchantPlansController],
   providers: [MerchantPlansService],

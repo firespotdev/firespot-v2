@@ -78,4 +78,13 @@ export class SetupProfileDto {
   @IsOptional()
   @IsString()
   referralCode?: string;
+
+  @ApiProperty({
+    description: "Merchant referral code from a recommendation link (optional)",
+    example: "FSM-7K9NPQ",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  merchantReferralCode?: string;
 }

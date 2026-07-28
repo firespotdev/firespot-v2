@@ -19,6 +19,7 @@ type MerchantOnboardingDraft = {
   bankCode: string
   accountNumber: string
   referralCode?: string
+  merchantReferralCode?: string
   serialNumber?: string
 }
 
@@ -44,6 +45,7 @@ function MerchantOnboardingPageContent() {
   const redirectPath = searchParams.get('redirect')
   // Agent referral from QR kit links — applied silently, no visible field
   const referralCode = searchParams.get('ref')?.toUpperCase()
+  const merchantReferralCode = searchParams.get('mref')?.toUpperCase()
   const hasDraft = searchParams.get('draft') === '1'
 
   const [step, setStep] = useState<Step>('about')
@@ -56,7 +58,9 @@ function MerchantOnboardingPageContent() {
   const [aboutError, setAboutError] = useState<string | undefined>()
   const [error, setError] = useState<string | undefined>()
   const [accountError, setAccountError] = useState<string | undefined>()
-  const [draft, setDraft] = useState<MerchantOnboardingDraft | null>(null)
+  const [draft] = useState<MerchantOnboardingDraft | null>(() =>
+    hasDraft ? readMerchantOnboardingDraft() : null,
+  )
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
@@ -77,14 +81,8 @@ function MerchantOnboardingPageContent() {
   }, [hydrated, isAuthenticated, user, router, redirectPath, hasDraft])
 
   useEffect(() => {
-    if (!hasDraft) return
-    const savedDraft = readMerchantOnboardingDraft()
-    if (!savedDraft) {
-      router.replace('/onboarding/merchant/start')
-      return
-    }
-    setDraft(savedDraft)
-  }, [hasDraft, router])
+    if (hasDraft && !draft) router.replace('/onboarding/merchant/start')
+  }, [hasDraft, draft, router])
 
   const handleBack = () => {
     if (step === 'payments') {
@@ -126,6 +124,8 @@ function MerchantOnboardingPageContent() {
         bankCode: draft.bankCode,
         accountNumber: draft.accountNumber,
         referralCode: draft.referralCode || referralCode || undefined,
+        merchantReferralCode:
+          draft.merchantReferralCode || merchantReferralCode || undefined,
       },
       {
         onSuccess: () => {
@@ -185,6 +185,7 @@ function MerchantOnboardingPageContent() {
         bankCode: selectedBankCode,
         accountNumber,
         referralCode: referralCode || undefined,
+        merchantReferralCode: merchantReferralCode || undefined,
       },
       {
         onSuccess: () => {

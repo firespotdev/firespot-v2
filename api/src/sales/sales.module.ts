@@ -16,6 +16,7 @@ import { Product, ProductSchema } from '../schemas/product.schema';
 import { UsersModule } from '../users/users.module';
 import { AccountLinkingModule } from '../account-linking/account-linking.module';
 import { CustomersModule } from '../customers/customers.module';
+import { MerchantReferralsModule } from '../merchant-referrals/merchant-referrals.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { CustomersModule } from '../customers/customers.module';
     UsersModule,
     AccountLinkingModule,
     CustomersModule,
+    MerchantReferralsModule,
   ],
   controllers: [SalesController],
   providers: [SalesService]

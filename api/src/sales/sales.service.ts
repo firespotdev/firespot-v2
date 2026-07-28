@@ -30,6 +30,7 @@ import {
   getCollectEligibility,
 } from '../merchant-plans/constants/plans'
 import { CustomersService } from '../customers/customers.service'
+import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
 
 @Injectable()
 export class SalesService {
@@ -44,7 +45,16 @@ export class SalesService {
     private cloudinaryService: CloudinaryService,
     private accountLinkingService: AccountLinkingService,
     private customersService: CustomersService,
+    private merchantReferralsService: MerchantReferralsService,
   ) {}
+
+  private evaluateReferralVolume(merchantId: string | Types.ObjectId) {
+    void this.merchantReferralsService
+      .evaluateReferredMerchant(merchantId)
+      .catch((error) =>
+        console.error('Failed to evaluate merchant referral:', error),
+      )
+  }
 
   private roundMoney(value: number): number {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100
@@ -953,6 +963,9 @@ export class SalesService {
     if (customerUserId) sale.customerUserId = customerUserId
 
     const savedSale = await sale.save()
+    if (savedSale.isCollection) {
+      this.evaluateReferralVolume(savedSale.merchantId)
+    }
     this.eventsGateway.server
       .to(sale.merchantId.toString())
       .emit('sale.confirmed', savedSale)
@@ -1553,6 +1566,10 @@ export class SalesService {
         return sum + balance
       }, 0),
     )
+
+    if (updatedSales.some((sale) => sale.isCollection)) {
+      this.evaluateReferralVolume(merchantObjectId)
+    }
 
     const resultSale = primarySale || updatedSales[0] || {}
     const resObj =

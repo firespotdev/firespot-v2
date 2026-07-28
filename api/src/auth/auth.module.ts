@@ -7,12 +7,12 @@ import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { User, UserSchema } from "../schemas/user.schema";
-import { Agent, AgentSchema } from "../admin/schemas/agent.schema";
 import {
   RefreshToken,
   RefreshTokenSchema,
 } from "../schemas/refresh-token.schema";
 import { UsersModule } from "../users/users.module";
+import { MerchantReferralsModule } from "../merchant-referrals/merchant-referrals.module";
 
 @Module({
   imports: [
@@ -31,10 +31,10 @@ import { UsersModule } from "../users/users.module";
     }),
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
-      { name: Agent.name, schema: AgentSchema },
       { name: RefreshToken.name, schema: RefreshTokenSchema },
     ]),
     forwardRef(() => UsersModule),
+    MerchantReferralsModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

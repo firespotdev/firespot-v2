@@ -312,6 +312,9 @@ export class User extends Document {
   @Prop({ unique: true, sparse: true, index: true, length: 6 })
   merchantSlug?: string;
 
+  @Prop({ unique: true, sparse: true, uppercase: true })
+  merchantReferralCode?: string;
+
   // Bank accounts (array of bank accounts)
   @Prop({ type: [BankAccountSchema], default: [] })
   bankAccounts?: BankAccount[];
@@ -332,6 +335,12 @@ export class User extends Document {
   // Referral - now links to Agent who referred this merchant
   @Prop({ type: Types.ObjectId, ref: "Agent" })
   referredByAgent?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: "User" })
+  referredByMerchant?: Types.ObjectId;
+
+  @Prop({ enum: ["agent", "merchant"] })
+  referralSource?: "agent" | "merchant";
 
   @Prop({ default: 0 })
   availableKitEntitlements?: number;

@@ -33,6 +33,7 @@ import {
   MIN_CHARGE_NAIRA,
   type PlanPaymentMethod,
 } from './constants/plans'
+import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -47,7 +48,19 @@ export class MerchantPlansService {
     private paystackService: PaystackService,
     private storesService: StoresService,
     private configService: ConfigService,
+    private merchantReferralsService: MerchantReferralsService,
   ) {}
+
+  private reevaluateReferralEligibility(merchantId: string | Types.ObjectId) {
+    void this.merchantReferralsService
+      .reevaluateReferrer(merchantId)
+      .catch((error) =>
+        this.logger.error(
+          `Could not re-evaluate referral rewards for ${merchantId}`,
+          error,
+        ),
+      )
+  }
 
   /**
    * Persists a scheduled downgrade once its date has passed. getEffectiveTier
@@ -742,6 +755,7 @@ export class MerchantPlansService {
     user.pendingPlanChange = undefined
     this.applyBadgeForTier(user, tier)
     await user.save()
+    this.reevaluateReferralEligibility(user._id as Types.ObjectId)
 
     // Retire the old subscription and start the new one on the renewal date,
     // so billing stays aligned and nothing double-charges.
@@ -1212,5 +1226,6 @@ export class MerchantPlansService {
           : 'paid'
     }
     await user.save()
+    this.reevaluateReferralEligibility(user._id as Types.ObjectId)
   }
 }

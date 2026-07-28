@@ -20,7 +20,13 @@ describe("KycService resumable hosted sessions", () => {
     };
 
     return {
-      service: new KycService(userModel as any, smileIdService as any),
+      service: new KycService(
+        userModel as any,
+        smileIdService as any,
+        {
+          reevaluateReferrer: jest.fn().mockResolvedValue(0),
+        } as any,
+      ),
       userModel,
       smileIdService,
     };

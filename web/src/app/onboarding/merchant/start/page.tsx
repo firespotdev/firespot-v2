@@ -14,6 +14,7 @@ type MerchantOnboardingDraft = {
   bankCode: string
   accountNumber: string
   referralCode?: string
+  merchantReferralCode?: string
   serialNumber?: string
 }
 
@@ -56,6 +57,8 @@ function MerchantStartPageContent() {
       bankCode,
       accountNumber,
       referralCode: referralCode || undefined,
+      merchantReferralCode:
+        searchParams.get('mref')?.trim().toUpperCase() || undefined,
       serialNumber: searchParams.get('serial') || undefined,
     }
     sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))

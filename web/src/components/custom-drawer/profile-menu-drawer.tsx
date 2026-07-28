@@ -206,7 +206,13 @@ function HeaderPlanBadge({ label }: { label: string }) {
 
 function PlanBrandIcon({ tier }: { tier: PlanTier | null }) {
   if (tier) {
-    return <TierIcon tier={tier} size={24} />
+    return (
+      <TierIcon
+        tier={tier}
+        size={24}
+        className="overflow-hidden rounded-[8px]"
+      />
+    )
   }
 
   return (
@@ -515,7 +521,6 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
     const recommendBusinessProps = {
       businessName,
       profilePhotoUrl: profile?.profilePhotoUrl,
-      serialNumber: qrKitsData?.data?.[0]?.serialNumber,
     }
 
     closeDrawer()
