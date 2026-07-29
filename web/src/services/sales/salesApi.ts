@@ -45,12 +45,16 @@ export interface EditSalePayload {
 }
 
 export const SalesApi = {
-  createPendingSale: async (payload: CreatePendingSalePayload): Promise<Sale> => {
+  createPendingSale: async (
+    payload: CreatePendingSalePayload,
+  ): Promise<Sale> => {
     const { data } = await publicApiClient.post('/sales/pending', payload);
     return data;
   },
 
-  createPendingCollectSale: async (payload: CreatePendingSalePayload): Promise<Sale> => {
+  createPendingCollectSale: async (
+    payload: CreatePendingSalePayload,
+  ): Promise<Sale> => {
     const { data } = await apiClient.post('/sales/collect', payload);
     return data;
   },
@@ -60,7 +64,9 @@ export const SalesApi = {
     return data;
   },
 
-  getSales: async (params?: Record<string, string | number | boolean | undefined>): Promise<SalesResponse> => {
+  getSales: async (
+    params?: Record<string, string | number | boolean | undefined>,
+  ): Promise<SalesResponse> => {
     const { data } = await apiClient.get('/sales', { params });
     return data;
   },
@@ -75,12 +81,17 @@ export const SalesApi = {
     return data;
   },
 
-  getSalesStats: async (params?: Record<string, string | number | boolean | undefined>): Promise<SalesStats> => {
+  getSalesStats: async (
+    params?: Record<string, string | number | boolean | undefined>,
+  ): Promise<SalesStats> => {
     const { data } = await apiClient.get('/sales/stats', { params });
     return data;
   },
 
-  recordSale: async (saleId: string, payload: RecordSalePayload): Promise<Sale> => {
+  recordSale: async (
+    saleId: string,
+    payload: RecordSalePayload,
+  ): Promise<Sale> => {
     const { data } = await apiClient.patch(`/sales/${saleId}/record`, payload);
     return data;
   },
@@ -100,6 +111,15 @@ export const SalesApi = {
     return data;
   },
 
+  archiveCustomerOutstandingSales: async (
+    customerId: string,
+  ): Promise<ArchiveAllSalesResult> => {
+    const { data } = await apiClient.patch(
+      `/sales/outstanding/customer/${customerId}/archive`,
+    );
+    return data;
+  },
+
   cancelSale: async (saleId: string): Promise<Sale> => {
     const { data } = await apiClient.patch(`/sales/${saleId}/cancel`);
     return data;
@@ -115,13 +135,25 @@ export const SalesApi = {
     return data;
   },
 
-  recordRepayment: async (saleId: string, payload: { amountPaid: number; paymentMethod?: string; customerId?: string }): Promise<any> => {
-    const { data } = await apiClient.post(`/sales/${saleId}/repayment`, payload);
+  recordRepayment: async (
+    saleId: string,
+    payload: {
+      amountPaid: number;
+      paymentMethod?: string;
+      customerId?: string;
+    },
+  ): Promise<any> => {
+    const { data } = await apiClient.post(
+      `/sales/${saleId}/repayment`,
+      payload,
+    );
     return data;
   },
 
   getCustomerOutstandingSales: async (customerId: string): Promise<Sale[]> => {
-    const { data } = await apiClient.get(`/sales/customer/${customerId}/outstanding`);
+    const { data } = await apiClient.get(
+      `/sales/customer/${customerId}/outstanding`,
+    );
     return data;
   },
 
@@ -165,9 +197,13 @@ export const SalesApi = {
   uploadReceipt: async (saleId: string, file: File): Promise<Sale> => {
     const formData = new FormData();
     formData.append('receipt', file);
-    const { data } = await publicApiClient.post(`/sales/${saleId}/receipt`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await publicApiClient.post(
+      `/sales/${saleId}/receipt`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      },
+    );
     return data;
   },
 

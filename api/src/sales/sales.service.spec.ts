@@ -408,7 +408,10 @@ describe("SalesService amount invariants", () => {
             {
               status: "OUTSTANDING",
               balanceOwed: 500,
-              customerUserId,
+              customerUserId: {
+                _id: customerUserId,
+                profilePhotoUrl: "https://example.com/ada.jpg",
+              },
               customerId: {
                 _id: customerId,
                 name: "Ada",
@@ -435,6 +438,7 @@ describe("SalesService amount invariants", () => {
             customerId,
             customerUserId,
             customerName: "Ada",
+            customerAvatar: "https://example.com/ada.jpg",
             totalOwed: 500,
           }),
         ],
@@ -442,9 +446,38 @@ describe("SalesService amount invariants", () => {
       expect(find).toHaveBeenCalledWith(
         expect.objectContaining({
           status: "OUTSTANDING",
+          isArchived: { $ne: true },
           customerUserId: { $exists: true, $ne: null },
           customerId: { $exists: true, $ne: null },
         }),
+      );
+    });
+
+    it("archives every active outstanding sale for one customer identity", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const updateMany = jest.fn().mockResolvedValue({ modifiedCount: 2 });
+      const customerModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({
+            _id: customerId,
+            userId: customerUserId,
+          }),
+        }),
+      };
+      const service = createService({ updateMany }, customerModel);
+
+      await expect(
+        service.archiveCustomerOutstandingSales(merchantId, customerId),
+      ).resolves.toEqual({ count: 2 });
+
+      expect(updateMany).toHaveBeenCalledWith(
+        {
+          merchantId: expect.anything(),
+          customerUserId: expect.anything(),
+          status: "OUTSTANDING",
+          isArchived: { $ne: true },
+        },
+        { $set: { isArchived: true } },
       );
     });
   });
@@ -535,10 +568,7 @@ describe("SalesService amount invariants", () => {
       const service = createService(saleModel, {}, customersService);
 
       await expect(
-        service.claimSalePayer(
-          "507f1f77bcf86cd799439013",
-          customerUserId,
-        ),
+        service.claimSalePayer("507f1f77bcf86cd799439013", customerUserId),
       ).resolves.toEqual({ success: true });
       expect(customersService.findOrCreateForUser).toHaveBeenCalledWith(
         sale.merchantId,

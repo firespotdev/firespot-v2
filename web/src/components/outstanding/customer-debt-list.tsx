@@ -1,51 +1,85 @@
 'use client'
 
-import { Clock, Check, ChevronRight, History, CircleCheck } from 'lucide-react'
-import {
-  StatBanner,
-  AppCard,
-  CircularIconButton,
-  StatusBadge,
-  Button,
-  ClockGradientIcon,
-} from '@/components/ui'
-import { useDrawerStore } from '@/services/drawer'
-import { formatCurrency } from '@/lib/utils'
-import { getSaleDescription } from '@/lib/utils/sales'
+import { useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
+import {
+  Archive,
+  ArrowLeft,
+  Bell,
+  ChevronRight,
+  CircleCheck,
+  Phone,
+  PlusCircle,
+} from 'lucide-react'
+import {
+  AppCard,
+  ClockGradientIcon,
+  StatusBadge,
+  TabSwitch,
+  showNotificationToast,
+} from '@/components/ui'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useDrawerStore } from '@/services/drawer'
+import { useArchiveCustomerOutstandingSales } from '@/services/sales/hooks'
+import type { Sale } from '@/services/sales/interface'
+import { formatCurrency } from '@/lib/utils'
+import { getSaleSubject } from '@/lib/utils/sales'
 
 interface CustomerDebtListProps {
   customerId: string
   customerName: string
   customerPhone: string
+  customerAvatar?: string
   customerTotalOwed: number
-  unpaidSales: any[]
-  repaidSales: any[]
-  refetch: () => void
+  unpaidSales: Sale[]
+  repaidSales: Sale[]
   onSelectSale: (id: string) => void
+  onArchived: () => void
   onBack: () => void
+}
+
+type DebtTab = 'unpaid' | 'repaid'
+
+const TAB_OPTIONS = [
+  { label: 'UNPAID', value: 'unpaid' },
+  { label: 'REPAID', value: 'repaid' },
+] satisfies Array<{ label: string; value: DebtTab }>
+
+function formatDate(value: string | Date) {
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
 }
 
 export function CustomerDebtList({
   customerId,
   customerName,
   customerPhone,
+  customerAvatar,
   customerTotalOwed,
   unpaidSales,
   repaidSales,
-  refetch,
   onSelectSale,
+  onArchived,
   onBack,
 }: CustomerDebtListProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const archiveOutstanding = useArchiveCustomerOutstandingSales()
+  const [activeTab, setActiveTab] = useState<DebtTab>('unpaid')
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false)
 
-  const unpaidCount = unpaidSales.length
+  const activeSales = activeTab === 'unpaid' ? unpaidSales : repaidSales
+  const activeCount = activeSales.length
+  const phoneHref = customerPhone
+    ? `tel:${customerPhone.replace(/[^\d+]/g, '')}`
+    : undefined
 
-  // Action to send reminder for overall total debt
   const handleSendAggregateReminder = () => {
     if (unpaidSales.length === 0) return
 
-    // Simulate an aggregate sale object representing the client's overall debts
     const simulatedSale = {
       _id: unpaidSales[0]._id,
       customerId: unpaidSales[0].customerId,
@@ -56,128 +90,214 @@ export function CustomerDebtList({
       reference: unpaidSales[0].reference || 'repayment',
       recordedAt: new Date(),
       createdAt: new Date(),
-      status: 'OUTSTANDING',
+      updatedAt: new Date(),
+      status: 'OUTSTANDING' as const,
+      customerPhone,
     }
 
     openDrawer({
       type: 'send-reminder',
-      props: {
-        sale: simulatedSale,
-      },
+      props: { sale: simulatedSale },
     })
   }
 
+  const handleArchiveOutstanding = async () => {
+    try {
+      const result = await archiveOutstanding.mutateAsync(customerId)
+      showNotificationToast({
+        message:
+          result.count === 1
+            ? '1 outstanding payment archived'
+            : `${result.count} outstanding payments archived`,
+        mode: 'success',
+      })
+      onArchived()
+    } catch (error: unknown) {
+      showNotificationToast({
+        message:
+          (
+            error as {
+              response?: { data?: { message?: string } }
+            }
+          ).response?.data?.message ||
+          'Could not archive these payments. Try again.',
+        mode: 'error',
+      })
+    }
+  }
+
   return (
-    <div className="h-full flex flex-col">
-      <header className="flex items-center justify-between py-2 px-3">
-        <CircularIconButton icon="arrow-left" size="md" onClick={onBack} />
-
-        <div className="text-center flex-1 mx-2">
-          <h2 className="text-[14px] font-bold text-black leading-tight truncate max-w-50 mx-auto">
-            {customerName}
-          </h2>
-          <p className="text-xs text-[#6B7280] font-medium">
-            {unpaidCount} payment{unpaidCount !== 1 ? 's' : ''} outstanding
-          </p>
-        </div>
-
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
+    <div className="flex h-full flex-col bg-[#F5F6F8]">
+      <header className="flex justify-between shrink-0 items-center px-3 pt-3">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back"
+          className="flex h-8 w-8 items-center justify-center"
         >
-          <path
-            d="M3 7h18M6 12h12M10 17h4"
-            stroke="#000000"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          ></path>
-        </svg>
+          <ArrowLeft className="h-6 w-6 text-black" />
+        </button>
+
+        <TabSwitch
+          value={activeTab}
+          onChange={setActiveTab}
+          options={TAB_OPTIONS}
+          bgClassName="bg-[#E6E8EB]"
+          maxW="max-w-[220px]"
+          className="mx-auto w-full"
+        />
+
+        {phoneHref ? (
+          <a
+            href={phoneHref}
+            aria-label={`Call ${customerName}`}
+            className="flex h-8 w-8 items-center justify-center"
+          >
+            <Phone className="h-6 w-6 text-black" strokeWidth={2} />
+          </a>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-label="Customer phone number unavailable"
+            className="flex h-8 w-8 items-center justify-center opacity-30"
+          >
+            <Phone className="h-6 w-6 text-black" strokeWidth={2} />
+          </button>
+        )}
       </header>
 
-      <div className="flex-1 px-3 pb-10 overflow-y-auto flex flex-col gap-4">
-        {/* Total Owed Banner */}
-        <div className="relative">
-          <StatBanner
-            label="Total owed to you"
-            amount={customerTotalOwed}
-            currency="₦"
-            className="px-4 py-3.5"
-          />
-          <button
-            onClick={refetch}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-[#E5E7EB] flex items-center justify-center text-[#6B7280] transition-colors"
+      <div className="scrollbar-hide flex-1 overflow-y-auto">
+        <section className="flex flex-col items-center px-3 pt-9 text-center">
+          <div className="h-24 w-24 rounded-full shadow-[0px_3px_2px_0px_#00000005]">
+            <Image
+              src={customerAvatar || '/images/default_avatar.png'}
+              alt={customerName}
+              width={96}
+              height={96}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <h1 className="mt-4 text-[32px] font-bold -tracking-[0.4px] text-black">
+            {customerName}
+          </h1>
+        </section>
+
+        <div className="px-3 pt-6">
+          <AppCard
+            rounded="12"
+            padding="md"
+            className="flex items-center justify-between py-3.75"
           >
-            <History size={20} />
-          </button>
+            <span className="text-sm font-medium text-[#00000080]">
+              Total outstanding
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="bg-linear-to-br from-[#FB5012] to-[#D72483] bg-clip-text text-sm font-bold text-transparent">
+                NGN {formatCurrency(customerTotalOwed)}
+              </span>
+              <ChevronRight className="h-4 w-4 text-[#F43F5E]" />
+            </span>
+          </AppCard>
         </div>
 
-        {/* Record / Remind button layout */}
-        {customerTotalOwed > 0 && (
-          <div className="grid grid-cols-2 gap-3 w-full shrink-0 mb-2">
-            <Button asChild className="w-full text-sm h-9">
-              <Link href={`/record-repayment?customerId=${customerId}`}>
-                Record repayment
-              </Link>
-            </Button>
-
-            <Button
-              onClick={handleSendAggregateReminder}
-              variant="default"
-              className="w-full h-9 text-sm bg-[#00000008] text-black font-bold border-none"
+        {unpaidSales.length > 0 && (
+          <div className="scrollbar-hide mt-3 flex gap-2 overflow-x-auto px-3 pb-1">
+            <Link
+              href={`/record-repayment?customerId=${customerId}`}
+              className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
             >
-              Send reminder
-            </Button>
+              <PlusCircle size={18} />
+              RECORD REPAYMENT
+            </Link>
+            <button
+              type="button"
+              onClick={handleSendAggregateReminder}
+              className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
+            >
+              <Bell size={18} />
+              SEND REMINDER
+            </button>
+            <button
+              type="button"
+              onClick={() => setArchiveDialogOpen(true)}
+              disabled={archiveOutstanding.isPending}
+              className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
+            >
+              <Archive size={18} />
+              ARCHIVE
+            </button>
           </div>
         )}
 
-        {/* Unpaid Section */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-bold text-black px-1">Unpaid</h3>
-          {unpaidSales.length > 0 ? (
-            <AppCard rounded="16" divided className="flex flex-col">
-              {unpaidSales.map((sale: any) => {
-                const saleOwed =
-                  sale.balanceOwed ??
-                  (sale.amount
-                    ? Math.max(0, sale.amount - (sale.amountPaid || 0))
-                    : 0)
-                const desc = getSaleDescription(sale)
-                const dateText = sale.dueDate
-                  ? `Due on ${new Date(sale.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
-                  : 'No due date'
+        <div className="mx-4 my-5 border-t border-[#F1F1F1]" />
+
+        <section className="px-3">
+          <h2 className="mb-3 text-[14px] font-bold -tracking-[0.4px] text-black">
+            {activeCount}{' '}
+            {activeTab === 'unpaid'
+              ? `payment${activeCount === 1 ? '' : 's'} outstanding`
+              : `payment${activeCount === 1 ? '' : 's'} repaid`}
+          </h2>
+
+          {activeSales.length > 0 ? (
+            <AppCard rounded="16" divided>
+              {activeSales.map((sale) => {
+                const isUnpaid = activeTab === 'unpaid'
+                const amount = isUnpaid
+                  ? (sale.balanceOwed ??
+                    Math.max(0, (sale.amount || 0) - (sale.amountPaid || 0)))
+                  : (sale.amountPaid ?? sale.amount ?? 0)
+                const dateText = isUnpaid
+                  ? sale.dueDate
+                    ? `Due on ${formatDate(sale.dueDate)}`
+                    : 'No due date'
+                  : formatDate(sale.recordedAt || sale.createdAt)
 
                 return (
                   <button
                     key={sale._id}
+                    type="button"
                     onClick={() => onSelectSale(sale._id)}
-                    className="w-full flex items-center justify-between p-3 text-left"
+                    className="flex w-full items-center gap-3 p-3 text-left transition-colors active:bg-[#F8F9FA]"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#FEEDEA] flex items-center justify-center shrink-0">
+                    <span
+                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                        isUnpaid ? 'bg-[#FEEDEA]' : 'bg-[#24C166]/10'
+                      }`}
+                    >
+                      {isUnpaid ? (
                         <ClockGradientIcon size={20} strokeWidth={2} />
-                      </div>
-                      <div>
-                        <h4 className="text-[13px] font-bold text-[#111827] line-clamp-1">
-                          {desc}
-                        </h4>
-                        <p className="text-xs text-[#6B7280] font-medium mt-0.5">
-                          {dateText}
-                        </p>
-                      </div>
-                    </div>
+                      ) : (
+                        <CircleCheck
+                          size={20}
+                          className="text-[#24C166]"
+                          strokeWidth={2}
+                        />
+                      )}
+                    </span>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="flex flex-col items-end">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-bold text-[#111827]">
+                        {getSaleSubject(sale)}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[12px] font-medium text-[#6B7280]">
+                        {dateText}
+                      </span>
+                    </span>
+
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <span className="flex flex-col items-end">
                         <span className="text-[13px] font-bold text-[#111827]">
-                          ₦{formatCurrency(saleOwed)}
+                          ₦{formatCurrency(amount)}
                         </span>
-                        <StatusBadge status="OUTSTANDING" variant="text" />
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-[#C1C1C1]" />
-                    </div>
+                        <StatusBadge
+                          status={isUnpaid ? 'OUTSTANDING' : 'CONFIRMED'}
+                          variant="text"
+                        />
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-[#C1C1C1]" />
+                    </span>
                   </button>
                 )
               })}
@@ -185,80 +305,31 @@ export function CustomerDebtList({
           ) : (
             <AppCard
               rounded="16"
-              padding="md"
-              className="text-center text-xs text-[#00000066]"
+              padding="lg"
+              className="text-center text-sm font-medium text-[#00000066]"
             >
-              No unpaid payments.
+              {activeTab === 'unpaid'
+                ? 'No unpaid payments.'
+                : 'No repayments recorded yet.'}
             </AppCard>
           )}
-        </div>
 
-        {/* Repaid Section */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-bold text-black px-1">Repaid</h3>
-          {repaidSales.length > 0 ? (
-            <AppCard rounded="16" divided className="flex flex-col">
-              {repaidSales.map((sale: any) => {
-                const salePaid = sale.amountPaid ?? sale.amount ?? 0
-                const desc = getSaleDescription(sale)
-                const dateText = new Date(
-                  sale.recordedAt || sale.createdAt,
-                ).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-
-                return (
-                  <button
-                    key={sale._id}
-                    onClick={() => onSelectSale(sale._id)}
-                    className="w-full flex items-center justify-between p-3 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#24C166]/10 flex items-center justify-center text-[#24C166] shrink-0">
-                        <CircleCheck size={20} strokeWidth={2} />
-                      </div>
-                      <div>
-                        <h4 className="text-[13px] font-bold text-[#111827] line-clamp-1">
-                          {desc}
-                        </h4>
-                        <p className="text-xs text-[#6B7280] font-medium mt-0.5">
-                          {dateText}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <div className="flex flex-col items-end">
-                        <span className="text-[13px] font-bold text-[#111827]">
-                          ₦{formatCurrency(salePaid)}
-                        </span>
-                        <span className="text-[11px] font-medium text-[#24C166]">
-                          Paid
-                        </span>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-[#C1C1C1]" />
-                    </div>
-                  </button>
-                )
-              })}
-            </AppCard>
-          ) : (
-            <AppCard
-              rounded="16"
-              padding="md"
-              className="text-center text-xs text-[#00000066] mb-8"
-            >
-              No repayments recorded yet.
-            </AppCard>
-          )}
-        </div>
-
-        <p className="text-xs font-medium text-[#0000004D] text-center w-full shrink-0 my-4">
-          You've reached the end of the list
-        </p>
+          <p className="my-6 text-center text-xs font-medium text-[#00000066]">
+            You’ve reached the end of the list
+          </p>
+        </section>
       </div>
+
+      <ConfirmDialog
+        open={archiveDialogOpen}
+        onOpenChange={setArchiveDialogOpen}
+        title="Archive outstanding payments?"
+        description={`This will remove ${unpaidSales.length} outstanding payment${unpaidSales.length === 1 ? '' : 's'} for ${customerName} from your active records.`}
+        confirmLabel="Archive"
+        variant="danger"
+        isLoading={archiveOutstanding.isPending}
+        onConfirm={handleArchiveOutstanding}
+      />
     </div>
   )
 }

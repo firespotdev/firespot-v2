@@ -1,4 +1,17 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, Headers } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Headers,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SalesService } from './sales.service';
@@ -31,17 +44,17 @@ export class SalesController {
     @GetUser() user: User,
     @Body() dto: CreatePendingSaleDto,
   ) {
-    return this.salesService.createPendingCollectSale((user as any).userId, dto);
+    return this.salesService.createPendingCollectSale(
+      (user as any).userId,
+      dto,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Create a manual confirmed sale' })
   @Post()
-  async createManualSale(
-    @GetUser() user: User,
-    @Body() dto: RecordSaleDto,
-  ) {
+  async createManualSale(@GetUser() user: User, @Body() dto: RecordSaleDto) {
     return this.salesService.createManualSale((user as any).userId, dto);
   }
 
@@ -65,14 +78,8 @@ export class SalesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Attach me as the payer of a sale (on pay)' })
   @Patch(':id/claim')
-  async claimSale(
-    @GetUser() user: User,
-    @Param('id') saleId: string,
-  ) {
-    return this.salesService.claimSalePayer(
-      saleId,
-      (user as any).userId,
-    );
+  async claimSale(@GetUser() user: User, @Param('id') saleId: string) {
+    return this.salesService.claimSalePayer(saleId, (user as any).userId);
   }
 
   @ApiBearerAuth('JWT-auth')
@@ -117,12 +124,25 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Archive a customer's active outstanding sales",
+  })
+  @Patch('outstanding/customer/:customerId/archive')
+  async archiveCustomerOutstandingSales(
+    @GetUser() user: User,
+    @Param('customerId') customerId: string,
+  ) {
+    return this.salesService.archiveCustomerOutstandingSales(
+      (user as any).userId,
+      customerId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Confirm a pending sale in full' })
   @Patch(':id/confirm')
-  async confirmSale(
-    @GetUser() user: User,
-    @Param('id') saleId: string,
-  ) {
+  async confirmSale(@GetUser() user: User, @Param('id') saleId: string) {
     return this.salesService.confirmSale((user as any).userId, saleId);
   }
 
@@ -154,10 +174,7 @@ export class SalesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Archive a sale' })
   @Patch(':id/archive')
-  async archiveSale(
-    @GetUser() user: User,
-    @Param('id') saleId: string,
-  ) {
+  async archiveSale(@GetUser() user: User, @Param('id') saleId: string) {
     return this.salesService.archiveSale((user as any).userId, saleId);
   }
 
@@ -165,10 +182,7 @@ export class SalesController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Cancel a pending sale' })
   @Patch(':id/cancel')
-  async cancelSale(
-    @GetUser() user: User,
-    @Param('id') saleId: string,
-  ) {
+  async cancelSale(@GetUser() user: User, @Param('id') saleId: string) {
     return this.salesService.cancelSale((user as any).userId, saleId);
   }
 

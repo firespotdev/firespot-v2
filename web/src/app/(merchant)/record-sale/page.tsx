@@ -25,8 +25,6 @@ interface CartItem {
   name: string
   price: number
   quantity: number
-  /** Existing sales without item breakdown already store a final, VAT-inclusive total. */
-  includesVat?: boolean
   selectedVariant?: {
     size?: string
     color?: string
@@ -61,7 +59,11 @@ function RecordSaleContent() {
   const isConfirmMode = !!confirmId
 
   const { data: editSaleData } = useSale(
-    isEditMode ? editId || undefined : isConfirmMode ? confirmId || undefined : undefined,
+    isEditMode
+      ? editId || undefined
+      : isConfirmMode
+        ? confirmId || undefined
+        : undefined,
   )
 
   const { data: profile } = useUserProfile()
@@ -90,7 +92,9 @@ function RecordSaleContent() {
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
   const [hasPrefilled, setHasPrefilled] = useState(false)
-  const [prefilledAmountIsFinal, setPrefilledAmountIsFinal] = useState(false)
+  const [preservedExistingTotal, setPreservedExistingTotal] = useState<
+    number | null
+  >(null)
   const [amountMirrorsCartTotal, setAmountMirrorsCartTotal] = useState(false)
   const [cartItems, setCartItems] = useState<CartItem[]>([])
 
@@ -100,8 +104,7 @@ function RecordSaleContent() {
   )
 
   // Checkout summary states
-  const [checkoutPaymentMethod, setCheckoutPaymentMethod] =
-    useState<string>('')
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<string>('')
   const [checkoutInstallmentType, setCheckoutInstallmentType] = useState<
     'full' | 'part'
   >('full')
@@ -123,8 +126,7 @@ function RecordSaleContent() {
     if ((isEditMode || isConfirmMode) && editSaleData && !hasPrefilled) {
       setCheckoutPaymentMethod(editSaleData.paymentMethod || '')
       setCheckoutCustomer(
-        editSaleData.customerId &&
-          typeof editSaleData.customerId === 'object'
+        editSaleData.customerId && typeof editSaleData.customerId === 'object'
           ? editSaleData.customerId
           : null,
       )
@@ -133,9 +135,7 @@ function RecordSaleContent() {
         .map((item, index) => ({
           id: item.productId || `custom-existing-${index}`,
           name:
-            item.productName ||
-            editSaleData.description ||
-            `Item ${index + 1}`,
+            item.productName || editSaleData.description || `Item ${index + 1}`,
           price: Number(item.price),
           quantity: Number(item.quantity),
           selectedVariant: item.selectedVariant,
@@ -146,15 +146,13 @@ function RecordSaleContent() {
         setActiveTab('amount')
         setAmount(editSaleData.amount?.toString() || '')
         setDescription(editSaleData.description || '')
-        setPrefilledAmountIsFinal(false)
+        setPreservedExistingTotal(Number(editSaleData.amount) || null)
         setAmountMirrorsCartTotal(true)
       } else {
-        // A customer-entered/static-QR amount (and older itemless records) is
-        // already the payable total. Preserve it instead of adding VAT again.
         setCartItems([])
         setAmount(editSaleData.amount?.toString() || '')
         setDescription(editSaleData.description || '')
-        setPrefilledAmountIsFinal(true)
+        setPreservedExistingTotal(null)
         setAmountMirrorsCartTotal(false)
       }
       setHasPrefilled(true)
@@ -166,7 +164,7 @@ function RecordSaleContent() {
     if (amountMirrorsCartTotal) {
       setCartItems([])
       setAmountMirrorsCartTotal(false)
-      setPrefilledAmountIsFinal(true)
+      setPreservedExistingTotal(null)
       setDescription(
         (current) =>
           current ||
@@ -210,7 +208,6 @@ function RecordSaleContent() {
       name: description.trim() || `Item ${cartItems.length + 1}`,
       price: value,
       quantity: 1,
-      includesVat: prefilledAmountIsFinal && cartItems.length === 0,
     }
   }
 
@@ -220,27 +217,17 @@ function RecordSaleContent() {
   }
 
   const calculateSubtotal = (items: CartItem[]) => {
-    return Math.round(
-      items.reduce((acc, curr) => acc + curr.price * curr.quantity, 0) * 100,
-    ) / 100
-  }
-
-  const calculateVAT = (items: CartItem[]) => {
-    const taxableSubtotal = items.reduce(
-      (acc, curr) =>
-        curr.includesVat ? acc : acc + curr.price * curr.quantity,
-      0,
-    )
-    return Math.round(taxableSubtotal * 0.075 * 100) / 100
-  }
-
-  const calculateTotal = (items: CartItem[]) => {
     return (
-      Math.round((calculateSubtotal(items) + calculateVAT(items)) * 100) / 100
+      Math.round(
+        items.reduce((acc, curr) => acc + curr.price * curr.quantity, 0) * 100,
+      ) / 100
     )
   }
 
-  const getTotal = () => calculateTotal(getEffectiveItems())
+  const calculateTotal = (items: CartItem[]) => calculateSubtotal(items)
+
+  const getTotal = () =>
+    preservedExistingTotal ?? calculateTotal(getEffectiveItems())
 
   const updateCartQtyAndSyncDrawer = (
     id: string,
@@ -255,14 +242,12 @@ function RecordSaleContent() {
   ) => {
     if (id === DRAFT_ITEM_ID) {
       setAmount('')
-      setPrefilledAmountIsFinal(false)
+      setPreservedExistingTotal(null)
       const updated = [...cartItems]
       const newTotal = calculateTotal(updated)
       if (amountMirrorsCartTotal) setAmount(String(newTotal))
       const nextAmountPaid =
-        instType === 'full'
-          ? newTotal
-          : Math.min(amountPaidVal, newTotal)
+        instType === 'full' ? newTotal : Math.min(amountPaidVal, newTotal)
       setCheckoutAmountPaid(nextAmountPaid)
       openCheckoutSaleDrawer(
         method,
@@ -279,9 +264,6 @@ function RecordSaleContent() {
     }
 
     setCartItems((prev) => {
-      const removedVatInclusiveItem = prev.some(
-        (item) => item.id === id && item.includesVat,
-      )
       const updated = prev
         .map((item) =>
           item.id === id
@@ -289,17 +271,13 @@ function RecordSaleContent() {
             : item,
         )
         .filter((item) => item.quantity > 0)
-      if (removedVatInclusiveItem && updated.length === 0) {
-        setPrefilledAmountIsFinal(false)
-      }
+      setPreservedExistingTotal(null)
 
       const effectiveUpdated = getEffectiveItems(updated)
       const newTotal = calculateTotal(effectiveUpdated)
       if (amountMirrorsCartTotal) setAmount(String(newTotal))
       const nextAmountPaid =
-        instType === 'full'
-          ? newTotal
-          : Math.min(amountPaidVal, newTotal)
+        instType === 'full' ? newTotal : Math.min(amountPaidVal, newTotal)
       setCheckoutAmountPaid(nextAmountPaid)
 
       openCheckoutSaleDrawer(
@@ -351,7 +329,7 @@ function RecordSaleContent() {
     setCartItems((prev) => [...prev, newItem])
     setAmount('')
     setDescription('')
-    setPrefilledAmountIsFinal(false)
+    setPreservedExistingTotal(null)
     setAmountMirrorsCartTotal(false)
   }
 
@@ -362,26 +340,32 @@ function RecordSaleContent() {
     qty: number = 1,
   ) => {
     const id = `${prod._id}-${size || ''}-${color || ''}`
-    const existingIndex = cartItems.findIndex((item) => item.id === id)
+    setPreservedExistingTotal(null)
+    setCartItems((prev) => {
+      const existingIndex = prev.findIndex((item) => item.id === id)
+      const updated: CartItem[] =
+        existingIndex > -1
+          ? prev.map((item, idx) =>
+              idx === existingIndex
+                ? { ...item, quantity: item.quantity + qty }
+                : item,
+            )
+          : [
+              ...prev,
+              {
+                id,
+                name: prod.name,
+                price: prod.price,
+                quantity: qty,
+                selectedVariant: size || color ? { size, color } : undefined,
+              },
+            ]
 
-    if (existingIndex > -1) {
-      setCartItems((prev) =>
-        prev.map((item, idx) =>
-          idx === existingIndex
-            ? { ...item, quantity: item.quantity + qty }
-            : item,
-        ),
-      )
-    } else {
-      const newItem: CartItem = {
-        id,
-        name: prod.name,
-        price: prod.price,
-        quantity: qty,
-        selectedVariant: size || color ? { size, color } : undefined,
+      if (amountMirrorsCartTotal) {
+        setAmount(String(calculateTotal(updated)))
       }
-      setCartItems((prev) => [...prev, newItem])
-    }
+      return updated
+    })
   }
 
   const resetSaleState = () => {
@@ -389,7 +373,8 @@ function RecordSaleContent() {
     setActiveTab('amount')
     setAmount('')
     setDescription('')
-    setPrefilledAmountIsFinal(false)
+    setPreservedExistingTotal(null)
+    setAmountMirrorsCartTotal(false)
     setCheckoutCustomer(null)
     setCheckoutPaymentMethod('')
     setCheckoutInstallmentType('full')
@@ -474,8 +459,8 @@ function RecordSaleContent() {
       items: itemsList.map((item) => ({
         productId:
           item.id.startsWith('custom') || item.id === DRAFT_ITEM_ID
-          ? undefined
-          : item.id.split('-')[0],
+            ? undefined
+            : item.id.split('-')[0],
         productName: item.name,
         price: item.price,
         quantity: item.quantity,
@@ -852,15 +837,18 @@ function RecordSaleContent() {
             const payload = {
               merchantId: profile?.id || '',
               amount: totVal,
-              description: itemsList
-                .filter((i) => !/^Item \d+$/.test(i.name))
-                .map((i) => (i.quantity > 1 ? `${i.name} x${i.quantity}` : i.name))
-                .join(', ') || undefined,
+              description:
+                itemsList
+                  .filter((i) => !/^Item \d+$/.test(i.name))
+                  .map((i) =>
+                    i.quantity > 1 ? `${i.name} x${i.quantity}` : i.name,
+                  )
+                  .join(', ') || undefined,
               items: itemsList.map((item) => ({
                 productId:
                   item.id.startsWith('custom') || item.id === DRAFT_ITEM_ID
-                  ? undefined
-                  : item.id.split('-')[0],
+                    ? undefined
+                    : item.id.split('-')[0],
                 productName: item.name,
                 price: item.price,
                 quantity: item.quantity,
@@ -913,7 +901,7 @@ function RecordSaleContent() {
   const handleRecordTapped = () => {
     setCheckoutMode('record')
     const updatedCart = getEffectiveItems()
-    const totVal = calculateTotal(updatedCart)
+    const totVal = getTotal()
 
     setCheckoutAmountPaid(totVal)
     openPaymentMethodStep(
@@ -934,7 +922,7 @@ function RecordSaleContent() {
 
     setCheckoutMode('collect')
     const updatedCart = getEffectiveItems()
-    const totalVal = calculateTotal(updatedCart)
+    const totalVal = getTotal()
 
     setCheckoutAmountPaid(totalVal)
     setCheckoutPaymentMethod('Bank Transfer')
@@ -960,8 +948,6 @@ function RecordSaleContent() {
     const formattedInt = new Intl.NumberFormat('en-NG').format(Number(int))
     return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt
   }
-
-
 
   return (
     <div className="h-dvh bg-[#F4F6F8] flex flex-col items-center overflow-hidden">
@@ -1036,7 +1022,7 @@ function RecordSaleContent() {
               <button
                 onClick={() => {
                   const items = getEffectiveItems()
-                  const total = calculateTotal(items)
+                  const total = getTotal()
                   openCheckoutSaleDrawer(
                     checkoutPaymentMethod,
                     checkoutInstallmentType,

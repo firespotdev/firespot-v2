@@ -16,7 +16,6 @@ interface CartItem {
   name: string
   price: number
   quantity: number
-  includesVat?: boolean
   selectedVariant?: {
     size?: string
     color?: string
@@ -82,24 +81,6 @@ export function CurrentSaleDrawer({
     return format(date, 'do MMMM, yyyy')
   }
 
-  const getSubtotal = () => {
-    return (
-      Math.round(
-        cartItems.reduce((acc, curr) => acc + curr.price * curr.quantity, 0) *
-          100,
-      ) / 100
-    )
-  }
-
-  const getVAT = () => {
-    const taxableSubtotal = cartItems.reduce(
-      (acc, curr) =>
-        curr.includesVat ? acc : acc + curr.price * curr.quantity,
-      0,
-    )
-    return Math.round(taxableSubtotal * 0.075 * 100) / 100
-  }
-
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('en-NG', {
       minimumFractionDigits: 2,
@@ -114,9 +95,7 @@ export function CurrentSaleDrawer({
     : undefined
   const isPending = isLoading || isSubmitting
   const isContinueDisabled =
-    isPending ||
-    needsPaymentMethod ||
-    (installmentType === 'part' && !customer)
+    isPending || needsPaymentMethod || (installmentType === 'part' && !customer)
 
   const handleContinue = async () => {
     if (isContinueDisabled) return
@@ -202,13 +181,7 @@ export function CurrentSaleDrawer({
         <div className="flex justify-between items-center text-sm text-[#6B7280] font-medium">
           <span>Subtotal</span>
           <span className="font-medium text-[#111827]">
-            NGN {formatCurrency(getSubtotal())}
-          </span>
-        </div>
-        <div className="flex justify-between items-center text-sm text-[#6B7280] font-medium">
-          <span>VAT (7.5%)</span>
-          <span className="font-medium text-[#111827]">
-            NGN {formatCurrency(getVAT())}
+            NGN {formatCurrency(totalAmount)}
           </span>
         </div>
         <div className="flex justify-between items-center text-sm border-t border-[#F4F6F8] font-bold text-[#111827] py-4">

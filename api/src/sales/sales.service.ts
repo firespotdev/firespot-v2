@@ -1275,6 +1275,37 @@ export class SalesService {
     return { count: result.modifiedCount || 0 }
   }
 
+  async archiveCustomerOutstandingSales(
+    merchantId: string,
+    customerId: string,
+  ) {
+    const relationship = await this.requireMerchantRelationship(
+      merchantId,
+      customerId,
+    )
+    const customerUserId =
+      relationship.userId ??
+      (await this.resolveCustomerUserId(relationship._id))
+
+    if (!customerUserId) {
+      throw new BadRequestException(
+        'This customer relationship has no valid identity',
+      )
+    }
+
+    const result = await this.saleModel.updateMany(
+      {
+        merchantId: new Types.ObjectId(merchantId),
+        customerUserId: new Types.ObjectId(customerUserId.toString()),
+        status: 'OUTSTANDING',
+        isArchived: { $ne: true },
+      },
+      { $set: { isArchived: true } },
+    )
+
+    return { count: result.modifiedCount || 0 }
+  }
+
   async uploadReceipt(saleId: string, fileBuffer: Buffer): Promise<Sale> {
     const sale = await this.saleModel.findById(saleId)
     if (!sale) {
@@ -1523,6 +1554,7 @@ export class SalesService {
         merchantId: merchantObjectId,
         customerUserId,
         status: 'OUTSTANDING',
+        isArchived: { $ne: true },
       })
       .sort({ createdAt: 1, dueDate: 1 })
       .populate('customerId')
@@ -1596,6 +1628,7 @@ export class SalesService {
       merchantId: merchantObjectId,
       customerUserId: targetCustomerUserId,
       status: 'OUTSTANDING',
+      isArchived: { $ne: true },
     }
     const outstandingSales = await this.saleModel
       .find(filter)
@@ -1694,6 +1727,7 @@ export class SalesService {
         merchantId: merchantObjectId,
         customerUserId: targetCustomerUserId,
         status: 'OUTSTANDING',
+        isArchived: { $ne: true },
       })
       .exec()
 
@@ -1737,10 +1771,14 @@ export class SalesService {
       .find({
         merchantId: merchantObjectId,
         status: 'OUTSTANDING',
+        isArchived: { $ne: true },
         customerUserId: { $exists: true, $ne: null },
         customerId: { $exists: true, $ne: null },
       })
-      .populate('customerId')
+      .populate([
+        { path: 'customerId' },
+        { path: 'customerUserId', select: 'profilePhotoUrl' },
+      ])
       .exec()
 
     const customerMap = new Map<
@@ -1769,7 +1807,10 @@ export class SalesService {
       if (bal <= 0) continue
 
       const customer = sale.customerId as any
-      const identityId = sale.customerUserId?.toString()
+      const customerIdentity = sale.customerUserId as any
+      const identityId = customerIdentity?._id
+        ? customerIdentity._id.toString()
+        : customerIdentity?.toString()
       if (
         !identityId ||
         !customer?._id ||
@@ -1784,7 +1825,7 @@ export class SalesService {
       const relationshipId = customer._id.toString()
       const custName = customer.name
       const custPhone = customer.phoneNumber
-      const custAvatar = customer.profilePhotoUrl || ''
+      const custAvatar = customerIdentity?.profilePhotoUrl || ''
 
       const existing = customerMap.get(identityId)
       if (existing) {

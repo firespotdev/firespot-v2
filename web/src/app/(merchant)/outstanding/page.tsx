@@ -3,61 +3,61 @@
 import { useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { AlertCircle } from 'lucide-react'
-import { 
-  useOutstandingSummary, 
-  useSales, 
-  useSale 
+import {
+  useOutstandingSummary,
+  useSales,
+  useSale,
 } from '@/services/sales/hooks'
-import { 
-  Button, 
-  LoaderCircle 
-} from '@/components/ui'
+import { Button, LoaderCircle } from '@/components/ui'
 import { OutstandingDashboard } from '@/components/outstanding/outstanding-dashboard'
 import { CustomerDebtList } from '@/components/outstanding/customer-debt-list'
 import { DebtDetailsTimeline } from '@/components/outstanding/debt-details-timeline'
+import type { Sale } from '@/services/sales/interface'
+
+function getOutstandingBalance(sale: Sale) {
+  return (
+    sale.balanceOwed ??
+    (sale.amount ? Math.max(0, sale.amount - (sale.amountPaid || 0)) : 0)
+  )
+}
 
 function OutstandingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  
+
   const customerId = searchParams.get('customerId') || ''
   const saleId = searchParams.get('saleId') || ''
 
   // API Queries
-  const { 
-    data: summaryData, 
-    isLoading: isLoadingSummary,
-    refetch: refetchSummary 
-  } = useOutstandingSummary()
+  const { data: summaryData, isLoading: isLoadingSummary } =
+    useOutstandingSummary()
 
   // Fetch sales for the selected customer if customerId is present
-  const { 
-    data: customerSalesData, 
-    isLoading: isLoadingCustomerSales,
-    refetch: refetchCustomerSales
-  } = useSales(
-    customerId ? { customerId, limit: 100 } : { limit: 0 }
-  )
+  const { data: customerSalesData, isLoading: isLoadingCustomerSales } =
+    useSales(customerId ? { customerId, limit: 100 } : { limit: 0 })
 
   // Fetch specific sale details if saleId is present
-  const { 
-    data: activeSale, 
-    isLoading: isLoadingSale 
-  } = useSale(saleId)
+  const { data: activeSale, isLoading: isLoadingSale } = useSale(saleId)
 
   // Sub-view 1: Outstanding Dashboard helpers
   const totalOutstanding = summaryData?.totalOutstandingAmount ?? 0
-  const owingCustomers = summaryData?.customers ?? []
+  const owingCustomers = useMemo(
+    () => summaryData?.customers ?? [],
+    [summaryData?.customers],
+  )
 
   // Sub-view 2: Customer Outstanding List helpers
-  const customerSales = customerSalesData?.data ?? []
-  
+  const customerSales = useMemo(
+    () => customerSalesData?.data ?? [],
+    [customerSalesData?.data],
+  )
+
   // Calculate active outstanding balance for this customer
   const customerTotalOwed = useMemo(() => {
-    return customerSales.reduce((sum: number, s: any) => {
-      const bal = s?.balanceOwed ?? (s?.amount ? Math.max(0, s.amount - (s.amountPaid || 0)) : 0)
-      if (s.status === 'OUTSTANDING' && bal > 0) {
-        return sum + bal
+    return customerSales.reduce((sum, sale) => {
+      const balance = getOutstandingBalance(sale)
+      if (sale.status === 'OUTSTANDING' && balance > 0) {
+        return sum + balance
       }
       return sum
     }, 0)
@@ -91,30 +91,42 @@ function OutstandingPageContent() {
     return matchingCustomer?.customerPhone || ''
   }, [customerSales, owingCustomers, customerId])
 
+  const customerAvatar = useMemo(
+    () =>
+      owingCustomers.find((customer) => customer.customerId === customerId)
+        ?.customerAvatar,
+    [owingCustomers, customerId],
+  )
+
   const unpaidSales = useMemo(() => {
-    return customerSales.filter((s: any) => {
-      const bal =
-        s?.balanceOwed ??
-        (s?.amount ? Math.max(0, s.amount - (s.amountPaid || 0)) : 0)
-      return s.status === 'OUTSTANDING' && bal > 0
+    return customerSales.filter((sale) => {
+      const balance = getOutstandingBalance(sale)
+      return sale.status === 'OUTSTANDING' && balance > 0
     })
   }, [customerSales])
 
   const repaidSales = useMemo(() => {
-    return customerSales.filter((s: any) => {
-      const bal =
-        s?.balanceOwed ??
-        (s?.amount ? Math.max(0, s.amount - (s.amountPaid || 0)) : 0)
+    return customerSales.filter((sale) => {
+      const balance = getOutstandingBalance(sale)
 
-      const hasRepaymentsLater = s.repayments && s.repayments.some((r: any) => {
-        const saleTime = new Date(s.recordedAt || s.createdAt).getTime()
-        const repTime = new Date(r.recordedAt).getTime()
-        return repTime - saleTime > 5000
-      })
+      const hasRepaymentsLater =
+        sale.repayments &&
+        sale.repayments.some((repayment) => {
+          const saleTime = new Date(
+            sale.recordedAt || sale.createdAt,
+          ).getTime()
+          const repTime = new Date(repayment.recordedAt || 0).getTime()
+          return repTime - saleTime > 5000
+        })
 
-      const isPaidInFullAtOnce = s.amountPaid === s.amount && !hasRepaymentsLater
+      const isPaidInFullAtOnce =
+        sale.amountPaid === sale.amount && !hasRepaymentsLater
 
-      return s.status === 'CONFIRMED' && bal <= 0 && !isPaidInFullAtOnce
+      return (
+        sale.status === 'CONFIRMED' &&
+        balance <= 0 &&
+        !isPaidInFullAtOnce
+      )
     })
   }, [customerSales])
 
@@ -210,14 +222,14 @@ function OutstandingPageContent() {
           customerId={customerId}
           customerName={customerName}
           customerPhone={customerPhone}
+          customerAvatar={customerAvatar}
           customerTotalOwed={customerTotalOwed}
           unpaidSales={unpaidSales}
           repaidSales={repaidSales}
-          refetch={() => {
-            refetchCustomerSales()
-            refetchSummary()
-          }}
-          onSelectSale={(id) => router.push(`/outstanding?customerId=${customerId}&saleId=${id}`)}
+          onSelectSale={(id) =>
+            router.push(`/outstanding?customerId=${customerId}&saleId=${id}`)
+          }
+          onArchived={() => router.push('/outstanding')}
           onBack={handleBackClick}
         />
       </div>

@@ -1,23 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SalesApi, CreatePendingSalePayload, RecordSalePayload, EditSalePayload } from './salesApi';
+import {
+  SalesApi,
+  CreatePendingSalePayload,
+  RecordSalePayload,
+  EditSalePayload,
+} from './salesApi';
 
 export const useCreatePendingSale = () => {
   return useMutation({
-    mutationFn: (payload: CreatePendingSalePayload) => SalesApi.createPendingSale(payload),
+    mutationFn: (payload: CreatePendingSalePayload) =>
+      SalesApi.createPendingSale(payload),
   });
 };
 
 export const useCreateManualSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: RecordSalePayload) => SalesApi.createManualSale(payload),
+    mutationFn: (payload: RecordSalePayload) =>
+      SalesApi.createManualSale(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
     },
   });
 };
-export const useSales = (params?: Record<string, string | number | boolean | undefined>) => {
+export const useSales = (
+  params?: Record<string, string | number | boolean | undefined>,
+) => {
   return useQuery({
     queryKey: ['sales', params],
     queryFn: () => SalesApi.getSales(params),
@@ -56,8 +65,13 @@ export const useSalesStats = <TParams extends object = Record<string, never>>(
 export const useRecordSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ saleId, payload }: { saleId: string; payload: RecordSalePayload }) =>
-      SalesApi.recordSale(saleId, payload),
+    mutationFn: ({
+      saleId,
+      payload,
+    }: {
+      saleId: string;
+      payload: RecordSalePayload;
+    }) => SalesApi.recordSale(saleId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
@@ -99,6 +113,21 @@ export const useArchiveAllPendingSales = () => {
   });
 };
 
+export const useArchiveCustomerOutstandingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (customerId: string) =>
+      SalesApi.archiveCustomerOutstandingSales(customerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
+    },
+  });
+};
+
 export const useCancelSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -107,6 +136,9 @@ export const useCancelSale = () => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };
@@ -114,8 +146,13 @@ export const useCancelSale = () => {
 export const useEditSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ saleId, payload }: { saleId: string; payload: EditSalePayload }) =>
-      SalesApi.editSale(saleId, payload),
+    mutationFn: ({
+      saleId,
+      payload,
+    }: {
+      saleId: string;
+      payload: EditSalePayload;
+    }) => SalesApi.editSale(saleId, payload),
     onSuccess: (data, { saleId }) => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
@@ -127,7 +164,8 @@ export const useEditSale = () => {
 export const useCreatePendingCollectSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: CreatePendingSalePayload) => SalesApi.createPendingCollectSale(payload),
+    mutationFn: (payload: CreatePendingSalePayload) =>
+      SalesApi.createPendingCollectSale(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
@@ -143,6 +181,9 @@ export const useArchiveSale = () => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };
@@ -220,14 +261,28 @@ export const useDeleteReceipt = () => {
 export const useRecordRepayment = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ saleId, payload }: { saleId: string; payload: { amountPaid: number; paymentMethod?: string; customerId?: string } }) =>
-      SalesApi.recordRepayment(saleId, payload),
+    mutationFn: ({
+      saleId,
+      payload,
+    }: {
+      saleId: string;
+      payload: {
+        amountPaid: number;
+        paymentMethod?: string;
+        customerId?: string;
+      };
+    }) => SalesApi.recordRepayment(saleId, payload),
     onSuccess: (_, { saleId, payload }) => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
       if (payload?.customerId) {
-        queryClient.invalidateQueries({ queryKey: ['customer-outstanding-sales', payload.customerId] });
+        queryClient.invalidateQueries({
+          queryKey: ['customer-outstanding-sales', payload.customerId],
+        });
       }
     },
   });

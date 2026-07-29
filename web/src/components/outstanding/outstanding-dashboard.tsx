@@ -74,7 +74,9 @@ export function OutstandingDashboard({
                     className="w-full flex items-center justify-between p-3 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
-                      <MerchantAvatar />
+                      <MerchantAvatar
+                        profilePhotoUrl={customer.customerAvatar}
+                      />
 
                       <div>
                         <h4 className="text-[14px] font-bold text-[#111827] line-clamp-1">
@@ -109,7 +111,7 @@ export function OutstandingDashboard({
         </div>
 
         <p className="text-xs font-medium text-[#00000066] text-center w-full shrink-0 my-4">
-          You've reached the end of the list
+          You’ve reached the end of the list
         </p>
       </div>
     </div>

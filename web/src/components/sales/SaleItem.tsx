@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/utils/constants'
 import {
   getAmountLabel,
   getRecentSaleSummary,
+  getSaleCustomerName,
   getStatusDescription,
   getMerchantStatus,
 } from '@/lib/utils/sales'
@@ -42,9 +43,11 @@ export function SaleItem({
   const isArchivedItem = getMerchantStatus(sale) === 'Archived'
   const isRecent = variant.startsWith('recent-')
   const title =
-    variant === 'recent-unconfirmed' || variant === 'recent-confirmed'
-      ? getRecentSaleSummary(sale)
-      : getStatusDescription(sale)
+    variant === 'recent-confirmed'
+      ? getSaleCustomerName(sale)
+      : variant === 'recent-unconfirmed'
+        ? getRecentSaleSummary(sale)
+        : getStatusDescription(sale)
 
   const content = (
     <div

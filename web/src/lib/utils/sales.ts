@@ -5,7 +5,11 @@ export type MerchantStatus = 'Paid' | 'Owing' | 'Unconfirmed' | 'Archived'
 
 export const getMerchantStatus = (sale?: Sale | null): MerchantStatus => {
   if (!sale) return 'Unconfirmed'
-  if (sale.isArchived || sale.status === 'CANCELLED' || sale.status === 'ARCHIVED') {
+  if (
+    sale.isArchived ||
+    sale.status === 'CANCELLED' ||
+    sale.status === 'ARCHIVED'
+  ) {
     return 'Archived'
   }
   if (sale.status === 'PENDING') {
@@ -17,7 +21,11 @@ export const getMerchantStatus = (sale?: Sale | null): MerchantStatus => {
   ) {
     return 'Owing'
   }
-  if (sale.isPaidInFull || sale.status === 'CONFIRMED' || sale.balanceOwed === 0) {
+  if (
+    sale.isPaidInFull ||
+    sale.status === 'CONFIRMED' ||
+    sale.balanceOwed === 0
+  ) {
     return 'Paid'
   }
   return 'Unconfirmed'
@@ -56,9 +64,7 @@ export const getAmountLabel = (sale: Sale) => {
 
 type SaleDescriptionSource = Pick<Sale, 'amount' | 'description' | 'items'>
 
-export const getSaleDescription = (
-  sale?: SaleDescriptionSource | null,
-) => {
+export const getSaleSubject = (sale?: SaleDescriptionSource | null) => {
   const itemCount =
     sale?.items?.reduce(
       (total, item) => total + Math.max(1, Number(item.quantity) || 1),
@@ -69,17 +75,19 @@ export const getSaleDescription = (
   const isGeneratedItemName = (value?: string) =>
     !!value && /^Item \d+(?: x\d+)?$/i.test(value)
 
-  const subject =
-    itemCount > 1
-      ? `${itemCount} items`
-      : description && !isGeneratedItemName(description)
-        ? description
-        : itemCount === 1
-          ? firstItem && !isGeneratedItemName(firstItem)
-            ? firstItem
-            : 'this sale'
+  return itemCount > 1
+    ? `${itemCount} items`
+    : description && !isGeneratedItemName(description)
+      ? description
+      : itemCount === 1
+        ? firstItem && !isGeneratedItemName(firstItem)
+          ? firstItem
           : 'this sale'
+        : 'this sale'
+}
 
+export const getSaleDescription = (sale?: SaleDescriptionSource | null) => {
+  const subject = getSaleSubject(sale)
   const amount = `₦${formatCurrency(sale?.amount || 0)}`
   return `${amount} for ${subject}`
 }
@@ -90,4 +98,18 @@ export const getStatusDescription = (sale: Sale) => {
 
 export const getRecentSaleSummary = (sale: Sale) => {
   return getSaleDescription(sale)
+}
+
+export const getSaleCustomerName = (sale: Sale) => {
+  if (typeof sale.customerId === 'object' && sale.customerId) {
+    const relationshipName =
+      sale.customerId.name || sale.customerId.businessName
+    if (relationshipName?.trim()) return relationshipName.trim()
+  }
+
+  if (sale.customerName?.trim()) return sale.customerName.trim()
+
+  return sale.customerType === 'Repeat'
+    ? 'Repeat customer'
+    : 'New customer'
 }
