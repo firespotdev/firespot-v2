@@ -90,9 +90,9 @@ export class QRKit extends Document {
   @Prop()
   name?: string
 
-  // Merchant-controlled per-kit preference. Entitlement is checked separately
-  // so a lapsed merchant cannot collect feedback from a previously enabled kit.
-  @Prop({ default: false })
+  // Merchant-controlled per-kit preference. New kits opt in by default;
+  // entitlement is still checked separately at feedback submission time.
+  @Prop({ default: true })
   collectFeedback: boolean
 }
 

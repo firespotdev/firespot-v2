@@ -105,11 +105,6 @@ export default function QRKitDetailPage() {
   const displayId = qrKit.serialNumber.slice(-8)
 
   const handleFeedbackToggle = (collectFeedback: boolean) => {
-    if (!canCollectFeedback) {
-      router.push('/plans')
-      return
-    }
-
     updateQRKit.mutate(
       { id, data: { collectFeedback } },
       {

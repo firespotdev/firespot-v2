@@ -727,12 +727,9 @@ export class UsersService {
     const userObjectId = new Types.ObjectId(userId);
     const qrKitObjectId = new Types.ObjectId(qrKitId);
 
-    const [qrKit, user] = await Promise.all([
-      this.qrKitModel
-        .findOne({ _id: qrKitObjectId, merchantId: userObjectId })
-        .exec(),
-      this.userModel.findById(userObjectId),
-    ]);
+    const qrKit = await this.qrKitModel
+      .findOne({ _id: qrKitObjectId, merchantId: userObjectId })
+      .exec();
 
     if (!qrKit) {
       throw new HttpException(
@@ -745,13 +742,6 @@ export class UsersService {
       qrKit.name = dto.name;
     }
     if (dto.collectFeedback !== undefined) {
-      const tier = user ? getEffectiveTier(user) : undefined;
-      if (dto.collectFeedback && tier !== "PRO" && tier !== "PROMAX") {
-        throw new HttpException(
-          "Feedback collection is available on PRO and PRO MAX",
-          HttpStatus.FORBIDDEN,
-        );
-      }
       qrKit.collectFeedback = dto.collectFeedback;
     }
 

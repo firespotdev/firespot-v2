@@ -259,7 +259,7 @@ export default function RecentsPage() {
                   {showConfirmAllTooltip && (
                     <div
                       role="tooltip"
-                      className="absolute bottom-[calc(100%+12px)] right-[-8px] z-20 whitespace-nowrap rounded-[10px] bg-black px-3.5 py-2 text-[13px] font-bold text-white shadow-lg"
+                      className="absolute bottom-[calc(100%+28px)] right-[-8px] z-20 whitespace-nowrap rounded-[10px] bg-black px-3.5 py-2 text-[13px] font-bold text-white shadow-lg"
                     >
                       Confirm all
                       <span className="absolute -bottom-1.5 right-5 h-3 w-3 rotate-45 bg-black" />

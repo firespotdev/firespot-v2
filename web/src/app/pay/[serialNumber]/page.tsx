@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { useAuthStore } from '@/services/auth'
 import type { MerchantProfile } from '@/services/qr/interface'
+import { SalesApi } from '@/services/sales/salesApi'
 import {
   useCreatePendingSale,
   useRecordScan,
@@ -37,6 +38,9 @@ export default function PaymentPage() {
   const router = useRouter()
   const serialNumber = params.serialNumber as string
   const saleId = searchParams.get('saleId') || ''
+  const [isRecoveringActiveSale, setIsRecoveringActiveSale] = useState(
+    () => !saleId,
+  )
 
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
@@ -47,6 +51,8 @@ export default function PaymentPage() {
   const claimSalePayer = useClaimSalePayer()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const authUser = useAuthStore((state) => state.user)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const customerExitPath = isAuthenticated ? '/home' : '/'
 
   useEffect(() => {
     if (saleId) {
@@ -65,26 +71,63 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+
+    let active = true
     const storageKey = `firespot-active-sale:${serialNumber}`
+
     if (saleId) {
-      const activeSaleId = sessionStorage.getItem(storageKey)
-      if (activeSaleId && activeSaleId !== saleId) {
-        router.replace('/home')
-        return
-      }
       sessionStorage.setItem(storageKey, saleId)
       return
     }
-    if (sessionStorage.getItem(storageKey)) {
-      router.replace('/home')
+
+    const storedSaleId = sessionStorage.getItem(storageKey)
+    if (!storedSaleId) {
+      queueMicrotask(() => {
+        if (active) setIsRecoveringActiveSale(false)
+      })
+      return
+    }
+
+    queueMicrotask(() => {
+      if (active) setIsRecoveringActiveSale(true)
+    })
+    SalesApi.getPublicSale(storedSaleId, serialNumber)
+      .then((storedSale) => {
+        if (!active) return
+
+        if (storedSale.status === 'PENDING') {
+          router.replace(
+            `/pay/${encodeURIComponent(serialNumber)}?saleId=${encodeURIComponent(storedSaleId)}`,
+          )
+          return
+        }
+
+        if (sessionStorage.getItem(storageKey) === storedSaleId) {
+          sessionStorage.removeItem(storageKey)
+        }
+        setIsRecoveringActiveSale(false)
+      })
+      .catch(() => {
+        if (!active) return
+        if (sessionStorage.getItem(storageKey) === storedSaleId) {
+          sessionStorage.removeItem(storageKey)
+        }
+        setIsRecoveringActiveSale(false)
+      })
+
+    return () => {
+      active = false
     }
   }, [saleId, serialNumber, router])
 
   useEffect(() => {
     if (!saleId || saleLoading) return
     if (saleError || error || publicSale?.status === 'CANCELLED') {
-      sessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
-      router.replace('/home')
+      const storageKey = `firespot-active-sale:${serialNumber}`
+      if (sessionStorage.getItem(storageKey) === saleId) {
+        sessionStorage.removeItem(storageKey)
+      }
+      router.replace(customerExitPath)
     }
   }, [
     saleId,
@@ -93,6 +136,7 @@ export default function PaymentPage() {
     error,
     publicSale?.status,
     serialNumber,
+    customerExitPath,
     router,
   ])
 
@@ -147,6 +191,7 @@ export default function PaymentPage() {
   }
 
   if (
+    isRecoveringActiveSale ||
     isLoading ||
     (saleId &&
       (saleLoading ||

@@ -1152,7 +1152,11 @@ export class SalesService {
     return savedSale
   }
 
-  async markSalePaidByCustomer(saleId: string, serialNumber: string) {
+  async markSalePaidByCustomer(
+    saleId: string,
+    serialNumber: string,
+    customerFingerprint?: string,
+  ) {
     if (!mongoose.isValidObjectId(saleId)) {
       throw new NotFoundException('Sale not found')
     }
@@ -1170,8 +1174,16 @@ export class SalesService {
       )
     }
 
+    const normalizedFingerprint = customerFingerprint?.trim()
+    let shouldSave = false
+    if (normalizedFingerprint && !sale.customerFingerprint) {
+      sale.customerFingerprint = normalizedFingerprint
+      shouldSave = true
+    }
+
     if (!sale.customerMarkedPaidAt) {
       sale.customerMarkedPaidAt = new Date()
+      shouldSave = true
       await sale.save()
       this.eventsGateway.server
         .to(sale.merchantId.toString())
@@ -1179,6 +1191,8 @@ export class SalesService {
       this.eventsGateway.server
         .to(`sale-${sale._id.toString()}`)
         .emit('payment.declared', sale)
+    } else if (shouldSave) {
+      await sale.save()
     }
 
     return sale

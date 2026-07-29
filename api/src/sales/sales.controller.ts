@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, Headers } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { SalesService } from './sales.service';
@@ -199,8 +199,13 @@ export class SalesController {
   async markSalePaidByCustomer(
     @Param('id') saleId: string,
     @Body() dto: CustomerSaleActionDto,
+    @Headers('x-customer-fingerprint') customerFingerprint?: string,
   ) {
-    return this.salesService.markSalePaidByCustomer(saleId, dto.serialNumber);
+    return this.salesService.markSalePaidByCustomer(
+      saleId,
+      dto.serialNumber,
+      customerFingerprint,
+    );
   }
 
   @ApiOperation({ summary: 'Upload customer payment receipt screenshot' })

@@ -1,4 +1,5 @@
 import { apiClient, publicApiClient } from '@/lib/utils/axios';
+import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint';
 import {
   ArchiveAllSalesResult,
   ConfirmAllSalesResult,
@@ -152,6 +153,11 @@ export const SalesApi = {
     const { data } = await publicApiClient.patch(
       `/sales/${saleId}/customer-paid`,
       { serialNumber },
+      {
+        headers: {
+          'x-customer-fingerprint': getCustomerFingerprint(),
+        },
+      },
     );
     return data;
   },

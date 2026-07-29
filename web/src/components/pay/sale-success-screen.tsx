@@ -1,6 +1,7 @@
 'use client'
 
-import { Check, X } from 'lucide-react'
+import Image from 'next/image'
+import { Check, ChevronRight, X } from 'lucide-react'
 import { Button, TagFooter } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { PublicSale } from '@/services/sales/interface'
@@ -44,7 +45,7 @@ export function SaleSuccessScreen({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-6 flex flex-col items-center justify-center text-center">
+        <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col items-center justify-center text-center">
           <div className="w-16 h-16 rounded-full border-4 border-[#24C166] flex items-center justify-center shrink-0">
             <Check className="w-8 h-8 text-[#24C166]" strokeWidth={3} />
           </div>
@@ -98,11 +99,42 @@ export function SaleSuccessScreen({
             </span>
           </Button>
 
-          <FeedbackPrompt
-            saleId={sale.id}
-            serialNumber={sale.serialNumber}
-            merchantName={merchantName}
-          />
+          <div className="mt-6 w-full max-w-[390px] overflow-hidden rounded-[12px] border border-[#F1F1F1] bg-white text-left shadow-[0px_4px_8px_0px_#0000000A]">
+            <div className="flex items-center gap-3 p-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F1F1F1] bg-[#E9EDF1]">
+                {sale.merchant?.profilePhotoUrl || merchant.profilePhotoUrl ? (
+                  <Image
+                    src={
+                      sale.merchant?.profilePhotoUrl ||
+                      merchant.profilePhotoUrl!
+                    }
+                    alt={merchantName}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src="/icons/store_solid.svg"
+                    alt={merchantName}
+                    width={22}
+                    height={22}
+                  />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[14px] font-bold text-black">
+                  {merchantName}
+                </p>
+                <p className="mt-0.5 text-[13px] font-medium text-[#00000080]">
+                  View business profile
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-[#B8B8B8]" />
+            </div>
+
+            <FeedbackPrompt sale={sale} merchant={merchant} />
+          </div>
         </div>
 
         <div className="shrink-0 py-5">

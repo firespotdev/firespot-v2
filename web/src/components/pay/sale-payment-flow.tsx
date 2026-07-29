@@ -13,6 +13,7 @@ import { SaleRequestScreen } from './sale-request-screen'
 import { SaleWaitingScreen } from './sale-waiting-screen'
 import { SaleSuccessScreen } from './sale-success-screen'
 import { useCancelSaleAsCustomer } from '@/services/sales/hooks'
+import { useAuthStore } from '@/services/auth'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 type SaleStep = 'request' | 'waiting' | 'success'
@@ -46,6 +47,8 @@ export function SalePaymentFlow({
   const queryClient = useQueryClient()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const cancelSale = useCancelSaleAsCustomer()
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const customerExitPath = isAuthenticated ? '/home' : '/'
 
   const [step, setStep] = useState<SaleStep>(() => deriveStep(sale))
   const [selectedAccountIndex, setSelectedAccountIndex] = useState(0)
@@ -79,7 +82,7 @@ export function SalePaymentFlow({
           : 'This payment request was cancelled by the vendor',
       duration: 3000,
     })
-    router.replace('/home')
+    router.replace(customerExitPath)
   }
 
   // Realtime confirmation; polling via usePublicSale covers socket failures
@@ -110,7 +113,7 @@ export function SalePaymentFlow({
       {
         onSuccess: () => {
           clearActiveTransaction()
-          router.replace('/home')
+          router.replace(customerExitPath)
         },
         onError: (error: any) => {
           showNotificationToast({
@@ -123,11 +126,11 @@ export function SalePaymentFlow({
     )
   }
 
-  // After a completed payment, send the payer to the home scan page.
-  // Authenticated users get routed onward by the scanner page's own guard.
+  // Anonymous payers return to the public scanner; signed-in payers return to
+  // their personal home.
   const handleFinish = () => {
     clearActiveTransaction()
-    router.replace('/home')
+    router.replace(customerExitPath)
   }
 
   const handleCopy = () => {

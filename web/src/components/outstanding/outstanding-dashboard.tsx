@@ -49,7 +49,7 @@ export function OutstandingDashboard({
       </header>
 
       <div className="flex-1 px-4 pb-12 overflow-y-auto flex flex-col gap-3">
-        <h3 className="text-[32px] font-bold text-black mt-2 -tracking-[0.4px] mb-3">
+        <h3 className="text-[32px] font-bold text-black mt-2 -tracking-[0.4px] mb-3 pb-2">
           Outstanding
         </h3>
         <StatBanner
