@@ -203,7 +203,7 @@ export function RepaymentSummaryDrawer({
           </p>
         </div>
 
-        <div className="px-1">
+        {/* <div className="px-1">
           <h3 className="text-[12px] font-medium text-[#00000066] mb-4">
             Unpaid balances
           </h3>
@@ -246,7 +246,6 @@ export function RepaymentSummaryDrawer({
                       </p>
                     </div>
 
-                    {/* Progress bar line */}
                     <div className="w-full mt-3 h-1 bg-[#F3F4F6] rounded-[2px] overflow-hidden">
                       <div
                         className={cn(
@@ -273,7 +272,7 @@ export function RepaymentSummaryDrawer({
               </div>
             ))}
           </div>
-        </div>
+        </div> */}
 
         <div className="mx-1 border-t border-[#F1F1F1] pt-4 space-y-3 mt-4">
           <div className="flex items-center justify-between text-[14px]">

@@ -42,9 +42,9 @@ export class CreatePendingSaleDto {
   @Min(0.01)
   amount?: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
 
   @IsOptional()
   @IsArray()

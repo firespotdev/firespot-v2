@@ -184,12 +184,6 @@ export class MerchantReferralsService {
     ) {
       throw new BadRequestException('You cannot refer yourself')
     }
-    if (!this.eligibility(referrer).eligible) {
-      throw new BadRequestException(
-        'This merchant referral code is not currently eligible',
-      )
-    }
-
     return { source: 'merchant', referrer, merchantCode }
   }
 

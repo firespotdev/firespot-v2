@@ -7,6 +7,7 @@ import { ArrowUpRight, Plus, Share, X } from 'lucide-react'
 import { Button, Spinner, showNotificationToast } from '@/components/ui'
 import { BankLogo } from '@/components/ui/bank-logo'
 import type { MerchantProfile } from '@/services/qr/interface'
+import { maskAccountNumber } from '@/lib/utils'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -50,15 +51,7 @@ export function SalePayAmountScreen({
       })
       return
     }
-    const normalizedDescription = description.trim()
-    if (!normalizedDescription) {
-      showNotificationToast({
-        message: 'Enter a description for this payment',
-        duration: 2000,
-      })
-      return
-    }
-    onCopy(amountValue, normalizedDescription)
+    onCopy(amountValue, description.trim())
   }
 
   return (
@@ -131,7 +124,7 @@ export function SalePayAmountScreen({
                     className="w-28 text-[32px] leading-none text-black bg-transparent -tracking-[4px] outline-none placeholder:text-[#9CA3AF]"
                   />
                 </div>
-                <div className="flex gap-1.5 overflow-x-auto scrollbar-hide min-w-0 -mr-4">
+                <div className="flex gap-2.5 overflow-x-auto scrollbar-hide min-w-0 -mr-4">
                   {QUICK_AMOUNTS.map((value) => (
                     <button
                       key={value}
@@ -156,7 +149,6 @@ export function SalePayAmountScreen({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Payment for..."
-                  required
                   className="flex-1 min-w-0 text-[20px] text-black bg-transparent outline-none placeholder:text-[#9CA3AF] font-bold"
                 />
                 <button
@@ -189,7 +181,7 @@ export function SalePayAmountScreen({
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-[#64748B]">Transfer to</p>
                 <p className="font-bold text-sm text-[#0F172A] truncate">
-                  {account.bankName} ({account.accountNumber})
+                  {account.bankName} ({maskAccountNumber(account.accountNumber)})
                 </p>
               </div>
               <button

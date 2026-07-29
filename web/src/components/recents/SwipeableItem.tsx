@@ -7,18 +7,20 @@ import { cn } from '@/lib/utils'
 interface SwipeableItemProps {
   children: React.ReactNode
   onConfirm?: () => void
-  onCancel?: () => void
+  onArchive?: () => void
   confirmText?: string
-  cancelText?: string
+  archiveText?: string
+  disabled?: boolean
   className?: string
 }
 
 export const SwipeableItem: React.FC<SwipeableItemProps> = ({
   children,
   onConfirm,
-  onCancel,
+  onArchive,
   confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  archiveText = 'Archive',
+  disabled = false,
   className,
 }) => {
   const [offsetX, setOffsetX] = useState(0)
@@ -30,6 +32,7 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
   const maxSwipe = 100 // Max distance the item can be swiped
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (disabled) return
     startX.current = e.touches[0].clientX
     currentX.current = e.touches[0].clientX
     setIsSwiping(true)
@@ -60,10 +63,10 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
       // Swiped right -> Confirm
       onConfirm?.()
     } else if (offsetX < -threshold) {
-      // Swiped left -> Cancel
-      onCancel?.()
+      // Swiped left -> Archive
+      onArchive?.()
     }
-    
+
     // Always reset
     setOffsetX(0)
   }
@@ -91,7 +94,7 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
           </div>
         </div>
 
-        {/* Cancel Action (Right side, revealed when swiping left) */}
+        {/* Archive Action (Right side, revealed when swiping left) */}
         <div
           className={cn(
             'h-full bg-[#6B7280] flex items-center justify-end overflow-hidden shrink-0 transition-opacity duration-200 ml-auto',
@@ -102,10 +105,14 @@ export const SwipeableItem: React.FC<SwipeableItemProps> = ({
         >
           <div className="pr-5 flex flex-col items-center gap-1 min-w-[80px]">
             <div className="w-5 h-5 rounded-full bg-[#E5E7EB] flex items-center justify-center">
-              <X size={14} className="text-[#6B7280]" strokeWidth={3} />
+              <X
+                size={13}
+                className="text-[#6B7280]"
+                strokeWidth={2.5}
+              />
             </div>
             <span className="text-white text-[12px] font-bold">
-              {cancelText}
+              {archiveText}
             </span>
           </div>
         </div>

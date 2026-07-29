@@ -14,6 +14,8 @@ export interface StatBannerProps {
   isLoading?: boolean
   onToggleVisibility?: () => void
   onLabelClick?: () => void
+  actions?: React.ReactNode
+  splitLayout?: boolean
   className?: string
 }
 
@@ -28,6 +30,8 @@ export function StatBanner({
   isLoading = false,
   onToggleVisibility,
   onLabelClick,
+  actions,
+  splitLayout = false,
   className,
 }: StatBannerProps) {
   return (
@@ -35,10 +39,74 @@ export function StatBanner({
       rounded="12"
       padding="md"
       className={cn(
-        'w-full flex justify-between items-center shrink-0',
+        'relative w-full flex justify-between items-center shrink-0',
+        actions && 'overflow-visible',
         className,
       )}
     >
+      {splitLayout ? (
+        <>
+          <div className="flex min-w-0 flex-col gap-2">
+            {onLabelClick ? (
+              <button
+                type="button"
+                onClick={onLabelClick}
+                className="flex items-center gap-1 text-xs font-medium text-[#00000066] transition-colors hover:text-black"
+              >
+                <span>{label}</span>
+                <ChevronDown
+                  size={14}
+                  strokeWidth={2}
+                  className="text-[#00000066]"
+                />
+              </button>
+            ) : (
+              <span className="text-xs font-medium leading-none text-[#00000066]">
+                {label}
+              </span>
+            )}
+
+            {isLoading ? (
+              <div className="h-6 w-32 animate-pulse rounded bg-gray-200" />
+            ) : (
+              <h3 className="text-[22px] font-bold leading-none tracking-tight text-black">
+                {isHidden
+                  ? `${currency} ••••••••`
+                  : `${currency} ${formatCurrency(amount)}`}
+              </h3>
+            )}
+          </div>
+
+          <div className="flex shrink-0 items-center">
+            {badgeText && (
+              <span
+                className={cn(
+                  'text-xs font-bold',
+                  badgePositive ? 'text-[#24C166]' : 'text-[#00000066]',
+                )}
+              >
+                {badgeText}
+              </span>
+            )}
+
+            {actions}
+
+            {!actions && !badgeText && isHideable && onToggleVisibility && (
+              <button
+                type="button"
+                onClick={onToggleVisibility}
+                className="rounded-full p-1 transition-colors hover:bg-gray-100"
+              >
+                <EyeOff
+                  size={16}
+                  className="text-[#00000066]"
+                  strokeWidth={2}
+                />
+              </button>
+            )}
+          </div>
+        </>
+      ) : (
       <div className="w-full">
         <div className="flex items-center gap-1 mb-2 justify-between w-full">
           {onLabelClick ? (
@@ -83,7 +151,9 @@ export function StatBanner({
             </h3>
           )}
 
-          {isHideable && onToggleVisibility && (
+          {actions}
+
+          {!actions && isHideable && onToggleVisibility && (
             <button
               type="button"
               onClick={onToggleVisibility}
@@ -94,6 +164,7 @@ export function StatBanner({
           )}
         </div>
       </div>
+      )}
     </AppCard>
   )
 }

@@ -116,7 +116,7 @@ export function CurrentSaleDrawer({
   const isContinueDisabled =
     isPending ||
     needsPaymentMethod ||
-    (installmentType === 'part' && (!dueDate || !customer))
+    (installmentType === 'part' && !customer)
 
   const handleContinue = async () => {
     if (isContinueDisabled) return

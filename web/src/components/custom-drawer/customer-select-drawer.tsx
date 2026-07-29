@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Search, ChevronRight, ArrowLeft, ContactRound } from 'lucide-react'
-import { Button, showNotificationToast } from '@/components/ui'
+import { X, Search, ChevronRight, ArrowLeft } from 'lucide-react'
+import { showNotificationToast } from '@/components/ui'
 import { useCustomers } from '@/services/customers/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
@@ -11,9 +11,9 @@ import type { Customer } from '@/services/customers/customersApi'
 import { AddressBookIcon } from '@phosphor-icons/react'
 
 interface Props {
-  onSelect: (customer: Customer | null) => void
+  onSelect: (customer: Customer) => void
   onBack?: () => void
-  /** Part payments must be attributed to a customer — disables skip/Continue. */
+  /** Shows the additional balance-attribution guidance for part payments. */
   requireCustomer?: boolean
   title?: string
 }
@@ -30,9 +30,6 @@ export function CustomerSelectDrawer({
   const { selectContacts } = useContactPicker()
 
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null,
-  )
 
   const handleOpenAddCustomer = ({
     initialContact,
@@ -48,6 +45,7 @@ export function CustomerSelectDrawer({
         initialContact,
         focusPhone,
         onSelect: (newCust: Customer) => {
+          closeDrawer('add-customer')
           onSelect(newCust)
         },
         onBack: () => {
@@ -202,17 +200,14 @@ export function CustomerSelectDrawer({
           {/* Customers List Box */}
           <div className="flex max-h-64 flex-col overflow-y-auto rounded-[12px] border border-[#F1F1F1] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
             {filtered.map((cust, index) => {
-              const isSelected = selectedCustomer?._id === cust._id
               return (
                 <button
                   key={cust._id}
                   type="button"
-                  onClick={() => {
-                    setSelectedCustomer(cust)
-                  }}
+                  onClick={() => onSelect(cust)}
                   className={`w-full flex items-center justify-between p-3 transition-all text-left group cursor-pointer
                   ${index > 0 ? 'border-t border-[#EBEBEB]' : ''}
-                  ${isSelected ? 'bg-gray-50/70' : 'bg-white hover:bg-gray-50/40'}
+                  bg-white hover:bg-gray-50/40
                 `}
                 >
                   <div className="flex items-center gap-3">
@@ -232,18 +227,6 @@ export function CustomerSelectDrawer({
             })}
           </div>
         </div>
-
-        {/* Continue button — disabled for part payments until a customer is
-            selected (a balance must be attributed to someone). */}
-        <Button
-          onClick={() => {
-            onSelect(selectedCustomer || null)
-          }}
-          disabled={requireCustomer && !selectedCustomer}
-          className="w-full mb-3 mt-1 bg-black text-white hover:bg-black/90 disabled:bg-black/40 disabled:cursor-not-allowed font-bold transition-all h-14 rounded-full text-base active:scale-[0.98]"
-        >
-          Continue
-        </Button>
       </div>
     </div>
   )

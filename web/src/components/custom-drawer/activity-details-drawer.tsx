@@ -248,7 +248,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
               <DetailRow label="Location">{sale.location}</DetailRow>
             )}
             <DetailRow label="Description">
-              {getSaleDescription(sale, 'Payment')}
+              {getSaleDescription(sale)}
             </DetailRow>
             <DetailRow label="Via">{viaLabel}</DetailRow>
             {sale.paymentMethod && (

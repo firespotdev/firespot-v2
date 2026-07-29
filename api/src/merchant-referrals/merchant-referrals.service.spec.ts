@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common'
 import { Types } from 'mongoose'
 import { MerchantReferralsService } from './merchant-referrals.service'
 
@@ -103,17 +102,16 @@ describe('MerchantReferralsService', () => {
     )
   })
 
-  it('rejects a merchant referrer without a verified active plan', async () => {
+  it('accepts a merchant referral code without gating attribution by plan', async () => {
+    const referrer = {
+      _id: new Types.ObjectId(),
+      role: 'merchant',
+      planTier: undefined,
+      planStatus: undefined,
+    }
     const { service } = makeService({
       userModel: {
-        findOne: jest.fn().mockReturnValue(
-          query({
-            _id: new Types.ObjectId(),
-            role: 'merchant',
-            planTier: 'PRO',
-            planStatus: 'paid',
-          }),
-        ),
+        findOne: jest.fn().mockReturnValue(query(referrer)),
       },
     })
 
@@ -121,7 +119,11 @@ describe('MerchantReferralsService', () => {
       service.validateOnboardingAttribution({
         merchantReferralCode: 'FSM-ABC234',
       }),
-    ).rejects.toBeInstanceOf(BadRequestException)
+    ).resolves.toEqual({
+      source: 'merchant',
+      referrer,
+      merchantCode: 'FSM-ABC234',
+    })
   })
 
   it('creates one earned ledger row at NGN 50,000 confirmed collection volume', async () => {

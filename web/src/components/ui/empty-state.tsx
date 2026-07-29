@@ -14,7 +14,9 @@ export function EmptyState({ emoji, title, details, cta }: EmptyStateProps) {
       <p className="font-bold text-xl text-black mt-3 -tracking-[0.4px]">
         {title}
       </p>
-      <p className="text-sm text-[#00000080] mt-2 max-w-70">{details}</p>
+      <p className="text-sm text-[#00000080] font-medium mt-2 max-w-70">
+        {details}
+      </p>
       {cta}
     </div>
   )

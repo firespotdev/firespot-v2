@@ -1,10 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { ArrowLeft, Loader2, Plus, Share2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowLeft, Check, Loader2, Plus, Share2, X } from 'lucide-react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useSales, useSalesStats, useCancelSale } from '@/services/sales/hooks'
+import {
+  useArchiveSale,
+  useArchiveAllPendingSales,
+  useConfirmAllSales,
+  useConfirmSale,
+  useSales,
+  useSalesStats,
+} from '@/services/sales/hooks'
 import { SaleItem } from '@/components/sales/SaleItem'
 import { cn, formatCurrency } from '@/lib/utils'
 import type { Sale } from '@/services/sales/interface'
@@ -26,8 +32,8 @@ const TAB_OPTIONS = [
 ] satisfies Array<{ label: string; value: RecentTab }>
 
 export default function RecentsPage() {
-  const router = useRouter()
   const [activeTab, setActiveTab] = useState<RecentTab>('unconfirmed')
+  const [showConfirmAllTooltip, setShowConfirmAllTooltip] = useState(true)
   const { data: stats, isLoading: statsLoading } = useSalesStats({
     preset: 'today',
   })
@@ -42,7 +48,10 @@ export default function RecentsPage() {
   const { data: profile } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
 
-  const cancelSaleMutation = useCancelSale()
+  const confirmSaleMutation = useConfirmSale()
+  const confirmAllSalesMutation = useConfirmAllSales()
+  const archiveAllSalesMutation = useArchiveAllPendingSales()
+  const archiveSaleMutation = useArchiveSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const pendingSales = pendingData?.data || []
@@ -60,20 +69,107 @@ export default function RecentsPage() {
       ? stats?.pendingSalesAmount || 0
       : stats?.todaySalesAmount || 0
 
-  const handleCancel = (saleId: string) => {
-    openDrawer({
-      type: 'confirm-cancel',
-      props: {
-        onConfirm: async () => {
-          await cancelSaleMutation.mutateAsync(saleId)
-          showNotificationToast({ message: 'Sale cancelled' })
-        },
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setShowConfirmAllTooltip(false)
+    }, 3000)
+
+    return () => window.clearTimeout(timeout)
+  }, [])
+
+  const hasMutationInProgress =
+    confirmAllSalesMutation.isPending ||
+    archiveAllSalesMutation.isPending ||
+    confirmSaleMutation.isPending ||
+    archiveSaleMutation.isPending
+
+  const getMutationMessage = (error: unknown, fallback: string) => {
+    const apiError = error as {
+      response?: { data?: { message?: string | string[] } }
+    }
+    const message = apiError.response?.data?.message
+    return Array.isArray(message) ? message[0] : message || fallback
+  }
+
+  const handleArchive = (saleId: string) => {
+    if (hasMutationInProgress) {
+      return
+    }
+    archiveSaleMutation.mutate(saleId, {
+      onSuccess: () => {
+        showNotificationToast({
+          message: 'Sale archived',
+          mode: 'success',
+        })
+      },
+      onError: (error) => {
+        showNotificationToast({
+          message: getMutationMessage(error, 'Failed to archive sale.'),
+          mode: 'error',
+        })
       },
     })
   }
 
   const handleConfirm = (saleId: string) => {
-    router.push(`/record-sale?confirm=${saleId}`)
+    if (hasMutationInProgress) {
+      return
+    }
+    confirmSaleMutation.mutate(saleId, {
+      onSuccess: () => {
+        setActiveTab('confirmed')
+        showNotificationToast({
+          message: 'Payment confirmed',
+          mode: 'success',
+        })
+      },
+      onError: (error) => {
+        showNotificationToast({
+          message: getMutationMessage(error, 'Failed to confirm payment.'),
+          mode: 'error',
+        })
+      },
+    })
+  }
+
+  const handleConfirmAll = () => {
+    if (hasMutationInProgress || pendingSales.length === 0) return
+    confirmAllSalesMutation.mutate(undefined, {
+      onSuccess: ({ count }) => {
+        setActiveTab('confirmed')
+        showNotificationToast({
+          message:
+            count === 1 ? '1 payment confirmed' : `${count} payments confirmed`,
+          mode: 'success',
+        })
+      },
+      onError: (error) => {
+        showNotificationToast({
+          message: getMutationMessage(error, 'Failed to confirm all payments.'),
+          mode: 'error',
+        })
+      },
+    })
+  }
+
+  const handleArchiveAll = () => {
+    if (hasMutationInProgress || pendingSales.length === 0) return
+
+    archiveAllSalesMutation.mutate(undefined, {
+      onSuccess: ({ count }) => {
+        showNotificationToast({
+          message:
+            count === 1 ? '1 payment archived' : `${count} payments archived`,
+          mode: 'success',
+        })
+      },
+      onError: (error) => {
+        showNotificationToast({
+          message: getMutationMessage(error, 'Failed to archive all payments.'),
+          mode: 'error',
+        })
+      },
+    })
   }
 
   const handleShareProfile = () => {
@@ -142,20 +238,68 @@ export default function RecentsPage() {
               ? `+NGN ${formatCurrency(metricAmount)}`
               : undefined
           }
-          className="mb-7"
+          actions={
+            activeTab === 'unconfirmed' ? (
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Archive all unconfirmed sales"
+                  onClick={handleArchiveAll}
+                  disabled={hasMutationInProgress || pendingSales.length === 0}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-[#0000000A] bg-[#0000000A] text-black shadow-[0px_2px_4px_0px_#0000000A] disabled:cursor-not-allowed"
+                >
+                  {archiveAllSalesMutation.isPending ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <X className="h-5 w-5" strokeWidth={2.5} />
+                  )}
+                </button>
+
+                <div className="relative">
+                  {showConfirmAllTooltip && (
+                    <div
+                      role="tooltip"
+                      className="absolute bottom-[calc(100%+12px)] right-[-8px] z-20 whitespace-nowrap rounded-[10px] bg-black px-3.5 py-2 text-[13px] font-bold text-white shadow-lg"
+                    >
+                      Confirm all
+                      <span className="absolute -bottom-1.5 right-5 h-3 w-3 rotate-45 bg-black" />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    aria-label="Confirm all unconfirmed sales"
+                    onClick={handleConfirmAll}
+                    disabled={
+                      hasMutationInProgress || pendingSales.length === 0
+                    }
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-[#24C166] text-white shadow-[0px_2px_4px_0px_#1433204D] disabled:cursor-not-allowed disabled:bg-[#D0D5DD] disabled:shadow-[0px_2px_4px_0px_#0000000A]"
+                  >
+                    {confirmAllSalesMutation.isPending ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Check className="h-5 w-5" strokeWidth={3} />
+                    )}
+                  </button>
+                </div>
+              </div>
+            ) : undefined
+          }
+          splitLayout
+          className="mb-6"
         />
 
         <section className="flex flex-1 flex-col">
           <div>
-            <h2 className="text-[15px] font-bold text-black">
-              {activeTab === 'unconfirmed'
-                ? 'Waiting for confirmation'
-                : 'Confirmed sales'}
-            </h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[14px] font-bold text-black">
+                {activeTab === 'unconfirmed'
+                  ? 'Waiting for confirmation'
+                  : 'Confirmed sales'}
+              </h2>
+            </div>
             {activeTab === 'unconfirmed' && (
               <p className="mb-3 mt-1 text-xs font-medium text-[#00000066]">
-                Swipe right to confirm, swipe left if the payment didn’t
-                happen.
+                Swipe right to confirm, swipe left to archive.
               </p>
             )}
           </div>
@@ -172,7 +316,16 @@ export default function RecentsPage() {
                   sale={sale}
                   isSwipeable={activeTab === 'unconfirmed'}
                   onConfirm={() => handleConfirm(sale._id)}
-                  onCancel={() => handleCancel(sale._id)}
+                  onArchive={() => handleArchive(sale._id)}
+                  isConfirming={
+                    confirmSaleMutation.isPending &&
+                    confirmSaleMutation.variables === sale._id
+                  }
+                  isArchiving={
+                    archiveSaleMutation.isPending &&
+                    archiveSaleMutation.variables === sale._id
+                  }
+                  actionsDisabled={hasMutationInProgress}
                   onClick={() => {
                     if (activeTab === 'unconfirmed') {
                       handleConfirm(sale._id)
@@ -214,10 +367,10 @@ export default function RecentsPage() {
                 title={emptyState.title}
                 details={emptyState.details}
                 cta={
-                  <div className="mt-6 flex items-center justify-center gap-2">
+                  <div className="mt-6 flex items-center justify-center gap-3">
                     <Link
                       href="/record-sale"
-                      className="flex h-11 items-center gap-2 rounded-full bg-black px-5 text-[11px] font-bold tracking-[1px] text-white"
+                      className="flex h-9 items-center gap-2 rounded-full bg-black px-4 text-[10px] font-bold tracking-[1px] text-white"
                     >
                       <Plus size={18} />
                       NEW SALE
@@ -225,7 +378,7 @@ export default function RecentsPage() {
                     <button
                       type="button"
                       onClick={handleShareProfile}
-                      className="flex h-11 items-center gap-2 rounded-full border border-[#DFDFDF] bg-[#F1F1F1] px-5 text-[11px] font-bold tracking-[1px] text-black"
+                      className="flex h-9 items-center gap-2 rounded-full border border-[#DFDFDF] bg-[#F1F1F1] px-4 text-[10px] font-bold tracking-[1px] text-black"
                     >
                       <Share2 size={18} />
                       SHARE PROFILE
@@ -239,7 +392,7 @@ export default function RecentsPage() {
 
         <Link
           href="/history?status=ARCHIVED"
-          className="mt-7 flex min-h-14 items-center justify-center rounded-[12px] border border-[#F1F1F1] bg-white px-4 text-center text-[14px] font-medium text-[#6B7280]"
+          className="mt-7 flex h-11 items-center justify-center rounded-[12px] bg-white px-4 text-center text-[13px] font-medium text-[#6B7280]"
         >
           View archived sales
         </Link>

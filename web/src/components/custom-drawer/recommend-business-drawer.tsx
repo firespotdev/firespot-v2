@@ -40,7 +40,7 @@ export function RecommendBusinessDrawer({
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: referral, isLoading } = useMerchantReferralSummary()
   const referralCode = referral?.referralCode
-  const canRefer = Boolean(referral?.eligible && referralCode)
+  const canRefer = Boolean(referralCode)
   const recommendUrl = getRecommendUrl(referralCode)
 
   const handleCopy = () => {
@@ -181,9 +181,9 @@ export function RecommendBusinessDrawer({
             ₦50,000 in confirmed payments.
           </p>
           {!isLoading && !referral?.eligible && (
-            <p className="mt-2 max-w-[360px] text-xs font-medium text-[#F04438]">
-              Complete verification and keep an active plan to use merchant
-              referrals.
+            <p className="mt-2 max-w-[360px] text-xs font-medium text-[#00000066]">
+              Complete verification and keep an active plan to qualify for
+              referral rewards.
             </p>
           )}
         </div>

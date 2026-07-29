@@ -10,11 +10,13 @@ describe("SalesService amount invariants", () => {
     saleModel: Record<string, jest.Mock> = {},
     customerModel: Record<string, jest.Mock> = {},
     customersService: Record<string, jest.Mock> = {},
+    userModel: Record<string, jest.Mock> = {},
+    qrKitModel: Record<string, jest.Mock> = {},
   ) =>
     new SalesService(
       saleModel as any,
-      {} as any,
-      {} as any,
+      userModel as any,
+      qrKitModel as any,
       customerModel as any,
       {
         server: {
@@ -90,7 +92,11 @@ describe("SalesService amount invariants", () => {
         { isPaidInFull: false, amountPaid: 500, dueDate: "2027-01-10" },
         false,
       ],
-      ["has no due date", { isPaidInFull: false, amountPaid: 500 }, true],
+      [
+        "has an invalid due date",
+        { isPaidInFull: false, amountPaid: 500, dueDate: "not-a-date" },
+        true,
+      ],
       [
         "pays the full total in partial mode",
         {
@@ -106,6 +112,23 @@ describe("SalesService amount invariants", () => {
       expect(() => normalize(service, values, hasCustomer)).toThrow(
         BadRequestException,
       );
+    });
+
+    it("allows a partial payment without a due date", () => {
+      const service = createService();
+
+      expect(
+        normalize(
+          service,
+          { amount: 1075, isPaidInFull: false, amountPaid: 500 },
+          true,
+        ),
+      ).toEqual({
+        total: 1075,
+        amountPaid: 500,
+        balanceOwed: 575,
+        isPaidInFull: false,
+      });
     });
 
     it("does not allow a cancelled transaction to be recorded later", async () => {
@@ -125,6 +148,130 @@ describe("SalesService amount invariants", () => {
           },
         ),
       ).rejects.toThrow("Only a pending sale can be recorded");
+    });
+
+    it("confirms a description-free QR payment in one tap as a full bank transfer", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const saleId = "507f1f77bcf86cd799439013";
+      const sale = {
+        _id: { toString: () => saleId },
+        merchantId: { toString: () => merchantId },
+        status: "PENDING",
+        amount: 2500,
+        description: undefined,
+        source: "QR scan",
+        targetBankName: "Test Bank",
+        serialNumber: "FS-QR-1",
+        items: [],
+        repayments: [],
+        save: jest.fn(),
+      };
+      sale.save.mockImplementation(async () => sale);
+      const findOne = jest.fn().mockResolvedValue(sale);
+      const userModel = {
+        findById: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(null),
+          }),
+        }),
+      };
+      const service = createService({ findOne }, {}, {}, userModel);
+
+      await expect(service.confirmSale(merchantId, saleId)).resolves.toBe(sale);
+      expect(sale.status).toBe("CONFIRMED");
+      expect((sale as any).paymentMethod).toBe("Bank Transfer");
+      expect((sale as any).amountPaid).toBe(2500);
+      expect((sale as any).balanceOwed).toBe(0);
+      expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not one-tap confirm an archived pending sale", async () => {
+      const service = createService({
+        findOne: jest.fn().mockResolvedValue({
+          status: "PENDING",
+          isArchived: true,
+        }),
+      });
+
+      await expect(
+        service.confirmSale(
+          "507f1f77bcf86cd799439012",
+          "507f1f77bcf86cd799439013",
+        ),
+      ).rejects.toThrow("Only an active pending sale can be confirmed");
+    });
+
+    it("confirms every active pending sale with one bulk action", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const sales = [
+        {
+          _id: { toString: () => "507f1f77bcf86cd799439013" },
+          amount: 1000,
+          description: "Bread",
+          source: "QR scan",
+          items: [],
+        },
+        {
+          _id: { toString: () => "507f1f77bcf86cd799439014" },
+          amount: 2500,
+          description: "Yam",
+          source: "Link shared",
+          items: [],
+        },
+      ];
+      const saleModel = {
+        find: jest.fn().mockReturnValue({
+          sort: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(sales),
+          }),
+        }),
+      };
+      const userModel = {
+        findById: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(null),
+          }),
+        }),
+      };
+      const service = createService(saleModel, {}, {}, userModel);
+      const recordSale = jest
+        .spyOn(service, "recordSale")
+        .mockImplementation(async (_merchantId, saleId) => {
+          return sales.find((sale) => sale._id.toString() === saleId) as any;
+        });
+
+      await expect(service.confirmAllSales(merchantId)).resolves.toEqual({
+        confirmed: sales,
+        count: 2,
+        totalAmount: 3500,
+      });
+      expect(recordSale).toHaveBeenCalledTimes(2);
+      expect(recordSale).toHaveBeenCalledWith(
+        merchantId,
+        sales[0]._id.toString(),
+        expect.objectContaining({
+          amount: 1000,
+          isPaidInFull: true,
+          paymentMethod: "Bank Transfer",
+        }),
+        true,
+      );
+    });
+
+    it("archives every active pending sale with one bulk action", async () => {
+      const updateMany = jest.fn().mockResolvedValue({ modifiedCount: 3 });
+      const service = createService({ updateMany });
+
+      await expect(
+        service.archiveAllPendingSales("507f1f77bcf86cd799439012"),
+      ).resolves.toEqual({ count: 3 });
+      expect(updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "PENDING",
+          isArchived: { $ne: true },
+        }),
+        { $set: { isArchived: true } },
+      );
     });
   });
 
@@ -326,6 +473,7 @@ describe("SalesService amount invariants", () => {
       expect(find).toHaveBeenCalledWith(
         expect.objectContaining({
           status: { $in: ["CONFIRMED", "OUTSTANDING"] },
+          isArchived: { $ne: true },
         }),
       );
     });
@@ -348,6 +496,16 @@ describe("SalesService amount invariants", () => {
           pendingSalesCount: 2,
           pendingSalesAmount: 1500,
         }),
+      );
+      expect(aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          {
+            $match: expect.objectContaining({
+              status: "PENDING",
+              isArchived: { $ne: true },
+            }),
+          },
+        ]),
       );
     });
   });

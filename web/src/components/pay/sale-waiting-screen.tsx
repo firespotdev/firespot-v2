@@ -22,6 +22,7 @@ import { useDeleteReceipt, useUploadReceipt } from '@/services/sales/hooks'
 import { useMarkSalePaidByCustomer } from '@/services/sales/hooks'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
+import { maskAccountNumber } from '@/lib/utils'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -194,7 +195,8 @@ export function SaleWaitingScreen({
                     Transferring to
                   </p>
                   <p className="font-bold text-sm text-black truncate uppercase">
-                    {account.bankName} ({account.accountNumber})
+                    {account.bankName} (
+                    {maskAccountNumber(account.accountNumber)})
                   </p>
                 </div>
                 <button

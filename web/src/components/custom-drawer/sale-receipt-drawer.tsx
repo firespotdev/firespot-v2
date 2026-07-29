@@ -130,7 +130,7 @@ export function SaleReceiptDrawer({
                 Description
               </span>
               <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
-                {getSaleDescription(sale, 'No description')}
+                {getSaleDescription(sale)}
               </span>
             </div>
           </div>

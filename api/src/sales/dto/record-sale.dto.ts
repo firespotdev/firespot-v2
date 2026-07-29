@@ -16,9 +16,9 @@ export class RecordSaleDto {
   @Min(0.01)
   amount: number;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
 
   @IsNotEmpty()
   @IsEnum(["Bank Transfer", "Cash", "POS", "Other"])

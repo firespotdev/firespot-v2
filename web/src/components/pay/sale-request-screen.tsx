@@ -8,6 +8,7 @@ import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatSaleTime } from './utils'
 import { useDrawerStore } from '@/services/drawer'
+import { maskAccountNumber } from '@/lib/utils'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -142,7 +143,7 @@ export function SaleRequestScreen({
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-[#64748B]">Transfer to</p>
                 <p className="font-bold text-sm text-[#0F172A] truncate">
-                  {account.bankName} ({account.accountNumber})
+                  {account.bankName} ({maskAccountNumber(account.accountNumber)})
                 </p>
               </div>
               <button

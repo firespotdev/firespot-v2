@@ -123,3 +123,13 @@ export interface SalesResponse {
     lastPage: number;
   };
 }
+
+export interface ConfirmAllSalesResult {
+  confirmed: Sale[];
+  count: number;
+  totalAmount: number;
+}
+
+export interface ArchiveAllSalesResult {
+  count: number;
+}

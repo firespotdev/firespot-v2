@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight, Check, X } from 'lucide-react'
+import { ChevronRight, Check, Loader2, X } from 'lucide-react'
 import { SwipeableItem } from '@/components/recents/SwipeableItem'
 import { MerchantAvatar } from '@/components/layout/MerchantAvatar'
 import { Sale } from '@/services/sales/interface'
@@ -18,8 +18,11 @@ interface SaleItemProps {
   sale: Sale
   isSwipeable?: boolean
   onConfirm?: () => void
-  onCancel?: () => void
+  onArchive?: () => void
   onClick?: (sale: Sale) => void
+  isConfirming?: boolean
+  isArchiving?: boolean
+  actionsDisabled?: boolean
   className?: string
   variant?: 'default' | 'minimal' | 'recent-unconfirmed' | 'recent-confirmed'
 }
@@ -28,23 +31,20 @@ export function SaleItem({
   sale,
   isSwipeable = false,
   onConfirm,
-  onCancel,
+  onArchive,
   onClick,
+  isConfirming = false,
+  isArchiving = false,
+  actionsDisabled = false,
   className,
   variant = 'default',
 }: SaleItemProps) {
   const isArchivedItem = getMerchantStatus(sale) === 'Archived'
   const isRecent = variant.startsWith('recent-')
-  const customerLabel =
-    (typeof sale.customerId === 'object' && sale.customerId?.name) ||
-    sale.customerName ||
-    (sale.customerType === 'Repeat' ? 'Repeat customer' : 'New customer')
   const title =
-    variant === 'recent-unconfirmed'
+    variant === 'recent-unconfirmed' || variant === 'recent-confirmed'
       ? getRecentSaleSummary(sale)
-      : variant === 'recent-confirmed'
-        ? customerLabel
-        : getStatusDescription(sale)
+      : getStatusDescription(sale)
 
   const content = (
     <div
@@ -79,26 +79,40 @@ export function SaleItem({
 
       {isSwipeable ? (
         <div className="flex items-center gap-2 shrink-0">
-          {/* Cancel Button */}
+          {/* Archive Button */}
           <button
+            type="button"
+            aria-label="Archive sale"
+            disabled={actionsDisabled || isConfirming || isArchiving}
             onClick={(e) => {
               e.stopPropagation()
-              onCancel?.()
+              onArchive?.()
             }}
             className="w-10 h-10 rounded-full bg-[#0000000A] hover:bg-[#0000000A]/80 border-[1.11px] border-[#0000000A] flex items-center justify-center text-black shadow-[0px_2.22px_4.44px_0px_#0000000A] transition-all shrink-0"
           >
-            <X className="w-4 h-4 text-black" strokeWidth={2.5} />
+            {isArchiving ? (
+              <Loader2 className="h-4 w-4 animate-spin text-black" />
+            ) : (
+              <X className="w-4 h-4 text-black" strokeWidth={2.5} />
+            )}
           </button>
 
           {/* Confirm Button */}
           <button
+            type="button"
+            aria-label="Confirm sale"
+            disabled={actionsDisabled || isConfirming || isArchiving}
             onClick={(e) => {
               e.stopPropagation()
               onConfirm?.()
             }}
             className="w-10 h-10 rounded-full bg-[#24C166] hover:bg-[#24C166]/80 flex items-center justify-center text-white shadow-[0px_2.22px_4.44px_0px_#1433204D] transition-all shrink-0"
           >
-            <Check className="w-4 h-4 text-white" strokeWidth={3} />
+            {isConfirming ? (
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            ) : (
+              <Check className="w-4 h-4 text-white" strokeWidth={3} />
+            )}
           </button>
         </div>
       ) : (
@@ -115,11 +129,12 @@ export function SaleItem({
     </div>
   )
 
-  if (isSwipeable && onConfirm && onCancel) {
+  if (isSwipeable && onConfirm && onArchive) {
     return (
       <SwipeableItem
         onConfirm={onConfirm}
-        onCancel={onCancel}
+        onArchive={onArchive}
+        disabled={actionsDisabled || isConfirming || isArchiving}
         className={className}
       >
         {content}

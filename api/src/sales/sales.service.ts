@@ -60,12 +60,9 @@ export class SalesService {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100
   }
 
-  private requireDescription(description?: string): string {
+  private normalizeDescription(description?: string): string | undefined {
     const normalized = description?.trim()
-    if (!normalized) {
-      throw new BadRequestException('Description is required')
-    }
-    return normalized
+    return normalized || undefined
   }
 
   private async requireMerchantRelationship(
@@ -138,10 +135,8 @@ export class SalesService {
         'Select the customer who owes the outstanding balance',
       )
     }
-    if (!dto.dueDate || Number.isNaN(new Date(dto.dueDate).getTime())) {
-      throw new BadRequestException(
-        'A due date is required for a partial payment',
-      )
+    if (dto.dueDate && Number.isNaN(new Date(dto.dueDate).getTime())) {
+      throw new BadRequestException('Enter a valid due date')
     }
 
     return {
@@ -234,7 +229,7 @@ export class SalesService {
   }
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
-    const description = this.requireDescription(dto.description)
+    const description = this.normalizeDescription(dto.description)
     await this.assertDailyCap(dto.merchantId, dto.amount || 0)
 
     // Check if this fingerprint has any confirmed sales for this merchant already
@@ -350,7 +345,7 @@ export class SalesService {
     merchantId: string,
     dto: CreatePendingSaleDto,
   ): Promise<Sale> {
-    const description = this.requireDescription(dto.description)
+    const description = this.normalizeDescription(dto.description)
     await this.assertCanCollect(merchantId)
     await this.assertDailyCap(merchantId, dto.amount || 0)
 
@@ -406,7 +401,7 @@ export class SalesService {
     merchantId: string,
     dto: RecordSaleDto,
   ): Promise<Sale> {
-    const description = this.requireDescription(dto.description)
+    const description = this.normalizeDescription(dto.description)
     const customer = dto.customerId
       ? await this.requireMerchantRelationship(merchantId, dto.customerId)
       : undefined
@@ -499,6 +494,13 @@ export class SalesService {
     const skip = (Number(page) - 1) * Number(limit)
     const merchantObjectId = new Types.ObjectId(merchantId)
     const filter: any = { merchantId: merchantObjectId }
+    const normalizedStatus = status?.toUpperCase()
+    const isArchiveView =
+      normalizedStatus === 'ARCHIVED' || normalizedStatus === 'CANCELLED'
+
+    if (!isArchiveView) {
+      filter.isArchived = { $ne: true }
+    }
 
     if (customerId) {
       const relationship = await this.requireMerchantRelationship(
@@ -716,6 +718,7 @@ export class SalesService {
     const pendingFilter: any = {
       merchantId: merchantObjectId,
       status: 'PENDING',
+      isArchived: { $ne: true },
     }
     if (query?.mode === 'recorded') {
       pendingFilter.isCollection = { $ne: true }
@@ -756,6 +759,7 @@ export class SalesService {
     const filter: Record<string, any> = {
       merchantId: merchantObjectId,
       status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
+      isArchived: { $ne: true },
     }
     if (query?.mode === 'recorded') {
       filter.isCollection = { $ne: true }
@@ -794,6 +798,7 @@ export class SalesService {
     const totalConfirmedFilter: any = {
       merchantId: merchantObjectId,
       status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
+      isArchived: { $ne: true },
     }
     if (query?.mode === 'recorded') {
       totalConfirmedFilter.isCollection = { $ne: true }
@@ -845,6 +850,7 @@ export class SalesService {
       const prevFilter: any = {
         merchantId,
         status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
+        isArchived: { $ne: true },
       }
       prevFilter.createdAt = { $gte: prevStart, $lte: prevEnd }
 
@@ -882,7 +888,109 @@ export class SalesService {
     return response
   }
 
-  async recordSale(merchantId: string, saleId: string, dto: RecordSaleDto) {
+  private oneTapRecordPayload(sale: SaleDocument): RecordSaleDto {
+    const amount = this.roundMoney(Number(sale.amount))
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException(
+        'This sale needs a valid amount before it can be confirmed',
+      )
+    }
+
+    const description = this.normalizeDescription(sale.description)
+    const supportedMethods = ['Bank Transfer', 'Cash', 'POS', 'Other']
+    const existingMethod = sale.paymentMethod
+    const paymentMethod = supportedMethods.includes(existingMethod || '')
+      ? existingMethod!
+      : sale.targetBankName ||
+          sale.isCollection ||
+          sale.source === 'QR scan' ||
+          sale.source === 'Link shared'
+        ? 'Bank Transfer'
+        : 'Other'
+
+    return {
+      amount,
+      description,
+      paymentMethod,
+      targetBankName: sale.targetBankName,
+      isPaidInFull: true,
+      amountPaid: amount,
+      totalDue: amount,
+      balanceOwed: 0,
+      customerId: sale.customerId?.toString(),
+      items: sale.items || [],
+    }
+  }
+
+  async confirmSale(merchantId: string, saleId: string) {
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      merchantId: new Types.ObjectId(merchantId),
+    })
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    if (sale.status !== 'PENDING' || sale.isArchived) {
+      throw new UnprocessableEntityException(
+        'Only an active pending sale can be confirmed',
+      )
+    }
+
+    return this.recordSale(merchantId, saleId, this.oneTapRecordPayload(sale))
+  }
+
+  async confirmAllSales(merchantId: string) {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const sales = await this.saleModel
+      .find({
+        merchantId: merchantObjectId,
+        status: 'PENDING',
+        isArchived: { $ne: true },
+      })
+      .sort({ createdAt: 1 })
+      .exec()
+
+    if (sales.length === 0) {
+      return { confirmed: [], count: 0, totalAmount: 0 }
+    }
+
+    // Build every payload before modifying anything so an incomplete legacy
+    // pending record blocks the whole operation instead of creating a partial
+    // "confirm all" result.
+    const pending = sales.map((sale) => ({
+      sale,
+      payload: this.oneTapRecordPayload(sale),
+    }))
+    const totalAmount = this.roundMoney(
+      pending.reduce((total, item) => total + item.payload.amount, 0),
+    )
+    await this.assertDailyCap(merchantId, totalAmount)
+
+    const confirmed: Sale[] = []
+    for (const item of pending) {
+      confirmed.push(
+        await this.recordSale(
+          merchantId,
+          item.sale._id.toString(),
+          item.payload,
+          true,
+        ),
+      )
+    }
+
+    return {
+      confirmed,
+      count: confirmed.length,
+      totalAmount,
+    }
+  }
+
+  async recordSale(
+    merchantId: string,
+    saleId: string,
+    dto: RecordSaleDto,
+    skipDailyCap = false,
+  ) {
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = await this.saleModel.findOne({
       _id: saleId,
@@ -896,8 +1004,13 @@ export class SalesService {
         'Only a pending sale can be recorded',
       )
     }
+    if (sale.isArchived) {
+      throw new UnprocessableEntityException(
+        'An archived sale cannot be recorded',
+      )
+    }
 
-    const description = this.requireDescription(dto.description)
+    const description = this.normalizeDescription(dto.description)
     const selectedCustomerId = dto.customerId || sale.customerId
     let customer = selectedCustomerId
       ? await this.requireMerchantRelationship(merchantId, selectedCustomerId)
@@ -914,7 +1027,9 @@ export class SalesService {
     const amounts = this.normalizeRecordedAmounts(dto, !!customerUserId)
 
     // Confirming a pending sale is the point the amount is actually recorded.
-    await this.assertDailyCap(merchantId, amounts.total)
+    if (!skipDailyCap) {
+      await this.assertDailyCap(merchantId, amounts.total)
+    }
 
     sale.status = amounts.isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
     sale.amount = amounts.total
@@ -925,7 +1040,8 @@ export class SalesService {
     sale.amountPaid = amounts.amountPaid
     sale.totalDue = amounts.total
     sale.balanceOwed = amounts.balanceOwed
-    sale.dueDate = amounts.isPaidInFull ? undefined : new Date(dto.dueDate!)
+    sale.dueDate =
+      !amounts.isPaidInFull && dto.dueDate ? new Date(dto.dueDate) : undefined
     if (dto.items) sale.items = dto.items
 
     if (amounts.amountPaid > 0) {
@@ -1110,7 +1226,7 @@ export class SalesService {
       sale.isPaidInFull = true
     }
     if (dto.description !== undefined) {
-      sale.description = this.requireDescription(dto.description)
+      sale.description = this.normalizeDescription(dto.description)
     }
     if (dto.paymentMethod !== undefined) sale.paymentMethod = dto.paymentMethod
 
@@ -1130,6 +1246,19 @@ export class SalesService {
     }
     sale.isArchived = true
     return sale.save()
+  }
+
+  async archiveAllPendingSales(merchantId: string) {
+    const result = await this.saleModel.updateMany(
+      {
+        merchantId: new Types.ObjectId(merchantId),
+        status: 'PENDING',
+        isArchived: { $ne: true },
+      },
+      { $set: { isArchived: true } },
+    )
+
+    return { count: result.modifiedCount || 0 }
   }
 
   async uploadReceipt(saleId: string, fileBuffer: Buffer): Promise<Sale> {

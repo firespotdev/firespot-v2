@@ -173,7 +173,7 @@ function DisputeReportPageContent() {
               </span>
             </div>
             <p className="text-xs text-[#00000060] mt-1 italic">
-              {getSaleDescription(sale, 'Firespot scan-to-pay transfer')}
+              {getSaleDescription(sale)}
             </p>
           </div>
 

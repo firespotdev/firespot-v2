@@ -65,6 +65,40 @@ export const useRecordSale = () => {
   });
 };
 
+export const useConfirmSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.confirmSale(saleId),
+    onSuccess: (data, saleId) => {
+      queryClient.setQueryData(['sale', saleId], data);
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useConfirmAllSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.confirmAllSales,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useArchiveAllPendingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.archiveAllPendingSales,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
 export const useCancelSale = () => {
   const queryClient = useQueryClient();
   return useMutation({

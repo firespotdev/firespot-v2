@@ -10,7 +10,7 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel'
 import { BankLogo } from '@/components/ui/bank-logo'
-import { cn } from '@/lib/utils'
+import { cn, maskAccountNumber } from '@/lib/utils'
 import { showNotificationToast } from '@/components/ui'
 import { useEffect, useState } from 'react'
 
@@ -222,7 +222,7 @@ export function MerchantCardCarousel({
                     </p>
                     <div className="flex items-center gap-1">
                       <p className="text-lg font-bold text-black">
-                        {account.accountNumber}
+                        {maskAccountNumber(account.accountNumber)}
                       </p>
                       <button
                         onClick={(e) => {

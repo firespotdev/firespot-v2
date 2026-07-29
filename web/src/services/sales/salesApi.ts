@@ -1,5 +1,13 @@
 import { apiClient, publicApiClient } from '@/lib/utils/axios';
-import { CustomerSale, PublicSale, Sale, SalesStats, SalesResponse } from './interface';
+import {
+  ArchiveAllSalesResult,
+  ConfirmAllSalesResult,
+  CustomerSale,
+  PublicSale,
+  Sale,
+  SalesStats,
+  SalesResponse,
+} from './interface';
 
 export interface CreatePendingSalePayload {
   merchantId: string;
@@ -10,14 +18,14 @@ export interface CreatePendingSalePayload {
   targetBankName?: string;
   serialNumber?: string;
   amount?: number;
-  description: string;
+  description?: string;
   items?: any[];
   customerId?: string;
 }
 
 export interface RecordSalePayload {
   amount: number;
-  description: string;
+  description?: string;
   paymentMethod: string;
   targetBankName?: string;
   isPaidInFull?: boolean;
@@ -26,6 +34,7 @@ export interface RecordSalePayload {
   balanceOwed?: number;
   customerId?: string;
   items?: any[];
+  dueDate?: string;
 }
 
 export interface EditSalePayload {
@@ -72,6 +81,21 @@ export const SalesApi = {
 
   recordSale: async (saleId: string, payload: RecordSalePayload): Promise<Sale> => {
     const { data } = await apiClient.patch(`/sales/${saleId}/record`, payload);
+    return data;
+  },
+
+  confirmSale: async (saleId: string): Promise<Sale> => {
+    const { data } = await apiClient.patch(`/sales/${saleId}/confirm`);
+    return data;
+  },
+
+  confirmAllSales: async (): Promise<ConfirmAllSalesResult> => {
+    const { data } = await apiClient.patch('/sales/confirm-all');
+    return data;
+  },
+
+  archiveAllPendingSales: async (): Promise<ArchiveAllSalesResult> => {
+    const { data } = await apiClient.patch('/sales/archive-all');
     return data;
   },
 

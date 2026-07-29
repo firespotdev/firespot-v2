@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { ArrowLeft, ChevronRight, Lock } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { TabSwitch, showNotificationToast } from '@/components/ui'
 import { usePlanCatalog } from '@/services/merchant-plans'
 import Image from 'next/image'
@@ -84,13 +84,11 @@ function RecordSaleContent() {
   // Collecting requires a verified plan; recording never does.
   const { data: planCatalog } = usePlanCatalog()
   const canCollect = planCatalog?.current?.canCollect !== false
-  const collectBlockedReason = planCatalog?.current?.collectBlockedReason
 
   // Keypad & sale state
   const [activeTab, setActiveTab] = useState<'amount' | 'items'>('amount')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
-  const [descriptionError, setDescriptionError] = useState(false)
   const [hasPrefilled, setHasPrefilled] = useState(false)
   const [prefilledAmountIsFinal, setPrefilledAmountIsFinal] = useState(false)
   const [amountMirrorsCartTotal, setAmountMirrorsCartTotal] = useState(false)
@@ -342,23 +340,17 @@ function RecordSaleContent() {
     const val = Number(amount)
     if (!val) return
     const normalizedDescription = description.trim()
-    if (!normalizedDescription) {
-      setDescriptionError(true)
-      showNotificationToast({ message: 'Enter a description for this item' })
-      return
-    }
 
     const draft = getDraftItem()
     if (!draft) return
     const newItem: CartItem = {
       ...draft,
       id: `custom-${Date.now()}`,
-      name: normalizedDescription,
+      name: normalizedDescription || draft.name,
     }
     setCartItems((prev) => [...prev, newItem])
     setAmount('')
     setDescription('')
-    setDescriptionError(false)
     setPrefilledAmountIsFinal(false)
     setAmountMirrorsCartTotal(false)
   }
@@ -397,7 +389,6 @@ function RecordSaleContent() {
     setActiveTab('amount')
     setAmount('')
     setDescription('')
-    setDescriptionError(false)
     setPrefilledAmountIsFinal(false)
     setCheckoutCustomer(null)
     setCheckoutPaymentMethod('')
@@ -438,16 +429,6 @@ function RecordSaleContent() {
     }
   }
 
-  const validateDraftDescription = () => {
-    if (getDraftItem() && !description.trim()) {
-      setDescriptionError(true)
-      showNotificationToast({ message: 'Enter a description for this item' })
-      return false
-    }
-    setDescriptionError(false)
-    return true
-  }
-
   const submitConfirmedSale = (
     paymentMethod: string,
     installmentType: 'full' | 'part',
@@ -472,13 +453,14 @@ function RecordSaleContent() {
     })
 
     const normalizedDescription = itemsList
+      .filter((item) => !/^Item \d+$/.test(item.name))
       .map((item) =>
         item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name,
       )
       .join(', ')
     const payload = {
       amount: totalVal,
-      description: normalizedDescription,
+      description: normalizedDescription || undefined,
       paymentMethod,
       isPaidInFull: installmentType === 'full',
       amountPaid: installmentType === 'full' ? totalVal : paidVal,
@@ -871,8 +853,9 @@ function RecordSaleContent() {
               merchantId: profile?.id || '',
               amount: totVal,
               description: itemsList
+                .filter((i) => !/^Item \d+$/.test(i.name))
                 .map((i) => (i.quantity > 1 ? `${i.name} x${i.quantity}` : i.name))
-                .join(', '),
+                .join(', ') || undefined,
               items: itemsList.map((item) => ({
                 productId:
                   item.id.startsWith('custom') || item.id === DRAFT_ITEM_ID
@@ -928,7 +911,6 @@ function RecordSaleContent() {
   }
 
   const handleRecordTapped = () => {
-    if (!validateDraftDescription()) return
     setCheckoutMode('record')
     const updatedCart = getEffectiveItems()
     const totVal = calculateTotal(updatedCart)
@@ -945,26 +927,11 @@ function RecordSaleContent() {
   }
 
   const handleCollectTapped = () => {
-    // Collecting needs a verified plan. Recording — including a customer
-    // scanning this merchant's QR — is never gated, so we explain and point
-    // at the fix rather than silently disabling.
     if (!canCollect) {
-      if (collectBlockedReason === 'kyc_incomplete') {
-        showNotificationToast({
-          message: 'Finish verifying your identity to collect payments.',
-        })
-        openDrawer({ type: 'verify-identity' })
-      } else {
-        showNotificationToast({
-          message:
-            'Upgrade to a Firespot Business plan to collect. You can still record sales.',
-        })
-        router.push('/plans')
-      }
+      router.push('/plans')
       return
     }
 
-    if (!validateDraftDescription()) return
     setCheckoutMode('collect')
     const updatedCart = getEffectiveItems()
     const totalVal = calculateTotal(updatedCart)
@@ -1033,11 +1000,7 @@ function RecordSaleContent() {
           <AmountTab
             amount={amount}
             description={description}
-            setDescription={(value) => {
-              setDescription(value)
-              if (value.trim()) setDescriptionError(false)
-            }}
-            descriptionError={descriptionError}
+            setDescription={setDescription}
             formatDisplayAmount={formatDisplayAmount}
             addCustomAmountToCart={addCustomAmountToCart}
             handleKeyPress={handleKeyPress}
@@ -1072,7 +1035,6 @@ function RecordSaleContent() {
               </span>
               <button
                 onClick={() => {
-                  if (!validateDraftDescription()) return
                   const items = getEffectiveItems()
                   const total = calculateTotal(items)
                   openCheckoutSaleDrawer(
@@ -1148,14 +1110,10 @@ function RecordSaleContent() {
                       amount !== '.' &&
                       amount !== '0.') ||
                     getEffectiveItems().length > 0
-                      ? canCollect
-                        ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
-                        : // Locked, but still tappable so we can explain why.
-                          'bg-[#F4F6F8] text-[#8E8E93]'
+                      ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
                       : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
                   }`}
                 >
-                  {!canCollect && <Lock className="w-3.5 h-3.5" />}
                   Collect
                 </button>
               )}

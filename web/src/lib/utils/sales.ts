@@ -54,42 +54,40 @@ export const getAmountLabel = (sale: Sale) => {
   return 'Enter amount'
 }
 
-type SaleDescriptionSource = Pick<Sale, 'description' | 'items'>
+type SaleDescriptionSource = Pick<Sale, 'amount' | 'description' | 'items'>
 
 export const getSaleDescription = (
   sale?: SaleDescriptionSource | null,
-  fallback = 'New sale',
 ) => {
+  const itemCount =
+    sale?.items?.reduce(
+      (total, item) => total + Math.max(1, Number(item.quantity) || 1),
+      0,
+    ) || 0
+  const description = sale?.description?.trim()
   const firstItem = sale?.items?.[0]?.productName?.trim()
+  const isGeneratedItemName = (value?: string) =>
+    !!value && /^Item \d+(?: x\d+)?$/i.test(value)
 
-  if (firstItem) {
-    const otherItemCount = Math.max(0, (sale?.items?.length || 0) - 1)
-    if (otherItemCount > 0) {
-      return `${firstItem} + ${otherItemCount} ${
-        otherItemCount === 1 ? 'other' : 'others'
-      }`
-    }
-    return firstItem
-  }
+  const subject =
+    itemCount > 1
+      ? `${itemCount} items`
+      : description && !isGeneratedItemName(description)
+        ? description
+        : itemCount === 1
+          ? firstItem && !isGeneratedItemName(firstItem)
+            ? firstItem
+            : 'this sale'
+          : 'this sale'
 
-  return sale?.description?.trim() || fallback
+  const amount = `₦${formatCurrency(sale?.amount || 0)}`
+  return `${amount} for ${subject}`
 }
 
 export const getStatusDescription = (sale: Sale) => {
   return getSaleDescription(sale)
 }
 
-/** Compact recents label: "₦5,000 for 2 items" or "₦1,500 for Bread". */
 export const getRecentSaleSummary = (sale: Sale) => {
-  const itemCount =
-    sale.items?.reduce(
-      (total, item) => total + Math.max(1, Number(item.quantity) || 1),
-      0,
-    ) || 0
-  const subject =
-    itemCount > 1
-      ? `${itemCount} items`
-      : getSaleDescription(sale, itemCount === 1 ? '1 item' : 'New sale')
-
-  return `₦${formatCurrency(sale.amount || 0)} for ${subject}`
+  return getSaleDescription(sale)
 }

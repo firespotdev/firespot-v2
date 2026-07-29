@@ -101,6 +101,33 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Confirm every active pending sale in full' })
+  @Patch('confirm-all')
+  async confirmAllSales(@GetUser() user: User) {
+    return this.salesService.confirmAllSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Archive every active pending sale' })
+  @Patch('archive-all')
+  async archiveAllPendingSales(@GetUser() user: User) {
+    return this.salesService.archiveAllPendingSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Confirm a pending sale in full' })
+  @Patch(':id/confirm')
+  async confirmSale(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+  ) {
+    return this.salesService.confirmSale((user as any).userId, saleId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Record/confirm a pending sale' })
   @Patch(':id/record')
   async recordSale(

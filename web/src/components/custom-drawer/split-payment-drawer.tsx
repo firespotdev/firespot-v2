@@ -170,6 +170,7 @@ export function SplitPaymentDrawer({
                     inputMode="decimal"
                     placeholder="0"
                     value={amountPaid}
+                    onFocus={(event) => event.currentTarget.select()}
                     onChange={(e) => {
                       const val = e.target.value.replace(/[^0-9.]/g, '')
                       const parts = val.split('.')
@@ -192,7 +193,7 @@ export function SplitPaymentDrawer({
                       setAmountPaid(formattedVal)
                     }}
                     className="w-full bg-transparent focus:outline-none font-medium font-family-sofia-pro text-[#24C166] text-[32px] leading-none -tracking-[2px] p-0 border-none"
-                    autoFocus={false}
+                    autoFocus
                   />
                 </div>
 

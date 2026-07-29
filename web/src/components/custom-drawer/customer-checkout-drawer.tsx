@@ -14,6 +14,7 @@ import { useDrawerStore } from '@/services/drawer'
 import { useUploadReceipt } from '@/services/sales/hooks'
 import { useSocket } from '@/hooks/useSocket'
 import { showNotificationToast } from '@/components/ui'
+import { maskAccountNumber } from '@/lib/utils'
 
 // Popular Nigerian banks data
 const NIGERIAN_BANKS = [
@@ -238,7 +239,8 @@ export function CustomerCheckoutDrawer({
                   Transferring to
                 </span>
                 <span className="text-sm font-bold text-black mt-1">
-                  {bankAccount.bankName} ({bankAccount.accountNumber})
+                  {bankAccount.bankName} (
+                  {maskAccountNumber(bankAccount.accountNumber)})
                 </span>
               </div>
               <button
