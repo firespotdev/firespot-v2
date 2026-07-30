@@ -390,6 +390,7 @@ export function CollectPaymentDrawer({
                   size={210}
                   centerImageUrl={profile?.profilePhotoUrl}
                   centerImageAlt={profile?.businessName || 'Merchant'}
+                  centerImageSize={64}
                 />
               </div>
             </div>
@@ -495,7 +496,7 @@ export function CollectPaymentDrawer({
                 </div>
               )}
               {!sale.receiptUrl && sale.customerMarkedPaidAt && (
-                <div className="w-full rounded-[12px] border-[3px] border-[#24C1664D] px-4 py-4 text-left shadow-[0px_4px_8px_0px_#0000000A]">
+                <div className="w-full rounded-[12px] border-[3px] border-[#24C1664D] px-3 text-left shadow-[0px_4px_8px_0px_#0000000A]">
                   <h4 className="text-sm font-bold text-black">
                     Customer marked this payment as paid
                   </h4>

@@ -106,7 +106,7 @@ export function SendReminderDrawer({
   const handleCopy = () => {
     navigator.clipboard.writeText(draftText)
     showNotificationToast({
-      message: 'Reminder copied',
+      message: 'Reminder text copied',
       mode: 'success',
     })
   }

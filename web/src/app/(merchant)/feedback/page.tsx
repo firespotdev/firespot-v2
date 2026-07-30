@@ -51,7 +51,7 @@ export default function FeedbackPage() {
   if (planLoading || (hasAccess && isLoading)) {
     return (
       <div className="flex h-dvh items-center justify-center bg-[#F5F6F8]">
-        <LoaderCircle />
+        <LoaderCircle innerBg="#f5f6f8" />
       </div>
     )
   }
@@ -63,21 +63,16 @@ export default function FeedbackPage() {
   return (
     <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
       <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <header className="flex shrink-0 items-center justify-between py-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="Back"
-            className="flex min-w-[54px] items-center justify-start"
-          >
-            <ArrowLeft className="h-6 w-6 text-black" />
+        <header className="flex shrink-0 items-center justify-between py-3">
+          <button type="button" onClick={() => router.back()} aria-label="Back">
+            <ArrowLeft size={16} className="text-black" />
           </button>
           <h1 className="text-[20px] font-bold -tracking-[0.4px] text-black">
             Feedback
           </h1>
-          <div className="flex h-9 items-center justify-center gap-1 rounded-full bg-[#E5E7EB] px-3 px-2.5 text-base -tracking-[0.4px] font-medium text-black">
+          <div className="flex h-9 items-center justify-center gap-1 rounded-full bg-[#E5E7EB] px-3 px-2.5 text-base -tracking-[0.4px] font-bold text-black">
             {average ? average.toFixed(1) : '0'}
-            <Star size={16} className="fill-[#FFB21A] text-[#FFB21A]" />
+            <Star size={16} className="fill-[#FDB022] text-[#FDB022]" />
           </div>
         </header>
 
@@ -145,21 +140,21 @@ export default function FeedbackPage() {
           <div className="pt-3">
             {groupedFeedback.map(([month, feedbackItems]) => (
               <section key={month} className="mb-7">
-                <h2 className="mb-3 text-base font-bold text-black">{month}</h2>
+                <h2 className="mb-2 text-sm font-bold text-black">{month}</h2>
                 <div className="space-y-3">
                   {feedbackItems.map((feedback) => (
                     <article
                       key={feedback._id}
-                      className="rounded-[16px] bg-white p-4 shadow-[0px_4px_8px_0px_#0000000A]"
+                      className="rounded-[16px] bg-white p-3 shadow-[0px_4px_8px_0px_#0000000A]"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E5E7EB]">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#E5E7EB]">
                           {feedback.customerPhotoUrl ? (
                             <Image
                               src={feedback.customerPhotoUrl}
                               alt={feedback.customerName}
-                              width={40}
-                              height={40}
+                              width={36}
+                              height={36}
                               className="h-full w-full object-cover"
                             />
                           ) : (
@@ -177,10 +172,10 @@ export default function FeedbackPage() {
                               {Array.from({ length: 5 }, (_, index) => (
                                 <Star
                                   key={index}
-                                  className={`h-4 w-4 ${
+                                  className={`h-3.5 w-3.5 ${
                                     index < feedback.rating
-                                      ? 'fill-[#FFB21A] text-[#FFB21A]'
-                                      : 'fill-[#D1D5DB] text-[#D1D5DB]'
+                                      ? 'fill-[#FDB022] text-[#FDB022]'
+                                      : 'fill-[#E5E7EB] text-[#E5E7EB]'
                                   }`}
                                 />
                               ))}
@@ -191,7 +186,7 @@ export default function FeedbackPage() {
                           </div>
                         </div>
                       </div>
-                      <p className="mt-3 text-base font-medium leading-[145%] text-[#505050]">
+                      <p className="mt-3 text-base font-medium leading-[135%] text-[#4F4F4F]">
                         {feedback.comment}
                       </p>
                     </article>
