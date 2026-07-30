@@ -56,7 +56,11 @@ export function RepaymentSuccessDrawer({
 
   const handleViewCustomer = () => {
     closeAllDrawers()
-    router.push(returnTo || '/recents')
+    if (returnTo) {
+      router.replace(returnTo)
+      return
+    }
+    router.push('/recents')
   }
 
   return (

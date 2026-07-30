@@ -76,6 +76,10 @@ export function CustomerDebtList({
   const phoneHref = customerPhone
     ? `tel:${customerPhone.replace(/[^\d+]/g, '')}`
     : undefined
+  const recordRepaymentHref = `/record-repayment?${new URLSearchParams({
+    customerId,
+    returnTo: `/outstanding?customerId=${customerId}`,
+  }).toString()}`
 
   const handleSendAggregateReminder = () => {
     if (unpaidSales.length === 0) return
@@ -204,7 +208,7 @@ export function CustomerDebtList({
         {unpaidSales.length > 0 && (
           <div className="scrollbar-hide mt-3 flex gap-2 overflow-x-auto px-3 pb-1">
             <Link
-              href={`/record-repayment?customerId=${customerId}`}
+              href={recordRepaymentHref}
               className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
             >
               <PlusCircle size={18} />

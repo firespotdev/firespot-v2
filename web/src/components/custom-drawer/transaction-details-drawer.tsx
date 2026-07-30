@@ -385,9 +385,6 @@ const TransactionDetailsDrawer = ({
                       customerId,
                       saleId: sale._id,
                     })
-                    if (origin === 'history') {
-                      params.set('origin', 'history')
-                    }
                     router.push(`/outstanding?${params.toString()}`)
                   }}
                   className="flex w-full items-center justify-between text-left disabled:cursor-default"

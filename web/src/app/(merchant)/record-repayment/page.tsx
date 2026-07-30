@@ -42,6 +42,15 @@ function RecordRepaymentContent() {
     return ''
   }, [queryCustomerId, sale])
 
+  const repaymentReturnTo = useMemo(() => {
+    if (returnTo) return returnTo
+    if (!resolvedCustomerId) return ''
+
+    return `/outstanding?${new URLSearchParams({
+      customerId: resolvedCustomerId,
+    }).toString()}`
+  }, [resolvedCustomerId, returnTo])
+
   const {
     data: customerOutstandingSales = [],
     isLoading: isLoadingCustomerSales,
@@ -255,10 +264,10 @@ function RecordRepaymentContent() {
           customerName,
           isFullRepayment: isFull,
           remainingBalance: remainingDebt,
-          returnTo: returnTo || undefined,
+          returnTo: repaymentReturnTo || undefined,
           onDismiss: () => {
-            if (returnTo) {
-              router.replace(returnTo)
+            if (repaymentReturnTo) {
+              router.replace(repaymentReturnTo)
               return
             }
             router.back()
