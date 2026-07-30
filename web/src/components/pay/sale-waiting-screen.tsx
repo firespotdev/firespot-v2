@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowUpRight,
   Check,
@@ -55,6 +55,7 @@ export function SaleWaitingScreen({
   const deleteReceipt = useDeleteReceipt()
   const markPaid = useMarkSalePaidByCustomer()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadAbortControllerRef = useRef<AbortController | null>(null)
   const [receiptName, setReceiptName] = useState<string | null>(null)
 
   const hasReceipt = Boolean(sale.receiptUrl) || uploadReceipt.isSuccess
@@ -77,18 +78,39 @@ export function SaleWaitingScreen({
   const displayedReceiptName =
     receiptName || `Receipt_${sale.reference?.replace('FS-', '') || 'transfer'}`
 
+  useEffect(
+    () => () => {
+      uploadAbortControllerRef.current?.abort()
+    },
+    [],
+  )
+
   const handleFile = (file: File) => {
+    uploadAbortControllerRef.current?.abort()
+    const controller = new AbortController()
+    uploadAbortControllerRef.current = controller
     setReceiptName(file.name.replace(/\.[^.]+$/, ''))
     uploadReceipt.mutate(
-      { saleId: sale.id, file },
+      {
+        saleId: sale.id,
+        serialNumber,
+        file,
+        signal: controller.signal,
+      },
       {
         onError: () => {
+          if (controller.signal.aborted) return
           setReceiptName(null)
           showNotificationToast({
             message: 'Failed to upload receipt. Please try again.',
             mode: 'error',
             duration: 2500,
           })
+        },
+        onSettled: () => {
+          if (uploadAbortControllerRef.current === controller) {
+            uploadAbortControllerRef.current = null
+          }
         },
       },
     )
@@ -128,19 +150,29 @@ export function SaleWaitingScreen({
   }
 
   const handleDeleteReceipt = () => {
-    deleteReceipt.mutate(sale.id, {
-      onSuccess: () => {
-        setReceiptName(null)
-        uploadReceipt.reset()
+    deleteReceipt.mutate(
+      { saleId: sale.id, serialNumber },
+      {
+        onSuccess: () => {
+          setReceiptName(null)
+          uploadReceipt.reset()
+        },
+        onError: () => {
+          showNotificationToast({
+            message: 'Failed to remove receipt',
+            mode: 'error',
+            duration: 2000,
+          })
+        },
       },
-      onError: () => {
-        showNotificationToast({
-          message: 'Failed to remove receipt',
-          mode: 'error',
-          duration: 2000,
-        })
-      },
-    })
+    )
+  }
+
+  const handleCancelUpload = () => {
+    uploadAbortControllerRef.current?.abort()
+    uploadAbortControllerRef.current = null
+    setReceiptName(null)
+    uploadReceipt.reset()
   }
 
   const handleMarkPaid = () => {
@@ -297,7 +329,7 @@ export function SaleWaitingScreen({
                 <button
                   type="button"
                   aria-label="Cancel upload"
-                  onClick={() => uploadReceipt.reset()}
+                  onClick={handleCancelUpload}
                   className="h-9 w-9 rounded-full bg-[#0000000A] border border-[0000000A] flex items-center justify-center shrink-0 shadow-[0px_2px_4px_0px_#0000000A]"
                 >
                   <X size={16} color="black" />

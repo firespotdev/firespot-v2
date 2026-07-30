@@ -167,25 +167,41 @@ export default function PaymentPage() {
     return () => clearTimeout(timer)
   }, [error, merchant])
 
-  const trackCopyEvent = (accountNumber: string, bankName: string) => {
-    if (hasCopyBeenRecorded) return
-
-    setHasCopyBeenRecorded(true)
-    recordCopy.mutate(
-      { serialNumber, accountNumber, bankName },
-      {
-        onError: (err) => {
-          console.error('Failed to record copy event:', err)
+  const trackCopyEvent = async (
+    accountNumber: string,
+    bankName: string,
+    sourceBankName?: string,
+  ) => {
+    const isFirstCopy = !hasCopyBeenRecorded
+    if (isFirstCopy) {
+      setHasCopyBeenRecorded(true)
+      recordCopy.mutate(
+        { serialNumber, accountNumber, bankName },
+        {
+          onError: (err) => {
+            console.error('Failed to record copy event:', err)
+          },
         },
-      },
-    )
+      )
 
-    if (saleId) {
-      recordSaleCopy.mutate(saleId)
       // Dynamic QR: link this merchant-initiated sale to the logged-in payer so
       // it appears in their Activity once confirmed. No-op when logged out.
-      if (authUser?.id) {
+      if (saleId && authUser?.id) {
         claimSalePayer.mutate({ saleId })
+      }
+    }
+
+    if (saleId) {
+      try {
+        await recordSaleCopy.mutateAsync({
+          saleId,
+          serialNumber,
+          targetBankName: bankName,
+          targetAccountNumber: accountNumber,
+          sourceBankName,
+        })
+      } catch (error) {
+        console.error('Failed to persist transfer selection:', error)
       }
     }
   }
@@ -618,11 +634,19 @@ export default function PaymentPage() {
           const continueToWaiting = () => {
             recordCopy.mutate({ serialNumber, accountNumber, bankName })
             // Mark copied so the flow resumes at "waiting", then hand off.
-            recordSaleCopy.mutate(newSaleId, {
-              onSettled: () => {
-                router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
+            recordSaleCopy.mutate(
+              {
+                saleId: newSaleId,
+                serialNumber,
+                targetBankName: bankName,
+                targetAccountNumber: accountNumber,
               },
-            })
+              {
+                onSettled: () => {
+                  router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
+                },
+              },
+            )
           }
 
           if (authUser?.id) {

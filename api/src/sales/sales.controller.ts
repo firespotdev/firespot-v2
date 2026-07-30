@@ -227,17 +227,32 @@ export class SalesController {
   @UseInterceptors(FileInterceptor('receipt'))
   async uploadReceipt(
     @Param('id') saleId: string,
+    @Query('serialNumber') serialNumber: string,
+    @Headers('x-customer-fingerprint') customerFingerprint: string,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.salesService.uploadReceipt(saleId, file.buffer);
+    return this.salesService.uploadReceipt(
+      saleId,
+      serialNumber,
+      customerFingerprint,
+      file.buffer,
+    );
   }
 
   @ApiOperation({
     summary: 'Remove uploaded receipt (customer, pending sales only)',
   })
   @Delete(':id/receipt')
-  async deleteReceipt(@Param('id') saleId: string) {
-    return this.salesService.deleteReceipt(saleId);
+  async deleteReceipt(
+    @Param('id') saleId: string,
+    @Query('serialNumber') serialNumber: string,
+    @Headers('x-customer-fingerprint') customerFingerprint: string,
+  ) {
+    return this.salesService.deleteReceipt(
+      saleId,
+      serialNumber,
+      customerFingerprint,
+    );
   }
 
   @ApiOperation({ summary: 'Record customer scanning/accessing link' })
@@ -248,8 +263,19 @@ export class SalesController {
 
   @ApiOperation({ summary: 'Record customer copying account number' })
   @Patch(':id/copy')
-  async recordCopy(@Param('id') saleId: string) {
-    return this.salesService.recordCopy(saleId);
+  async recordCopy(
+    @Param('id') saleId: string,
+    @Body() dto: CustomerSaleActionDto,
+    @Headers('x-customer-fingerprint') customerFingerprint: string,
+  ) {
+    return this.salesService.recordCopy(
+      saleId,
+      dto.serialNumber,
+      customerFingerprint,
+      dto.targetBankName,
+      dto.targetAccountNumber,
+      dto.sourceBankName,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')

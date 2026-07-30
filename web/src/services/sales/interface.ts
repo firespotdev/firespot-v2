@@ -35,6 +35,8 @@ export interface PublicSale {
   cancelledBy?: 'merchant' | 'customer';
   isCopied?: boolean;
   targetBankName?: string;
+  targetAccountNumber?: string;
+  sourceBankName?: string;
   paymentMethod?: string;
   description?: string;
   serialNumber?: string;
@@ -53,6 +55,8 @@ export interface Sale {
   description?: string;
   paymentMethod?: PaymentMethod | string;
   targetBankName?: string;
+  targetAccountNumber?: string;
+  sourceBankName?: string;
   serialNumber?: string;
   qrKitName?: string;
   customerPurchaseCount?: number;

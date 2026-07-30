@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   X,
   ChevronRight,
@@ -33,7 +34,9 @@ export function CollectPaymentDrawer({
   sale: initialSale,
   onRecordConfirm,
 }: Props) {
+  const router = useRouter()
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
+  const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const recordSaleMutation = useRecordSale()
   const cancelSaleMutation = useCancelSale()
   const { socket } = useSocket()
@@ -43,6 +46,7 @@ export function CollectPaymentDrawer({
       ? String(initialSale.customerMarkedPaidAt)
       : null,
   )
+  const hasCompletedConfirmation = useRef(false)
 
   const [sale, setSale] = useState(initialSale)
   const [countdown, setCountdown] = useState(59)
@@ -64,6 +68,15 @@ export function CollectPaymentDrawer({
           : 'qr')
     )
   }, [overrideView, sale])
+
+  const finishConfirmation = useCallback(
+    (recordedSale: any) => {
+      if (hasCompletedConfirmation.current) return
+      hasCompletedConfirmation.current = true
+      onRecordConfirm(recordedSale)
+    },
+    [onRecordConfirm],
+  )
 
   useEffect(() => {
     let timer: NodeJS.Timeout
@@ -89,6 +102,14 @@ export function CollectPaymentDrawer({
       }
     }
 
+    const handleReceiptDeleted = (data: any) => {
+      if (data._id === sale._id) {
+        setSale(data)
+        setIsReceiptPreviewOpen(false)
+        setOverrideView(null)
+      }
+    }
+
     const handlePaymentDeclared = (data: any) => {
       if (data._id === sale._id) {
         const declaredAt = data.customerMarkedPaidAt
@@ -104,7 +125,7 @@ export function CollectPaymentDrawer({
 
     const handleSaleConfirmed = (data: any) => {
       if (data._id === sale._id) {
-        onRecordConfirm(data)
+        finishConfirmation(data)
       }
     }
 
@@ -132,6 +153,7 @@ export function CollectPaymentDrawer({
     }
 
     socket.on('receipt.uploaded', handleReceiptUploaded)
+    socket.on('receipt.deleted', handleReceiptDeleted)
     socket.on('payment.declared', handlePaymentDeclared)
     socket.on('sale.confirmed', handleSaleConfirmed)
     socket.on('sale.scanned', handleSaleScanned)
@@ -140,13 +162,14 @@ export function CollectPaymentDrawer({
 
     return () => {
       socket.off('receipt.uploaded', handleReceiptUploaded)
+      socket.off('receipt.deleted', handleReceiptDeleted)
       socket.off('payment.declared', handlePaymentDeclared)
       socket.off('sale.confirmed', handleSaleConfirmed)
       socket.off('sale.scanned', handleSaleScanned)
       socket.off('sale.copied', handleSaleCopied)
       socket.off('sale.cancelled', handleSaleCancelled)
     }
-  }, [socket, sale, onRecordConfirm, closeDrawer])
+  }, [socket, sale, finishConfirmation, closeDrawer])
 
   const handleConfirmReceipt = () => {
     setStep('loading')
@@ -165,7 +188,7 @@ export function CollectPaymentDrawer({
       },
       {
         onSuccess: (data) => {
-          onRecordConfirm(data)
+          finishConfirmation(data)
         },
         onError: (err: any) => {
           showNotificationToast({
@@ -201,6 +224,13 @@ export function CollectPaymentDrawer({
     closeDrawer()
   }
 
+  const handleRecordSale = () => {
+    if (!sale?._id) return
+
+    closeAllDrawers()
+    router.push(`/record-sale?confirm=${encodeURIComponent(sale._id)}`)
+  }
+
   const handleBackStep = () => {
     if (activeView === 'confirm') {
       if (sale.isScanned) {
@@ -219,9 +249,6 @@ export function CollectPaymentDrawer({
     return (
       <div className="w-full flex flex-col items-center justify-center py-12 bg-white font-satoshi h-full">
         <GreenSpinner size={6} />
-        <span className="text-sm font-medium text-black">
-          Updating payment...
-        </span>
       </div>
     )
   }
@@ -231,6 +258,10 @@ export function CollectPaymentDrawer({
       (sum: number, item: any) => sum + (item.quantity || 1),
       0,
     ) || 0
+  const customerPhotoUrl =
+    typeof sale.customerId === 'object'
+      ? sale.customerId?.profilePhotoUrl
+      : undefined
 
   const formattedPillDate =
     new Date(sale.updatedAt || sale.createdAt || Date.now()).toLocaleDateString(
@@ -296,7 +327,10 @@ export function CollectPaymentDrawer({
           {/* Bottom Confirmation Pill */}
           <div className="bg-white shadow-[0px_4px_16px_rgba(0,0,0,0.06)] border border-[#F1F1F1] rounded-t-2xl p-4 flex justify-between items-center w-full">
             <div className="flex items-center gap-3">
-              <MerchantAvatar size={36} />
+              <MerchantAvatar
+                size={36}
+                profilePhotoUrl={customerPhotoUrl}
+              />
               <div className="text-left">
                 <h4 className="text-[13px] font-bold text-black">
                   New payment from customer
@@ -332,7 +366,7 @@ export function CollectPaymentDrawer({
             : `flex justify-between items-center shrink-0 relative py-4 px-4`
         }
       >
-        {activeView === 'waiting' ? (
+        {activeView === 'waiting' || activeView === 'confirm' ? (
           <ArrowLeft onClick={handleBackStep} size={20} color="black" />
         ) : (
           <div className="w-5 h-5"></div>
@@ -428,6 +462,43 @@ export function CollectPaymentDrawer({
               You would receive a notification immediately the customer
               initiates payment.
             </p>
+
+            {sale.isCopied && (
+              <div className="mt-6 w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border border-[#EBEBEB] rounded-[12px] px-4 py-3 flex justify-between items-center">
+                <div className="flex min-w-0 items-center gap-3">
+                  <MerchantAvatar
+                    size={36}
+                    profilePhotoUrl={customerPhotoUrl}
+                  />
+                  <div className="min-w-0 text-left">
+                    <h4 className="truncate text-[13px] font-bold text-black">
+                      From payment link
+                    </h4>
+                    <p className="mt-0.5 text-[12px] font-medium text-[#6B7280]">
+                      {formattedPillDate}
+                    </p>
+                  </div>
+                </div>
+                <div className="ml-3 flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    aria-label="Cancel sale"
+                    onClick={handleCancelCollect}
+                    className="w-10 h-10 rounded-full bg-[#0000000A] hover:bg-[#0000000A]/90 border-[#0000000A] border shadow-[0px_2.2px_4.4px_0px_#0000000A] text-black flex items-center justify-center transition-colors"
+                  >
+                    <X size={16} color="black" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Confirm payment"
+                    onClick={handleConfirmReceipt}
+                    className="w-10 h-10 rounded-full bg-[#24C166] hover:bg-[#24C166]/90 border-[#0000000A] border shadow-[0px_2.2px_4.4px_0px_#0000000A] text-white flex items-center justify-center transition-colors"
+                  >
+                    <Check size={16} color="white" strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -450,7 +521,10 @@ export function CollectPaymentDrawer({
               {/* Pill 1: Link Copied Notification */}
               <div className="w-full bg-white shadow-[0px_4px_8px_0px_#0000000A] border border-[#EBEBEB] rounded-[12px] px-4 py-3 flex justify-between items-center">
                 <div className="flex items-center gap-3">
-                  <MerchantAvatar size={36} />
+                  <MerchantAvatar
+                    size={36}
+                    profilePhotoUrl={customerPhotoUrl}
+                  />
                   <div className="text-left">
                     <h4 className="text-[13px] font-bold text-black">
                       From payment link
@@ -545,7 +619,10 @@ export function CollectPaymentDrawer({
               </span>
             </Button>
 
-            <Button className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2">
+            <Button
+              onClick={handleRecordSale}
+              className="flex-1 flex flex-col items-center justify-center h-19 bg-[#F4F6F8] hover:bg-[#F4F6F8]/80 text-black font-medium rounded-[12px] gap-2 py-2"
+            >
               <PenLine size={16} color="black" />
               <span className="text-[14px] font-medium text-[#000000]">
                 Record sale

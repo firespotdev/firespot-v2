@@ -194,21 +194,39 @@ export const SalesApi = {
     return data;
   },
 
-  uploadReceipt: async (saleId: string, file: File): Promise<Sale> => {
+  uploadReceipt: async (
+    saleId: string,
+    serialNumber: string,
+    file: File,
+    signal?: AbortSignal,
+  ): Promise<Sale> => {
     const formData = new FormData();
     formData.append('receipt', file);
     const { data } = await publicApiClient.post(
       `/sales/${saleId}/receipt`,
       formData,
       {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        params: { serialNumber },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'x-customer-fingerprint': getCustomerFingerprint(),
+        },
+        signal,
       },
     );
     return data;
   },
 
-  deleteReceipt: async (saleId: string): Promise<Sale> => {
-    const { data } = await publicApiClient.delete(`/sales/${saleId}/receipt`);
+  deleteReceipt: async (
+    saleId: string,
+    serialNumber: string,
+  ): Promise<Sale> => {
+    const { data } = await publicApiClient.delete(`/sales/${saleId}/receipt`, {
+      params: { serialNumber },
+      headers: {
+        'x-customer-fingerprint': getCustomerFingerprint(),
+      },
+    });
     return data;
   },
 
@@ -217,8 +235,24 @@ export const SalesApi = {
     return data;
   },
 
-  recordCopy: async (saleId: string): Promise<Sale> => {
-    const { data } = await publicApiClient.patch(`/sales/${saleId}/copy`);
+  recordCopy: async (
+    saleId: string,
+    payload: {
+      serialNumber: string;
+      targetBankName?: string;
+      targetAccountNumber?: string;
+      sourceBankName?: string;
+    },
+  ): Promise<Sale> => {
+    const { data } = await publicApiClient.patch(
+      `/sales/${saleId}/copy`,
+      payload,
+      {
+        headers: {
+          'x-customer-fingerprint': getCustomerFingerprint(),
+        },
+      },
+    );
     return data;
   },
 

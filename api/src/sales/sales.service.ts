@@ -56,6 +56,53 @@ export class SalesService {
       )
   }
 
+  private emitSaleEvent(event: string, sale: SaleDocument) {
+    this.eventsGateway.server
+      .to(sale.merchantId.toString())
+      .to(`sale-${sale._id.toString()}`)
+      .emit(event, sale)
+  }
+
+  private async requirePendingCustomerSale(
+    saleId: string,
+    serialNumber: string,
+    customerFingerprint: string,
+  ): Promise<SaleDocument> {
+    if (
+      !mongoose.isValidObjectId(saleId) ||
+      !serialNumber?.trim() ||
+      !customerFingerprint?.trim()
+    ) {
+      throw new NotFoundException('Sale not found')
+    }
+
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      serialNumber: serialNumber.trim().toUpperCase(),
+    })
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    if (sale.status !== 'PENDING') {
+      throw new UnprocessableEntityException(
+        'This transaction is no longer awaiting payment',
+      )
+    }
+
+    const normalizedFingerprint = customerFingerprint.trim()
+    if (
+      sale.customerFingerprint &&
+      sale.customerFingerprint !== normalizedFingerprint
+    ) {
+      throw new ForbiddenException('This payment belongs to another customer')
+    }
+    if (!sale.customerFingerprint) {
+      sale.customerFingerprint = normalizedFingerprint
+    }
+
+    return sale
+  }
+
   private roundMoney(value: number): number {
     return Math.round((Number(value) + Number.EPSILON) * 100) / 100
   }
@@ -638,6 +685,8 @@ export class SalesService {
       cancelledBy: sale.cancelledBy,
       isCopied: sale.isCopied,
       targetBankName: sale.targetBankName,
+      targetAccountNumber: sale.targetAccountNumber,
+      sourceBankName: sale.sourceBankName,
       paymentMethod: sale.paymentMethod,
       description: sale.description,
       serialNumber: sale.serialNumber,
@@ -1082,12 +1131,7 @@ export class SalesService {
     if (savedSale.isCollection) {
       this.evaluateReferralVolume(savedSale.merchantId)
     }
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .emit('sale.confirmed', savedSale)
-    this.eventsGateway.server
-      .to(`sale-${sale._id.toString()}`)
-      .emit('sale.confirmed', savedSale)
+    this.emitSaleEvent('sale.confirmed', savedSale)
     return savedSale
   }
 
@@ -1110,12 +1154,7 @@ export class SalesService {
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'merchant'
     const savedSale = await sale.save()
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .emit('sale.cancelled', savedSale)
-    this.eventsGateway.server
-      .to(`sale-${sale._id.toString()}`)
-      .emit('sale.cancelled', savedSale)
+    this.emitSaleEvent('sale.cancelled', savedSale)
     return savedSale
   }
 
@@ -1148,12 +1187,7 @@ export class SalesService {
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'customer'
     const savedSale = await sale.save()
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .emit('sale.cancelled', savedSale)
-    this.eventsGateway.server
-      .to(`sale-${sale._id.toString()}`)
-      .emit('sale.cancelled', savedSale)
+    this.emitSaleEvent('sale.cancelled', savedSale)
     return savedSale
   }
 
@@ -1181,6 +1215,13 @@ export class SalesService {
 
     const normalizedFingerprint = customerFingerprint?.trim()
     let shouldSave = false
+    if (
+      normalizedFingerprint &&
+      sale.customerFingerprint &&
+      sale.customerFingerprint !== normalizedFingerprint
+    ) {
+      throw new ForbiddenException('This payment belongs to another customer')
+    }
     if (normalizedFingerprint && !sale.customerFingerprint) {
       sale.customerFingerprint = normalizedFingerprint
       shouldSave = true
@@ -1190,10 +1231,7 @@ export class SalesService {
       sale.customerMarkedPaidAt = new Date()
       shouldSave = true
       await sale.save()
-      this.eventsGateway.server
-        .to(sale.merchantId.toString())
-        .to(`sale-${sale._id.toString()}`)
-        .emit('payment.declared', sale)
+      this.emitSaleEvent('payment.declared', sale)
     } else if (shouldSave) {
       await sale.save()
     }
@@ -1309,42 +1347,37 @@ export class SalesService {
     return { count: result.modifiedCount || 0 }
   }
 
-  async uploadReceipt(saleId: string, fileBuffer: Buffer): Promise<Sale> {
-    const sale = await this.saleModel.findById(saleId)
-    if (!sale) {
-      throw new NotFoundException('Sale not found')
-    }
-    if (sale.status !== 'PENDING') {
-      throw new UnprocessableEntityException(
-        'Receipt can only be uploaded while the sale is pending',
-      )
-    }
+  async uploadReceipt(
+    saleId: string,
+    serialNumber: string,
+    customerFingerprint: string,
+    fileBuffer: Buffer,
+  ): Promise<Sale> {
+    const sale = await this.requirePendingCustomerSale(
+      saleId,
+      serialNumber,
+      customerFingerprint,
+    )
     const upload = await this.cloudinaryService.uploadDocument(fileBuffer)
     sale.receiptUrl = upload.url
     sale.receiptPublicId = upload.publicId
     sale.customerMarkedPaidAt ||= new Date()
     const savedSale = await sale.save()
 
-    // Emit event to merchant room and sale room
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .emit('receipt.uploaded', savedSale)
-    this.eventsGateway.server
-      .to(`sale-${sale._id.toString()}`)
-      .emit('receipt.uploaded', savedSale)
+    this.emitSaleEvent('receipt.uploaded', savedSale)
     return savedSale
   }
 
-  async deleteReceipt(saleId: string): Promise<Sale> {
-    const sale = await this.saleModel.findById(saleId)
-    if (!sale) {
-      throw new NotFoundException('Sale not found')
-    }
-    if (sale.status !== 'PENDING') {
-      throw new UnprocessableEntityException(
-        'Receipt can only be removed while the sale is pending',
-      )
-    }
+  async deleteReceipt(
+    saleId: string,
+    serialNumber: string,
+    customerFingerprint: string,
+  ): Promise<Sale> {
+    const sale = await this.requirePendingCustomerSale(
+      saleId,
+      serialNumber,
+      customerFingerprint,
+    )
 
     if (sale.receiptPublicId) {
       await this.cloudinaryService.deleteImage(sale.receiptPublicId)
@@ -1353,12 +1386,7 @@ export class SalesService {
     sale.receiptPublicId = undefined
     const savedSale = await sale.save()
 
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .emit('receipt.deleted', savedSale)
-    this.eventsGateway.server
-      .to(`sale-${sale._id.toString()}`)
-      .emit('receipt.deleted', savedSale)
+    this.emitSaleEvent('receipt.deleted', savedSale)
     return savedSale
   }
 
@@ -1872,30 +1900,37 @@ export class SalesService {
     sale.isScanned = true
     const savedSale = await sale.save()
 
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .emit('sale.scanned', savedSale)
-    this.eventsGateway.server
-      .to(`sale-${sale._id.toString()}`)
-      .emit('sale.scanned', savedSale)
+    this.emitSaleEvent('sale.scanned', savedSale)
 
     return savedSale
   }
 
-  async recordCopy(saleId: string): Promise<Sale> {
-    const sale = await this.saleModel.findById(saleId)
-    if (!sale) {
-      throw new NotFoundException('Sale not found')
-    }
+  async recordCopy(
+    saleId: string,
+    serialNumber: string,
+    customerFingerprint: string,
+    targetBankName?: string,
+    targetAccountNumber?: string,
+    sourceBankName?: string,
+  ): Promise<Sale> {
+    const sale = await this.requirePendingCustomerSale(
+      saleId,
+      serialNumber,
+      customerFingerprint,
+    )
     sale.isCopied = true
+    if (targetBankName?.trim()) {
+      sale.targetBankName = targetBankName.trim()
+    }
+    if (targetAccountNumber?.trim()) {
+      sale.targetAccountNumber = targetAccountNumber.trim()
+    }
+    if (sourceBankName?.trim()) {
+      sale.sourceBankName = sourceBankName.trim()
+    }
     const savedSale = await sale.save()
 
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .emit('sale.copied', savedSale)
-    this.eventsGateway.server
-      .to(`sale-${sale._id.toString()}`)
-      .emit('sale.copied', savedSale)
+    this.emitSaleEvent('sale.copied', savedSale)
 
     return savedSale
   }

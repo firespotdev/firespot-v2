@@ -103,7 +103,7 @@ export function SaleSuccessScreen({
               ></path>
             </svg>
             <span className="text-black text-[10px] font-bold tracking-[1px]">
-              RECEIPT
+              DETAILS
             </span>
           </Button>
 

@@ -5,7 +5,7 @@ import { ALL_BANK_NAMES, sortBanksByPopularity, openBankingApp } from '@/lib/uti
 
 interface BankTransferDrawerProps {
   /** Notifies the opener which bank the customer is sending from */
-  onBankSelect?: (bankName: string) => void
+  onBankSelect?: (bankName: string) => void | Promise<void>
   closeDrawer?: () => void
 }
 
@@ -13,11 +13,14 @@ export function BankTransferDrawer({
   onBankSelect,
   closeDrawer,
 }: BankTransferDrawerProps) {
-  const handleBankClick = (bankName: string) => {
-    onBankSelect?.(bankName)
-    openBankingApp(bankName)
-    if (onBankSelect) {
-      closeDrawer?.()
+  const handleBankClick = async (bankName: string) => {
+    try {
+      await onBankSelect?.(bankName)
+    } finally {
+      openBankingApp(bankName)
+      if (onBankSelect) {
+        closeDrawer?.()
+      }
     }
   }
 

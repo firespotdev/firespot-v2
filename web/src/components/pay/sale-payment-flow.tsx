@@ -23,7 +23,11 @@ interface SalePaymentFlowProps {
   sale: PublicSale
   merchant: MerchantProfile
   serialNumber: string
-  onTrackCopy: (accountNumber: string, bankName: string) => void
+  onTrackCopy: (
+    accountNumber: string,
+    bankName: string,
+    sourceBankName?: string,
+  ) => Promise<void>
 }
 
 function deriveStep(sale: PublicSale): SaleStep {
@@ -53,15 +57,28 @@ export function SalePaymentFlow({
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const customerExitPath = isAuthenticated ? '/home' : '/'
 
-  const [step, setStep] = useState<SaleStep>(() => deriveStep(sale))
-  const [isFinishing, setIsFinishing] = useState(false)
-  const [selectedAccountIndex, setSelectedAccountIndex] = useState(0)
-  const [fromBankName, setFromBankName] = useState<string | null>(null)
-
   // sortBankAccounts widens the type; the data is the merchant's own accounts
   const sortedBankAccounts = sortBankAccounts(
     merchant.bankAccounts || [],
   ) as BankAccount[]
+  const initialAccountIndex = Math.max(
+    0,
+    sortedBankAccounts.findIndex(
+      (bankAccount) =>
+        bankAccount.accountNumber === sale.targetAccountNumber ||
+        (!sale.targetAccountNumber &&
+          bankAccount.bankName === sale.targetBankName),
+    ),
+  )
+
+  const [step, setStep] = useState<SaleStep>(() => deriveStep(sale))
+  const [isFinishing, setIsFinishing] = useState(false)
+  const [selectedAccountIndex, setSelectedAccountIndex] =
+    useState(initialAccountIndex)
+  const [fromBankName, setFromBankName] = useState<string | null>(
+    sale.sourceBankName || null,
+  )
+
   const account: BankAccount | undefined =
     sortedBankAccounts[selectedAccountIndex] || sortedBankAccounts[0]
 
@@ -97,6 +114,7 @@ export function SalePaymentFlow({
     },
     onCancelled: handleCancelled,
     onReceiptUploaded: invalidateSale,
+    onReceiptDeleted: invalidateSale,
     onPaymentDeclared: invalidateSale,
   })
 
@@ -158,7 +176,7 @@ export function SalePaymentFlow({
       mode: 'success',
       duration: 2000,
     })
-    onTrackCopy(account.accountNumber, account.bankName)
+    void onTrackCopy(account.accountNumber, account.bankName)
     setStep('waiting')
   }
 
@@ -175,6 +193,17 @@ export function SalePaymentFlow({
           )
           if (index !== -1) {
             setSelectedAccountIndex(index)
+            navigator.clipboard.writeText(bank.accountNumber)
+            showNotificationToast({
+              message: 'Account number copied',
+              mode: 'success',
+              duration: 1500,
+            })
+            void onTrackCopy(
+              bank.accountNumber,
+              bank.bankName,
+              fromBankName || undefined,
+            )
           }
         },
       },
@@ -185,7 +214,12 @@ export function SalePaymentFlow({
     openDrawer({
       type: 'bank-transfer',
       props: {
-        onBankSelect: (bankName: string) => setFromBankName(bankName),
+        onBankSelect: async (bankName: string) => {
+          setFromBankName(bankName)
+          if (account) {
+            await onTrackCopy(account.accountNumber, account.bankName, bankName)
+          }
+        },
       },
     })
   }

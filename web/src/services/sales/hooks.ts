@@ -191,8 +191,17 @@ export const useArchiveSale = () => {
 export const useUploadReceipt = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ saleId, file }: { saleId: string; file: File }) =>
-      SalesApi.uploadReceipt(saleId, file),
+    mutationFn: ({
+      saleId,
+      serialNumber,
+      file,
+      signal,
+    }: {
+      saleId: string;
+      serialNumber: string;
+      file: File;
+      signal?: AbortSignal;
+    }) => SalesApi.uploadReceipt(saleId, serialNumber, file, signal),
     onSuccess: (_, { saleId }) => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
@@ -250,8 +259,14 @@ export const useMarkSalePaidByCustomer = () => {
 export const useDeleteReceipt = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (saleId: string) => SalesApi.deleteReceipt(saleId),
-    onSuccess: (_, saleId) => {
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.deleteReceipt(saleId, serialNumber),
+    onSuccess: (_, { saleId }) => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
     },
@@ -329,8 +344,26 @@ export const useRecordScan = () => {
 export const useRecordCopy = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (saleId: string) => SalesApi.recordCopy(saleId),
-    onSuccess: (_, saleId) => {
+    mutationFn: ({
+      saleId,
+      serialNumber,
+      targetBankName,
+      targetAccountNumber,
+      sourceBankName,
+    }: {
+      saleId: string;
+      serialNumber: string;
+      targetBankName?: string;
+      targetAccountNumber?: string;
+      sourceBankName?: string;
+    }) =>
+      SalesApi.recordCopy(saleId, {
+        serialNumber,
+        targetBankName,
+        targetAccountNumber,
+        sourceBankName,
+      }),
+    onSuccess: (_, { saleId }) => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
     },

@@ -43,6 +43,12 @@ export class Sale extends Document {
   targetBankName?: string;
 
   @Prop()
+  targetAccountNumber?: string;
+
+  @Prop()
+  sourceBankName?: string;
+
+  @Prop()
   serialNumber?: string;
 
   @Prop()

@@ -12,23 +12,29 @@ describe("SalesService amount invariants", () => {
     customersService: Record<string, jest.Mock> = {},
     userModel: Record<string, jest.Mock> = {},
     qrKitModel: Record<string, jest.Mock> = {},
-  ) =>
-    new SalesService(
+    cloudinaryService: Record<string, jest.Mock> = {},
+  ) => {
+    const server = {
+      to: jest.fn(),
+      emit: jest.fn(),
+    };
+    server.to.mockReturnValue(server);
+
+    return new SalesService(
       saleModel as any,
       userModel as any,
       qrKitModel as any,
       customerModel as any,
       {
-        server: {
-          to: jest.fn().mockReturnValue({ emit: jest.fn() }),
-        },
+        server,
       } as any,
       {} as any,
-      {} as any,
+      cloudinaryService as any,
       {} as any,
       customersService as any,
       { evaluateReferredMerchant: jest.fn().mockResolvedValue(null) } as any,
     );
+  };
 
   describe("recorded sale normalization", () => {
     const normalize = (
@@ -226,6 +232,115 @@ describe("SalesService amount invariants", () => {
           "507f1f77bcf86cd799439013",
         ),
       ).rejects.toThrow("Only an active pending sale can be confirmed");
+    });
+
+    it("persists the customer transfer selections on the pending sale", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const saleId = "507f1f77bcf86cd799439013";
+      const sale = {
+        _id: { toString: () => saleId },
+        merchantId: { toString: () => merchantId },
+        serialNumber: "FS-QR-1",
+        status: "PENDING",
+        save: jest.fn(),
+      };
+      sale.save.mockImplementation(async () => sale);
+      const findOne = jest.fn().mockResolvedValue(sale);
+      const service = createService({ findOne });
+
+      await expect(
+        service.recordCopy(
+          saleId,
+          "fs-qr-1",
+          "customer-fingerprint",
+          "GTBank",
+          "0651234567",
+          "Moniepoint",
+        ),
+      ).resolves.toBe(sale);
+
+      expect(findOne).toHaveBeenCalledWith({
+        _id: saleId,
+        serialNumber: "FS-QR-1",
+      });
+      expect(sale).toEqual(
+        expect.objectContaining({
+          isCopied: true,
+          customerFingerprint: "customer-fingerprint",
+          targetBankName: "GTBank",
+          targetAccountNumber: "0651234567",
+          sourceBankName: "Moniepoint",
+        }),
+      );
+      expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not let another customer update a pending transfer", async () => {
+      const sale = {
+        status: "PENDING",
+        customerFingerprint: "original-customer",
+        save: jest.fn(),
+      };
+      const service = createService({
+        findOne: jest.fn().mockResolvedValue(sale),
+      });
+
+      await expect(
+        service.recordCopy(
+          "507f1f77bcf86cd799439013",
+          "FS-QR-1",
+          "different-customer",
+          "GTBank",
+          "0651234567",
+        ),
+      ).rejects.toThrow("This payment belongs to another customer");
+      expect(sale.save).not.toHaveBeenCalled();
+    });
+
+    it("attaches an uploaded receipt to the same identified pending sale", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const saleId = "507f1f77bcf86cd799439013";
+      const sale = {
+        _id: { toString: () => saleId },
+        merchantId: { toString: () => merchantId },
+        serialNumber: "FS-QR-1",
+        status: "PENDING",
+        save: jest.fn(),
+      };
+      sale.save.mockImplementation(async () => sale);
+      const cloudinaryService = {
+        uploadDocument: jest.fn().mockResolvedValue({
+          url: "https://example.com/receipt.png",
+          publicId: "receipt-public-id",
+        }),
+      };
+      const service = createService(
+        { findOne: jest.fn().mockResolvedValue(sale) },
+        {},
+        {},
+        {},
+        {},
+        cloudinaryService,
+      );
+
+      await expect(
+        service.uploadReceipt(
+          saleId,
+          "FS-QR-1",
+          "customer-fingerprint",
+          Buffer.from("receipt"),
+        ),
+      ).resolves.toBe(sale);
+
+      expect(sale).toEqual(
+        expect.objectContaining({
+          customerFingerprint: "customer-fingerprint",
+          customerMarkedPaidAt: expect.any(Date),
+          receiptUrl: "https://example.com/receipt.png",
+          receiptPublicId: "receipt-public-id",
+        }),
+      );
+      expect(sale.save).toHaveBeenCalledTimes(1);
     });
 
     it("confirms every active pending sale with one bulk action", async () => {

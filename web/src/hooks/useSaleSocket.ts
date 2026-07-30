@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { io, Socket } from 'socket.io-client'
+import { io } from 'socket.io-client'
 
 interface SaleSocketHandlers {
   onConfirmed?: (sale: unknown) => void
   onCancelled?: (sale: unknown) => void
   onReceiptUploaded?: (sale: unknown) => void
+  onReceiptDeleted?: (sale: unknown) => void
   onPaymentDeclared?: (sale: unknown) => void
 }
 
@@ -47,6 +48,9 @@ export const useSaleSocket = (
     )
     socket.on('receipt.uploaded', (sale: unknown) =>
       handlersRef.current.onReceiptUploaded?.(sale),
+    )
+    socket.on('receipt.deleted', (sale: unknown) =>
+      handlersRef.current.onReceiptDeleted?.(sale),
     )
     socket.on('payment.declared', (sale: unknown) =>
       handlersRef.current.onPaymentDeclared?.(sale),
