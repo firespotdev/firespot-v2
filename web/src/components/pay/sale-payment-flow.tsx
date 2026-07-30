@@ -14,6 +14,7 @@ import { SaleWaitingScreen } from './sale-waiting-screen'
 import { SaleSuccessScreen } from './sale-success-screen'
 import { useCancelSaleAsCustomer } from '@/services/sales/hooks'
 import { useAuthStore } from '@/services/auth'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 type SaleStep = 'request' | 'waiting' | 'success'
@@ -53,6 +54,7 @@ export function SalePaymentFlow({
   const customerExitPath = isAuthenticated ? '/home' : '/'
 
   const [step, setStep] = useState<SaleStep>(() => deriveStep(sale))
+  const [isFinishing, setIsFinishing] = useState(false)
   const [selectedAccountIndex, setSelectedAccountIndex] = useState(0)
   const [fromBankName, setFromBankName] = useState<string | null>(null)
 
@@ -135,8 +137,17 @@ export function SalePaymentFlow({
   // Anonymous payers return to the public scanner; signed-in payers return to
   // their personal home.
   const handleFinish = () => {
+    if (isFinishing) return
+    setIsFinishing(true)
     clearActiveTransaction()
-    router.replace(customerExitPath)
+    const destination = useAuthStore.getState().isAuthenticated ? '/home' : '/'
+    router.replace(destination)
+
+    window.setTimeout(() => {
+      if (window.location.pathname.startsWith('/pay/')) {
+        window.location.replace(destination)
+      }
+    }, 1200)
   }
 
   const handleCopy = () => {
@@ -188,6 +199,10 @@ export function SalePaymentFlow({
         profilePhotoUrl: merchant.profilePhotoUrl,
       },
     })
+  }
+
+  if (isFinishing) {
+    return <LoadingPage innerBg="#F4F6F8" />
   }
 
   if (step === 'success') {

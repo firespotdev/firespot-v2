@@ -4,7 +4,10 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { Check, ChevronRight, MessageCircleHeart, Star, X } from 'lucide-react'
 import { Button, Label, Spinner, showNotificationToast } from '@/components/ui'
-import { useFeedbackEligibility, useSubmitFeedback } from '@/services/feedback'
+import {
+  useSubmitFeedback,
+  type FeedbackEligibility,
+} from '@/services/feedback'
 import { useAuthStore } from '@/services/auth'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
@@ -12,6 +15,7 @@ import type { MerchantProfile } from '@/services/qr/interface'
 interface FeedbackPromptProps {
   sale: PublicSale
   merchant: MerchantProfile
+  eligibility?: FeedbackEligibility
 }
 
 function formatFeedbackDate(value: string) {
@@ -55,9 +59,9 @@ function Avatar({
 export function FeedbackPrompt({
   sale,
   merchant,
+  eligibility,
 }: FeedbackPromptProps) {
   const serialNumber = sale.serialNumber
-  const { data: eligibility } = useFeedbackEligibility(sale.id, serialNumber)
   const submitFeedback = useSubmitFeedback()
   const customer = useAuthStore((state) => state.user)
   const [isOpen, setIsOpen] = useState(false)

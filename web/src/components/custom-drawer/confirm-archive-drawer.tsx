@@ -6,7 +6,7 @@ import { useDrawerStore } from '@/services/drawer'
 import { useArchiveSale } from '@/services/sales/hooks'
 import { Sale } from '@/services/sales/interface'
 import { Button } from '../ui'
-import { DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer'
+import { DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
 
 interface ConfirmArchiveDrawerProps {
   sale: Sale
@@ -46,9 +46,14 @@ export function ConfirmArchiveDrawer({
             Confirm Archive
           </DrawerTitle>
         </div>
-        <DrawerClose className="absolute right-0 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full">
+        <button
+          type="button"
+          onClick={closeDrawer}
+          aria-label="Close archive confirmation"
+          className="absolute right-0 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full"
+        >
           <X className="w-5 h-5 text-[#8E8E93]" />
-        </DrawerClose>
+        </button>
       </DrawerHeader>
 
       <div className="flex flex-col gap-6 text-center">

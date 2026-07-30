@@ -22,6 +22,7 @@ interface DebtDetailsTimelineProps {
     recordedAt?: string | Date
   }>
   onBack: () => void
+  recordRepaymentHref?: string
 }
 
 export function DebtDetailsTimeline({
@@ -29,6 +30,7 @@ export function DebtDetailsTimeline({
   saleOwedAmount,
   saleRepayments,
   onBack,
+  recordRepaymentHref,
 }: DebtDetailsTimelineProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
@@ -192,7 +194,12 @@ export function DebtDetailsTimeline({
         <div className="border-t border-[#F1F1F1] mx-auto fixed bottom-0 left-0 right-0 bg-white max-w-125">
           <div className="p-4">
             <Button asChild className="w-full">
-              <Link href={`/record-repayment?id=${sale._id}`}>
+              <Link
+                href={
+                  recordRepaymentHref ||
+                  `/record-repayment?id=${sale._id}`
+                }
+              >
                 Record repayment
               </Link>
             </Button>

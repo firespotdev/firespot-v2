@@ -304,6 +304,7 @@ describe("SalesService amount invariants", () => {
 
   describe("direct sale repayment", () => {
     const createOutstandingSale = () => ({
+      _id: { toString: () => "507f1f77bcf86cd799439013" },
       merchantId: { toString: () => "507f1f77bcf86cd799439011" },
       customerId: { toString: () => customerId },
       customerUserId: { toString: () => customerUserId },
@@ -402,6 +403,49 @@ describe("SalesService amount invariants", () => {
         }),
       ]);
       expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("returns the updated populated sale instead of the stale primary lookup", async () => {
+      const primarySale = createOutstandingSale();
+      const updatedSale = createOutstandingSale();
+      updatedSale.customerId = {
+        toString: () => customerId,
+        name: "Ada Customer",
+      };
+      const saleModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(primarySale),
+        }),
+        find: jest
+          .fn()
+          .mockReturnValueOnce({
+            sort: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([updatedSale]),
+            }),
+          })
+          .mockReturnValueOnce({
+            exec: jest.fn().mockResolvedValue([updatedSale]),
+          }),
+      };
+      const customerModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest
+            .fn()
+            .mockResolvedValue({ _id: customerId, userId: customerUserId }),
+        }),
+      };
+      const service = createService(saleModel, customerModel);
+
+      const result = await service.recordRepayment(
+        "507f1f77bcf86cd799439012",
+        "507f1f77bcf86cd799439013",
+        { amountPaid: 100, paymentMethod: "Cash" },
+      );
+
+      expect(primarySale.balanceOwed).toBe(600);
+      expect(result.balanceOwed).toBe(500);
+      expect(result.customerId.name).toBe("Ada Customer");
+      expect(result.waterfall.totalRemainingBalance).toBe(500);
     });
 
     it("rejects repayment of a legacy balance with no customer", async () => {

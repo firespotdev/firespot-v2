@@ -27,6 +27,7 @@ function OutstandingPageContent() {
 
   const customerId = searchParams.get('customerId') || ''
   const saleId = searchParams.get('saleId') || ''
+  const origin = searchParams.get('origin')
 
   // API Queries
   const { data: summaryData, isLoading: isLoadingSummary } =
@@ -200,6 +201,15 @@ function OutstandingPageContent() {
           sale={activeSale}
           saleOwedAmount={saleOwedAmount}
           saleRepayments={saleRepayments}
+          recordRepaymentHref={
+            origin === 'history' && customerId
+              ? `/record-repayment?${new URLSearchParams({
+                  id: activeSale._id,
+                  customerId,
+                  returnTo: `/outstanding?customerId=${customerId}`,
+                }).toString()}`
+              : undefined
+          }
           onBack={handleBackClick}
         />
       </div>

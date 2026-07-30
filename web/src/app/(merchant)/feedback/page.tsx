@@ -63,9 +63,9 @@ export default function FeedbackPage() {
   return (
     <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
       <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <header className="flex shrink-0 items-center justify-between py-3">
+        <header className="flex shrink-0 items-center justify-between py-2">
           <button type="button" onClick={() => router.back()} aria-label="Back">
-            <ArrowLeft size={16} className="text-black" />
+            <ArrowLeft size={24} className="text-black" />
           </button>
           <h1 className="text-[20px] font-bold -tracking-[0.4px] text-black">
             Feedback

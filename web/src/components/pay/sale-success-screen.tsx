@@ -3,7 +3,9 @@
 import Image from 'next/image'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { Button, TagFooter } from '@/components/ui'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 import { useDrawerStore } from '@/services/drawer'
+import { useFeedbackEligibility } from '@/services/feedback'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatConfirmationDate } from './utils'
@@ -21,6 +23,8 @@ export function SaleSuccessScreen({
   onClose,
 }: SaleSuccessScreenProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const { data: feedbackEligibility, isLoading: isFeedbackLoading } =
+    useFeedbackEligibility(sale.id, sale.serialNumber)
 
   const merchantName =
     sale.merchant?.businessName || merchant.businessName || 'Your vendor'
@@ -28,6 +32,10 @@ export function SaleSuccessScreen({
 
   const handleViewReceipt = () => {
     openDrawer({ type: 'sale-receipt', props: { sale, merchant } })
+  }
+
+  if (isFeedbackLoading) {
+    return <LoadingPage innerBg="#F4F6F8" />
   }
 
   return (
@@ -133,7 +141,11 @@ export function SaleSuccessScreen({
               <ChevronRight className="h-4 w-4 shrink-0 text-[#B8B8B8]" />
             </div>
 
-            <FeedbackPrompt sale={sale} merchant={merchant} />
+            <FeedbackPrompt
+              sale={sale}
+              merchant={merchant}
+              eligibility={feedbackEligibility}
+            />
           </div>
         </div>
 

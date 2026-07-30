@@ -24,6 +24,10 @@ function RecordRepaymentContent() {
   const searchParams = useSearchParams()
   const saleId = searchParams.get('id') || ''
   const queryCustomerId = searchParams.get('customerId') || ''
+  const requestedReturnTo = searchParams.get('returnTo') || ''
+  const returnTo = requestedReturnTo.startsWith('/outstanding?')
+    ? requestedReturnTo
+    : ''
 
   const { data: sale, isLoading: isLoadingSale } = useSale(saleId)
 
@@ -222,16 +226,43 @@ function RecordRepaymentContent() {
         result?.waterfall?.totalRemainingBalance ??
         Math.max(0, balanceOwed - amountToRecord)
       const isFull = remainingDebt <= 0
+      const affectedSales = Array.isArray(result?.waterfall?.affectedSales)
+        ? result.waterfall.affectedSales
+        : []
+      const updatedSale =
+        affectedSales.find((item: any) => item?._id === saleId) ||
+        affectedSales[0] ||
+        result ||
+        sale
+      const reminderSale = updatedSale
+        ? {
+            ...updatedSale,
+            balanceOwed: remainingDebt,
+            customerId:
+              updatedSale.customerId ||
+              sale?.customerId ||
+              customerOutstandingSales[0]?.customerId,
+            customerName: updatedSale.customerName || customerName,
+          }
+        : undefined
 
       openDrawer({
         type: 'repayment-success',
         props: {
           sale: result || sale,
+          reminderSale,
           effectiveAmount: amountToRecord,
           customerName,
           isFullRepayment: isFull,
           remainingBalance: remainingDebt,
-          onDismiss: () => router.back(),
+          returnTo: returnTo || undefined,
+          onDismiss: () => {
+            if (returnTo) {
+              router.replace(returnTo)
+              return
+            }
+            router.back()
+          },
         },
       })
     } catch (error: any) {

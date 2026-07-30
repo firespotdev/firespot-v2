@@ -1752,7 +1752,17 @@ export class SalesService {
       this.evaluateReferralVolume(merchantObjectId)
     }
 
-    const resultSale = primarySale || updatedSales[0] || {}
+    const updatedPrimarySale = primarySale
+      ? updatedSales.find(
+          (sale) =>
+            sale._id?.toString() === primarySale._id?.toString(),
+        )
+      : undefined
+    // `primarySale` was fetched before the waterfall updates and is therefore
+    // stale. Prefer the updated, populated document returned by the repayment
+    // pass so callers immediately receive the new balance and customer data.
+    const resultSale =
+      updatedPrimarySale || updatedSales[0] || primarySale || {}
     const resObj =
       typeof (resultSale as any).toObject === 'function'
         ? (resultSale as any).toObject()

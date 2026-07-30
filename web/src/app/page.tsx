@@ -59,26 +59,46 @@ export default function ScannerPage() {
     }
   }, [authReady, isAuthenticated, token, onboardingCompleted, user, router, logout])
 
-  // Extract serial number from QR code content
-  const extractSerialNumber = useCallback(
+  // Preserve dynamic-sale parameters from Firespot payment URLs. Raw serial
+  // numbers remain supported for physical/static QR kits.
+  const getPaymentDestination = useCallback(
     (scannedText: string): string | null => {
-      // Expected format: {BASE_URL}/pay/{serialNumber} (new format)
-      const payUrlMatch = scannedText.match(/\/pay\/([A-Z0-9-]+)/i)
-      if (payUrlMatch) {
-        return payUrlMatch[1].toUpperCase()
+      const value = scannedText.trim()
+      if (/^[A-Z0-9-]{6,}$/i.test(value)) {
+        return `/pay/${value.toUpperCase()}`
       }
-      // Also accept raw serial numbers (alphanumeric, possibly with dashes)
-      if (/^[A-Z0-9-]{6,}$/i.test(scannedText)) {
-        return scannedText.toUpperCase()
+
+      try {
+        const scannedUrl = new URL(value)
+        const match = scannedUrl.pathname.match(
+          /^\/pay\/([A-Z0-9-]+)\/?$/i,
+        )
+        if (!match) return null
+
+        const serialNumber = match[1].toUpperCase()
+        const destination = new URL(
+          `/pay/${encodeURIComponent(serialNumber)}`,
+          window.location.origin,
+        )
+        const saleId = scannedUrl.searchParams.get('saleId')
+        if (saleId && /^[a-f\d]{24}$/i.test(saleId)) {
+          destination.searchParams.set('saleId', saleId)
+        }
+        if (scannedUrl.searchParams.get('shared') === 'true') {
+          destination.searchParams.set('shared', 'true')
+        }
+
+        return `${destination.pathname}${destination.search}`
+      } catch {
+        return null
       }
-      return null
     },
     [],
   )
 
   // Handle navigation to payment page
   const handleScanResult = useCallback(
-    (serialNumber: string) => {
+    (destination: string) => {
       if (hasNavigated) return
       setHasNavigated(true)
 
@@ -89,7 +109,7 @@ export default function ScannerPage() {
       }
 
       // Navigate to payment page
-      router.push(`/pay/${serialNumber}`)
+      router.push(destination)
     },
     [router, hasNavigated],
   )
@@ -151,9 +171,9 @@ export default function ScannerPage() {
 
               if (result) {
                 const scannedText = result.getText()
-                const serialNumber = extractSerialNumber(scannedText)
-                if (serialNumber) {
-                  handleScanResult(serialNumber)
+                const destination = getPaymentDestination(scannedText)
+                if (destination) {
+                  handleScanResult(destination)
                 }
               }
               // NotFoundException is expected when no QR code is detected, so we ignore it
@@ -194,7 +214,7 @@ export default function ScannerPage() {
         videoRef.current.srcObject = null
       }
     }
-  }, [extractSerialNumber, handleScanResult])
+  }, [getPaymentDestination, handleScanResult])
 
   const toggleFlash = async () => {
     if (!streamRef.current) return

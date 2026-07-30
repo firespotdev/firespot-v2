@@ -92,6 +92,16 @@ export const getSaleDescription = (sale?: SaleDescriptionSource | null) => {
   return `${amount} for ${subject}`
 }
 
+export const getSaleDetailDescription = (
+  sale?: SaleDescriptionSource | null,
+) => {
+  const description = sale?.description?.trim()
+  const isGeneratedItemName =
+    !!description && /^Item \d+(?: x\d+)?$/i.test(description)
+
+  return description && !isGeneratedItemName ? description : 'This sale'
+}
+
 export const getStatusDescription = (sale: Sale) => {
   return getSaleDescription(sale)
 }

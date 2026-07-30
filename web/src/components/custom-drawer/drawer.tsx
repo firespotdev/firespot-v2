@@ -6,7 +6,6 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerClose,
 } from '@/components/ui/drawer'
 import {
   useDrawerStore,
@@ -34,7 +33,6 @@ import { VariantSelectorDrawer } from './variant-selector-drawer'
 import { SplitPaymentDrawer } from './split-payment-drawer'
 import { CustomerSelectDrawer } from './customer-select-drawer'
 import { CollectPaymentDrawer } from './collect-drawer'
-import { CustomerCheckoutDrawer } from './customer-checkout-drawer'
 import { TransactionOptionsDrawer } from './transaction-options-drawer'
 import { ConfirmArchiveDrawer } from './confirm-archive-drawer'
 import { SendReminderDrawer } from './send-reminder-drawer'
@@ -63,6 +61,7 @@ const DRAWER_CONFIG: Record<
     fullScreen?: boolean
     noHeader?: boolean
     hideHandle?: boolean
+    dismissible?: boolean
   }
 > = {
   'bank-accounts': {
@@ -257,12 +256,6 @@ const DRAWER_CONFIG: Record<
     fullScreen: true,
     hideHandle: true,
   },
-  'customer-checkout': {
-    title: '',
-    Content: CustomerCheckoutDrawer,
-    noHeader: true,
-    direction: 'bottom',
-  },
   'transaction-options': {
     title: '',
     Content: TransactionOptionsDrawer,
@@ -306,6 +299,7 @@ const DRAWER_CONFIG: Record<
     Content: AccountSwitchDrawer,
     noHeader: true,
     direction: 'bottom',
+    dismissible: true,
   },
   custom: {
     title: '',
@@ -333,6 +327,7 @@ export function CustomDrawer() {
       fullScreen,
       noHeader,
       hideHandle,
+      dismissible = false,
     } = drawerConfig
     const drawerDirection = config.direction || direction || 'bottom'
 
@@ -357,6 +352,7 @@ export function CustomDrawer() {
             }
           }}
           direction={drawerDirection}
+          dismissible={dismissible}
           repositionInputs={false}
         >
           <DrawerContent
@@ -383,6 +379,7 @@ export function CustomDrawer() {
             }
           }}
           direction={drawerDirection}
+          dismissible={dismissible}
           fixed
           repositionInputs={false}
         >
@@ -424,9 +421,14 @@ export function CustomDrawer() {
                     )}
                   </DrawerTitle>
 
-                  <DrawerClose className="w-9 h-9 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    aria-label="Close drawer"
+                    className="w-9 h-9 flex items-center justify-center"
+                  >
                     <X className="w-6 h-6 text-black" />
-                  </DrawerClose>
+                  </button>
                 </DrawerHeader>
 
                 {/* Content */}
@@ -449,6 +451,7 @@ export function CustomDrawer() {
           }
         }}
         direction={drawerDirection}
+        dismissible={dismissible}
         fixed={drawerDirection === 'bottom'}
         repositionInputs={false}
       >
@@ -502,9 +505,14 @@ export function CustomDrawer() {
                   )}
                 </DrawerTitle>
 
-                <DrawerClose className="w-9 h-9 flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  aria-label="Close drawer"
+                  className="w-9 h-9 flex items-center justify-center"
+                >
                   <X className="w-6 h-6 text-black" />
-                </DrawerClose>
+                </button>
               </DrawerHeader>
 
               {/* Content */}

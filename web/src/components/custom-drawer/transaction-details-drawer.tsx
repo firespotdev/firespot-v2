@@ -27,7 +27,10 @@ import {
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
-import { getMerchantStatus, getSaleDescription } from '@/lib/utils/sales'
+import {
+  getMerchantStatus,
+  getSaleDetailDescription,
+} from '@/lib/utils/sales'
 
 import { cn, formatCurrency } from '@/lib/utils'
 
@@ -35,11 +38,13 @@ interface TransactionDetailsDrawerProps {
   sale: Sale
   onClose: () => void
   justRecorded?: boolean
+  origin?: 'history'
 }
 
 const TransactionDetailsDrawer = ({
   sale,
   justRecorded = false,
+  origin,
 }: TransactionDetailsDrawerProps) => {
   const router = useRouter()
   const { openDrawer, closeDrawer } = useDrawerStore()
@@ -102,7 +107,12 @@ const TransactionDetailsDrawer = ({
       }
     } catch {}
     closeDrawer()
-    router.push(`/record-repayment?id=${sale._id}`)
+    const params = new URLSearchParams({ id: sale._id })
+    if (origin === 'history' && customerId) {
+      params.set('customerId', customerId)
+      params.set('returnTo', `/outstanding?customerId=${customerId}`)
+    }
+    router.push(`/record-repayment?${params.toString()}`)
   }
 
   const handleShareReceipt = () => {
@@ -371,9 +381,14 @@ const TransactionDetailsDrawer = ({
                   onClick={() => {
                     if (!customerId) return
                     closeDrawer()
-                    router.push(
-                      `/outstanding?customerId=${customerId}&saleId=${sale._id}`,
-                    )
+                    const params = new URLSearchParams({
+                      customerId,
+                      saleId: sale._id,
+                    })
+                    if (origin === 'history') {
+                      params.set('origin', 'history')
+                    }
+                    router.push(`/outstanding?${params.toString()}`)
                   }}
                   className="flex w-full items-center justify-between text-left disabled:cursor-default"
                 >
@@ -404,7 +419,7 @@ const TransactionDetailsDrawer = ({
                     Description
                   </span>
                   <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
-                    {getSaleDescription(sale)}
+                    {getSaleDetailDescription(sale)}
                   </span>
                 </div>
               </>
@@ -474,7 +489,7 @@ const TransactionDetailsDrawer = ({
                     Description
                   </span>
                   <span className="text-[14px] font-medium text-black truncate max-w-50 capitalize">
-                    {getSaleDescription(sale)}
+                    {getSaleDetailDescription(sale)}
                   </span>
                 </div>
               </>

@@ -9,19 +9,23 @@ import { formatCurrency } from '@/lib/utils'
 
 interface RepaymentSuccessDrawerProps {
   sale: any
+  reminderSale?: any
   effectiveAmount: number
   customerName: string
   isFullRepayment: boolean
   remainingBalance: number
+  returnTo?: string
   onDismiss?: () => void
 }
 
 export function RepaymentSuccessDrawer({
   sale,
+  reminderSale,
   effectiveAmount,
   customerName,
   isFullRepayment,
   remainingBalance,
+  returnTo,
   onDismiss,
 }: RepaymentSuccessDrawerProps) {
   const router = useRouter()
@@ -41,15 +45,18 @@ export function RepaymentSuccessDrawer({
 
   const handleSendReminder = () => {
     closeAllDrawers()
+    if (returnTo) {
+      router.replace(returnTo)
+    }
     openDrawer({
       type: 'send-reminder',
-      props: { sale },
+      props: { sale: reminderSale || sale },
     })
   }
 
   const handleViewCustomer = () => {
     closeAllDrawers()
-    router.push('/recents')
+    router.push(returnTo || '/recents')
   }
 
   return (

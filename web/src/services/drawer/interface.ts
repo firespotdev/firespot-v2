@@ -23,7 +23,6 @@ export type DrawerContentType =
   | 'split-payment'
   | 'customer-select'
   | 'collect-payment'
-  | 'customer-checkout'
   | 'transaction-options'
   | 'confirm-archive'
   | 'send-reminder'
