@@ -12,6 +12,18 @@ export class MerchantReferralsController {
     private readonly merchantReferralsService: MerchantReferralsService,
   ) {}
 
+  @Get('me/code')
+  @ApiOperation({
+    summary: 'Get or create the current merchant referral code',
+  })
+  async getMyCode(@Request() req) {
+    return {
+      referralCode: await this.merchantReferralsService.ensureMerchantCode(
+        req.user.userId,
+      ),
+    }
+  }
+
   @Get('me')
   @ApiOperation({
     summary: 'Get merchant referral eligibility, counts and earned ledger',

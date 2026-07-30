@@ -1,7 +1,9 @@
 'use client'
 
 import { useId } from 'react'
+import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
+import { cn } from '@/lib/utils'
 
 interface GradientQRCodeProps {
   value: string
@@ -10,6 +12,9 @@ interface GradientQRCodeProps {
   fromColor?: string
   toColor?: string
   className?: string
+  centerImageUrl?: string
+  centerImageAlt?: string
+  centerImageSize?: number
 }
 
 /**
@@ -26,11 +31,14 @@ export function GradientQRCode({
   fromColor = '#FB5012',
   toColor = '#D72483',
   className,
+  centerImageUrl,
+  centerImageAlt = 'Merchant',
+  centerImageSize = 48,
 }: GradientQRCodeProps) {
   const gradientId = useId()
 
   return (
-    <div className={className}>
+    <div className={cn('relative', className)}>
       {/* Gradient definition consumed by the QR fill via url(#id) */}
       <svg
         width="0"
@@ -45,7 +53,30 @@ export function GradientQRCode({
           </linearGradient>
         </defs>
       </svg>
-      <QRCodeSVG value={value} size={size} fgColor={`url(#${gradientId})`} />
+      <QRCodeSVG
+        value={value}
+        size={size}
+        level={centerImageUrl ? 'H' : 'L'}
+        fgColor={`url(#${gradientId})`}
+      />
+      {centerImageUrl && (
+        <div
+          className="absolute left-1/2 top-1/2 overflow-hidden rounded-full border-4 border-white bg-white shadow-sm"
+          style={{
+            width: centerImageSize,
+            height: centerImageSize,
+            transform: 'translate(-50%, -50%)',
+          }}
+        >
+          <Image
+            src={centerImageUrl}
+            alt={centerImageAlt}
+            width={centerImageSize}
+            height={centerImageSize}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
     </div>
   )
 }

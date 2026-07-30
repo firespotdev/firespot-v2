@@ -36,7 +36,8 @@ export function SaleRequestScreen({
   const items = sale.items || []
   const itemsCount = items.reduce((sum, item) => sum + (item.quantity || 1), 0)
   const accountName = account?.accountName || merchant.businessName
-  const slug = sale.merchant?.merchantSlug || merchant.merchantSlug
+  const merchantName =
+    sale.merchant?.businessName || merchant.businessName || accountName
 
   return (
     <div className="h-dvh bg-white overflow-hidden">
@@ -86,9 +87,9 @@ export function SaleRequestScreen({
           <h2 className="font-bold text-[20px] text-black -tracking-[0.4px] mt-4 uppercase">
             {accountName}
           </h2>
-          {slug && (
+          {merchantName && (
             <p className="text-sm text-[#00000080] font-medium mt-1">
-              Request from @{slug}
+              Request from {merchantName}
             </p>
           )}
 

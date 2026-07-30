@@ -535,7 +535,7 @@ export default function QRKitDetailPage() {
                     onClick={() => {
                       navigator.clipboard.writeText(qrKit.serialNumber)
                       showNotificationToast({
-                        message: 'Copied',
+                        message: 'QR kit number copied',
                         mode: 'success',
                         duration: 2000,
                       })

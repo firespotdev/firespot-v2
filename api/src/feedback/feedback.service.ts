@@ -120,7 +120,11 @@ export class FeedbackService {
     if (!comment) {
       throw new BadRequestException("Feedback comment is required");
     }
-    let customerName = sale.customerName?.trim() || "Firespot customer";
+    let customerName =
+      sale.customerName?.trim() ||
+      (sale.customerType === "Repeat"
+        ? "Repeat customer"
+        : "New customer");
     let customerPhotoUrl: string | undefined;
 
     if (sale.customerUserId) {

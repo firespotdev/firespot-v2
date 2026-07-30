@@ -572,7 +572,7 @@ export default function PaymentPage() {
     const { accountNumber, bankName } = bankAccount
     navigator.clipboard.writeText(accountNumber)
     showNotificationToast({
-      message: 'Account number copied to clipboard',
+      message: 'Account number copied',
       mode: 'success',
       duration: 2000,
     })

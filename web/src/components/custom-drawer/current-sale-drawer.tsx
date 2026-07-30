@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Minus, ChevronRight, Loader2 } from 'lucide-react'
+import { ChevronDown, Minus, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
 import { Calendar } from '@/components/ui/calendar'
@@ -10,6 +10,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { Spinner } from '@/components/ui'
 
 interface CartItem {
   id: string
@@ -324,14 +325,7 @@ export function CurrentSaleDrawer({
           disabled={isContinueDisabled}
           className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 disabled:bg-black/60 disabled:cursor-not-allowed text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0 flex items-center justify-center gap-2"
         >
-          {isPending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-              <span>Continue</span>
-            </>
-          ) : (
-            <span>Continue</span>
-          )}
+          {isPending ? <Spinner /> : <span>Continue</span>}
         </button>
       )}
     </div>

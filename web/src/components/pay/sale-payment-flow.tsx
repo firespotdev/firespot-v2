@@ -27,7 +27,9 @@ interface SalePaymentFlowProps {
 
 function deriveStep(sale: PublicSale): SaleStep {
   if (sale.status === 'CONFIRMED') return 'success'
-  if (sale.receiptUrl || sale.isCopied) return 'waiting'
+  if (sale.receiptUrl || sale.customerMarkedPaidAt || sale.isCopied) {
+    return 'waiting'
+  }
   return 'request'
 }
 
@@ -126,6 +128,10 @@ export function SalePaymentFlow({
     )
   }
 
+  const handleMinimize = () => {
+    router.replace(customerExitPath)
+  }
+
   // Anonymous payers return to the public scanner; signed-in payers return to
   // their personal home.
   const handleFinish = () => {
@@ -137,7 +143,7 @@ export function SalePaymentFlow({
     if (!account) return
     navigator.clipboard.writeText(account.accountNumber)
     showNotificationToast({
-      message: 'Account number copied to clipboard',
+      message: 'Account number copied',
       mode: 'success',
       duration: 2000,
     })
@@ -204,6 +210,7 @@ export function SalePaymentFlow({
         onOpenBankApp={handleOpenBankApp}
         onChangeMethod={handleChangeAccount}
         onClose={handleClose}
+        onMinimize={handleMinimize}
         isClosing={cancelSale.isPending}
       />
     )

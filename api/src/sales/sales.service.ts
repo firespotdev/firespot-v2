@@ -1139,6 +1139,11 @@ export class SalesService {
         'This transaction can no longer be cancelled',
       )
     }
+    if (sale.receiptUrl || sale.customerMarkedPaidAt) {
+      throw new UnprocessableEntityException(
+        'This payment has already been submitted and can no longer be cancelled',
+      )
+    }
 
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'customer'
@@ -1187,8 +1192,6 @@ export class SalesService {
       await sale.save()
       this.eventsGateway.server
         .to(sale.merchantId.toString())
-        .emit('payment.declared', sale)
-      this.eventsGateway.server
         .to(`sale-${sale._id.toString()}`)
         .emit('payment.declared', sale)
     } else if (shouldSave) {
@@ -1319,6 +1322,7 @@ export class SalesService {
     const upload = await this.cloudinaryService.uploadDocument(fileBuffer)
     sale.receiptUrl = upload.url
     sale.receiptPublicId = upload.publicId
+    sale.customerMarkedPaidAt ||= new Date()
     const savedSale = await sale.save()
 
     // Emit event to merchant room and sale room

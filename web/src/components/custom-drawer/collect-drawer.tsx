@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   X,
   ChevronRight,
@@ -22,6 +22,7 @@ import { useDrawerStore } from '@/services/drawer'
 import { useSocket } from '@/hooks/useSocket'
 import { useRecordSale, useCancelSale } from '@/services/sales/hooks'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
+import { useUserProfile } from '@/services/users'
 
 interface Props {
   sale: any
@@ -36,6 +37,12 @@ export function CollectPaymentDrawer({
   const recordSaleMutation = useRecordSale()
   const cancelSaleMutation = useCancelSale()
   const { socket } = useSocket()
+  const { data: profile } = useUserProfile()
+  const lastPaymentDeclaredAt = useRef<string | null>(
+    initialSale.customerMarkedPaidAt
+      ? String(initialSale.customerMarkedPaidAt)
+      : null,
+  )
 
   const [sale, setSale] = useState(initialSale)
   const [countdown, setCountdown] = useState(59)
@@ -84,6 +91,11 @@ export function CollectPaymentDrawer({
 
     const handlePaymentDeclared = (data: any) => {
       if (data._id === sale._id) {
+        const declaredAt = data.customerMarkedPaidAt
+          ? String(data.customerMarkedPaidAt)
+          : null
+        if (declaredAt && lastPaymentDeclaredAt.current === declaredAt) return
+        lastPaymentDeclaredAt.current = declaredAt
         setSale(data)
         setOverrideView(null)
         showNotificationToast({ message: 'Customer says they have paid' })
@@ -320,7 +332,7 @@ export function CollectPaymentDrawer({
             : `flex justify-between items-center shrink-0 relative py-4 px-4`
         }
       >
-        {activeView !== 'qr' ? (
+        {activeView === 'waiting' ? (
           <ArrowLeft onClick={handleBackStep} size={20} color="black" />
         ) : (
           <div className="w-5 h-5"></div>
@@ -373,7 +385,12 @@ export function CollectPaymentDrawer({
             {/* Gradient Border QR Wrapper */}
             <div className="p-0.75 rounded-[20px] bg-linear-to-tr from-[#D72483] to-[#FB5012]">
               <div className="p-3.5 rounded-[18px] bg-white flex items-center justify-center">
-                <GradientQRCode value={checkoutUrl} size={210} />
+                <GradientQRCode
+                  value={checkoutUrl}
+                  size={210}
+                  centerImageUrl={profile?.profilePhotoUrl}
+                  centerImageAlt={profile?.businessName || 'Merchant'}
+                />
               </div>
             </div>
 
@@ -501,7 +518,7 @@ export function CollectPaymentDrawer({
               onClick={() => {
                 navigator.clipboard.writeText(checkoutUrl)
                 showNotificationToast({
-                  message: 'Checkout link copied!',
+                  message: 'Checkout link copied',
                   mode: 'success',
                 })
               }}

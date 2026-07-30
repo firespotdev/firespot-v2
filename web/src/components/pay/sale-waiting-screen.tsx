@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import {
   ArrowUpRight,
   Check,
+  ChevronDown,
   Copy,
   Landmark,
   Loader,
@@ -15,6 +16,7 @@ import {
   Button,
   GreenSpinner,
   showNotificationToast,
+  Spinner,
   TagFooter,
 } from '@/components/ui'
 import { BankLogo } from '@/components/ui/bank-logo'
@@ -34,6 +36,7 @@ interface SaleWaitingScreenProps {
   onOpenBankApp: () => void
   onChangeMethod: () => void
   onClose: () => void
+  onMinimize: () => void
   isClosing?: boolean
 }
 
@@ -45,6 +48,7 @@ export function SaleWaitingScreen({
   onOpenBankApp,
   onChangeMethod,
   onClose,
+  onMinimize,
   isClosing = false,
 }: SaleWaitingScreenProps) {
   const uploadReceipt = useUploadReceipt()
@@ -159,12 +163,22 @@ export function SaleWaitingScreen({
     <div className="h-dvh overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col bg-[#f4f6f8]">
         {/* Header */}
-        <header className="flex items-center justify-end px-4 py-3 shrink-0">
+        <header className="flex items-center justify-between px-4 py-3 shrink-0">
           <button
             type="button"
-            onClick={onClose}
+            onClick={onMinimize}
+            aria-label="Minimize payment"
+            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+          >
+            <ChevronDown size={18} color="#868788" />
+          </button>
+          <button
+            type="button"
+            onClick={hasPaymentEvidence ? onMinimize : onClose}
             disabled={isClosing}
-            aria-label="Close"
+            aria-label={
+              hasPaymentEvidence ? 'Minimize payment' : 'Cancel payment'
+            }
             className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
           >
             <X size={16} color="#868788" />
@@ -354,7 +368,7 @@ export function SaleWaitingScreen({
                 disabled={markPaid.isPending}
                 className="w-full"
               >
-                {markPaid.isPending ? 'Notifying merchant...' : 'I have paid'}
+                {markPaid.isPending ? <Spinner /> : 'I have paid'}
               </Button>
               <Button
                 variant="secondary"

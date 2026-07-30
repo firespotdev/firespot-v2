@@ -496,7 +496,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl)
     showNotificationToast({
-      message: 'Link copied to clipboard',
+      message: 'Link copied',
       mode: 'success',
     })
   }
@@ -521,6 +521,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
     const recommendBusinessProps = {
       businessName,
       profilePhotoUrl: profile?.profilePhotoUrl,
+      referralCode: profile?.merchantReferralCode || undefined,
     }
 
     closeDrawer()

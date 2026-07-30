@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Mail, Share, Link as LinkIcon, ChevronRight } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Mail, Share, Link as LinkIcon } from 'lucide-react'
 import { Sale } from '@/services/sales/interface'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -9,10 +9,10 @@ import {
   CircularIconButton,
   Label,
   StatusBadge,
-  TagFooter,
   showNotificationToast,
 } from '../ui'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
+import { useUserProfile } from '@/services/users'
 
 interface SendReminderDrawerProps {
   sale: Sale
@@ -23,6 +23,16 @@ export function SendReminderDrawer({
   sale,
   closeDrawer,
 }: SendReminderDrawerProps) {
+  const { data: profile } = useUserProfile()
+  const customerRelationship = useMemo(() => {
+    if (typeof sale.customerId !== 'object' || !sale.customerId) return null
+    return sale.customerId as {
+      name?: string
+      businessName?: string
+      phoneNumber?: string
+    }
+  }, [sale.customerId])
+
   const balanceOwed = useMemo(() => {
     if (!sale) return 0
     if (sale.balanceOwed !== undefined && sale.balanceOwed !== null) {
@@ -33,36 +43,50 @@ export function SendReminderDrawer({
   }, [sale])
 
   const customerName = useMemo(() => {
-    if (!sale) return 'Customer'
-    if (typeof sale.customerId === 'object' && sale.customerId) {
-      if ((sale.customerId as any).name) return (sale.customerId as any).name
-      if ((sale.customerId as any).businessName)
-        return (sale.customerId as any).businessName
-    }
+    if (customerRelationship?.name) return customerRelationship.name
+    if (customerRelationship?.businessName)
+      return customerRelationship.businessName
     if (sale.customerName) return sale.customerName
     return 'Customer'
-  }, [sale])
+  }, [customerRelationship, sale.customerName])
 
   const customerPhone = useMemo(() => {
     return (
-      (sale as any).customerPhone ||
-      (sale as any).phoneNumber ||
-      '0810 455 7865'
+      sale.customerPhone ||
+      (sale as Sale & { phoneNumber?: string }).phoneNumber ||
+      customerRelationship?.phoneNumber ||
+      ''
     )
-  }, [sale])
+  }, [customerRelationship, sale])
 
   const payLink = useMemo(() => {
-    const ref = sale.reference || sale._id
-    return `fs.co/pay/${ref?.slice(-6) || '8kd2'}`
-  }, [sale])
+    if (!sale.serialNumber || !sale._id || typeof window === 'undefined') {
+      return null
+    }
+    const baseUrl = (
+      process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+    ).replace(/\/$/, '')
+    return `${baseUrl}/pay/${sale.serialNumber}?saleId=${sale._id}`
+  }, [sale._id, sale.serialNumber])
 
+  const merchantName = profile?.businessName?.trim() || 'your merchant'
   const initialDraft = `Hi ${customerName} 👋 Just a gentle reminder of your ₦${formatCurrency(
     balanceOwed,
-  )} balance at Mummy Favour Stores. Whenever you're ready, you can pay here: ${payLink}`
+  )} balance at ${merchantName}. Whenever you're ready${
+    payLink ? `, you can pay here: ${payLink}` : '.'
+  }`
 
-  const [draftText, setDraftText] = useState(initialDraft)
+  const [editedDraft, setEditedDraft] = useState<string | null>(null)
+  const draftText = editedDraft ?? initialDraft
 
   const handleSMS = () => {
+    if (!customerPhone) {
+      showNotificationToast({
+        message: 'Customer phone number is unavailable',
+        mode: 'error',
+      })
+      return
+    }
     const cleanPhone = customerPhone.replace(/\s+/g, '')
     const smsUrl = `sms:${cleanPhone}?body=${encodeURIComponent(draftText)}`
     window.open(smsUrl, '_blank')
@@ -82,7 +106,7 @@ export function SendReminderDrawer({
   const handleCopy = () => {
     navigator.clipboard.writeText(draftText)
     showNotificationToast({
-      message: 'Reminder message copied to clipboard',
+      message: 'Reminder copied',
       mode: 'success',
     })
   }
@@ -173,7 +197,7 @@ export function SendReminderDrawer({
               {/* Transparent Input Textarea */}
               <textarea
                 value={draftText}
-                onChange={(e) => setDraftText(e.target.value)}
+                onChange={(e) => setEditedDraft(e.target.value)}
                 rows={4}
                 className="w-full bg-transparent text-sm font-medium text-transparent caret-black outline-none resize-none leading-relaxed relative z-10 font-satoshi"
               />

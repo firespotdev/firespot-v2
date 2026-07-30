@@ -150,6 +150,33 @@ describe("SalesService amount invariants", () => {
       ).rejects.toThrow("Only a pending sale can be recorded");
     });
 
+    it.each([
+      ["an uploaded receipt", { receiptUrl: "https://example.com/receipt.png" }],
+      ["a payment declaration", { customerMarkedPaidAt: new Date() }],
+    ])(
+      "does not let a customer cancel after submitting %s",
+      async (_, paymentEvidence) => {
+        const save = jest.fn();
+        const service = createService({
+          findOne: jest.fn().mockResolvedValue({
+            status: "PENDING",
+            ...paymentEvidence,
+            save,
+          }),
+        });
+
+        await expect(
+          service.cancelSaleAsCustomer(
+            "507f1f77bcf86cd799439013",
+            "FS-QR-1",
+          ),
+        ).rejects.toThrow(
+          "This payment has already been submitted and can no longer be cancelled",
+        );
+        expect(save).not.toHaveBeenCalled();
+      },
+    );
+
     it("confirms a description-free QR payment in one tap as a full bank transfer", async () => {
       const merchantId = "507f1f77bcf86cd799439012";
       const saleId = "507f1f77bcf86cd799439013";

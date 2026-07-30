@@ -25,7 +25,12 @@ interface SaleItemProps {
   isArchiving?: boolean
   actionsDisabled?: boolean
   className?: string
-  variant?: 'default' | 'minimal' | 'recent-unconfirmed' | 'recent-confirmed'
+  variant?:
+    | 'default'
+    | 'minimal'
+    | 'history'
+    | 'recent-unconfirmed'
+    | 'recent-confirmed'
 }
 
 export function SaleItem({
@@ -43,7 +48,7 @@ export function SaleItem({
   const isArchivedItem = getMerchantStatus(sale) === 'Archived'
   const isRecent = variant.startsWith('recent-')
   const title =
-    variant === 'recent-confirmed'
+    variant === 'recent-confirmed' || variant === 'history'
       ? getSaleCustomerName(sale)
       : variant === 'recent-unconfirmed'
         ? getRecentSaleSummary(sale)

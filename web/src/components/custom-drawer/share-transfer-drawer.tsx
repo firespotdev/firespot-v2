@@ -69,7 +69,7 @@ export function ShareTransferDrawer({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl)
-    showNotificationToast({ message: 'Link copied!', mode: 'success' })
+    showNotificationToast({ message: 'Link copied', mode: 'success' })
   }
 
   const handleShare = async () => {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ChevronRight, X } from 'lucide-react'
+import { ArrowLeft, ChevronRight, X } from 'lucide-react'
 import {
   Button,
   Input,
@@ -105,14 +105,28 @@ export function AddCustomerDrawer({
 
   return (
     <div className="w-full flex flex-col font-satoshi px-4 pb-4 max-w-125 mx-auto">
-      <div className="w-full flex justify-end py-2">
-        <button
-          onClick={onBack || closeDrawer}
-          type="button"
-          className="py-1.5 transition-colors cursor-pointer"
-        >
-          <X size={24} color="black" />
-        </button>
+      <div
+        className={`w-full flex py-2 ${onBack ? 'justify-start' : 'justify-end'}`}
+      >
+        {onBack ? (
+          <button
+            onClick={onBack}
+            type="button"
+            aria-label="Back"
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
+          >
+            <ArrowLeft size={24} color="black" />
+          </button>
+        ) : (
+          <button
+            onClick={closeDrawer}
+            type="button"
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
+          >
+            <X size={24} color="black" />
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col items-center text-center">

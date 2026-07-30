@@ -70,7 +70,7 @@ export function PageHeader({
             `${process.env.NEXT_PUBLIC_APP_URL}/pay/${firstSerialNumber}`,
           )
           showNotificationToast({
-            message: 'Link copied to clipboard!',
+            message: 'Link copied',
             mode: 'success',
             duration: 2000,
           })

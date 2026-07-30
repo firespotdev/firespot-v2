@@ -415,6 +415,7 @@ function HistoryContent() {
                         <SaleItem
                           key={sale._id}
                           sale={sale}
+                          variant="history"
                           onClick={() => handleRecordClick(sale)}
                         />
                       ))}

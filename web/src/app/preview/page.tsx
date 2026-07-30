@@ -105,7 +105,7 @@ export default function PreviewPage() {
 
       navigator.clipboard.writeText(accountNumber)
       showNotificationToast({
-        message: 'Account number copied!',
+        message: 'Account number copied',
         mode: 'success',
         duration: 2000,
       })
@@ -153,7 +153,7 @@ export default function PreviewPage() {
               onCopy={(account) => {
                 navigator.clipboard.writeText(account.accountNumber)
                 showNotificationToast({
-                  message: 'Account number copied!',
+                  message: 'Account number copied',
                   mode: 'success',
                   duration: 2000,
                 })

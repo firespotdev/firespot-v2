@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X, Search, ChevronRight, ArrowLeft } from 'lucide-react'
-import { showNotificationToast } from '@/components/ui'
+import { showNotificationToast, Skeleton } from '@/components/ui'
 import { useCustomers } from '@/services/customers/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
@@ -26,7 +26,7 @@ export function CustomerSelectDrawer({
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-  const { data: customers = [] } = useCustomers()
+  const { data: customers = [], isLoading } = useCustomers()
   const { selectContacts } = useContactPicker()
 
   const [searchQuery, setSearchQuery] = useState('')
@@ -193,38 +193,57 @@ export function CustomerSelectDrawer({
         )}
 
         <div>
-          <span className="text-[13px] text-[#00000066] font-medium text-left px-0.5 select-none shrink-0 mb-2 inline-block">
-            {filtered.length} {filtered.length === 1 ? 'customer' : 'customers'}
-          </span>
+          {isLoading ? (
+            <Skeleton className="mb-2 h-4 w-20" />
+          ) : (
+            <span className="text-[13px] text-[#00000066] font-medium text-left px-0.5 select-none shrink-0 mb-2 inline-block">
+              {filtered.length}{' '}
+              {filtered.length === 1 ? 'customer' : 'customers'}
+            </span>
+          )}
 
           {/* Customers List Box */}
           <div className="flex max-h-64 flex-col overflow-y-auto rounded-[12px] border border-[#F1F1F1] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
-            {filtered.map((cust, index) => {
-              return (
-                <button
-                  key={cust._id}
-                  type="button"
-                  onClick={() => onSelect(cust)}
-                  className={`w-full flex items-center justify-between p-3 transition-all text-left group cursor-pointer
+            {isLoading
+              ? Array.from({ length: 3 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-center gap-3 p-3 ${
+                      index > 0 ? 'border-t border-[#EBEBEB]' : ''
+                    }`}
+                  >
+                    <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+                    <div className="flex flex-1 flex-col gap-2">
+                      <Skeleton className="h-3.5 w-2/5" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-4 w-4" />
+                  </div>
+                ))
+              : filtered.map((cust, index) => (
+                  <button
+                    key={cust._id}
+                    type="button"
+                    onClick={() => onSelect(cust)}
+                    className={`w-full flex items-center justify-between p-3 transition-all text-left group cursor-pointer
                   ${index > 0 ? 'border-t border-[#EBEBEB]' : ''}
                   bg-white hover:bg-gray-50/40
                 `}
-                >
-                  <div className="flex items-center gap-3">
-                    <MerchantAvatar />
-                    <div className="flex flex-col text-left">
-                      <span className="text-sm font-bold text-black leading-none">
-                        {cust.name}
-                      </span>
-                      <span className="text-xs text-[#6B7280] font-medium mt-1">
-                        {cust.phoneNumber}
-                      </span>
+                  >
+                    <div className="flex items-center gap-3">
+                      <MerchantAvatar />
+                      <div className="flex flex-col text-left">
+                        <span className="text-sm font-bold text-black leading-none">
+                          {cust.name}
+                        </span>
+                        <span className="text-xs text-[#6B7280] font-medium mt-1">
+                          {cust.phoneNumber}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#6B7280] group-hover:text-black transition-colors" />
-                </button>
-              )
-            })}
+                    <ChevronRight className="w-4 h-4 text-[#6B7280] group-hover:text-black transition-colors" />
+                  </button>
+                ))}
           </div>
         </div>
       </div>

@@ -33,7 +33,8 @@ const TAB_OPTIONS = [
 
 export default function RecentsPage() {
   const [activeTab, setActiveTab] = useState<RecentTab>('unconfirmed')
-  const [showConfirmAllTooltip, setShowConfirmAllTooltip] = useState(true)
+  const [confirmAllTooltipDismissed, setConfirmAllTooltipDismissed] =
+    useState(false)
   const { data: stats, isLoading: statsLoading } = useSalesStats({
     preset: 'today',
   })
@@ -69,13 +70,20 @@ export default function RecentsPage() {
       ? stats?.pendingSalesAmount || 0
       : stats?.todaySalesAmount || 0
 
+  const showConfirmAllTooltip =
+    activeTab === 'unconfirmed' &&
+    !pendingLoading &&
+    pendingSales.length > 0 &&
+    !confirmAllTooltipDismissed
+
   useEffect(() => {
+    if (!showConfirmAllTooltip) return
     const timeout = window.setTimeout(() => {
-      setShowConfirmAllTooltip(false)
+      setConfirmAllTooltipDismissed(true)
     }, 3000)
 
     return () => window.clearTimeout(timeout)
-  }, [])
+  }, [showConfirmAllTooltip])
 
   const hasMutationInProgress =
     confirmAllSalesMutation.isPending ||

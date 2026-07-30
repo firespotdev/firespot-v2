@@ -6,7 +6,10 @@ import { QRCodeSVG } from 'qrcode.react'
 import { useDrawerStore } from '@/services/drawer'
 import { showNotificationToast } from '@/components/ui'
 import { Copy } from 'lucide-react'
-import { useMerchantReferralSummary } from '@/services/merchant-referrals'
+import {
+  useMerchantReferralCode,
+  useMerchantReferralSummary,
+} from '@/services/merchant-referrals'
 import { cn } from '@/lib/utils'
 
 const GRADIENT_START = '#FB5012'
@@ -15,6 +18,7 @@ const GRADIENT_END = '#D72483'
 interface RecommendBusinessDrawerProps {
   businessName: string
   profilePhotoUrl?: string
+  referralCode?: string
   closeDrawer: () => void
 }
 
@@ -35,11 +39,16 @@ function getRecommendUrl(referralCode?: string) {
 
 export function RecommendBusinessDrawer({
   businessName,
+  referralCode: initialReferralCode,
   closeDrawer,
 }: RecommendBusinessDrawerProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-  const { data: referral, isLoading } = useMerchantReferralSummary()
-  const referralCode = referral?.referralCode
+  const { data: codeData, isLoading: isCodeLoading } =
+    useMerchantReferralCode(!initialReferralCode)
+  const { data: referral, isLoading: isSummaryLoading } =
+    useMerchantReferralSummary()
+  const referralCode =
+    initialReferralCode || codeData?.referralCode || referral?.referralCode
   const canRefer = Boolean(referralCode)
   const recommendUrl = getRecommendUrl(referralCode)
 
@@ -81,6 +90,16 @@ export function RecommendBusinessDrawer({
         businessName,
       },
     })
+  }
+
+  const handleWhatsApp = () => {
+    if (!canRefer) return
+    const message = `${businessName} recommends Firespot for your business. Continue here: ${recommendUrl}`
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(message)}`,
+      '_blank',
+      'noopener,noreferrer',
+    )
   }
 
   return (
@@ -132,7 +151,7 @@ export function RecommendBusinessDrawer({
               <div
                 className={cn(
                   'aspect-square w-full rounded-[14px] bg-[#F4F6F8]',
-                  isLoading && 'animate-pulse',
+                  isCodeLoading && 'animate-pulse',
                 )}
               />
             )}
@@ -177,15 +196,9 @@ export function RecommendBusinessDrawer({
             Know a business that needs this?
           </h2>
           <p className="mt-1.5 max-w-[360px] text-sm font-medium text-[#00000080]">
-            Recommend businesses to firespot and earn after they collect
-            ₦50,000 in confirmed payments.
+            Recommend businesses to firespot and earn when they become paying
+            users.
           </p>
-          {!isLoading && !referral?.eligible && (
-            <p className="mt-2 max-w-[360px] text-xs font-medium text-[#00000066]">
-              Complete verification and keep an active plan to qualify for
-              referral rewards.
-            </p>
-          )}
         </div>
 
         <div className="mt-6 grid w-full grid-cols-3 gap-3">
@@ -203,7 +216,7 @@ export function RecommendBusinessDrawer({
           </button>
           <button
             type="button"
-            onClick={handleShare}
+            onClick={handleWhatsApp}
             disabled={!canRefer}
             className={cn(
               'flex min-h-[80px] flex-col items-center justify-center gap-2 rounded-[12px] bg-white px-2 py-3.5 shadow-[0px_4px_8px_0px_#0000000A]',

@@ -84,6 +84,14 @@ const TransactionDetailsDrawer = ({
       : 'New'
   }, [sale])
 
+  const customerId = useMemo(() => {
+    if (typeof sale.customerId === 'string') return sale.customerId
+    if (typeof sale.customerId === 'object' && sale.customerId?._id) {
+      return String(sale.customerId._id)
+    }
+    return null
+  }, [sale.customerId])
+
   const handleRecordRepayment = () => {
     try {
       const progressWindow = window as Window & {
@@ -236,7 +244,10 @@ const TransactionDetailsDrawer = ({
 
           {/* Action Buttons */}
           {justRecorded ? (
-            <div className="scrollbar-hide mb-6 flex w-full gap-2 overflow-x-auto px-1">
+            <div
+              data-vaul-no-drag
+              className="scrollbar-hide mb-6 flex w-full touch-pan-x gap-2 overflow-x-auto px-1"
+            >
               <Button
                 variant="outline"
                 className="h-9 w-fit shrink-0 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3.5 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
@@ -354,22 +365,38 @@ const TransactionDetailsDrawer = ({
                 </div>
 
                 {/* Outstanding */}
-                <div className="flex justify-between items-center">
+                <button
+                  type="button"
+                  disabled={!customerId}
+                  onClick={() => {
+                    if (!customerId) return
+                    closeDrawer()
+                    router.push(
+                      `/outstanding?customerId=${customerId}&saleId=${sale._id}`,
+                    )
+                  }}
+                  className="flex w-full items-center justify-between text-left disabled:cursor-default"
+                >
                   <span className="text-[14px] text-[#00000080] font-normal">
                     Outstanding
                   </span>
-                  <span
-                    className="text-[14px] font-medium "
-                    style={{
-                      background:
-                        'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >
-                    NGN {formatCurrency(sale.balanceOwed || 0)}
+                  <span className="flex items-center gap-1">
+                    <span
+                      className="text-[14px] font-medium"
+                      style={{
+                        background:
+                          'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                      }}
+                    >
+                      NGN {formatCurrency(sale.balanceOwed || 0)}
+                    </span>
+                    {customerId && (
+                      <ChevronRight size={16} className="text-[#D72483]" />
+                    )}
                   </span>
-                </div>
+                </button>
 
                 {/* Description */}
                 <div className="flex justify-between items-center">
