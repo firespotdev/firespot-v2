@@ -5,12 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { UpgradePrompt } from '@/components/merchant/upgrade-prompt'
-import { PlanStatusBanner } from '@/components/merchant/plan-status-banner'
-import {
-  SetupShopCta,
-  useSetupShopCta,
-} from '@/components/merchant/setup-shop-cta'
 import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, VerifiedBadge } from '@/components/ui'
@@ -21,6 +15,7 @@ import { useSalesStats, useSales } from '@/services/sales/hooks'
 import Link from 'next/link'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
+import { MerchantQuickActionStack } from '@/components/merchant/merchant-quick-actions'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -46,7 +41,6 @@ export default function ProfilePage() {
   const { data: owingSales } = useSales({ status: 'OWING', limit: 1 })
   const owingCount = owingSales?.meta?.total ?? 0
   const updateProfilePhoto = useUpdateProfilePhoto()
-  const setupCta = useSetupShopCta()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
@@ -104,9 +98,10 @@ export default function ProfilePage() {
       onSuccess: () => {
         setPhotoSuccess(true)
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
+        const response = error as { response?: { data?: { message?: string } } }
         const message =
-          error?.response?.data?.message || 'Failed to upload photo'
+          response.response?.data?.message || 'Failed to upload photo'
         setPhotoError(message)
       },
     })
@@ -148,9 +143,7 @@ export default function ProfilePage() {
           subtitle="Owner · Main Address"
           titleAdornment={
             // Effective level: null while lapsed, so the badge hides itself.
-            <VerifiedBadge
-              level={(profile as any)?.effectiveVerificationLevel}
-            />
+            <VerifiedBadge level={profile?.effectiveVerificationLevel} />
           }
           showDropdown
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
@@ -160,10 +153,7 @@ export default function ProfilePage() {
           onShareClick={handleShareClick}
         />
 
-        {/* Grandfathered merchants: re-surfaces once per login until upgraded */}
-        {/* <UpgradePrompt /> */}
-
-        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
+        <div className="flex-1 px-4 pb-24 flex flex-col justify-evenly overflow-y-auto">
           {/* Hidden file input for photo upload */}
           <input
             ref={fileInputRef}
@@ -189,11 +179,8 @@ export default function ProfilePage() {
               recordedAmount={recordedStats?.todaySalesAmount ?? 0}
               salesCount={salesStats?.todaySalesCount ?? 0}
               ordersCount={insights?.qrKitScans?.totalScans ?? 0}
-              unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
               owingCount={owingCount}
-              planStatusBanner={<PlanStatusBanner />}
-              shopSetupBanner={setupCta.show ? <SetupShopCta /> : null}
-              suppressRecentSales={setupCta.show}
+              quickActions={<MerchantQuickActionStack className="mb-4" />}
               isAmountHidden={isAmountHidden}
               onToggleVisibility={() => setIsAmountHidden((prev) => !prev)}
               currentFilter={filter}
@@ -351,17 +338,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Record */}
-        <div className="border-t border-[#F1F1F1] mx-auto fixed bottom-0 left-0 right-0 bg-white rounded-t-[12px]">
-          <div className="p-4 pb-6">
-            <Button
-              asChild
-              className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
-            >
-              <Link href="/record-sale">New Sale</Link>
-            </Button>
-          </div>
-        </div>
       </div>
     </div>
   )

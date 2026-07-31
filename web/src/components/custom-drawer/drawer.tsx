@@ -49,6 +49,7 @@ import { CancelPlanDrawer } from './cancel-plan-drawer'
 import { SaleItemsDrawer } from './sale-items-drawer'
 import { DayTimeEditorDrawer } from './day-time-editor-drawer'
 import { ActiveHoursBookingDrawer } from './active-hours-booking-drawer'
+import { BusinessIntroDrawer } from './business-intro-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -205,6 +206,14 @@ const DRAWER_CONFIG: Record<
     Content: CancelPlanDrawer,
     noHeader: true,
     direction: 'bottom',
+  },
+  'business-intro': {
+    title: '',
+    Content: BusinessIntroDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: true,
+    dismissible: true,
   },
   'sale-items': {
     title: '',
@@ -385,7 +394,7 @@ export function CustomDrawer() {
         >
           <DrawerContent
             hideHandle={hideHandle}
-            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px]`}
+            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' || config.type === 'business-intro' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px]`}
           >
             {noHeader ? (
               <>
@@ -470,6 +479,7 @@ export function CustomDrawer() {
               'add-customer',
               'plan-checkout',
               'cancel-plan',
+              'business-intro',
             ].includes(config.type)
               ? 'bg-white'
               : 'bg-[#f5f6f8]'

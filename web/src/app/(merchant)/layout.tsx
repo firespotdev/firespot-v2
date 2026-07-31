@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore, useAuthReady } from '@/services/auth'
 import { isTokenExpired } from '@/lib/utils/auth-redirect'
+import { MerchantBottomNav } from '@/components/layout/merchant-bottom-nav'
 
 /**
  * Merchant (business) zone. Requires an established business — a personal-only
@@ -52,5 +53,10 @@ export default function MerchantLayout({
     return <div className="h-dvh bg-[#F4F6F8]" />
   }
 
-  return <>{children}</>
+  return (
+    <>
+      {children}
+      <MerchantBottomNav />
+    </>
+  )
 }

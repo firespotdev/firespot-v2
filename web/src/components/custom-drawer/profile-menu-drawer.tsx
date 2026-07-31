@@ -16,9 +16,8 @@ import { logoutEverywhere } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { usePlanCatalog, type PlanTier } from '@/services/merchant-plans'
 import { useUserQRKits } from '@/services/qr'
-import { useOutstandingSummary, useSalesStats } from '@/services/sales/hooks'
 import { useUserProfile } from '@/services/users'
-import { SetupShopCta } from '@/components/merchant/setup-shop-cta'
+import { MerchantQuickActionsList } from '@/components/merchant/merchant-quick-actions'
 import { TierIcon } from '@/components/merchant/tier-icon'
 import { showNotificationToast, Switch } from '@/components/ui'
 import { usePreference } from '@/hooks/usePreference'
@@ -39,7 +38,6 @@ import {
   Graph,
   Location,
   MessageSearch,
-  Moneys,
   People,
   PercentageSquare,
   Profile2User,
@@ -444,19 +442,10 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
     enabled: merchantDataEnabled,
   })
   const { data: planCatalog } = usePlanCatalog(merchantDataEnabled)
-  const { data: outstandingSummary } =
-    useOutstandingSummary(merchantDataEnabled)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-  const { data: salesStats } = useSalesStats(undefined, {
-    enabled: merchantDataEnabled,
-  })
   const [soundEnabled, setSoundEnabled] = usePreference('soundEnabled', true)
   const [isManageBusinessOpen, setIsManageBusinessOpen] = useState(false)
 
-  const pendingSalesCount = salesStats?.pendingSalesCount || 0
-  const outstandingAmount = outstandingSummary?.totalOutstandingAmount || 0
-  const outstandingCustomerCount = outstandingSummary?.customers?.length || 0
-  const showOutstanding = outstandingAmount > 0 || outstandingCustomerCount > 0
   const planTier: PlanTier | null = planCatalog
     ? planCatalog.current.planTier
     : profile?.planTier || null
@@ -589,8 +578,6 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           <ChevronRight className="h-4 w-4 text-[#BDBDBD]" />
         </Link>
 
-        {merchantDataEnabled && <SetupShopCta onNavigate={closeDrawer} />}
-
         {/* Existing share card and actions intentionally remain unchanged. */}
         <div className="relative mb-3 flex items-center gap-4 overflow-hidden rounded-[12px] bg-white p-4 shadow-[0px_4px_8px_0px_#0000000A]">
           <div className="z-10 flex-1">
@@ -701,77 +688,11 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </div>
         </div>
 
-        {pendingSalesCount > 0 && (
-          <Link
-            href="/recents"
-            onClick={closeDrawer}
-            className="mb-3 flex w-full items-center gap-3 rounded-[12px] border-[3px] border-[#BB81234D] bg-white px-4 py-3 shadow-[0px_2px_8px_0px_#0000000A]"
-          >
-            <Image
-              src="/icons/history_brown.svg"
-              alt="Recent"
-              width={24}
-              height={24}
-            />
-            <div className="min-w-0 flex-1 text-left">
-              <p className="text-base font-medium leading-none text-[#6B4200]">
-                Recent sales
-              </p>
-              <span className="text-[13px] font-medium text-[#BB8123]">
-                {pendingSalesCount} Unconfirmed{' '}
-                {pendingSalesCount === 1 ? 'sale' : 'sales'}
-              </span>
-            </div>
-            <ChevronRight className="h-4 w-4 text-[#A6ADB7]" />
-          </Link>
-        )}
-
-        {showOutstanding && (
-          <Link
-            href="/outstanding"
-            onClick={closeDrawer}
-            className="mb-3 flex w-full items-center gap-3 rounded-[12px] bg-linear-to-br from-[#FB5012]/30 to-[#D72483]/30 p-[3px] shadow-[0px_2px_8px_0px_#0000000A]"
-          >
-            <div className="flex w-full items-center gap-3 rounded-[9px] bg-white px-4 py-3">
-              <svg aria-hidden className="absolute h-0 w-0">
-                <defs>
-                  <linearGradient
-                    id="outstanding-gradient"
-                    x1="0%"
-                    y1="0%"
-                    x2="100%"
-                    y2="100%"
-                  >
-                    <stop offset="0%" stopColor="#FB5012" />
-                    <stop offset="100%" stopColor="#D72483" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <Moneys color="url(#outstanding-gradient)" />
-              <div className="min-w-0 flex-1 text-left">
-                <p
-                  className={cn(
-                    'text-sm font-bold leading-none',
-                    GRADIENT_TEXT_CLASS,
-                  )}
-                >
-                  ₦
-                  {new Intl.NumberFormat('en-NG', {
-                    maximumFractionDigits: 0,
-                  }).format(outstandingAmount)}{' '}
-                  outstanding
-                </p>
-                <span
-                  className={cn('text-[12px] font-medium', GRADIENT_TEXT_CLASS)}
-                >
-                  {outstandingCustomerCount}{' '}
-                  {outstandingCustomerCount === 1 ? 'customer' : 'customers'}{' '}
-                  owing you
-                </span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-[#A6ADB7]" />
-            </div>
-          </Link>
+        {merchantDataEnabled && (
+          <MerchantQuickActionsList
+            onNavigate={closeDrawer}
+            className="mb-3"
+          />
         )}
 
         <div className="space-y-3">

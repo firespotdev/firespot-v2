@@ -1,6 +1,7 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Plus,
@@ -43,8 +44,24 @@ function comingSoon() {
 }
 
 function HomePageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const hasOpenedBusinessIntro = useRef(false)
   const user = useAuthStore((state) => state.user)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+
+  useEffect(() => {
+    if (
+      searchParams.get('businessIntro') !== '1' ||
+      hasOpenedBusinessIntro.current
+    ) {
+      return
+    }
+
+    hasOpenedBusinessIntro.current = true
+    openDrawer({ type: 'business-intro' })
+    router.replace('/home', { scroll: false })
+  }, [openDrawer, router, searchParams])
 
   // Auth + onboarding are enforced by the (personal) route-group layout.
 

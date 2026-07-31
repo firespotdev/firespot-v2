@@ -37,6 +37,7 @@ export type DrawerContentType =
   | 'plan-checkout'
   | 'cancel-plan'
   | 'sale-items'
+  | 'business-intro'
 
 
 

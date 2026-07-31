@@ -21,7 +21,6 @@ import {
   DATE_RANGE_LABELS,
   type DateRangePreset,
 } from '@/services/insights'
-import { ArrowUpRightIcon } from '@phosphor-icons/react'
 
 interface MerchantInfo {
   profilePhotoUrl?: string
@@ -36,24 +35,12 @@ interface MerchantInfoStatProps {
   onCameraClick?: () => void
   isUploadingPhoto?: boolean
   qrKitStatus?: React.ReactNode
-  /**
-   * Plan/subscription trouble banner. Rendered above the "Recent sales"
-   * banner, since a payment problem outranks unconfirmed records.
-   */
-  planStatusBanner?: React.ReactNode
-  /**
-   * "Set up Shop" onboarding nudge. Shares the banner slot with — and takes
-   * precedence over — the "Recent sales" banner (see `suppressRecentSales`).
-   */
-  shopSetupBanner?: React.ReactNode
-  /** Hides the "Recent sales" banner while the shop-setup nudge is showing. */
-  suppressRecentSales?: boolean
+  quickActions?: React.ReactNode
   todaySalesAmount?: number
   collectedAmount?: number
   recordedAmount?: number
   salesCount?: number
   ordersCount?: number
-  unconfirmedCount?: number
   owingCount?: number
   isAmountHidden?: boolean
   onToggleVisibility?: () => void
@@ -75,13 +62,10 @@ export function MerchantInfoStat({
   onCameraClick,
   isUploadingPhoto = false,
   qrKitStatus,
-  planStatusBanner,
-  shopSetupBanner,
-  suppressRecentSales = false,
+  quickActions,
   todaySalesAmount = 0,
   collectedAmount = 0,
   recordedAmount = 0,
-  unconfirmedCount = 0,
   isAmountHidden = false,
   onToggleVisibility,
   currentFilter,
@@ -109,7 +93,7 @@ export function MerchantInfoStat({
         const start = format(new Date(currentFilter.startDate), 'MMM d')
         const end = format(new Date(currentFilter.endDate), 'MMM d')
         return `${start} - ${end}`
-      } catch (e) {
+      } catch {
         return 'Custom'
       }
     }
@@ -187,35 +171,7 @@ export function MerchantInfoStat({
         )}
       </div>
 
-      {/* Payment trouble outranks unconfirmed records, so it sits above. */}
-      {planStatusBanner}
-
-      {/* Shop-setup nudge shares this slot and outranks "Recent sales". */}
-      {shopSetupBanner}
-
-      {unconfirmedCount > 0 && !suppressRecentSales && (
-        <Link
-          href="/recents"
-          className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-[12px] shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
-        >
-          <Image
-            src="/icons/history_brown.svg"
-            alt="Recent"
-            width={24}
-            height={24}
-          />
-          <div className="flex-1">
-            <p className="leading-none text-left text-base font-medium text-[#6B4200]">
-              Recent sales
-            </p>
-            <span className="text-[13px] text-[#BB8123] font-medium">
-              {unconfirmedCount} unconfirmed record
-              {unconfirmedCount === 1 ? '' : 's'}
-            </span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
-        </Link>
-      )}
+      {quickActions}
 
       <div className="border-2 border-[#000000]/8 bg-white rounded-[12px] w-full">
         <div className="px-4 py-3 flex justify-between items-center border-b-2 border-[#F4F6F8]">

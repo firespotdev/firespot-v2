@@ -69,7 +69,7 @@ export function AccountSwitchDrawer({
   const handleAddShop = () => {
     if (!isMerchant) {
       closeDrawer()
-      router.push('/onboarding/business')
+      router.push('/home?businessIntro=1')
       return
     }
     showNotificationToast({ message: 'Coming soon', duration: 2000 })
@@ -157,9 +157,7 @@ export function AccountSwitchDrawer({
               <span className="inline-flex items-center gap-1">
                 {businessName.toUpperCase()}
                 {/* Effective level: null while lapsed, so the badge hides. */}
-                <VerifiedBadge
-                  level={(profile as any)?.effectiveVerificationLevel}
-                />
+                <VerifiedBadge level={profile?.effectiveVerificationLevel} />
               </span>
             }
             subtitle="Owner · Main address"

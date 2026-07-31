@@ -93,6 +93,22 @@ export class MerchantPlansService {
     const user = await this.userModel.findById(merchantId).exec()
     if (user) await this.materializePendingChange(user)
     const tier = user?.planTier as PlanTier | undefined
+    const planIsLapsed = user ? isLapsed(user) : false
+    const planIsInGracePeriod = user ? isInGracePeriod(user) : false
+
+    if (user && (planIsLapsed || planIsInGracePeriod)) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'merchant_plan_warning',
+          merchantId: String(user._id),
+          warningType: planIsLapsed ? 'lapsed' : 'grace_period',
+          planTier: user.planTier || null,
+          effectiveTier: getEffectiveTier(user) || null,
+          planStatus: user.planStatus || 'none',
+          planGraceUntil: user.planGraceUntil?.toISOString?.() || null,
+        }),
+      )
+    }
 
     // Drives PRO MAX's per-store total on the checkout (at least one).
     const activeStoreCount = Math.max(
@@ -127,8 +143,8 @@ export class MerchantPlansService {
           : null,
         // What the merchant can actually use now (LITE once a lapse is final)
         effectiveTier: user ? getEffectiveTier(user) || null : null,
-        isLapsed: user ? isLapsed(user) : false,
-        isInGracePeriod: user ? isInGracePeriod(user) : false,
+        isLapsed: planIsLapsed,
+        isInGracePeriod: planIsInGracePeriod,
         // Collecting requires a plan AND completed KYC; recording never does.
         ...(user
           ? (() => {

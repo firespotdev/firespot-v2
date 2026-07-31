@@ -69,12 +69,13 @@ function OnboardingPageContent() {
       {
         onSuccess: () => {
           // Deep links (e.g. a scanned payment QR) take priority; otherwise
-          // show the full-screen business intro once.
-          router.replace(redirectPath || '/onboarding/business')
+          // show the business intro over the actual personal home once.
+          router.replace(redirectPath || '/home?businessIntro=1')
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
+          const response = err as { response?: { data?: { message?: string } } }
           const message =
-            err?.response?.data?.message ||
+            response.response?.data?.message ||
             'Failed to save your name. Please try again.'
           setError(message)
         },
