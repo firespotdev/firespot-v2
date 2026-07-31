@@ -59,22 +59,10 @@ export function SendReminderDrawer({
     )
   }, [customerRelationship, sale])
 
-  const payLink = useMemo(() => {
-    if (!sale.serialNumber || !sale._id || typeof window === 'undefined') {
-      return null
-    }
-    const baseUrl = (
-      process.env.NEXT_PUBLIC_APP_URL || window.location.origin
-    ).replace(/\/$/, '')
-    return `${baseUrl}/pay/${sale.serialNumber}?saleId=${sale._id}`
-  }, [sale._id, sale.serialNumber])
-
   const merchantName = profile?.businessName?.trim() || 'your merchant'
   const initialDraft = `Hi ${customerName} 👋 Just a gentle reminder of your ₦${formatCurrency(
     balanceOwed,
-  )} balance at ${merchantName}. Whenever you're ready${
-    payLink ? `, you can pay here: ${payLink}` : '.'
-  }`
+  )} balance at ${merchantName}. Whenever you're ready, please make the payment.`
 
   const [editedDraft, setEditedDraft] = useState<string | null>(null)
   const draftText = editedDraft ?? initialDraft

@@ -1227,9 +1227,17 @@ export class SalesService {
       shouldSave = true
     }
 
+    const isNewExplicitDeclaration = !sale.customerMarkedPaidExplicitly
     if (!sale.customerMarkedPaidAt) {
       sale.customerMarkedPaidAt = new Date()
       shouldSave = true
+    }
+    if (isNewExplicitDeclaration) {
+      sale.customerMarkedPaidExplicitly = true
+      shouldSave = true
+    }
+
+    if (isNewExplicitDeclaration) {
       await sale.save()
       this.emitSaleEvent('payment.declared', sale)
     } else if (shouldSave) {
@@ -1361,7 +1369,6 @@ export class SalesService {
     const upload = await this.cloudinaryService.uploadDocument(fileBuffer)
     sale.receiptUrl = upload.url
     sale.receiptPublicId = upload.publicId
-    sale.customerMarkedPaidAt ||= new Date()
     const savedSale = await sale.save()
 
     this.emitSaleEvent('receipt.uploaded', savedSale)
@@ -1384,6 +1391,12 @@ export class SalesService {
     }
     sale.receiptUrl = undefined
     sale.receiptPublicId = undefined
+    if (!sale.customerMarkedPaidExplicitly) {
+      // Older receipt uploads also populated customerMarkedPaidAt. Clear that
+      // legacy synthetic declaration when the receipt is removed, while
+      // preserving a genuine tap on "I have paid".
+      sale.customerMarkedPaidAt = undefined
+    }
     const savedSale = await sale.save()
 
     this.emitSaleEvent('receipt.deleted', savedSale)

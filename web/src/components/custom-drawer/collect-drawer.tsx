@@ -327,10 +327,7 @@ export function CollectPaymentDrawer({
           {/* Bottom Confirmation Pill */}
           <div className="bg-white shadow-[0px_4px_16px_rgba(0,0,0,0.06)] border border-[#F1F1F1] rounded-t-2xl p-4 flex justify-between items-center w-full">
             <div className="flex items-center gap-3">
-              <MerchantAvatar
-                size={36}
-                profilePhotoUrl={customerPhotoUrl}
-              />
+              <MerchantAvatar size={36} profilePhotoUrl={customerPhotoUrl} />
               <div className="text-left">
                 <h4 className="text-[13px] font-bold text-black">
                   New payment from customer
@@ -570,7 +567,7 @@ export function CollectPaymentDrawer({
                 </div>
               )}
               {!sale.receiptUrl && sale.customerMarkedPaidAt && (
-                <div className="w-full rounded-[12px] border-[3px] border-[#24C1664D] px-3 text-left shadow-[0px_4px_8px_0px_#0000000A]">
+                <div className="w-full rounded-[12px] border-[3px] border-[#24C1664D] p-3 text-left shadow-[0px_4px_8px_0px_#0000000A]">
                   <h4 className="text-sm font-bold text-black">
                     Customer marked this payment as paid
                   </h4>

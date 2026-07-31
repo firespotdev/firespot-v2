@@ -115,6 +115,9 @@ export class Sale extends Document {
   @Prop()
   customerMarkedPaidAt?: Date;
 
+  @Prop({ default: false })
+  customerMarkedPaidExplicitly?: boolean;
+
   @Prop({ enum: ['merchant', 'customer'] })
   cancelledBy?: 'merchant' | 'customer';
 

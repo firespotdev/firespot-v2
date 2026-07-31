@@ -335,11 +335,128 @@ describe("SalesService amount invariants", () => {
       expect(sale).toEqual(
         expect.objectContaining({
           customerFingerprint: "customer-fingerprint",
-          customerMarkedPaidAt: expect.any(Date),
           receiptUrl: "https://example.com/receipt.png",
           receiptPublicId: "receipt-public-id",
         }),
       );
+      expect((sale as any).customerMarkedPaidAt).toBeUndefined();
+      expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("records an explicit I-have-paid declaration separately from a receipt", async () => {
+      const saleId = "507f1f77bcf86cd799439013";
+      const sale = {
+        _id: { toString: () => saleId },
+        merchantId: {
+          toString: () => "507f1f77bcf86cd799439012",
+        },
+        serialNumber: "FS-QR-1",
+        status: "PENDING",
+        save: jest.fn(),
+      };
+      sale.save.mockImplementation(async () => sale);
+      const service = createService({
+        findOne: jest.fn().mockResolvedValue(sale),
+      });
+
+      await expect(
+        service.markSalePaidByCustomer(
+          saleId,
+          "FS-QR-1",
+          "customer-fingerprint",
+        ),
+      ).resolves.toBe(sale);
+
+      expect(sale).toEqual(
+        expect.objectContaining({
+          customerFingerprint: "customer-fingerprint",
+          customerMarkedPaidAt: expect.any(Date),
+          customerMarkedPaidExplicitly: true,
+        }),
+      );
+      expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("removes legacy receipt payment evidence when the receipt is deleted", async () => {
+      const saleId = "507f1f77bcf86cd799439013";
+      const sale = {
+        _id: { toString: () => saleId },
+        merchantId: {
+          toString: () => "507f1f77bcf86cd799439012",
+        },
+        serialNumber: "FS-QR-1",
+        status: "PENDING",
+        customerFingerprint: "customer-fingerprint",
+        customerMarkedPaidAt: new Date(),
+        customerMarkedPaidExplicitly: false,
+        receiptUrl: "https://example.com/receipt.png",
+        receiptPublicId: "receipt-public-id",
+        save: jest.fn(),
+      };
+      sale.save.mockImplementation(async () => sale);
+      const cloudinaryService = {
+        deleteImage: jest.fn().mockResolvedValue(undefined),
+      };
+      const service = createService(
+        { findOne: jest.fn().mockResolvedValue(sale) },
+        {},
+        {},
+        {},
+        {},
+        cloudinaryService,
+      );
+
+      await expect(
+        service.deleteReceipt(
+          saleId,
+          "FS-QR-1",
+          "customer-fingerprint",
+        ),
+      ).resolves.toBe(sale);
+
+      expect(cloudinaryService.deleteImage).toHaveBeenCalledWith(
+        "receipt-public-id",
+      );
+      expect(sale.receiptUrl).toBeUndefined();
+      expect(sale.receiptPublicId).toBeUndefined();
+      expect(sale.customerMarkedPaidAt).toBeUndefined();
+      expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    it("preserves an explicit payment declaration when its receipt is deleted", async () => {
+      const saleId = "507f1f77bcf86cd799439013";
+      const markedPaidAt = new Date();
+      const sale = {
+        _id: { toString: () => saleId },
+        merchantId: {
+          toString: () => "507f1f77bcf86cd799439012",
+        },
+        serialNumber: "FS-QR-1",
+        status: "PENDING",
+        customerFingerprint: "customer-fingerprint",
+        customerMarkedPaidAt: markedPaidAt,
+        customerMarkedPaidExplicitly: true,
+        receiptUrl: "https://example.com/receipt.png",
+        receiptPublicId: "receipt-public-id",
+        save: jest.fn(),
+      };
+      sale.save.mockImplementation(async () => sale);
+      const service = createService(
+        { findOne: jest.fn().mockResolvedValue(sale) },
+        {},
+        {},
+        {},
+        {},
+        { deleteImage: jest.fn().mockResolvedValue(undefined) },
+      );
+
+      await service.deleteReceipt(
+        saleId,
+        "FS-QR-1",
+        "customer-fingerprint",
+      );
+
+      expect(sale.customerMarkedPaidAt).toBe(markedPaidAt);
       expect(sale.save).toHaveBeenCalledTimes(1);
     });
 
