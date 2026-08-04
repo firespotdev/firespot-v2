@@ -643,7 +643,7 @@ describe("SalesService amount invariants", () => {
       updatedSale.customerId = {
         toString: () => customerId,
         name: "Ada Customer",
-      };
+      } as any;
       const saleModel = {
         findOne: jest.fn().mockReturnValue({
           exec: jest.fn().mockResolvedValue(primarySale),

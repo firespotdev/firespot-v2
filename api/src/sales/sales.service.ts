@@ -1795,8 +1795,7 @@ export class SalesService {
 
     const updatedPrimarySale = primarySale
       ? updatedSales.find(
-          (sale) =>
-            sale._id?.toString() === primarySale._id?.toString(),
+          (sale) => sale._id?.toString() === primarySale._id?.toString(),
         )
       : undefined
     // `primarySale` was fetched before the waterfall updates and is therefore

@@ -67,6 +67,9 @@ export class Sale extends Document {
   isArchived?: boolean;
 
   @Prop()
+  archiveReason?: string;
+
+  @Prop()
   isPaidInFull?: boolean;
 
   @Prop()
