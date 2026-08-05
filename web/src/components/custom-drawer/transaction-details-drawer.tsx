@@ -277,7 +277,10 @@ const TransactionDetailsDrawer = ({
                     return
                   }
                   closeDrawer()
-                  router.push(`/record-sale?id=${sale._id}&edit=true`)
+                  openDrawer({
+                    type: 'record-sale',
+                    props: { editId: sale._id, isEditMode: true },
+                  })
                 }}
               >
                 {isOutstanding ? <Bell size={16} /> : <PencilLine size={16} />}

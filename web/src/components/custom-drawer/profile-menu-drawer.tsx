@@ -80,7 +80,12 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
       {
         label: 'New sale',
         icon: <ReceiveSquare size={24} />,
-        href: '/record-sale',
+        // Recording a sale is a bottom sheet, not a route.
+        onClick: () => {
+          const { closeDrawer, openDrawer } = useDrawerStore.getState()
+          closeDrawer('profile-menu')
+          openDrawer({ type: 'record-sale' })
+        },
       },
       {
         label: 'New expense',

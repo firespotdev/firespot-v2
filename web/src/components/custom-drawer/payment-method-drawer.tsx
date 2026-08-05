@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useDrawerStore } from '@/services/drawer'
-import { AlertCircle, ArrowLeft, Check } from 'lucide-react'
+import { AlertCircle, Check, X } from 'lucide-react'
 
 interface Props {
   onSubmit?: (method: string) => void
@@ -36,20 +36,17 @@ export function PaymentMethodDrawer({
   return (
     <div className="w-full flex flex-col font-satoshi relative pb-6 overflow-y-auto">
       <div className="flex items-center justify-between mt-2 mb-7 px-4">
-        <ArrowLeft
-          onClick={closeDrawer}
-          color="#000000"
-          strokeWidth={2}
-          className="w-5.5 h-5.5 cursor-pointer"
-        />
+        <span className="w-5.5 h-5.5 shrink-0" aria-hidden="true" />
         <h2 className="text-[16px] font-bold text-black flex-1 text-center">
           How were you paid
         </h2>
         <button
-          onClick={() => handleSelect('Other')}
-          className="text-[13px] font-medium text-black border-b border-black shrink-0 pb-px mr-1 hover:opacity-80 cursor-pointer"
+          type="button"
+          onClick={() => closeDrawer()}
+          aria-label="Close"
+          className="w-5.5 h-5.5 shrink-0 flex items-center justify-center cursor-pointer"
         >
-          Skip
+          <X className="w-5.5 h-5.5 text-black" strokeWidth={2} />
         </button>
       </div>
 

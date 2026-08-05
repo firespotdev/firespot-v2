@@ -29,8 +29,26 @@ const RecordSuccessDrawer = ({
   onRecordAnother,
 }: RecordSuccessDrawerProps) => {
   const router = useRouter()
-  const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
+  const { openDrawer, closeDrawer, closeAllDrawers, closeDrawersAbove } =
+    useDrawerStore()
   const { data: statsData, isLoading: isLoadingStats } = useSalesStats()
+
+  // The record-sale sheet owns the callbacks handed to this drawer (setStep,
+  // onRecordAnother), so collapse back onto it rather than closing everything.
+  // Re-open it if this drawer was reached some other way.
+  const returnToRecordSale = () => {
+    const isSheetMounted = useDrawerStore
+      .getState()
+      .configs.some((config) => config.type === 'record-sale')
+
+    if (isSheetMounted) {
+      closeDrawersAbove('record-sale')
+      return
+    }
+
+    closeAllDrawers()
+    openDrawer({ type: 'record-sale' })
+  }
 
   const todaySalesAmount = statsData?.todaySalesAmount ?? 0
 
@@ -118,8 +136,7 @@ const RecordSuccessDrawer = ({
                   setDescription('')
                   setStep('input')
                 }
-                closeAllDrawers()
-                router.push('/record-sale')
+                returnToRecordSale()
               }}
               className="flex items-center justify-center w-full bg-black text-white font-bold h-12 rounded-full hover:bg-black cursor-pointer"
             >
@@ -148,7 +165,7 @@ const RecordSuccessDrawer = ({
             onClick={() => {
               if (!(successDetails?.hasBeenEdited || successDetails?.isEdit)) {
                 setStep('input')
-                closeAllDrawers()
+                returnToRecordSale()
               }
             }}
             disabled={successDetails?.hasBeenEdited || successDetails?.isEdit}
@@ -362,7 +379,7 @@ const RecordSuccessDrawer = ({
                 setDescription('')
                 setStep('input')
               }
-              closeAllDrawers()
+              returnToRecordSale()
             }}
             className="w-full bg-black text-white h-12 rounded-full font-bold text-[16px] hover:bg-black/90 transition-all active:scale-[0.98]"
           >

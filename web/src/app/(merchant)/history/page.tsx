@@ -385,15 +385,16 @@ function HistoryContent() {
               You would see your sales history here when you start recording
               payments with Firespot Lite.
             </p>
-            <Link
-              href="/record-sale"
+            <button
+              type="button"
+              onClick={() => openDrawer({ type: 'record-sale' })}
               className="bg-black text-white h-9 rounded-full px-4 flex items-center gap-1.5 w-fit"
             >
               <Plus size={14} strokeWidth={2} className="-mt-[1%]" />
               <span className="text-[10px] font-bold leading-none">
                 NEW SALE
               </span>
-            </Link>
+            </button>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto pb-2 no-scrollbar">

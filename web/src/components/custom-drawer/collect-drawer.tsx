@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   X,
   ChevronRight,
@@ -34,7 +33,6 @@ export function CollectPaymentDrawer({
   sale: initialSale,
   onRecordConfirm,
 }: Props) {
-  const router = useRouter()
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const recordSaleMutation = useRecordSale()
@@ -228,7 +226,10 @@ export function CollectPaymentDrawer({
     if (!sale?._id) return
 
     closeAllDrawers()
-    router.push(`/record-sale?confirm=${encodeURIComponent(sale._id)}`)
+    useDrawerStore.getState().openDrawer({
+      type: 'record-sale',
+      props: { confirmId: sale._id },
+    })
   }
 
   const handleBackStep = () => {

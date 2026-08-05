@@ -147,8 +147,13 @@ export function TransactionOptionsDrawer({
             }
             title="Edit sale"
             disabled={!isEditable}
-            href={`/record-sale?id=${sale._id}&edit=true`}
-            onClick={closeDrawer}
+            onClick={() => {
+              closeDrawer()
+              openDrawer({
+                type: 'record-sale',
+                props: { editId: sale._id, isEditMode: true },
+              })
+            }}
           />
           {isPaidCollected ? (
             <ActionListItem

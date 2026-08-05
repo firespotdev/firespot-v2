@@ -29,6 +29,10 @@ const NAV_ITEMS = [
   { key: 'chat', Icon: ChatsCircleIcon, href: '#', label: 'Chat' },
 ] as const
 
+// The nav only shows on the pages it can navigate to. The scan target ('/')
+// lives outside the (personal) group, which never renders this nav.
+const VISIBLE_ROUTES = ['/home', '/search', '/activity']
+
 type BottomNavVariant = 'light' | 'dark'
 
 const VARIANTS: Record<
@@ -69,8 +73,12 @@ export function BottomNav({ variant = 'light' }: BottomNavProps) {
   const pathname = usePathname()
   const styles = VARIANTS[variant]
 
+  if (!VISIBLE_ROUTES.includes(pathname)) {
+    return null
+  }
+
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[420px] z-50">
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[420px] z-40">
       <div
         className={`glass-border rounded-full h-12 flex items-center p-1 justify-between ${styles.container}`}
       >

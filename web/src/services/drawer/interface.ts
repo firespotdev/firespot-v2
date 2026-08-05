@@ -38,6 +38,7 @@ export type DrawerContentType =
   | 'cancel-plan'
   | 'sale-items'
   | 'business-intro'
+  | 'record-sale'
 
 
 
@@ -55,5 +56,11 @@ export interface DrawerState {
   configs: DrawerConfig[]
   openDrawer: (config: DrawerConfig) => void
   closeDrawer: (type?: DrawerContentType | unknown) => void
+  /**
+   * Collapse the stack back down to `type`, leaving it mounted. Used by
+   * surfaces that own a flow of nested drawers and hand live callbacks to
+   * them — closing everything would unmount the owner mid-flow.
+   */
+  closeDrawersAbove: (type: DrawerContentType) => void
   closeAllDrawers: () => void
 }

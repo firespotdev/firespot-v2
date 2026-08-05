@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import {
   Drawer as DrawerPrimitive,
@@ -9,6 +10,7 @@ import {
 } from '@/components/ui/drawer'
 import {
   useDrawerStore,
+  type DrawerConfig,
   type DrawerContentType,
   type DrawerDirection,
 } from '@/services/drawer'
@@ -50,6 +52,7 @@ import { SaleItemsDrawer } from './sale-items-drawer'
 import { DayTimeEditorDrawer } from './day-time-editor-drawer'
 import { ActiveHoursBookingDrawer } from './active-hours-booking-drawer'
 import { BusinessIntroDrawer } from './business-intro-drawer'
+import { RecordSaleDrawer } from './record-sale-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -63,6 +66,10 @@ const DRAWER_CONFIG: Record<
     noHeader?: boolean
     hideHandle?: boolean
     dismissible?: boolean
+    /** Extra classes for DrawerContent, e.g. an explicit sheet height. */
+    contentClassName?: string
+    /** Play vaul's slide-out before unmounting. See CustomDrawer. */
+    animateOnClose?: boolean
   }
 > = {
   'bank-accounts': {
@@ -215,6 +222,21 @@ const DRAWER_CONFIG: Record<
     fullScreen: true,
     dismissible: true,
   },
+  'record-sale': {
+    title: '',
+    Content: RecordSaleDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: true,
+    hideHandle: true,
+    // The keypad and product list must not be read as swipe-to-dismiss.
+    dismissible: false,
+    // Full height, squared off — it covers the screen rather than sitting on it.
+    contentClassName:
+      'h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
+    // The sheet should visibly slide back down when dismissed.
+    animateOnClose: true,
+  },
   'sale-items': {
     title: '',
     Content: SaleItemsDrawer,
@@ -316,8 +338,30 @@ const DRAWER_CONFIG: Record<
   },
 }
 
+/** Matches vaul's default close transition. */
+const EXIT_ANIMATION_MS = 500
+
 export function CustomDrawer() {
-  const { configs, closeDrawer } = useDrawerStore()
+  const { configs } = useDrawerStore()
+  // Drawers normally unmount the moment their config leaves the stack, which
+  // skips vaul's exit transition. Types that opt into `animateOnClose` are held
+  // open={false} for the duration of that transition first. Tracked by config
+  // identity so re-opening the same type mid-animation is not then closed by
+  // the pending timeout.
+  const [exitingConfig, setExitingConfig] = useState<DrawerConfig | null>(null)
+
+  useEffect(() => {
+    if (!exitingConfig) return
+    const timeout = window.setTimeout(() => {
+      const store = useDrawerStore.getState()
+      if (store.configs.includes(exitingConfig)) {
+        store.closeDrawer(exitingConfig.type)
+      }
+      setExitingConfig(null)
+    }, EXIT_ANIMATION_MS)
+
+    return () => window.clearTimeout(timeout)
+  }, [exitingConfig])
 
   if (configs.length === 0) return null
 
@@ -337,11 +381,18 @@ export function CustomDrawer() {
       noHeader,
       hideHandle,
       dismissible = false,
+      contentClassName,
+      animateOnClose,
     } = drawerConfig
     const drawerDirection = config.direction || direction || 'bottom'
+    const isOpen = exitingConfig !== config
 
     const handleClose = () => {
-      closeDrawer(config.type)
+      if (animateOnClose) {
+        setExitingConfig(config)
+        return
+      }
+      useDrawerStore.getState().closeDrawer(config.type)
     }
 
     const nextDrawer = renderDrawer(index + 1)
@@ -354,7 +405,7 @@ export function CustomDrawer() {
       return (
         <DrawerPrimitive
           key={`${config.type}-${index}`}
-          open={true}
+          open={isOpen}
           onOpenChange={(open) => {
             if (!open && index === configs.length - 1) {
               handleClose()
@@ -381,7 +432,7 @@ export function CustomDrawer() {
       return (
         <DrawerPrimitive
           key={`${config.type}-${index}`}
-          open={true}
+          open={isOpen}
           onOpenChange={(open) => {
             if (!open && index === configs.length - 1) {
               handleClose()
@@ -394,7 +445,7 @@ export function CustomDrawer() {
         >
           <DrawerContent
             hideHandle={hideHandle}
-            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' || config.type === 'business-intro' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px]`}
+            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' || config.type === 'business-intro' || config.type === 'record-sale' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px] ${contentClassName || ''}`}
           >
             {noHeader ? (
               <>
@@ -453,7 +504,7 @@ export function CustomDrawer() {
     return (
       <DrawerPrimitive
         key={`${config.type}-${index}`}
-        open={true}
+        open={isOpen}
         onOpenChange={(open) => {
           if (!open && index === configs.length - 1) {
             handleClose()

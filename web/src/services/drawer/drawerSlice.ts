@@ -34,6 +34,17 @@ export const useDrawerStore = create<DrawerState>((set) => ({
         configs: newConfigs,
       }
     }),
+  closeDrawersAbove: (type) =>
+    set((state) => {
+      const index = state.configs.findIndex((c) => c.type === type)
+      if (index === -1) return state
+      const configs = state.configs.slice(0, index + 1)
+      return {
+        isOpen: true,
+        config: configs[configs.length - 1],
+        configs,
+      }
+    }),
   closeAllDrawers: () =>
     set({
       isOpen: false,

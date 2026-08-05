@@ -211,7 +211,7 @@ export default function RecentsPage() {
 
   return (
     <div className="min-h-dvh bg-[#F4F6F8] font-satoshi">
-      <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-3 pb-8">
+      <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-3 pb-28">
         <header className="flex items-center py-3.5">
           <Link
             href="/profile"
@@ -297,20 +297,22 @@ export default function RecentsPage() {
         />
 
         <section className="flex flex-1 flex-col">
-          <div>
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-[14px] font-bold text-black">
-                {activeTab === 'unconfirmed'
-                  ? 'Waiting for confirmation'
-                  : 'Confirmed sales'}
-              </h2>
+          {!isLoading && activeSales.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-[14px] font-bold text-black">
+                  {activeTab === 'unconfirmed'
+                    ? 'Waiting for confirmation'
+                    : 'Confirmed sales'}
+                </h2>
+              </div>
+              {activeTab === 'unconfirmed' && (
+                <p className="mb-3 mt-1 text-xs font-medium text-[#00000066]">
+                  Swipe right to confirm, swipe left to archive.
+                </p>
+              )}
             </div>
-            {activeTab === 'unconfirmed' && (
-              <p className="mb-3 mt-1 text-xs font-medium text-[#00000066]">
-                Swipe right to confirm, swipe left to archive.
-              </p>
-            )}
-          </div>
+          )}
 
           {isLoading ? (
             <div className="flex flex-1 items-center justify-center py-16">
@@ -376,13 +378,14 @@ export default function RecentsPage() {
                 details={emptyState.details}
                 cta={
                   <div className="mt-6 flex items-center justify-center gap-3">
-                    <Link
-                      href="/record-sale"
+                    <button
+                      type="button"
+                      onClick={() => openDrawer({ type: 'record-sale' })}
                       className="flex h-9 items-center gap-2 rounded-full bg-black px-4 text-[10px] font-bold tracking-[1px] text-white"
                     >
                       <Plus size={18} />
                       NEW SALE
-                    </Link>
+                    </button>
                     <button
                       type="button"
                       onClick={handleShareProfile}

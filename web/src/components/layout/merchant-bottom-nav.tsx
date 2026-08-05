@@ -10,6 +10,7 @@ import {
   StorefrontIcon,
 } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { useDrawerStore } from '@/services/drawer'
 
 interface MerchantNavItem {
   key: 'shop' | 'search' | 'new-sale' | 'recents' | 'messages'
@@ -21,7 +22,8 @@ interface MerchantNavItem {
 const ITEMS: MerchantNavItem[] = [
   { key: 'shop', label: 'Shop', href: '/profile', Icon: StorefrontIcon },
   { key: 'search', label: 'Search', Icon: MagnifyingGlassIcon },
-  { key: 'new-sale', label: 'New sale', href: '/record-sale', Icon: PlusIcon },
+  // Recording a sale opens a bottom sheet over the current page.
+  { key: 'new-sale', label: 'New sale', Icon: PlusIcon },
   {
     key: 'recents',
     label: 'Recents',
@@ -31,21 +33,15 @@ const ITEMS: MerchantNavItem[] = [
   { key: 'messages', label: 'Messages', Icon: ChatsCircleIcon },
 ]
 
-const HIDDEN_ROUTE_PREFIXES = [
-  '/record-sale',
-  '/record-repayment',
-  '/verify',
-  '/plans',
-  '/shop-setup',
-  '/settings/',
-  '/bank-accounts/',
-  '/qr-kits/',
-]
+// The nav only shows on the pages it can navigate to. Add Search and Messages
+// here once those destinations exist.
+const VISIBLE_ROUTES = ['/profile', '/recents']
 
 export function MerchantBottomNav() {
   const pathname = usePathname()
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
 
-  if (HIDDEN_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  if (!VISIBLE_ROUTES.includes(pathname)) {
     return null
   }
 
@@ -83,6 +79,11 @@ export function MerchantBottomNav() {
                 key={key}
                 type="button"
                 aria-label={label}
+                onClick={
+                  isPrimary
+                    ? () => openDrawer({ type: 'record-sale' })
+                    : undefined
+                }
                 className={className}
               >
                 {icon}

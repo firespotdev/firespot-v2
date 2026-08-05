@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSocket } from '@/hooks/useSocket'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -32,7 +31,6 @@ function formatPaymentTime(timestamp?: string | Date): string {
 
 export function GlobalSocket() {
   const { socket } = useSocket()
-  const router = useRouter()
   const queryClient = useQueryClient()
   const { isAuthenticated, user } = useAuthStore()
   const [soundEnabled] = usePreference('soundEnabled', true)
@@ -137,7 +135,11 @@ export function GlobalSocket() {
         time: formatPaymentTime((sale as any).createdAt),
         // Checkmark takes the merchant into the confirm flow (prefilled amount
         // + description, records onto this existing sale).
-        onView: () => router.push(`/record-sale?confirm=${sale._id}`),
+        onView: () =>
+          useDrawerStore.getState().openDrawer({
+            type: 'record-sale',
+            props: { confirmId: sale._id },
+          }),
       })
 
       invalidateSales()
@@ -193,7 +195,7 @@ export function GlobalSocket() {
       socket.off('payment.declared', handlePaymentDeclared)
       socket.off('sale.cancelled', handleSaleCancelled)
     }
-  }, [socket, queryClient, router, user?.role])
+  }, [socket, queryClient, user?.role])
 
   return null
 }

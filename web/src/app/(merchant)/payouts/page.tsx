@@ -68,7 +68,7 @@ export default function PayoutsPage() {
           </button>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center px-5 pb-28 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center px-5 text-center">
           <span
             className="text-[64px] leading-none"
             role="img"
