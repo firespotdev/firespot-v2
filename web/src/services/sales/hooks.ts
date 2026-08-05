@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   SalesApi,
   CreatePendingSalePayload,
@@ -30,6 +35,32 @@ export const useSales = (
   return useQuery({
     queryKey: ['sales', params],
     queryFn: () => SalesApi.getSales(params),
+  });
+};
+
+const INFINITE_SALES_PAGE_SIZE = 20;
+
+/**
+ * Page-by-page sales for endlessly scrolling lists. The key is prefixed with
+ * 'sales' so the existing invalidateQueries({ queryKey: ['sales'] }) calls
+ * refresh it alongside the plain useSales queries.
+ */
+export const useInfiniteSales = (
+  params?: Record<string, string | number | boolean | undefined>,
+) => {
+  return useInfiniteQuery({
+    queryKey: ['sales', 'infinite', params],
+    queryFn: ({ pageParam }) =>
+      SalesApi.getSales({
+        ...params,
+        page: String(pageParam),
+        limit: String(INFINITE_SALES_PAGE_SIZE),
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.page < lastPage.meta.lastPage
+        ? lastPage.meta.page + 1
+        : undefined,
   });
 };
 

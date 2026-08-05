@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 import { useDrawerStore } from '@/services/drawer'
 
 interface MerchantNavItem {
-  key: 'shop' | 'search' | 'new-sale' | 'recents' | 'messages'
+  key: 'shop' | 'search' | 'new-sale' | 'history' | 'messages'
   label: string
   href?: string
   Icon: typeof StorefrontIcon
@@ -25,9 +25,9 @@ const ITEMS: MerchantNavItem[] = [
   // Recording a sale opens a bottom sheet over the current page.
   { key: 'new-sale', label: 'New sale', Icon: PlusIcon },
   {
-    key: 'recents',
-    label: 'Recents',
-    href: '/recents',
+    key: 'history',
+    label: 'History',
+    href: '/history',
     Icon: ClockCounterClockwiseIcon,
   },
   { key: 'messages', label: 'Messages', Icon: ChatsCircleIcon },
@@ -35,7 +35,7 @@ const ITEMS: MerchantNavItem[] = [
 
 // The nav only shows on the pages it can navigate to. Add Search and Messages
 // here once those destinations exist.
-const VISIBLE_ROUTES = ['/profile', '/recents']
+const VISIBLE_ROUTES = ['/profile', '/history']
 
 export function MerchantBottomNav() {
   const pathname = usePathname()

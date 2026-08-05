@@ -397,7 +397,7 @@ function HistoryContent() {
             </button>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pb-2 no-scrollbar">
+          <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
             <div className="space-y-8">
               {Object.keys(groupedSales).length === 0 ? (
                 <div className="text-center py-12">

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Check, Loader2, Plus, Share2, X } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -8,7 +8,7 @@ import {
   useArchiveAllPendingSales,
   useConfirmAllSales,
   useConfirmSale,
-  useSales,
+  useInfiniteSales,
   useSalesStats,
 } from '@/services/sales/hooks'
 import { SaleItem } from '@/components/sales/SaleItem'
@@ -38,14 +38,8 @@ export default function RecentsPage() {
   const { data: stats, isLoading: statsLoading } = useSalesStats({
     preset: 'today',
   })
-  const { data: pendingData, isLoading: pendingLoading } = useSales({
-    status: 'PENDING',
-    limit: '4',
-  })
-  const { data: confirmedData, isLoading: confirmedLoading } = useSales({
-    status: 'RECORDED',
-    limit: '4',
-  })
+  const pendingQuery = useInfiniteSales({ status: 'PENDING' })
+  const confirmedQuery = useInfiniteSales({ status: 'RECORDED' })
   const { data: profile } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
 
@@ -55,12 +49,17 @@ export default function RecentsPage() {
   const archiveSaleMutation = useArchiveSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
-  const pendingSales = pendingData?.data || []
-  const confirmedSales = confirmedData?.data || []
+  const flatten = (query: typeof pendingQuery) =>
+    query.data?.pages.flatMap((page) => page.data) || []
+
+  const pendingSales = flatten(pendingQuery)
+  const confirmedSales = flatten(confirmedQuery)
+
+  const activeQuery = activeTab === 'unconfirmed' ? pendingQuery : confirmedQuery
   const activeSales =
     activeTab === 'unconfirmed' ? pendingSales : confirmedSales
-  const isLoading =
-    activeTab === 'unconfirmed' ? pendingLoading : confirmedLoading
+  const isLoading = activeQuery.isLoading
+  const pendingLoading = pendingQuery.isLoading
   const metricLabel =
     activeTab === 'unconfirmed'
       ? 'Total unconfirmed sales'
@@ -84,6 +83,22 @@ export default function RecentsPage() {
 
     return () => window.clearTimeout(timeout)
   }, [showConfirmAllTooltip])
+
+  // Load the next page when the sentinel below the list scrolls into view.
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = activeQuery
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const node = sentinelRef.current
+    if (!node || !hasNextPage || isFetchingNextPage) return
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting) fetchNextPage()
+    })
+    observer.observe(node)
+
+    return () => observer.disconnect()
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, activeTab])
 
   const hasMutationInProgress =
     confirmAllSalesMutation.isPending ||
@@ -211,7 +226,7 @@ export default function RecentsPage() {
 
   return (
     <div className="min-h-dvh bg-[#F4F6F8] font-satoshi">
-      <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-3 pb-28">
+      <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-3 pb-8">
         <header className="flex items-center py-3.5">
           <Link
             href="/profile"
@@ -357,18 +372,18 @@ export default function RecentsPage() {
                   )}
                 />
               ))}
-              <Link
-                href={
-                  activeTab === 'unconfirmed'
-                    ? '/history?status=UNCONFIRMED'
-                    : '/history?mode=recorded'
-                }
-                className="block w-full py-3 text-center text-[14px] font-medium text-[#6B7280] transition-colors hover:text-black"
-              >
-                {activeTab === 'unconfirmed'
-                  ? 'View all unconfirmed sales'
-                  : 'View all recorded sales'}
-              </Link>
+
+              {/* Scroll sentinel — pulls the next page in as it comes into view. */}
+              {hasNextPage && (
+                <div
+                  ref={sentinelRef}
+                  className="flex items-center justify-center py-4"
+                >
+                  {isFetchingNextPage && (
+                    <Loader2 className="h-5 w-5 animate-spin text-[#9CA3AF]" />
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-1 items-center justify-center py-10">
