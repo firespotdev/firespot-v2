@@ -50,7 +50,7 @@ export function MerchantBottomNav() {
       aria-label="Merchant navigation"
       className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-[420px] -translate-x-1/2"
     >
-      <div className="glass-border flex h-12 items-center justify-between rounded-full bg-white/10 p-1 shadow-[0px_4px_12px_0px_#00000014]">
+      <div className="glass-border flex gap-0.5 h-12 items-center justify-between rounded-full bg-white/80 backdrop-blur-sm p-1 shadow-[0px_4px_12px_0px_#00000014]">
         {ITEMS.map(({ key, label, href, Icon }) => {
           const active =
             href === '/profile'
@@ -60,7 +60,7 @@ export function MerchantBottomNav() {
                 : false
           const isPrimary = key === 'new-sale'
           const className = cn(
-            'flex h-full min-w-[67px] items-center justify-center rounded-full',
+            'flex h-full min-w-[63px] items-center justify-center rounded-full',
             active && !isPrimary && 'bg-[#3333331A]',
             isPrimary && 'bg-black text-white',
           )

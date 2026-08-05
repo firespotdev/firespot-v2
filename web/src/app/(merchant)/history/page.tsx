@@ -29,7 +29,7 @@ import { Sale } from '@/services/sales/interface'
 import { getMerchantStatus } from '@/lib/utils/sales'
 import { SaleItem } from '@/components/sales/SaleItem'
 import { LoadingPage } from '@/components/layout/LoadingPage'
-import { LoaderCircle, TabSwitch } from '@/components/ui'
+import { TabSwitch } from '@/components/ui'
 
 const getMonthYearKey = (dateStr: string | Date) => {
   const date = new Date(dateStr)
@@ -42,21 +42,14 @@ function HistoryContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchParams = useSearchParams()
-  const initialStatus = searchParams.get('status')
-  const initialMode = searchParams.get('mode') as
-    | 'collected'
-    | 'recorded'
-    | null
+  const initialStatus = searchParams.get('status')?.toUpperCase() || 'ALL'
+  const initialMode = (searchParams.get('mode') as 'collected' | 'recorded') || 'collected'
 
   // Top tab switch state
-  const [activeTab, setActiveTab] = useState<'collected' | 'recorded'>(
-    initialMode || 'collected',
-  )
+  const [activeTab, setActiveTab] = useState<'collected' | 'recorded'>(initialMode)
 
   // Filter dropdown states
-  const [selectedStatus, setSelectedStatus] = useState<string>(
-    initialStatus ? initialStatus.toUpperCase() : 'ALL',
-  )
+  const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus)
   const [selectedMethod, setSelectedMethod] = useState<string>('ALL')
   const [selectedQrKit, setSelectedQrKit] = useState<string>('ALL')
   const [selectedLocation, setSelectedLocation] = useState<string>('ALL')
@@ -68,21 +61,6 @@ function HistoryContent() {
   const [dateFilter, setDateFilter] = useState<InsightsQuery>({
     preset: 'today',
   })
-
-  // Synchronize state when searchParams changes
-  useEffect(() => {
-    const status = searchParams.get('status')
-    if (status) {
-      setSelectedStatus(status.toUpperCase())
-    } else {
-      setSelectedStatus('ALL')
-    }
-
-    const mode = searchParams.get('mode')
-    if (mode === 'collected' || mode === 'recorded') {
-      setActiveTab(mode)
-    }
-  }, [searchParams])
 
   // Fetch QR kits for the Qr kit dropdown options
   const { data: qrKitsData } = useUserQRKits()
@@ -210,7 +188,7 @@ function HistoryContent() {
         />
       )}
 
-      <header className="shrink-0 bg-[#F4F6F8] flex items-center justify-between py-3 px-4 z-20">
+      <header className="shrink-0 bg-[#F4F6F8] flex items-center justify-between py-3 px-4 z-30">
         <ArrowLeft
           onClick={() => router.back()}
           size={24}
@@ -233,21 +211,23 @@ function HistoryContent() {
         <Download size={24} color="black" />
       </header>
 
-      <div className="shrink-0 relative mb-4 px-4 z-20">
-        <div className="absolute left-8 top-1/2 -translate-y-1/2">
-          <Search size={16} color="#00000033" strokeWidth={2} />
+      <main className="flex-1 overflow-y-auto scrollbar-hide px-4 z-20">
+        {/* Search Bar */}
+        <div className="relative mb-4">
+          <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <Search size={16} color="#00000033" strokeWidth={2} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by description or payment method"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-9 pl-11 pr-4 bg-[#E6E8EB99] border border-[#EBEBEB] rounded-full text-sm font-medium placeholder:text-[#00000066] focus:outline-none focus:ring-1 focus:ring-[#0075FF]"
+          />
         </div>
-        <input
-          type="text"
-          placeholder="Search by description or payment method"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-9 pl-11 pr-4 bg-[#E6E8EB99] border border-[#EBEBEB] rounded-full text-sm font-medium placeholder:text-[#00000066] focus:outline-none focus:ring-1 focus:ring-[#0075FF]"
-        />
-      </div>
 
-      <main className="flex-1 flex flex-col overflow-hidden px-4 z-20">
-        <div className="shrink-0 border-2 border-[#0000000A] rounded-[12px] w-full mb-6">
+        {/* Summary Card */}
+        <div className="border-2 border-[#0000000A] rounded-[12px] w-full mb-4">
           <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
             <div>
               <button
@@ -318,12 +298,12 @@ function HistoryContent() {
           </div>
         </div>
 
-        {/* Dropdown Filters capsule layout */}
-        <div className="shrink-0 flex gap-2 mb-6 -mx-1 px-1 relative z-20">
+        {/* Dropdown Filters capsule layout (Sticky under header) */}
+        <div className="sticky top-0 bg-[#F4F6F8] py-2.5 mb-4 z-20 flex gap-2 overflow-x-auto scrollbar-hide -mx-4 px-4">
           {filterCapsules.map((capsule) => {
             const isOpen = openDropdown === capsule.id
             return (
-              <div key={capsule.id} className="relative">
+              <div key={capsule.id} className="relative shrink-0">
                 <button
                   disabled={capsule.disabled}
                   onClick={() => setOpenDropdown(isOpen ? null : capsule.id)}
@@ -346,7 +326,7 @@ function HistoryContent() {
                 </button>
 
                 {isOpen && !capsule.disabled && (
-                  <div className="absolute left-0 mt-1.5 w-40 bg-white border border-[#E9EBED] rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.08)] py-1 z-30 animate-in fade-in slide-in-from-top-1 duration-150 max-h-48 overflow-y-auto no-scrollbar">
+                  <div className="absolute left-0 mt-1.5 w-40 bg-white border border-[#E9EBED] rounded-xl shadow-[0px_4px_12px_rgba(0,0,0,0.08)] py-1 z-30 animate-in fade-in slide-in-from-top-1 duration-150 max-h-48 overflow-y-auto scrollbar-hide">
                     {capsule.options.map((opt) => (
                       <button
                         key={opt}
@@ -371,12 +351,13 @@ function HistoryContent() {
           })}
         </div>
 
+        {/* Transaction Content */}
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center overflow-y-auto">
+          <div className="py-20 flex items-center justify-center">
             <LoadingPage />
           </div>
         ) : isEmpty ? (
-          <div className="flex-1 flex flex-col items-center justify-center -mt-10 animate-in fade-in zoom-in duration-500 overflow-y-auto">
+          <div className="py-16 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
             <div className="text-[64px] mb-10">😢</div>
             <h2 className="text-xl font-bold text-black mb-2 text-center leading-none -tracking-[0.4px]">
               No sales yet
@@ -397,7 +378,7 @@ function HistoryContent() {
             </button>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pb-24 no-scrollbar">
+          <div className="pb-24">
             <div className="space-y-8">
               {Object.keys(groupedSales).length === 0 ? (
                 <div className="text-center py-12">

@@ -31,7 +31,7 @@ const NAV_ITEMS = [
 
 // The nav only shows on the pages it can navigate to. The scan target ('/')
 // lives outside the (personal) group, which never renders this nav.
-const VISIBLE_ROUTES = ['/home', '/search', '/activity']
+const VISIBLE_ROUTES = ['/home', '/search', '/activity', '/']
 
 type BottomNavVariant = 'light' | 'dark'
 
