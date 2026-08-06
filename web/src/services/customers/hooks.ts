@@ -8,6 +8,14 @@ export const useCustomers = () => {
   });
 };
 
+export const useCustomerDetails = (id?: string) => {
+  return useQuery({
+    queryKey: ['customer', id],
+    queryFn: () => CustomersApi.getCustomerDetails(id!),
+    enabled: !!id,
+  });
+};
+
 export const useCreateCustomer = () => {
   const queryClient = useQueryClient();
   return useMutation({

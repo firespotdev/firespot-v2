@@ -119,7 +119,11 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
         icon: <CalendarTick size={24} />,
         proGateLabel: 'Available in',
       },
-      { label: 'Customers', icon: <Profile2User size={24} /> },
+      {
+        label: 'Customers',
+        icon: <Profile2User size={24} />,
+        href: '/customers',
+      },
       { label: 'Messages', icon: <MessageSearch size={24} /> },
       {
         label: 'Feedback',

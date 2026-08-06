@@ -23,6 +23,8 @@ describe("CustomersService", () => {
     const service = new CustomersService(
       customerModel as any,
       {} as any,
+      {} as any,
+      {} as any,
       accountLinkingService as any,
     );
 

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from "@nestjs/common";
+import { Controller, Get, Post, Body, Param, UseGuards, Request } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
 import { IsNotEmpty, IsString } from "class-validator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
@@ -38,5 +38,12 @@ export class CustomersController {
   @ApiResponse({ status: 200, description: "List of customers" })
   async findAll(@Request() req) {
     return this.customersService.findAll(req.user.userId);
+  }
+
+  @Get(":id")
+  @ApiOperation({ summary: "Get customer details and history for merchant" })
+  @ApiResponse({ status: 200, description: "Customer details" })
+  async findOne(@Request() req, @Param("id") id: string) {
+    return this.customersService.getCustomerDetails(id, req.user.userId);
   }
 }

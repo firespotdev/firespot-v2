@@ -12,12 +12,17 @@ import {
 import { AccountLinkingService } from "../account-linking/account-linking.service";
 import { User, UserDocument } from "../schemas/user.schema";
 
+import { Sale, SaleDocument } from "../schemas/sale.schema";
+import { Feedback, FeedbackDocument } from "../schemas/feedback.schema";
+
 @Injectable()
 export class CustomersService {
   constructor(
     @InjectModel(MerchantCustomer.name)
     private customerModel: Model<MerchantCustomerDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
+    @InjectModel(Feedback.name) private feedbackModel: Model<FeedbackDocument>,
     private accountLinkingService: AccountLinkingService,
   ) {}
 
@@ -115,5 +120,58 @@ export class CustomersService {
       throw new NotFoundException("Customer not found");
     }
     return customer;
+  }
+
+  async getCustomerDetails(id: string, merchantId: string) {
+    const customer = await this.findOne(id, merchantId);
+    const merchantObjId = new Types.ObjectId(merchantId);
+
+    const customerMatchConditions: any[] = [{ customerId: customer._id }];
+    if (customer.userId) {
+      customerMatchConditions.push({ customerUserId: customer.userId });
+    }
+
+    const sales = await this.saleModel
+      .find({
+        merchantId: merchantObjId,
+        $or: customerMatchConditions,
+      })
+      .sort({ createdAt: -1 })
+      .exec();
+
+    const visitCount = sales.length;
+    const totalSpent = sales
+      .filter((s) => s.status === 'CONFIRMED')
+      .reduce((sum, s) => sum + (s.amount || 0), 0);
+    const totalOutstanding = sales
+      .filter((s) => s.status === 'OUTSTANDING' || (s.balanceOwed && s.balanceOwed > 0))
+      .reduce((sum, s) => sum + (s.balanceOwed || 0), 0);
+
+    const feedbackMatchConditions: any[] = [];
+    if (customer.userId) {
+      feedbackMatchConditions.push({ customerUserId: customer.userId });
+    }
+    if (customer.name) {
+      feedbackMatchConditions.push({ customerName: customer.name });
+    }
+
+    const feedback = feedbackMatchConditions.length > 0
+      ? await this.feedbackModel
+          .find({
+            merchantId: merchantObjId,
+            $or: feedbackMatchConditions,
+          })
+          .sort({ createdAt: -1 })
+          .exec()
+      : [];
+
+    return {
+      customer,
+      visitCount,
+      totalSpent,
+      totalOutstanding,
+      sales,
+      feedback,
+    };
   }
 }
