@@ -41,6 +41,7 @@ import { SendReminderDrawer } from './send-reminder-drawer'
 import { RepaymentSummaryDrawer } from './repayment-summary-drawer'
 import { RepaymentSuccessDrawer } from './repayment-success-drawer'
 import { AddCustomerDrawer } from './add-customer-drawer'
+import { CustomerSortDrawer } from './customer-sort-drawer'
 import { AccountSwitchDrawer } from './account-switch-drawer'
 import { SaleReceiptDrawer } from './sale-receipt-drawer'
 import { ActivityDetailsDrawer } from './activity-details-drawer'
@@ -144,6 +145,11 @@ const DRAWER_CONFIG: Record<
     title: 'Filter',
     direction: 'bottom',
     Content: DateRangeFilterDrawer,
+  },
+  'customer-sort': {
+    title: 'Sort by',
+    direction: 'bottom',
+    Content: CustomerSortDrawer,
   },
   'payment-method': {
     title: '',
@@ -528,6 +534,7 @@ export function CustomDrawer() {
               'send-reminder',
               'recommend-business-sms',
               'add-customer',
+              'customer-sort',
               'plan-checkout',
               'cancel-plan',
               'business-intro',

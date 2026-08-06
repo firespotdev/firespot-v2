@@ -110,9 +110,11 @@ export function OutstandingDashboard({
           )}
         </div>
 
-        <p className="text-xs font-medium text-[#00000066] text-center w-full shrink-0 my-4">
-          You’ve reached the end of the list
-        </p>
+        {owingCustomers.length > 0 && (
+          <p className="text-xs font-medium text-[#00000066] text-center w-full shrink-0 my-4">
+            You’ve reached the end of the list
+          </p>
+        )}
       </div>
     </div>
   )

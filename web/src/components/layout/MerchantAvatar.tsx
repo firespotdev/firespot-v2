@@ -9,6 +9,7 @@ interface MerchantAvatarProps {
   profilePhotoUrl?: string
   size?: number
   className?: string
+  style?: React.CSSProperties
 }
 
 export function MerchantAvatar({
@@ -16,13 +17,14 @@ export function MerchantAvatar({
   profilePhotoUrl,
   size = 36,
   className,
+  style,
 }: MerchantAvatarProps) {
   const avatarSize = size
   const bankLogoSize = Math.max(16, Math.floor(size * 0.45))
   const overlayOffset = Math.max(3, Math.floor(size * 0.08))
 
   return (
-    <div className={cn('relative shrink-0', className)}>
+    <div className={cn('relative shrink-0', className)} style={style}>
       <div 
         className="rounded-full flex items-center justify-center overflow-hidden transition-transform bg-gray-100"
         style={{ width: avatarSize, height: avatarSize }}

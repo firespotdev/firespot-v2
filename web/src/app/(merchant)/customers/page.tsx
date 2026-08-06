@@ -26,12 +26,13 @@ import type { Customer } from '@/services/customers/customersApi'
 import Image from 'next/image'
 
 import { MerchantAvatar } from '@/components/layout/MerchantAvatar'
-
 import {
   AddNewCustomerCard,
   SyncContactsCard,
-} from '@/components/customers/CustomerActionCards'
+} from '@/components/customers'
 import { Sort } from 'iconsax-reactjs'
+
+import type { CustomerSortOption } from '@/components/custom-drawer'
 
 export default function CustomersListPage() {
   const router = useRouter()
@@ -40,6 +41,7 @@ export default function CustomersListPage() {
   const { selectContacts } = useContactPicker()
 
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState<CustomerSortOption>('spent_desc')
 
   const handleOpenAddCustomer = () => {
     openDrawer({
@@ -77,18 +79,55 @@ export default function CustomersListPage() {
 
   const handleOpenFilter = () => {
     openDrawer({
-      type: 'date-range-filter',
+      type: 'customer-sort',
+      props: {
+        selectedSort: sortBy,
+        onSelectSort: (option: CustomerSortOption) => setSortBy(option),
+      },
     })
   }
 
-  const filteredCustomers = customers.filter((customer) => {
-    const q = searchQuery.toLowerCase().trim()
-    if (!q) return true
-    return (
-      customer.name.toLowerCase().includes(q) ||
-      customer.phoneNumber.includes(q)
-    )
-  })
+  const filteredCustomers = customers
+    .filter((customer) => {
+      const q = searchQuery.toLowerCase().trim()
+      if (!q) return true
+      return (
+        customer.name.toLowerCase().includes(q) ||
+        customer.phoneNumber.includes(q)
+      )
+    })
+    .sort((a: any, b: any) => {
+      switch (sortBy) {
+        case 'spent_desc':
+          return (b.totalSpent ?? 0) - (a.totalSpent ?? 0)
+        case 'spent_asc':
+          return (a.totalSpent ?? 0) - (b.totalSpent ?? 0)
+        case 'visits_desc':
+          return (b.visitCount ?? 0) - (a.visitCount ?? 0)
+        case 'visits_asc':
+          return (a.visitCount ?? 0) - (b.visitCount ?? 0)
+        case 'last_visit_desc':
+          return (
+            new Date(b.lastVisitAt || b.updatedAt || b.createdAt).getTime() -
+            new Date(a.lastVisitAt || a.updatedAt || a.createdAt).getTime()
+          )
+        case 'last_visit_asc':
+          return (
+            new Date(a.lastVisitAt || a.updatedAt || a.createdAt).getTime() -
+            new Date(b.lastVisitAt || b.updatedAt || b.createdAt).getTime()
+          )
+        case 'first_visit_desc':
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        case 'first_visit_asc':
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          )
+        default:
+          return 0
+      }
+    })
 
   return (
     <div className="min-h-dvh bg-[#F4F6F8]">
@@ -191,9 +230,11 @@ export default function CustomersListPage() {
               ))}
             </ActionList>
 
-            <p className="mt-8 text-center text-xs font-medium text-[#00000066]">
-              You’ve reached the end of the list
-            </p>
+            {filteredCustomers.length > 0 && (
+              <p className="mt-8 text-center text-xs font-medium text-[#00000066]">
+                You’ve reached the end of the list
+              </p>
+            )}
           </div>
         )}
       </div>

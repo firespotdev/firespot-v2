@@ -11,7 +11,7 @@ import type { Customer } from '@/services/customers/customersApi'
 import {
   AddNewCustomerCard,
   SyncContactsCard,
-} from '@/components/customers/CustomerActionCards'
+} from '@/components/customers'
 
 interface Props {
   onSelect: (customer: Customer) => void

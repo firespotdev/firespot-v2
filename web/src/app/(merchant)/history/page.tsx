@@ -406,9 +406,11 @@ function HistoryContent() {
                 ))
               )}
 
-              <p className="text-center text-[#00000066] text-xs font-medium my-6">
-                You&apos;ve reached the end of the list
-              </p>
+              {Object.keys(groupedSales).length > 0 && (
+                <p className="text-center text-[#00000066] text-xs font-medium my-6">
+                  You&apos;ve reached the end of the list
+                </p>
+              )}
             </div>
           </div>
         )}

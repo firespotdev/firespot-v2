@@ -194,9 +194,11 @@ export default function FeedbackPage() {
                 </div>
               </section>
             ))}
-            <p className="pb-2 text-center text-sm font-medium text-[#9CA3AF]">
-              You’ve reached the end of the list
-            </p>
+            {groupedFeedback.length > 0 && (
+              <p className="pb-2 text-center text-sm font-medium text-[#9CA3AF]">
+                You’ve reached the end of the list
+              </p>
+            )}
           </div>
         )}
       </div>

@@ -318,9 +318,11 @@ export function CustomerDebtList({
             </AppCard>
           )}
 
-          <p className="my-6 text-center text-xs font-medium text-[#00000066]">
-            You’ve reached the end of the list
-          </p>
+          {activeSales.length > 0 && (
+            <p className="my-6 text-center text-xs font-medium text-[#00000066]">
+              You’ve reached the end of the list
+            </p>
+          )}
         </section>
       </div>
 

@@ -8,7 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ClockCounterClockwiseIcon } from '@phosphor-icons/react'
 import { CTACarousel } from '@/components/ui/cta-carousel'
-import { BottomNav } from '@/components/layout/bottom-nav'
+import { BottomNav, MerchantBottomNav } from '@/components/layout'
 import { useAuthStore, useAuthReady } from '@/services/auth'
 import { hasPersonalIdentity, isTokenExpired } from '@/lib/utils/auth-redirect'
 
@@ -354,7 +354,13 @@ export default function ScannerPage() {
         </div>
       </div>
 
-      {isSignedIn && <BottomNav variant="dark" />}
+      {isSignedIn && (
+        user?.role === 'merchant' ? (
+          <MerchantBottomNav variant="dark" />
+        ) : (
+          <BottomNav variant="dark" />
+        )
+      )}
     </div>
   )
 }

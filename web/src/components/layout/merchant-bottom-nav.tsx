@@ -35,11 +35,47 @@ const ITEMS: MerchantNavItem[] = [
 
 // The nav only shows on the pages it can navigate to. Add Search and Messages
 // here once those destinations exist.
-const VISIBLE_ROUTES = ['/profile', '/history']
+const VISIBLE_ROUTES = ['/profile', '/history', '/']
 
-export function MerchantBottomNav() {
+type MerchantBottomNavVariant = 'light' | 'dark'
+
+interface MerchantBottomNavProps {
+  variant?: MerchantBottomNavVariant
+}
+
+const VARIANTS: Record<
+  MerchantBottomNavVariant,
+  {
+    container: string
+    itemActive: string
+    primaryButton: string
+    primaryIcon: string
+    iconActive: string
+    iconInactive: string
+  }
+> = {
+  light: {
+    container: 'bg-white/80 backdrop-blur-sm shadow-[0px_4px_12px_0px_#00000014]',
+    itemActive: 'bg-[#3333331A]',
+    primaryButton: 'bg-black text-white',
+    primaryIcon: 'text-white',
+    iconActive: 'text-[#00000099]',
+    iconInactive: 'text-[#00000066]',
+  },
+  dark: {
+    container: 'bg-[#FFFFFF1A] backdrop-blur-lg',
+    itemActive: 'bg-[#333333]',
+    primaryButton: 'bg-white text-black',
+    primaryIcon: 'text-black',
+    iconActive: 'text-[#FFFFFF99]',
+    iconInactive: 'text-[#FFFFFF99]',
+  },
+}
+
+export function MerchantBottomNav({ variant = 'light' }: MerchantBottomNavProps) {
   const pathname = usePathname()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const styles = VARIANTS[variant]
 
   if (!VISIBLE_ROUTES.includes(pathname)) {
     return null
@@ -50,7 +86,12 @@ export function MerchantBottomNav() {
       aria-label="Merchant navigation"
       className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-[420px] -translate-x-1/2"
     >
-      <div className="glass-border flex gap-0.5 h-12 items-center justify-between rounded-full bg-white/80 backdrop-blur-sm p-1 shadow-[0px_4px_12px_0px_#00000014]">
+      <div
+        className={cn(
+          'glass-border flex gap-0.5 h-12 items-center justify-between rounded-full p-1',
+          styles.container,
+        )}
+      >
         {ITEMS.map(({ key, label, href, Icon }) => {
           const active =
             href === '/profile'
@@ -61,15 +102,21 @@ export function MerchantBottomNav() {
           const isPrimary = key === 'new-sale'
           const className = cn(
             'flex h-full min-w-[63px] items-center justify-center rounded-full',
-            active && !isPrimary && 'bg-[#3333331A]',
-            isPrimary && 'bg-black text-white',
+            active && !isPrimary && styles.itemActive,
+            isPrimary && styles.primaryButton,
           )
           const icon = (
             <Icon
               size={24}
               weight="regular"
               strokeWidth={3}
-              className={isPrimary ? 'text-white' : 'text-[#00000066]'}
+              className={
+                isPrimary
+                  ? styles.primaryIcon
+                  : active
+                    ? styles.iconActive
+                    : styles.iconInactive
+              }
             />
           )
 
