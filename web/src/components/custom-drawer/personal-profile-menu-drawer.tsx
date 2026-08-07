@@ -162,14 +162,7 @@ export function PersonalProfileMenuDrawer({
 
           {/* Action Buttons Row */}
           <div className="mt-4 w-full flex items-center gap-3">
-            <Button
-              onClick={() => {
-                closeDrawer()
-                openDrawer({ type: 'payment-method' })
-              }}
-            >
-              Pay
-            </Button>
+            <Button className="h-11">Pay</Button>
           </div>
         </div>
 
@@ -247,32 +240,32 @@ export function PersonalProfileMenuDrawer({
                 />
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="relative">
-                    <div className="flex h-[48px] w-[48px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#CED7E1] shadow-xs">
+                    <div className="flex h-[35px] w-[35px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#CED7E1] shadow-xs">
                       {user?.profilePhotoUrl ? (
                         <Image
                           src={user.profilePhotoUrl}
                           alt="Profile"
-                          width={30}
-                          height={30}
+                          width={22}
+                          height={22}
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <Image
                           src="/images/default_avatar.png"
                           alt="Default avatar"
-                          width={30}
-                          height={30}
+                          width={22}
+                          height={22}
                           className="h-full w-full object-cover"
                         />
                       )}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-[5.5px] border-2 border-[#F4F6F8] bg-white">
+                    <div className="absolute -bottom-1 -right-1 h-[14px] w-[14px] rounded-[4px] border border-[#F4F6F8] bg-white">
                       <Image
                         src="/images/firespot_logo.png"
                         alt="Firespot"
-                        width={18}
-                        height={18}
-                        className="h-full w-full rounded-[4px] object-contain"
+                        width={12}
+                        height={12}
+                        className="h-full w-full rounded-[3px] object-contain"
                       />
                     </div>
                   </div>

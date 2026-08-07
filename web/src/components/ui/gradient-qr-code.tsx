@@ -33,7 +33,7 @@ export function GradientQRCode({
   className,
   centerImageUrl,
   centerImageAlt = 'Merchant',
-  centerImageSize = 48,
+  centerImageSize = 35,
 }: GradientQRCodeProps) {
   const gradientId = useId()
 
@@ -56,7 +56,7 @@ export function GradientQRCode({
       <QRCodeSVG
         value={value}
         size={size}
-        level={centerImageUrl ? 'H' : 'L'}
+        level="L"
         fgColor={`url(#${gradientId})`}
       />
       {centerImageUrl && (

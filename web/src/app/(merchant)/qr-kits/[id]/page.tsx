@@ -232,18 +232,18 @@ export default function QRKitDetailPage() {
                     )}
 
                     {/* Business Logo Overlay*/}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-13 h-13 rounded-full overflow-hidden border-[3px] shadow-lg border-white z-10 bg-white">
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[38px] h-[38px] rounded-full overflow-hidden border-[2.5px] shadow-lg border-white z-10 bg-white">
                       {profile?.profilePhotoUrl ? (
                         <Image
                           src={profile.profilePhotoUrl}
                           alt="Business Logo"
-                          width={52}
-                          height={52}
+                          width={38}
+                          height={38}
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <div className="bg-[#FF6B35] w-full h-full flex items-center justify-center">
-                          <span className="text-base font-bold text-white inline-block">
+                          <span className="text-xs font-bold text-white inline-block">
                             {getInitials(profile?.businessName ?? '')}
                           </span>
                         </div>
