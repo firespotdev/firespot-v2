@@ -12,11 +12,13 @@ import {
 import { QRCodeSVG } from 'qrcode.react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { logoutEverywhere } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { usePlanCatalog, type PlanTier } from '@/services/merchant-plans'
 import { useUserQRKits } from '@/services/qr'
 import { useUserProfile } from '@/services/users'
+import { PersonalProfileMenuDrawer } from './personal-profile-menu-drawer'
 import { MerchantQuickActionsList } from '@/components/merchant/merchant-quick-actions'
 import { TierIcon } from '@/components/merchant/tier-icon'
 import { showNotificationToast, Switch } from '@/components/ui'
@@ -443,6 +445,19 @@ function ManageBusinessDropdown({
 }
 
 export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
+  const pathname = usePathname()
+  const isPersonalSurface =
+    pathname?.startsWith('/home') ||
+    pathname?.startsWith('/activity') ||
+    pathname?.startsWith('/places') ||
+    pathname?.startsWith('/report') ||
+    pathname?.startsWith('/saved') ||
+    pathname?.startsWith('/search')
+
+  if (isPersonalSurface) {
+    return <PersonalProfileMenuDrawer closeDrawer={closeDrawer} />
+  }
+
   const { data: profile } = useUserProfile()
   const audience: SidebarAudience =
     profile?.role === 'customer' ? 'personal' : 'merchant'

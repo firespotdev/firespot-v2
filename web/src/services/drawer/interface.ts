@@ -1,6 +1,7 @@
 export type DrawerContentType =
   | 'bank-accounts'
   | 'profile-menu'
+  | 'personal-profile-menu'
   | 'select-bank'
   | 'bank-transfer'
   | 'share-transfer'

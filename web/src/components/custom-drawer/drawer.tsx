@@ -16,6 +16,7 @@ import {
 } from '@/services/drawer'
 import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
 import { ProfileMenuDrawer } from './profile-menu-drawer'
+import { PersonalProfileMenuDrawer } from './personal-profile-menu-drawer'
 import { SelectBankDrawer } from './select-bank-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
 import { ShareTransferDrawer } from './share-transfer-drawer'
@@ -83,6 +84,12 @@ const DRAWER_CONFIG: Record<
     direction: 'left',
     fullScreen: true,
     Content: ProfileMenuDrawer,
+  },
+  'personal-profile-menu': {
+    title: '',
+    direction: 'left',
+    fullScreen: true,
+    Content: PersonalProfileMenuDrawer,
   },
   'select-bank': {
     title: 'Transfer to',
