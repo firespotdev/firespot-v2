@@ -13,7 +13,8 @@ const GRADIENT_END = '#D72483'
 
 interface ProfileShareDrawerProps {
   businessName: string
-  serialNumber: string
+  serialNumber?: string
+  url?: string
   profilePhotoUrl?: string
   closeDrawer: () => void
 }
@@ -21,10 +22,15 @@ interface ProfileShareDrawerProps {
 export function ProfileShareDrawer({
   businessName,
   serialNumber,
+  url,
   profilePhotoUrl,
   closeDrawer,
 }: ProfileShareDrawerProps) {
-  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/pay/${serialNumber}`
+  const shareUrl =
+    url ||
+    (serialNumber
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/pay/${serialNumber}`
+      : process.env.NEXT_PUBLIC_APP_URL || 'https://lite.firespot.co')
   const qrRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

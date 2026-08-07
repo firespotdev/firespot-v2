@@ -202,6 +202,7 @@ export function PersonalProfileMenuDrawer({
                     props: {
                       businessName: displayName,
                       profilePhotoUrl: user?.profilePhotoUrl,
+                      url: qrUrl,
                     },
                   })
                 }}
