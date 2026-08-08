@@ -150,7 +150,14 @@ export interface PlanPreviewResponse {
 
 export interface VerifyPlanResponse {
   success: boolean
-  status: 'SUCCESSFUL' | 'FAILED'
+  /**
+   * PENDING means the transaction is still settling (bank transfer, USSD) —
+   * not a failure. The charge.success webhook settles it shortly after.
+   */
+  status: 'SUCCESSFUL' | 'FAILED' | 'PENDING'
   tier?: PlanTier
   alreadyGranted?: boolean
+  pending?: boolean
+  /** Set when the amount paid did not match the order; value is never granted. */
+  reason?: 'amount_mismatch'
 }

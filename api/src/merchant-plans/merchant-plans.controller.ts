@@ -100,7 +100,10 @@ export class MerchantPlansController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Verify a plan payment and grant the tier' })
   @ApiResponse({ status: 200, description: 'Verification result' })
-  async verify(@Param('reference') reference: string) {
-    return this.merchantPlansService.verifyPayment(reference)
+  async verify(@Request() req, @Param('reference') reference: string) {
+    // Scoped to the caller: the tier is granted to the order's merchant either
+    // way, but an unscoped endpoint let any authenticated user probe and settle
+    // references belonging to other merchants.
+    return this.merchantPlansService.verifyPayment(reference, req.user.userId)
   }
 }

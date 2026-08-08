@@ -223,13 +223,57 @@ export interface PendingPlanChangeLike {
   effectiveAt: Date
 }
 
-/** The plan fields the entitlement resolver needs off a User document. */
+/**
+ * The plan fields the entitlement resolver needs off a User document.
+ *
+ * IMPORTANT: every `.select()` that feeds getEffectiveTier must project ALL of
+ * these. A missing field is not a type error — it silently changes the answer.
+ */
 export interface PlanStateLike {
   planTier?: string
   planStatus?: string
   planGraceUntil?: Date | null
   kycCompletedAt?: Date | null
   pendingPlanChange?: PendingPlanChangeLike | null
+  /** Cancelled: access runs to planCurrentPeriodEnd, then the LITE floor. */
+  cancelAtPeriodEnd?: boolean
+  planCurrentPeriodEnd?: Date | null
+}
+
+/**
+ * Mongoose projection covering every field the entitlement helpers read.
+ *
+ * Always use this rather than hand-listing fields: omitting one is not a type
+ * error, it silently changes the answer — a missing `pendingPlanChange` hides a
+ * due downgrade, a missing `cancelAtPeriodEnd` keeps a cancelled merchant
+ * entitled forever.
+ */
+export const PLAN_STATE_PROJECTION = [
+  'planTier',
+  'planStatus',
+  'planGraceUntil',
+  'kycCompletedAt',
+  'pendingPlanChange',
+  'cancelAtPeriodEnd',
+  'planCurrentPeriodEnd',
+].join(' ')
+
+/**
+ * True once a cancelled subscription's paid period has run out.
+ *
+ * Cancellation is deliberately NOT modelled as a failure: the merchant chose it
+ * and has already paid for the current period, so they keep exactly that and
+ * get no grace window on top. Paystack signals this with `subscription.not_renew`
+ * (status `non-renewing`), which is not a lapse — see docs/paystack_llm.md §4.
+ */
+export function isCancelledAndExpired(user: PlanStateLike): boolean {
+  if (!user.cancelAtPeriodEnd) return false
+  const end = user.planCurrentPeriodEnd
+    ? new Date(user.planCurrentPeriodEnd).getTime()
+    : 0
+  // No recorded end means nothing to expire against — keep serving rather than
+  // stripping a merchant on missing data.
+  return Boolean(end) && Date.now() >= end
 }
 
 /** True once a scheduled change's effective date has arrived. */
@@ -268,6 +312,10 @@ export function getEffectiveTier(user: PlanStateLike): PlanTier | undefined {
 
   if (!tier || !PLANS[tier]) return undefined
 
+  // A cancelled subscription runs to the end of the period already paid for,
+  // then falls to the floor. No grace — nothing failed.
+  if (isCancelledAndExpired(user)) return LAPSED_FALLBACK_TIER
+
   // Only a failed subscription can demote; every other status keeps the tier.
   if (user.planStatus !== 'failed') return tier
 
@@ -279,9 +327,15 @@ export function getEffectiveTier(user: PlanStateLike): PlanTier | undefined {
   return LAPSED_FALLBACK_TIER
 }
 
-/** True once a failed subscription's grace window has elapsed. */
+/**
+ * True once the plan has actually ended — either a failed subscription's grace
+ * window elapsed, or a cancelled subscription's paid period ran out.
+ */
 export function isLapsed(user: PlanStateLike): boolean {
   if (!user.planTier) return false
+  // A cancellation that has run its course ends the plan just as surely as a
+  // failed charge, and the UI should offer reactivation the same way.
+  if (isCancelledAndExpired(user)) return true
   if (user.planStatus !== 'failed') return false
   const graceUntil = user.planGraceUntil
     ? new Date(user.planGraceUntil).getTime()
@@ -489,7 +543,8 @@ export function getCollectEligibility(user: PlanStateLike): {
 
 /**
  * True when moving from `current` to `target` would lose capability.
- * Downgrades are not supported — a merchant can only move up.
+ * Downgrades ARE supported: classifyPlanChange routes them to
+ * `scheduled_downgrade` (free, deferred to period end) or `cancellation`.
  */
 export function isDowngrade(
   current: string | undefined | null,

@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { X } from 'lucide-react'
@@ -13,7 +13,7 @@ import {
 } from '@/services/merchant-plans'
 import { TierIcon } from '@/components/merchant/tier-icon'
 
-type Status = 'loading' | 'success' | 'failed'
+type Status = 'loading' | 'success' | 'failed' | 'pending'
 
 const TIER_LABELS: Record<PlanTier, string> = {
   LITE: 'LITE',
@@ -61,20 +61,25 @@ function PlanStatusContent() {
     if (!isAuthenticated) router.replace('/login')
   }, [authReady, isAuthenticated, router])
 
-  useEffect(() => {
-    if (!reference || hasVerified.current || !authReady || !isAuthenticated) {
-      return
-    }
-    hasVerified.current = true
-
+  const runVerify = useCallback(() => {
+    setStatus('loading')
     verifyPlan.mutate(reference, {
       onSuccess: (res) => {
         if (res.success) {
           setTier(res.tier || null)
           setStatus('success')
+        } else if (res.status === 'PENDING') {
+          // Still settling (bank transfer / USSD). Nothing failed — the
+          // charge.success webhook completes it, so invite a re-check rather
+          // than telling the merchant their payment failed.
+          setStatus('pending')
         } else {
           setStatus('failed')
-          setError('Your payment was not completed.')
+          setError(
+            res.reason === 'amount_mismatch'
+              ? 'The amount paid did not match this plan. Please contact support.'
+              : 'Your payment was not completed.',
+          )
         }
       },
       onError: (err: any) => {
@@ -85,12 +90,62 @@ function PlanStatusContent() {
         )
       },
     })
-  }, [reference, authReady, isAuthenticated, verifyPlan])
+  }, [reference, verifyPlan])
+
+  useEffect(() => {
+    if (!reference || hasVerified.current || !authReady || !isAuthenticated) {
+      return
+    }
+    hasVerified.current = true
+    runVerify()
+  }, [reference, authReady, isAuthenticated, runVerify])
 
   if (status === 'loading') {
     return (
       <div className="h-dvh bg-black flex items-center justify-center">
         <LoaderCircle innerBg="#000000" />
+      </div>
+    )
+  }
+
+  // Transaction is still settling. Deliberately not styled as an error — the
+  // money is very likely on its way.
+  if (status === 'pending') {
+    return (
+      <div className="h-dvh bg-black font-satoshi text-white flex flex-col">
+        <div className="max-w-125 mx-auto w-full flex-1 flex flex-col px-6">
+          <header className="flex justify-end py-4">
+            <button
+              type="button"
+              onClick={() => router.replace('/profile')}
+              aria-label="Close"
+              className="w-9 h-9 flex items-center justify-center"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+          </header>
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            <h1 className="text-2xl font-bold">Payment processing</h1>
+            <p className="text-sm text-[#FFFFFF99] mt-2 max-w-[320px]">
+              Your payment is still being confirmed. This usually takes a moment
+              — your plan activates automatically once it clears.
+            </p>
+            <Button
+              onClick={runVerify}
+              disabled={verifyPlan.isPending}
+              className="w-full max-w-xs h-13 mt-8 rounded-full bg-white text-black font-bold disabled:opacity-60"
+            >
+              {verifyPlan.isPending ? 'Checking…' : 'Check again'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => router.replace('/profile')}
+              className="mt-4 text-xs font-medium text-[#FFFFFF99] underline underline-offset-4"
+            >
+              Done for now
+            </button>
+          </div>
+        </div>
       </div>
     )
   }

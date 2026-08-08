@@ -37,6 +37,18 @@ import { MerchantReferralsService } from '../merchant-referrals/merchant-referra
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+/**
+ * Paystack transaction statuses that mean "still settling", not "failed".
+ * Everything outside this set and 'success' is terminal (abandoned, failed,
+ * reversed). See docs/paystack_llm.md §6.
+ */
+const IN_FLIGHT_TRANSACTION_STATUSES = [
+  'pending',
+  'ongoing',
+  'processing',
+  'queued',
+]
+
 @Injectable()
 export class MerchantPlansService {
   private readonly logger = new Logger(MerchantPlansService.name)
@@ -769,6 +781,13 @@ export class MerchantPlansService {
       ? 'verified'
       : 'paid'
     user.pendingPlanChange = undefined
+    // A paid upgrade clears any lapse or pending cancellation, whichever path
+    // reached here. Clearing this centrally matters twice over: the two
+    // proration paths used to skip it, and a stale planGraceUntil makes the
+    // NEXT genuine lapse demote instantly, because the window is only ever
+    // opened when none is already recorded.
+    user.planGraceUntil = undefined
+    user.cancelAtPeriodEnd = false
     this.applyBadgeForTier(user, tier)
     await user.save()
     this.reevaluateReferralEligibility(user._id as Types.ObjectId)
@@ -784,6 +803,17 @@ export class MerchantPlansService {
           authorization: user.paystackAuthorizationCode,
           startDate: periodEnd,
         })
+        // Record the new subscription immediately rather than waiting for the
+        // subscription.create webhook. The guard that stops the OLD one's
+        // not_renew from looking like a lapse depends on a live subscription
+        // already being known locally, and webhook ordering is not guaranteed.
+        // This also captures the email_token, which subscription.create omits.
+        await this.attachSubscriptionByCustomer(
+          user.paystackCustomerCode,
+          created.subscriptionCode,
+          created.emailToken,
+          { planCode, interval },
+        )
         await this.supersedePreviousSubscriptions(
           user.paystackCustomerCode,
           created.subscriptionCode,
@@ -812,34 +842,91 @@ export class MerchantPlansService {
 
   /**
    * Verifies a plan payment and grants the tier. Idempotent — safe to call
-   * from both the frontend callback and the Paystack webhook.
+   * from both the frontend callback and the Paystack webhook, which race by
+   * design.
    */
-  async verifyPayment(reference: string) {
+  async verifyPayment(reference: string, callerId?: string) {
+    // Every read and write is scoped to the caller when one is supplied, so an
+    // authenticated merchant cannot settle or fail another merchant's order.
+    // The Paystack webhook passes no caller — it is trusted once its signature
+    // has been verified.
+    const orderFilter: Record<string, unknown> = { paystackReference: reference }
+    if (callerId && Types.ObjectId.isValid(callerId)) {
+      orderFilter.merchantId = new Types.ObjectId(callerId)
+    }
+
     const verification =
       await this.paystackService.verifyTransaction(reference)
 
+    // Still settling. Bank transfer and USSD payments commonly return here
+    // before the charge lands, and the merchant is redirected to /plan-status
+    // immediately — marking the order FAILED would tell someone who is
+    // mid-payment that it failed, only for charge.success to contradict it.
+    if (IN_FLIGHT_TRANSACTION_STATUSES.includes(verification.status)) {
+      return { success: false, status: 'PENDING' as const, pending: true }
+    }
+
     if (verification.status !== 'success') {
       await this.planOrderModel
-        .updateOne(
-          { paystackReference: reference },
-          { paymentStatus: 'FAILED' },
-        )
+        .updateOne(orderFilter, { paymentStatus: 'FAILED' })
         .exec()
       return { success: false, status: 'FAILED' }
     }
 
-    const order = await this.planOrderModel
-      .findOne({ paystackReference: reference })
-      .exec()
+    const order = await this.planOrderModel.findOne(orderFilter).exec()
     if (!order) {
       throw new NotFoundException('Plan order not found')
     }
 
-    const alreadyGranted = order.paymentStatus === 'SUCCESSFUL'
-    if (!alreadyGranted) {
-      order.paymentStatus = 'SUCCESSFUL'
-      order.paidAt = new Date()
-      await order.save()
+    // Paystack is explicit: never deliver value when the amount paid does not
+    // match what was ordered. `verification.amount` is kobo; order.amount is
+    // naira. A missing amount is tolerated rather than blocking a legitimate
+    // payment on a field Paystack should always send.
+    const expectedKobo = Math.round(order.amount * 100)
+    if (
+      typeof verification.amount === 'number' &&
+      verification.amount !== expectedKobo
+    ) {
+      this.logger.error(
+        JSON.stringify({
+          event: 'plan_payment_amount_mismatch',
+          reference,
+          merchantId: String(order.merchantId),
+          tier: order.tier,
+          expectedKobo,
+          paidKobo: verification.amount,
+        }),
+      )
+      await this.planOrderModel
+        .updateOne(orderFilter, { paymentStatus: 'FAILED' })
+        .exec()
+      return {
+        success: false,
+        status: 'FAILED' as const,
+        reason: 'amount_mismatch' as const,
+      }
+    }
+
+    // Claim the order atomically. The callback and the webhook can arrive
+    // together, and the grant below is not safely repeatable — applyUpgrade
+    // creates a Paystack subscription, so running it twice bills the merchant
+    // twice. Whoever loses the claim returns the same result without redoing
+    // the side effects. Mirrors QROrdersService.verifyPayment.
+    const claimed = await this.planOrderModel
+      .findOneAndUpdate(
+        { ...orderFilter, paymentStatus: { $ne: 'SUCCESSFUL' } },
+        { paymentStatus: 'SUCCESSFUL', paidAt: new Date() },
+        { new: true },
+      )
+      .exec()
+
+    if (!claimed) {
+      return {
+        success: true,
+        status: 'SUCCESSFUL',
+        tier: order.tier,
+        alreadyGranted: true,
+      }
     }
 
     // Prorated upgrade paid via the checkout fallback: apply in place and
@@ -868,7 +955,7 @@ export class MerchantPlansService {
         success: true,
         status: 'SUCCESSFUL',
         tier: order.tier,
-        alreadyGranted,
+        alreadyGranted: false,
         prorated: true,
       }
     }
@@ -914,7 +1001,7 @@ export class MerchantPlansService {
       success: true,
       status: 'SUCCESSFUL',
       tier: order.tier,
-      alreadyGranted,
+      alreadyGranted: false,
     }
   }
 
@@ -987,7 +1074,7 @@ export class MerchantPlansService {
 
     let superseded = 0
     for (const sub of user.subscriptions) {
-      if (sub.code === keepCode || sub.status === 'cancelled') continue
+      if (this.isIntentionallyRetired(sub) || sub.code === keepCode) continue
 
       const token = await this.ensureEmailToken(sub)
       if (!token) {
@@ -996,6 +1083,15 @@ export class MerchantPlansService {
         )
         continue
       }
+
+      // Record the intent BEFORE calling Paystack, and persist it immediately.
+      // Disabling fires subscription.not_renew straight back at our webhook,
+      // which would otherwise arrive before this write and be read as a lapse
+      // — demoting a merchant who has just paid to upgrade.
+      const previousStatus = sub.status
+      sub.status = 'cancelling'
+      await user.save()
+
       try {
         await this.paystackService.disableSubscription({
           code: sub.code,
@@ -1004,12 +1100,14 @@ export class MerchantPlansService {
         sub.status = 'cancelled'
         superseded += 1
       } catch (error) {
+        // Still live — restore the status so it is not wrongly ignored later.
+        sub.status = previousStatus
         this.logger.error(`Failed to supersede ${sub.code}: ${error}`)
       }
+      await user.save()
     }
 
     if (superseded > 0) {
-      await user.save()
       this.logger.log(
         `Superseded ${superseded} old subscription(s) for ${user._id}`,
       )
@@ -1057,7 +1155,9 @@ export class MerchantPlansService {
       }
     }
 
-    const active = user.subscriptions.filter((s) => s.status !== 'cancelled')
+    const active = user.subscriptions.filter(
+      (s) => !this.isIntentionallyRetired(s),
+    )
     if (active.length === 0) {
       throw new BadRequestException('No active subscription to cancel')
     }
@@ -1071,6 +1171,14 @@ export class MerchantPlansService {
         )
         continue
       }
+
+      // Persist the intent before Paystack can fire subscription.not_renew
+      // back at us — otherwise the webhook races this write and the merchant
+      // is recorded as a failed payer instead of a deliberate canceller.
+      const previousStatus = sub.status
+      sub.status = 'cancelling'
+      await user.save()
+
       try {
         await this.paystackService.disableSubscription({
           code: sub.code,
@@ -1079,8 +1187,10 @@ export class MerchantPlansService {
         sub.status = 'cancelled'
         cancelled += 1
       } catch (error) {
+        sub.status = previousStatus
         this.logger.error(`Failed to disable ${sub.code}: ${error}`)
       }
+      await user.save()
     }
 
     if (cancelled === 0) {
@@ -1089,6 +1199,8 @@ export class MerchantPlansService {
       )
     }
 
+    // Access continues to planCurrentPeriodEnd; getEffectiveTier drops to the
+    // LITE floor only once that date passes.
     user.cancelAtPeriodEnd = true
     await user.save()
 
@@ -1101,21 +1213,79 @@ export class MerchantPlansService {
   }
 
   /**
-   * A subscription charge failed or the subscription was disabled. The
-   * merchant keeps full access until the grace window closes, after which
-   * getEffectiveTier demotes them to the LITE floor.
+   * Loads the merchant behind a subscription webhook and resolves the local
+   * record for the subscription named in the payload.
+   *
+   * `otherActive` is the guard that stops an upgrade from looking like a
+   * cancellation: applyUpgrade creates the replacement subscription *before*
+   * retiring the old one, so the old one's webhook arrives while a live
+   * subscription already exists.
    */
-  async handleSubscriptionLapse(customerCode: string, disabled: boolean) {
-    if (!customerCode || !disabled) return
-
+  private async resolveSubscriptionContext(
+    customerCode: string,
+    subscriptionCode?: string,
+  ) {
+    if (!customerCode) return null
     const user = await this.userModel
       .findOne({ paystackCustomerCode: customerCode })
       .exec()
-    if (!user) return
+    if (!user) return null
+
+    const sub = subscriptionCode
+      ? user.subscriptions?.find((s) => s.code === subscriptionCode)
+      : undefined
+    const otherActive = Boolean(
+      user.subscriptions?.some(
+        (s) => s.code !== subscriptionCode && s.status === 'active',
+      ),
+    )
+    return { user, sub, otherActive }
+  }
+
+  /** True for a subscription this service retired deliberately. */
+  private isIntentionallyRetired(sub?: { status?: string }): boolean {
+    return sub?.status === 'cancelling' || sub?.status === 'cancelled'
+  }
+
+  /**
+   * A subscription renewal charge failed (`invoice.payment_failed`). This is
+   * the ONLY event that may demote a merchant: the other two subscription
+   * events fire when we disable a subscription ourselves.
+   *
+   * The merchant keeps full access until the grace window closes, after which
+   * getEffectiveTier demotes them to the LITE floor.
+   */
+  async handleSubscriptionLapse(
+    customerCode: string,
+    subscriptionCode?: string,
+  ) {
+    const ctx = await this.resolveSubscriptionContext(
+      customerCode,
+      subscriptionCode,
+    )
+    if (!ctx) return
+    const { user, sub, otherActive } = ctx
+
+    // A subscription we retired ourselves is not a lapse. Both the supersede
+    // and cancel paths mark it before calling Paystack precisely so the
+    // resulting webhook can be recognised here.
+    if (this.isIntentionallyRetired(sub)) {
+      this.logger.log(
+        `Ignoring lapse for retired subscription ${subscriptionCode} (${user._id})`,
+      )
+      return
+    }
+    if (otherActive) {
+      this.logger.log(
+        `Ignoring lapse for ${subscriptionCode}: ${user._id} still has an active subscription`,
+      )
+      return
+    }
 
     user.planStatus = 'failed'
     // Only open the window once — repeated failure webhooks must not keep
-    // extending a merchant's free access.
+    // extending a merchant's free access. Paystack retries an unacknowledged
+    // webhook for 72 hours, so repeats are expected.
     if (!user.planGraceUntil) {
       const graceUntil = new Date()
       graceUntil.setDate(graceUntil.getDate() + GRACE_PERIOD_DAYS)
@@ -1126,6 +1296,78 @@ export class MerchantPlansService {
     this.logger.warn(
       `Subscription lapsed for ${user._id}; grace until ${user.planGraceUntil?.toISOString()}`,
     )
+  }
+
+  /**
+   * Paystack `subscription.not_renew`: the subscription moved to
+   * `non-renewing`. It will not be charged again, but the period already paid
+   * for runs to its end — so this is a cancellation, **not** a lapse, and must
+   * never touch planStatus. See docs/paystack_llm.md §4.
+   *
+   * Fires immediately when a subscription is disabled; the matching
+   * `subscription.disable` arrives later, at the next payment date.
+   */
+  async markSubscriptionNonRenewing(
+    customerCode: string,
+    subscriptionCode?: string,
+    emailToken?: string,
+  ) {
+    const ctx = await this.resolveSubscriptionContext(
+      customerCode,
+      subscriptionCode,
+    )
+    if (!ctx) return
+    const { user, sub, otherActive } = ctx
+
+    if (sub) {
+      // not_renew is one of the few events carrying the token needed to
+      // disable a subscription later — subscription.create does not.
+      if (emailToken && !sub.emailToken) sub.emailToken = emailToken
+      if (!this.isIntentionallyRetired(sub)) sub.status = 'non-renewing'
+    }
+
+    // Only treat this as the merchant cancelling when nothing else is live;
+    // otherwise it is just an upgrade retiring the subscription it replaced.
+    if (!otherActive) {
+      user.cancelAtPeriodEnd = true
+      this.logger.log(
+        `Subscription ${subscriptionCode} non-renewing for ${user._id}; access runs to ${user.planCurrentPeriodEnd?.toISOString?.() ?? 'unknown'}`,
+      )
+    }
+
+    await user.save()
+  }
+
+  /**
+   * Paystack `subscription.disable`: the subscription is over. Arrives at the
+   * next payment date after a cancellation, or with status `complete` once all
+   * billing cycles have run.
+   *
+   * Deliberately does not set planStatus — entitlement is resolved from
+   * cancelAtPeriodEnd plus planCurrentPeriodEnd, so a merchant whose period is
+   * still running keeps what they paid for.
+   */
+  async markSubscriptionEnded(
+    customerCode: string,
+    subscriptionCode?: string,
+    status?: string,
+  ) {
+    const ctx = await this.resolveSubscriptionContext(
+      customerCode,
+      subscriptionCode,
+    )
+    if (!ctx) return
+    const { user, sub, otherActive } = ctx
+
+    if (sub) {
+      sub.status = status === 'complete' ? 'complete' : 'cancelled'
+    }
+
+    if (!otherActive) {
+      user.cancelAtPeriodEnd = true
+    }
+
+    await user.save()
   }
 
   /**
@@ -1186,13 +1428,42 @@ export class MerchantPlansService {
   /**
    * A renewal invoice succeeded: extend the paid period and clear any lapse.
    *
-   * Idempotent by invoice reference. The same renewal reaches us several
-   * times — `invoice.payment_succeeded` and `invoice.update` both fire for one
-   * invoice, and Paystack retries delivery — and since the window is anchored
-   * to the previous period end, extending per delivery would grant a full free
-   * period each time.
+   * Idempotent by invoice reference. Paystack retries an unacknowledged
+   * webhook every 3 minutes for four tries and then hourly for 72 hours, and
+   * since the window is anchored to the previous period end, extending per
+   * delivery would grant a full free period each time.
    */
-  async renewPeriod(customerCode: string, invoiceReference?: string) {
+  /**
+   * Paystack's own `next_payment_date`, when it is usable.
+   *
+   * Preferred over local month arithmetic: recomputing the window is what
+   * corrupted stored periods historically, and `pnpm plans:fix-periods` repairs
+   * that damage by reconciling against this very field — so it is better read
+   * at ingest than patched afterwards.
+   *
+   * Validated rather than trusted. Paystack's sibling `period_start`/
+   * `period_end` fields are inverted in two of its three published samples, so
+   * a value that fails to parse, lies in the past, or precedes the period being
+   * renewed is discarded in favour of the local computation.
+   */
+  private resolveRenewalEnd(
+    nextPaymentDate: string | Date | undefined | null,
+    previousEnd: Date | null,
+    now: Date,
+  ): Date | null {
+    if (!nextPaymentDate) return null
+    const parsed = new Date(nextPaymentDate)
+    if (Number.isNaN(parsed.getTime())) return null
+    if (parsed.getTime() <= now.getTime()) return null
+    if (previousEnd && parsed.getTime() <= previousEnd.getTime()) return null
+    return parsed
+  }
+
+  async renewPeriod(
+    customerCode: string,
+    invoiceReference?: string,
+    nextPaymentDate?: string | Date | null,
+  ) {
     if (!customerCode) return
 
     const user = await this.userModel
@@ -1215,11 +1486,26 @@ export class MerchantPlansService {
     if (!alreadyRenewed) {
       // planInterval is authoritative; order history is only a legacy fallback.
       const interval = await this.currentInterval(user)
-      const { periodStart, periodEnd } = this.nextRenewalWindow(
-        previousEnd,
-        interval === 'annually' ? 12 : 1,
-        now,
-      )
+      const months = interval === 'annually' ? 12 : 1
+
+      const remoteEnd = this.resolveRenewalEnd(nextPaymentDate, previousEnd, now)
+      let periodStart: Date
+      let periodEnd: Date
+
+      if (remoteEnd) {
+        periodEnd = remoteEnd
+        // Derive the start from Paystack's end and the cadence — the same rule
+        // plans:fix-periods uses to repair damage, and it keeps the window the
+        // right length even when a lapse left the previous end far behind.
+        periodStart = new Date(remoteEnd)
+        periodStart.setMonth(periodStart.getMonth() - months)
+      } else {
+        ;({ periodStart, periodEnd } = this.nextRenewalWindow(
+          previousEnd,
+          months,
+          now,
+        ))
+      }
 
       // The start must move with the end: it is the divisor for proration, so
       // leaving it pinned to the original purchase makes the billing period

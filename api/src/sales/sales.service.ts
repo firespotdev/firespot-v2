@@ -26,6 +26,7 @@ import { CloudinaryService } from '../users/services/cloudinary.service'
 import { AccountLinkingService } from '../account-linking/account-linking.service'
 import {
   PLANS,
+  PLAN_STATE_PROJECTION,
   getEffectiveTier,
   getCollectEligibility,
 } from '../merchant-plans/constants/plans'
@@ -210,9 +211,10 @@ export class SalesService {
   ): Promise<void> {
     const merchant = await this.userModel
       .findById(merchantId)
-      // pendingPlanChange must be projected: a due downgrade lowers the cap
-      // immediately, before the record is materialised.
-      .select('planTier planStatus planGraceUntil pendingPlanChange')
+      // Must project every field the resolver reads — a missing one silently
+      // changes the cap rather than failing. PLAN_STATE_PROJECTION is the
+      // single source for that list.
+      .select(PLAN_STATE_PROJECTION)
       .exec()
 
     if (!merchant) return
@@ -370,9 +372,7 @@ export class SalesService {
   ): Promise<void> {
     const merchant = await this.userModel
       .findById(merchantId)
-      .select(
-        'planTier planStatus planGraceUntil kycCompletedAt pendingPlanChange',
-      )
+      .select(PLAN_STATE_PROJECTION)
       .exec()
     if (!merchant) return
 

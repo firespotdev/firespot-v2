@@ -9,8 +9,9 @@ export const TIER_RANK: Record<PlanTier, number> = {
 
 /**
  * True when moving from `current` to `target` would lose capability.
- * Downgrades are not supported — a merchant can only move up. Mirrors the
- * server-side guard in merchant-plans.service.
+ * Downgrades ARE supported — the server defers them to the end of the current
+ * period, or routes a drop to LITE through cancellation. Mirrors `isDowngrade`
+ * in the API's merchant-plans/constants/plans.ts.
  */
 export function isDowngrade(
   current: PlanTier | null | undefined,
