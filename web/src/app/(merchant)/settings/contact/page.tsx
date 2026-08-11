@@ -2,9 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { useRouter } from '@bprogress/next/app'
 import {
-  ArrowLeft,
   MessageCircle,
   Music2,
   X,
@@ -16,10 +14,12 @@ import {
   Label,
   Spinner,
   showNotificationToast,
+  BackButton,
 } from '@/components/ui'
 import { useUserProfile } from '@/services/users'
 import { useUpdateContact } from '@/services/shop'
 import type { ShopSocialLinks } from '@/services/auth/interface'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 // Only ig/fb/twitter svgs ship today; the other two use a lucide fallback in a
 // brand-coloured tile until real assets land.
@@ -56,7 +56,7 @@ const SOCIALS: Array<{
 ]
 
 export default function ContactSettingsPage() {
-  const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const { data: profile } = useUserProfile()
   const update = useUpdateContact()
 
@@ -79,7 +79,7 @@ export default function ContactSettingsPage() {
         socialLinks: socials,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: handleBack,
         onError: () =>
           showNotificationToast({ message: 'Could not save. Try again.' }),
       },
@@ -89,14 +89,7 @@ export default function ContactSettingsPage() {
   return (
     <div className="min-h-dvh bg-white font-satoshi">
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Back"
-          className="self-start px-4 py-3.5 flex items-center justify-center"
-        >
-          <ArrowLeft className="w-6 h-6 text-black" />
-        </button>
+        <BackButton onClick={handleBack} className="self-start px-4 py-3.5" />
 
         {/* flex-1 pushes the footer to the bottom; it scrolls if content is tall */}
         <div className="px-4 flex-1">

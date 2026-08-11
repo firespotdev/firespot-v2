@@ -94,6 +94,7 @@ export function CustomerSelectDrawer({
           <button
             onClick={onBack || closeDrawer}
             type="button"
+            aria-label="Back"
             className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center text-black cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5 text-black" />

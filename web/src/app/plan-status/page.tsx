@@ -2,7 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { X } from 'lucide-react'
 import { Button, LoaderCircle, TagFooter } from '@/components/ui'
 import { useAuthStore, useAuthReady } from '@/services/auth'

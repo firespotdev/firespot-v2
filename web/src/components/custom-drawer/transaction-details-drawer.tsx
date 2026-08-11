@@ -15,7 +15,7 @@ import {
   Loader2,
   MoreHorizontal,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import {
   Button,
   TagFooter,

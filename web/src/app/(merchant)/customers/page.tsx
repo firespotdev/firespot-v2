@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import {
   ArrowLeft,
   ChevronRight,
@@ -137,7 +137,7 @@ export default function CustomersListPage() {
           <Link
             href="/profile"
             aria-label="Back to profile"
-            className="flex h-8 w-8 shrink-0 items-center justify-center"
+            className="-m-1.5 flex h-11 w-11 shrink-0 items-center justify-center"
           >
             <ArrowLeft color="black" strokeWidth={2} size={24} />
           </Link>

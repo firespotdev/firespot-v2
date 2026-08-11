@@ -231,7 +231,7 @@ export default function RecentsPage() {
           <Link
             href="/profile"
             aria-label="Back to profile"
-            className="flex h-10 w-10 shrink-0 items-center justify-center"
+            className="-m-0.5 flex h-11 w-11 shrink-0 items-center justify-center"
           >
             <ArrowLeft color="black" strokeWidth={2} size={24} />
           </Link>

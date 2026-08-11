@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowUpRight } from 'lucide-react'
+import { useRouter } from '@bprogress/next/app'
+import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { useUserProfile } from '@/services/users'
@@ -12,9 +12,12 @@ import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 export default function PreviewPage() {
   const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -44,12 +47,7 @@ export default function PreviewPage() {
       <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 w-full z-50 bg-[#F4F6F8] flex items-center justify-between px-4 py-2">
-            <button
-              onClick={() => router.back()}
-              className="w-10 h-10 flex items-center justify-center"
-            >
-              <ArrowLeft size={24} strokeWidth={2} />
-            </button>
+            <BackButton onClick={handleBack} className="h-10 w-10" />
             <div className="flex flex-col items-center">
               <h1 className="text-base font-bold text-black">Preview</h1>
             </div>

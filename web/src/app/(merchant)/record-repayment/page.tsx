@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useMemo, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { Wallet } from 'lucide-react'
 import {
   useSale,
@@ -18,6 +19,7 @@ import {
   LoaderCircle,
 } from '@/components/ui'
 import { Keypad } from '@/components/sales/Keypad'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 function RecordRepaymentContent() {
   const router = useRouter()
@@ -28,6 +30,14 @@ function RecordRepaymentContent() {
   const returnTo = requestedReturnTo.startsWith('/outstanding?')
     ? requestedReturnTo
     : ''
+  const handleSafeBack = useSafeBack('/outstanding')
+  const handleBack = () => {
+    if (returnTo) {
+      router.replace(returnTo)
+      return
+    }
+    handleSafeBack()
+  }
 
   const { data: sale, isLoading: isLoadingSale } = useSale(saleId)
 
@@ -270,7 +280,7 @@ function RecordRepaymentContent() {
               router.replace(repaymentReturnTo)
               return
             }
-            router.back()
+            handleBack()
           },
         },
       })
@@ -296,7 +306,7 @@ function RecordRepaymentContent() {
           <CircularIconButton
             icon="arrow-left"
             size="md"
-            onClick={() => router.back()}
+            onClick={handleBack}
           />
 
           <TabSwitch
@@ -312,7 +322,7 @@ function RecordRepaymentContent() {
           <CircularIconButton
             icon="x"
             size="md"
-            onClick={() => router.back()}
+            onClick={handleBack}
           />
         </header>
 

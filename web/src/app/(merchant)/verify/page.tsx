@@ -155,6 +155,7 @@ function VerifyContent() {
             type="button"
             onClick={() => router.push('/profile')}
             aria-label="Back"
+            className="-m-2.5 flex min-h-11 min-w-11 items-center justify-center"
           >
             <ArrowLeft size={24} color="black" />
           </button>

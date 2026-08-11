@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { ArrowLeft } from 'lucide-react'
 import { Button, Input, Label, Spinner } from '@/components/ui'
 import { useUpdateProfile, useAuthStore, useAuthReady } from '@/services/auth'
@@ -92,6 +93,7 @@ function OnboardingPageContent() {
       <div className="max-w-125 mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
         <button
           onClick={handleBack}
+          aria-label="Back"
           className="self-start mb-6"
           type="button"
           disabled={updateProfile.isPending}

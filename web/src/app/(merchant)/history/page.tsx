@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useEffect, Suspense } from 'react'
 import {
-  ArrowLeft,
   Download,
   Search,
   ChevronDown,
@@ -15,7 +14,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { useDrawerStore } from '@/services/drawer'
@@ -30,6 +29,8 @@ import { getMerchantStatus } from '@/lib/utils/sales'
 import { SaleItem } from '@/components/sales/SaleItem'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 import { TabSwitch } from '@/components/ui'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 const getMonthYearKey = (dateStr: string | Date) => {
   const date = new Date(dateStr)
@@ -38,7 +39,7 @@ const getMonthYearKey = (dateStr: string | Date) => {
 
 function HistoryContent() {
   const { openDrawer } = useDrawerStore()
-  const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchParams = useSearchParams()
@@ -189,12 +190,7 @@ function HistoryContent() {
       )}
 
       <header className="shrink-0 bg-[#F4F6F8] flex items-center justify-between py-3 px-4 z-30">
-        <ArrowLeft
-          onClick={() => router.back()}
-          size={24}
-          color="black"
-          className="cursor-pointer"
-        />
+        <BackButton onClick={handleBack} className="-m-2.5" />
 
         {/* Similar toggle tab to Record Sale page (COLLECTED / RECORDED) */}
         <TabSwitch

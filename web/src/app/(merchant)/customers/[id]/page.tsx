@@ -2,7 +2,6 @@
 
 import { useState, use } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   ChevronRight,
@@ -164,7 +163,7 @@ export default function CustomerDetailPage({
           <Link
             href="/customers"
             aria-label="Back to customers"
-            className="flex h-8 w-8 shrink-0 items-center justify-center"
+            className="-m-1.5 flex h-11 w-11 shrink-0 items-center justify-center"
           >
             <ArrowLeft color="black" strokeWidth={2} size={24} />
           </Link>

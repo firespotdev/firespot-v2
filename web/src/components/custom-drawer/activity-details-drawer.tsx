@@ -11,7 +11,7 @@ import {
   MoreVertical,
   MoreHorizontal,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { format } from 'date-fns'
 import {
   Button,

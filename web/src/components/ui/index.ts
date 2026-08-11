@@ -1,4 +1,5 @@
 export * from './bank-logo'
+export * from './back-button'
 export * from './button'
 export * from './input'
 export * from './label'

@@ -3,7 +3,7 @@
 import { Check, X, AlertCircle, Clock } from 'lucide-react'
 import { Button, StatBanner, TagFooter } from '../ui'
 import { LoaderCircle } from '../ui'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
 import { useDrawerStore } from '@/services/drawer'

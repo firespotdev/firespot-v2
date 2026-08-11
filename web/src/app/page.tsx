@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { BrowserMultiFormatReader } from '@zxing/library'
 import { Zap } from 'lucide-react'
 import Image from 'next/image'

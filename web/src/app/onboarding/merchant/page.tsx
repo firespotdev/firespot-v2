@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { ArrowLeft } from 'lucide-react'
 import { BusinessAboutForm } from '@/components/auth/business-about-form'
 import { BusinessPaymentsForm } from '@/components/auth/business-payments-form'
@@ -10,6 +11,7 @@ import { useInitiateActivation } from '@/services/users'
 import { showNotificationToast } from '@/components/ui'
 import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 type Step = 'about' | 'payments'
 
@@ -45,6 +47,9 @@ function MerchantOnboardingPageContent() {
 
   // Deep link back to where the user came from (e.g. QR kit activation)
   const redirectPath = searchParams.get('redirect')
+  const handlePageBack = useSafeBack(
+    redirectPath || '/onboarding/merchant/start',
+  )
   // Agent referral from QR kit links — applied silently, no visible field
   const referralCode = searchParams.get('ref')?.toUpperCase()
   const merchantReferralCode = searchParams.get('mref')?.toUpperCase()
@@ -96,7 +101,7 @@ function MerchantOnboardingPageContent() {
       setStep('about')
       setError(undefined)
     } else {
-      router.back()
+      handlePageBack()
     }
   }
 
@@ -236,6 +241,7 @@ function MerchantOnboardingPageContent() {
     >
       <button
         onClick={handleBack}
+        aria-label={step === 'payments' ? 'Back to business details' : 'Back'}
         className="self-start h-[52px] w-full px-4 shrink-0"
         type="button"
       disabled={merchantSetup.isPending || initiateActivation.isPending}

@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { AlertCircle } from 'lucide-react'
 import {
   useOutstandingSummary,

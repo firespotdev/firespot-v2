@@ -22,11 +22,12 @@ import { useUpdateEmployeeSetup } from '@/services/shop'
 import { useUserProfile } from '@/services/users'
 import type { UserProfile } from '@/services/users'
 import { ShopSetupScreen } from '@/components/shop/shop-setup-screen'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 const EMPLOYEE_COUNTS = Array.from({ length: 10 }, (_, index) => index + 1)
 
 function EmployeeSettingsForm({ profile }: { profile: UserProfile }) {
-  const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const update = useUpdateEmployeeSetup()
   const { selectContacts } = useContactPicker()
 
@@ -98,7 +99,7 @@ function EmployeeSettingsForm({ profile }: { profile: UserProfile }) {
     update.mutate(
       { employeeCount: targetCount, staff },
       {
-        onSuccess: () => router.back(),
+        onSuccess: handleBack,
         onError: (error: unknown) =>
           showNotificationToast({
             message:
@@ -122,7 +123,7 @@ function EmployeeSettingsForm({ profile }: { profile: UserProfile }) {
     <ShopSetupScreen
       eyebrow="Set up employees"
       title="Give your staff controlled access"
-      onBack={() => router.back()}
+      onBack={handleBack}
       onContinue={handleContinue}
       disabled={!isComplete}
       pending={update.isPending}

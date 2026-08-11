@@ -11,7 +11,7 @@ import {
   PlusCircle,
   Bell,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
 import { getMerchantStatus } from '@/lib/utils/sales'

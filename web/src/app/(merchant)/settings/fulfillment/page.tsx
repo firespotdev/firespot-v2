@@ -1,9 +1,7 @@
 'use client'
 
 import { ReactNode, useState } from 'react'
-import { useRouter } from '@bprogress/next/app'
 import {
-  ArrowLeft,
   CalendarDays,
   Home,
   MapPin,
@@ -17,6 +15,7 @@ import {
   Spinner,
   Switch,
   showNotificationToast,
+  BackButton,
 } from '@/components/ui'
 import { useUserProfile } from '@/services/users'
 import { useUpdateFulfillment } from '@/services/shop'
@@ -27,6 +26,7 @@ import {
   MapPinAreaIcon,
   TruckIcon,
 } from '@phosphor-icons/react'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 const OPTIONS: Array<{
   key: keyof ShopFulfillment
@@ -66,7 +66,7 @@ const OPTIONS: Array<{
 ]
 
 export default function FulfillmentSettingsPage() {
-  const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const { data: profile } = useUserProfile()
   const update = useUpdateFulfillment()
 
@@ -79,7 +79,7 @@ export default function FulfillmentSettingsPage() {
 
   const handleContinue = () => {
     update.mutate(flags, {
-      onSuccess: () => router.back(),
+      onSuccess: handleBack,
       onError: () =>
         showNotificationToast({ message: 'Could not save. Try again.' }),
     })
@@ -88,14 +88,7 @@ export default function FulfillmentSettingsPage() {
   return (
     <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Back"
-          className="self-start px-4 py-3.5 flex items-center justify-center"
-        >
-          <ArrowLeft className="w-6 h-6 text-black" />
-        </button>
+        <BackButton onClick={handleBack} className="self-start px-4 py-3.5" />
 
         {/* flex-1 pushes the footer to the bottom; it scrolls if content is tall */}
         <div className="px-4 flex-1">

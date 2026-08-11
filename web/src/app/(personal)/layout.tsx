@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { useAuthStore, useAuthReady } from '@/services/auth'
 import { hasPersonalIdentity, isTokenExpired } from '@/lib/utils/auth-redirect'
 import { BottomNav } from '@/components/layout/bottom-nav'

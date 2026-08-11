@@ -96,7 +96,7 @@ export function ActiveHoursBookingDrawer({
               setStep(step === 'details' ? 'capacity' : 'availability')
             }
             aria-label="Previous step"
-            className="flex items-center justify-center"
+            className="-m-2.5 flex min-h-11 min-w-11 items-center justify-center"
           >
             <ArrowLeft className="h-6 w-6 text-black" />
           </button>

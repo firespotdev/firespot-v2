@@ -4,13 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   X,
   ChevronRight,
-  ArrowLeft,
   FileText,
   Check,
   Link2,
   PenLine,
   Share,
 } from 'lucide-react'
+import { BackButton } from '@/components/ui/back-button'
 import { Button } from '@/components/ui/button'
 import {
   showNotificationToast,
@@ -380,7 +380,11 @@ export function CollectPaymentDrawer({
         }
       >
         {activeView === 'waiting' || activeView === 'confirm' ? (
-          <ArrowLeft onClick={handleBackStep} size={20} color="black" />
+          <BackButton
+            onClick={handleBackStep}
+            iconSize={20}
+            className="-m-3"
+          />
         ) : (
           <div className="w-5 h-5"></div>
         )}
@@ -389,7 +393,14 @@ export function CollectPaymentDrawer({
             {activeView === 'qr' ? 'Collect' : ''}
           </h2>
         </div>
-        <X onClick={handleNewSale} size={20} color="#000000" />
+        <button
+          type="button"
+          onClick={handleNewSale}
+          aria-label="Close collection flow"
+          className="-m-3 inline-flex min-h-11 min-w-11 items-center justify-center"
+        >
+          <X size={20} color="#000000" />
+        </button>
       </div>
 
       {/* Main Drawer Content */}

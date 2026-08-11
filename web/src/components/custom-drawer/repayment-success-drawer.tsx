@@ -2,7 +2,7 @@
 
 import { Check, Clock, Receipt, X } from 'lucide-react'
 import { Button, ClockGradientIcon, StatBanner } from '@/components/ui'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { useSalesStats } from '@/services/sales/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import { formatCurrency } from '@/lib/utils'

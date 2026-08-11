@@ -1,15 +1,17 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import {
-  ArrowLeft,
   UploadCloud,
   CheckCircle2,
   Loader2,
   Landmark,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 import { useSale } from '@/services/sales/hooks'
 import { useSubmitReport } from '@/services/reports/hooks'
 import { showNotificationToast } from '@/components/ui'
@@ -39,6 +41,7 @@ export default function DisputeReportPage() {
 function DisputeReportPageContent() {
   const params = useParams()
   const router = useRouter()
+  const handleBack = useSafeBack('/activity')
   const saleId = params.saleId as string
 
   const { data: sale, isLoading } = useSale(saleId)
@@ -143,12 +146,10 @@ function DisputeReportPageContent() {
       <div className="w-full max-w-125 bg-white h-full flex flex-col p-6 shadow-sm justify-between">
         {/* Header */}
         <div className="shrink-0 flex items-center justify-between border-b border-[#F4F6F8] pb-3">
-          <button
-            onClick={() => router.back()}
-            className="p-1 hover:bg-gray-100 rounded-full transition-all"
-          >
-            <ArrowLeft className="w-6 h-6 text-black" />
-          </button>
+          <BackButton
+            onClick={handleBack}
+            className="-m-2.5 rounded-full transition-colors hover:bg-gray-100"
+          />
           <h2 className="text-base font-bold text-black flex-1 text-center pr-6">
             Report dispute
           </h2>

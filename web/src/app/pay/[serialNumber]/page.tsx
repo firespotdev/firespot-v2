@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { ArrowUpRight, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'

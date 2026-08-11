@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense, useEffect, useRef } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { useDrawerStore } from '@/services/drawer'
 
 /**

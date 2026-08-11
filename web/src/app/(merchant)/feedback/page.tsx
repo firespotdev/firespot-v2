@@ -3,11 +3,13 @@
 import { useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { useRouter } from '@bprogress/next/app'
-import { ArrowLeft, Star } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { LoaderCircle } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useMerchantFeedback } from '@/services/feedback'
 import { usePlanCatalog } from '@/services/merchant-plans'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 function formatMonth(value: string) {
   return new Intl.DateTimeFormat('en-NG', {
@@ -29,6 +31,7 @@ function formatFeedbackTime(value: string) {
 
 export default function FeedbackPage() {
   const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: catalog, isLoading: planLoading } = usePlanCatalog()
   const tier = catalog?.current.effectiveTier
@@ -64,9 +67,7 @@ export default function FeedbackPage() {
     <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
       <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <header className="flex shrink-0 items-center justify-between py-2">
-          <button type="button" onClick={() => router.back()} aria-label="Back">
-            <ArrowLeft size={24} className="text-black" />
-          </button>
+          <BackButton onClick={handleBack} className="-m-2.5" />
           <h1 className="text-[20px] font-bold -tracking-[0.4px] text-black">
             Feedback
           </h1>

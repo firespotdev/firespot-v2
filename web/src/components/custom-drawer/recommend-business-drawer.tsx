@@ -105,7 +105,12 @@ export function RecommendBusinessDrawer({
   return (
     <div className="mx-auto flex h-full w-full max-w-125 flex-col bg-[#F4F6F8] px-4">
       <header className="flex justify-between items-center py-3.5">
-        <button type="button" onClick={closeDrawer} aria-label="Back">
+        <button
+          type="button"
+          onClick={closeDrawer}
+          aria-label="Back"
+          className="-m-2.5 flex min-h-11 min-w-11 items-center justify-center"
+        >
           <ArrowLeft size={24} strokeWidth={2} />
         </button>
         <h1 className="text-center text-base font-bold text-black">

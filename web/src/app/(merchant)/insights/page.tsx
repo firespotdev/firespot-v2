@@ -3,15 +3,16 @@
 import { format } from 'date-fns'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import {
   AlertCircle,
-  ArrowLeft,
   Clock,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 import { useDrawerStore } from '@/services/drawer'
 import {
   useMerchantInsights,
@@ -36,6 +37,7 @@ const PAY_METHOD_COLORS = [
 
 export default function InsightsPage() {
   const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const [filter, setFilter] = useState<InsightsQuery>({
     preset: 'today',
@@ -108,13 +110,7 @@ export default function InsightsPage() {
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#FFFFFF] px-4 py-3">
           <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="flex items-center justify-center"
-            >
-              <ArrowLeft className="w-6 h-6 text-black" />
-            </button>
+            <BackButton onClick={handleBack} className="-m-2.5" />
             <button
               type="button"
               onClick={handleOpenFilter}

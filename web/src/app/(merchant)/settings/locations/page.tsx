@@ -1,8 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useRouter } from '@bprogress/next/app'
-import { ArrowLeft, Store } from 'lucide-react'
+import { Store } from 'lucide-react'
 import {
   AppCard,
   Button,
@@ -16,6 +15,7 @@ import {
   Spinner,
   Switch,
   showNotificationToast,
+  BackButton,
 } from '@/components/ui'
 import {
   NIGERIAN_STATES,
@@ -24,11 +24,12 @@ import {
 import { useUserProfile } from '@/services/users'
 import { useUpdateLocation } from '@/services/shop'
 import { StorefrontIcon } from '@phosphor-icons/react'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 const BRANCH_OPTIONS = ['1', '2', '3', '4', '5', '6+']
 
 export default function LocationsSettingsPage() {
-  const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const { data: profile } = useUserProfile()
   const update = useUpdateLocation()
 
@@ -71,7 +72,7 @@ export default function LocationsSettingsPage() {
         branchCount,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: handleBack,
         onError: () =>
           showNotificationToast({ message: 'Could not save. Try again.' }),
       },
@@ -81,14 +82,7 @@ export default function LocationsSettingsPage() {
   return (
     <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Back"
-          className="self-start px-4 py-3.5 flex items-center justify-center"
-        >
-          <ArrowLeft className="w-6 h-6 text-black" />
-        </button>
+        <BackButton onClick={handleBack} className="self-start px-4 py-3.5" />
 
         {/* flex-1 pushes the footer to the bottom; it scrolls if content is tall */}
         <div className="px-4 flex-1">

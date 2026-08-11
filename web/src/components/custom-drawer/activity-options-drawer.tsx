@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { useDrawerStore } from '@/services/drawer'
 import { CustomerSale } from '@/services/sales/interface'
 import {

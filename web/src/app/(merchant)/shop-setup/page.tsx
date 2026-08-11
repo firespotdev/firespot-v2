@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { useRouter } from '@bprogress/next/app'
-import { ArrowLeft, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import {
   ActionList,
   ActionListItem,
@@ -20,9 +20,12 @@ import {
   CHECKLIST_ORDER,
   type ChecklistDestination,
 } from '@/components/shop/shop-checklist-items'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 export default function ShopSetupPage() {
   const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const openDrawer = useDrawerStore((s) => s.openDrawer)
   const { data: catalog, isLoading: catalogLoading } = usePlanCatalog()
   const { data: profile } = useUserProfile()
@@ -88,14 +91,7 @@ export default function ShopSetupPage() {
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
         {/* Header */}
         <header className="flex items-center justify-between px-4 pt-4 pb-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="Back"
-            className="w-9 h-9 -ml-2 flex items-center justify-center"
-          >
-            <ArrowLeft className="w-6 h-6 text-black" />
-          </button>
+          <BackButton onClick={handleBack} className="-ml-2" />
           <div className="text-center">
             <h1 className="text-base font-bold text-black leading-none">
               Set up your Shop

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { useQueryClient } from '@tanstack/react-query'
 import { showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'

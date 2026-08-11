@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, CircleCheck } from 'lucide-react'
+import { useRouter } from '@bprogress/next/app'
+import { CircleCheck } from 'lucide-react'
 import {
   Label,
   Input,
@@ -17,9 +17,12 @@ import {
 import { useBanks, useResolveAccount } from '@/services/paystack'
 import { useAddBankAccount } from '@/services/users'
 import { showNotificationToast } from '@/components/ui'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 export default function AddBankAccountPage() {
   const router = useRouter()
+  const handleBack = useSafeBack('/profile')
 
   const { data: banks = [], isLoading: banksLoading } = useBanks()
   const resolveAccount = useResolveAccount()
@@ -136,10 +139,7 @@ export default function AddBankAccountPage() {
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col font-satoshi">
         {/* Header */}
         <header className="flex items-center p-4">
-          <ArrowLeft
-            className="w-6 h-6 text-black"
-            onClick={() => router.back()}
-          />
+          <BackButton onClick={handleBack} className="-m-2.5" />
         </header>
 
         {/* Content */}

@@ -137,7 +137,7 @@ export function CustomerDebtList({
           type="button"
           onClick={onBack}
           aria-label="Back"
-          className="flex h-8 w-8 items-center justify-center"
+          className="-m-1.5 flex h-11 w-11 items-center justify-center"
         >
           <ArrowLeft className="h-6 w-6 text-black" />
         </button>

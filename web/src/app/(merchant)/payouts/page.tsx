@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from '@bprogress/next/app'
-import { ArrowLeft, ChevronRight, Search } from 'lucide-react'
+import { ChevronRight, Search } from 'lucide-react'
 import { LoaderCircle, StatusBadge, EmptyState } from '@/components/ui'
 import { usePayouts, type SettlementItem } from '@/services/payouts'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 function formatNaira(amount: number): string {
   return amount.toLocaleString('en-NG', {
@@ -15,6 +17,7 @@ function formatNaira(amount: number): string {
 
 export default function PayoutsPage() {
   const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const [searchQuery, setSearchQuery] = useState('')
   const { data: payoutsData, isLoading, isError } = usePayouts()
 
@@ -60,14 +63,7 @@ export default function PayoutsPage() {
       <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-3 pb-8">
         {/* Header */}
         <header className="flex items-center justify-between py-3.5">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="Back"
-            className="flex items-center justify-center"
-          >
-            <ArrowLeft className="h-6 w-6 text-black" />
-          </button>
+          <BackButton onClick={handleBack} className="-m-2.5" />
           <h1 className="text-[20px] font-bold -tracking-[0.4px] text-black">
             Payouts
           </h1>

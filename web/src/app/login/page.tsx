@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { LoginForm } from '@/components/auth/login-form'
 import { OtpVerification } from '@/components/auth/otp-verification'
 import {

@@ -133,6 +133,7 @@ export function OtpVerification({
       <div className="max-w-125 mx-auto h-full pt-8 pb-4 px-4 flex flex-col font-satoshi">
         <button
           onClick={onBack}
+          aria-label="Back"
           className="self-start mb-6"
           type="button"
           disabled={isLoading}

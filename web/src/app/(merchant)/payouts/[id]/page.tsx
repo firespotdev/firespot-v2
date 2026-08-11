@@ -1,9 +1,9 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useRouter } from "@bprogress/next/app";
-import { ArrowLeft } from "lucide-react";
 import { EmptyState, LoaderCircle, StatusBadge } from "@/components/ui";
+import { BackButton } from "@/components/ui/back-button";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { usePayoutDetails } from "@/services/payouts";
 
 function naira(amount: number): string {
@@ -14,7 +14,7 @@ function naira(amount: number): string {
 }
 
 export default function PayoutDetailsPage() {
-  const router = useRouter();
+  const handleBack = useSafeBack("/payouts");
   const params = useParams<{ id: string }>();
   const settlementId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { data, isLoading, isError } = usePayoutDetails(settlementId);
@@ -31,9 +31,7 @@ export default function PayoutDetailsPage() {
     <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
       <div className="mx-auto min-h-dvh w-full max-w-125 px-3 pb-8">
         <header className="grid grid-cols-[24px_1fr_24px] items-center py-3.5">
-          <button type="button" onClick={() => router.back()} aria-label="Back">
-            <ArrowLeft className="h-6 w-6 text-black" />
-          </button>
+          <BackButton onClick={handleBack} className="-m-2.5" />
           <h1 className="text-center text-[20px] font-bold text-black">
             Payout details
           </h1>

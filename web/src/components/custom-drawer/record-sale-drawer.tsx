@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { ChevronRight, X } from 'lucide-react'
 import { TabSwitch } from '@/components/ui'
 import { usePlanCatalog } from '@/services/merchant-plans'

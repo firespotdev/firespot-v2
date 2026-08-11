@@ -2,9 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   ArrowUpRight,
   Check,
   ChevronRight,
@@ -20,6 +18,8 @@ import {
 } from '@/components/ui/carousel'
 import { TierIcon } from '@/components/merchant/tier-icon'
 import { useDrawerStore } from '@/services/drawer'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 import {
   usePlanCatalog,
   planTotal,
@@ -64,7 +64,7 @@ function priceSubtitle(
 }
 
 function PlansContent() {
-  const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const { data, isLoading } = usePlanCatalog()
   const openDrawer = useDrawerStore((s) => s.openDrawer)
   const [activeTier, setActiveTier] = useState<PlanTier>('LITE')
@@ -175,14 +175,11 @@ function PlansContent() {
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
         {/* Header: back + tier switcher (sticky) */}
         <header className="sticky top-0 z-20 bg-black flex items-center gap-2 px-3 py-2">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            aria-label="Back"
-            className="w-6 h-6 flex items-center justify-center shrink-0"
-          >
-            <ArrowLeft size={24} color="white" />
-          </button>
+          <BackButton
+            onClick={handleBack}
+            className="-m-2.5"
+            iconClassName="text-white"
+          />
           <TabSwitch<PlanTier>
             value={activeTier}
             onChange={handleTierChange}

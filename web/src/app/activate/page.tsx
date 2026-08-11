@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense, useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { BrowserMultiFormatReader } from '@zxing/library'
 import { X, Zap, ArrowLeft, ChevronRight, Check, LinkIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -509,7 +510,12 @@ function ActivatePageContent() {
       <div className="h-dvh bg-white overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 z-50 flex items-center py-4 px-4 bg-white">
-            <button onClick={() => updateMode('scan')} className="p-2 -ml-2">
+            <button
+              type="button"
+              onClick={() => updateMode('scan')}
+              aria-label="Back to QR scanner"
+              className="p-2 -ml-2"
+            >
               <ArrowLeft className="w-6 h-6 text-black" />
             </button>
           </header>
@@ -582,7 +588,12 @@ function ActivatePageContent() {
       <div className="h-dvh bg-white overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 z-50 flex items-center justify-between py-4 px-4 bg-white">
-            <button onClick={() => updateMode('serial')} className="p-2 -ml-2">
+            <button
+              type="button"
+              onClick={() => updateMode('serial')}
+              aria-label="Back to serial number"
+              className="p-2 -ml-2"
+            >
               <ArrowLeft className="w-6 h-6 text-black" />
             </button>
             <div className="text-center">

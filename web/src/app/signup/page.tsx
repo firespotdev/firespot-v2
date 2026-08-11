@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 
 /**
  * Signup has been unified with login (phone + OTP). This page only forwards

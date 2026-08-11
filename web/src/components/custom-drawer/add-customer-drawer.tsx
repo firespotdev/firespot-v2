@@ -113,7 +113,7 @@ export function AddCustomerDrawer({
             onClick={onBack}
             type="button"
             aria-label="Back"
-            className="flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
+            className="-m-1 flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
           >
             <ArrowLeft size={24} color="black" />
           </button>

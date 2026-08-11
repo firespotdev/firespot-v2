@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from '@bprogress/next/app'
 import { ArchiveRestore, ChevronRight } from 'lucide-react'
 import {
   AppCard,
@@ -15,6 +14,7 @@ import { useUserProfile } from '@/services/users'
 import type { UserProfile } from '@/services/users'
 import type { ShopPolicies } from '@/services/auth/interface'
 import { BoxArrowUpIcon } from '@phosphor-icons/react'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 const POLICY_SECTIONS: Array<{
   label: string
@@ -75,7 +75,7 @@ function PolicyIcon() {
 }
 
 function PoliciesSettingsForm({ profile }: { profile: UserProfile }) {
-  const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const update = useUpdatePolicies()
   const [policies, setPolicies] = useState(() =>
     profile.shopPolicies
@@ -93,7 +93,7 @@ function PoliciesSettingsForm({ profile }: { profile: UserProfile }) {
 
   const handleContinue = () => {
     update.mutate(policies, {
-      onSuccess: () => router.back(),
+      onSuccess: handleBack,
       onError: () =>
         showNotificationToast({
           message: 'Could not save. Try again.',
@@ -106,7 +106,7 @@ function PoliciesSettingsForm({ profile }: { profile: UserProfile }) {
     <ShopSetupScreen
       eyebrow="Set up policies"
       title="Specify Shop Policies"
-      onBack={() => router.back()}
+      onBack={handleBack}
       onContinue={handleContinue}
       pending={update.isPending}
       className="bg-linear-to-br from-[#FFFFFF] to-[#F6F7F8]"
