@@ -19,3 +19,4 @@ pnpm-debug.log*
 /docs/
 /CLAUDE.md
 /.agents/
+.codex

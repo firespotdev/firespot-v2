@@ -50,7 +50,7 @@ const ROW_META: Record<VerificationRowKey, RowMeta> = {
   },
   cac: {
     title: 'CAC',
-    subtitle: 'Your CAC number and certificate',
+    subtitle: 'Your CAC business registration',
     Icon: <ScanSmileyIcon size={24} weight="fill" color="white" />,
     bg: '#3B9BF5',
   },

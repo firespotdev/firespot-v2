@@ -61,7 +61,6 @@ export interface KycSessionResponse {
 
 export interface VerifyCacPayload {
   rcNumber: string
-  businessType?: string
 }
 
 export interface MarkKycSessionSubmittedPayload {

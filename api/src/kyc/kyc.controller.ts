@@ -14,7 +14,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger'
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import { IsNotEmpty, IsString, MaxLength } from 'class-validator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { KycService } from './kyc.service'
 import { SmileIdService } from '../services/smileid/smileid.service'
@@ -23,11 +23,8 @@ import type { KycCheck } from '../merchant-plans/constants/plans'
 class VerifyCacDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(64)
   rcNumber: string
-
-  @IsString()
-  @IsOptional()
-  businessType?: string
 }
 
 class MarkKycSessionSubmittedDto {
@@ -111,8 +108,8 @@ export class KycController {
     const timestamp = payload?.timestamp || headers['x-smile-timestamp']
 
     if (
-      signature &&
-      timestamp &&
+      !signature ||
+      !timestamp ||
       !this.smileIdService.confirmSignature(timestamp, signature)
     ) {
       // Do not throw — SmileID retries on non-2xx. Log and drop.

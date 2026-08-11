@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from '@bprogress/next/app'
 import { ArrowLeft } from 'lucide-react'
@@ -19,11 +19,12 @@ import {
   type KycSessionResponse,
 } from '@/services/kyc'
 import { usePlanCatalog } from '@/services/merchant-plans'
-import { SmileIdEmbed } from '@/components/kyc/smileid-embed'
 import {
+  CacVerificationForm,
+  SmileIdEmbed,
   VerificationStepList,
   buildVerificationRows,
-} from '@/components/kyc/verification-step-list'
+} from '@/components/kyc'
 
 /** ₦5,000,000 → "₦5m", ₦200,000 → "₦200k". */
 function compactNaira(amount: number): string {
@@ -54,6 +55,7 @@ function VerifyContent() {
   >(null)
   const [rcValue, setRcValue] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const cacInputRef = useRef<HTMLInputElement>(null)
 
   if (isLoading) {
     return (
@@ -109,10 +111,20 @@ function VerifyContent() {
     })
   }
 
+  const handleRetry = (check: KycSessionResponse['check']) => {
+    setError(null)
+    if (check === 'cac') {
+      cacInputRef.current?.focus()
+      return
+    }
+    handleStartWebCheck()
+  }
+
   const handleSubmitCac = () => {
     setError(null)
     if (!rcValue.trim()) {
-      setError('Enter your RC number')
+      setError('Enter your CAC registration number')
+      cacInputRef.current?.focus()
       return
     }
     verifyCac.mutate(
@@ -122,7 +134,6 @@ function VerifyContent() {
           showNotificationToast({
             message: 'Business verification submitted — checking…',
           })
-          setRcValue('')
           refetch()
         },
         onError: (err: unknown) =>
@@ -156,11 +167,13 @@ function VerifyContent() {
         </header>
 
         <h1 className="px-4 text-[20px] -tracking-[0.4px] font-bold text-black mt-2">
-          Verify your identity
+          {isCacStep ? 'Verify your business' : 'Verify your identity'}
         </h1>
         <p className="px-4 text-sm font-medium text-[#00000080] mt-1.5">
-          {dailyCap &&
-            `Collect up to ${compactNaira(dailyCap)} daily when you provide more information that can be used to verify your identity and business.`}
+          {isCacStep
+            ? 'Enter your CAC registration number to confirm your business registration.'
+            : dailyCap &&
+              `Collect up to ${compactNaira(dailyCap)} daily when you provide more information that can be used to verify your identity and business.`}
         </p>
 
         {session ? (
@@ -196,12 +209,26 @@ function VerifyContent() {
             <div className="px-4">
               <VerificationStepList
                 rows={rows}
-                onRetry={isComplete ? undefined : handleStartWebCheck}
+                onRetry={isComplete ? undefined : handleRetry}
                 className="mt-6"
               />
 
-              {error && (
-                <p className="text-sm text-[#FF002E] text-center mt-4">
+              {isCacStep && !isVerificationConfirming && (
+                <CacVerificationForm
+                  inputRef={cacInputRef}
+                  value={rcValue}
+                  error={error}
+                  disabled={verifyCac.isPending}
+                  onSubmit={handleSubmitCac}
+                  onChange={(value) => {
+                    setRcValue(value)
+                    if (error) setError(null)
+                  }}
+                />
+              )}
+
+              {!isCacStep && error && (
+                <p className="text-sm leading-[135%] text-[#FF002E] text-center mt-4 break-words">
                   {error}
                 </p>
               )}
@@ -230,18 +257,29 @@ function VerifyContent() {
               ) : (
                 <div className="border-t border-[#F1F1F1] rounded-t-[12px] px-4 pt-4 pb-2">
                   <p className="text-[11px] text-[#6B7280] font-medium text-center">
-                    By continuing, I consent to identity checks via NIBSS iGree.
+                    {isCacStep
+                      ? 'By continuing, I consent to verifying this business registration with Smile ID.'
+                      : 'By continuing, I consent to identity checks via NIBSS iGree.'}
                   </p>
 
                   <Button
-                    onClick={handlePrimary}
+                    type={isCacStep ? 'submit' : 'button'}
+                    form={isCacStep ? 'cac-verification-form' : undefined}
+                    onClick={isCacStep ? undefined : handlePrimary}
                     disabled={
-                      isSubmitting || isVerificationConfirming || !nextStep
+                      isSubmitting ||
+                      isVerificationConfirming ||
+                      !nextStep ||
+                      (isCacStep && !rcValue.trim())
                     }
                     className="w-full mt-4 font-bold"
                   >
                     {isSubmitting ? (
                       <Spinner />
+                    ) : isCacStep && isVerificationConfirming ? (
+                      'Checking registration…'
+                    ) : isCacStep ? (
+                      'Verify business'
                     ) : isResuming ? (
                       'Continue verification'
                     ) : (

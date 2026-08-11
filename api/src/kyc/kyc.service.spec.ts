@@ -3,7 +3,11 @@ import { KycService } from "./kyc.service";
 describe("KycService resumable hosted sessions", () => {
   const merchantId = "507f1f77bcf86cd799439011";
 
-  const makeService = (user: Record<string, any>, jobStatus: any) => {
+  const makeService = (
+    user: Record<string, any>,
+    jobStatus: any,
+    nodeEnv = "production",
+  ) => {
     const userModel = {
       findById: jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue(user),
@@ -16,7 +20,12 @@ describe("KycService resumable hosted sessions", () => {
       getJobStatus: jest.fn().mockResolvedValue(jobStatus),
       isPendingResult: jest.fn().mockReturnValue(false),
       isSuccessfulResult: jest.fn(),
+      isSuccessfulBusinessResult: jest.fn(),
+      getBusinessVerificationDetails: jest.fn(),
       describeResult: jest.fn(),
+      buildJobId: jest.fn().mockReturnValue(`cac-${merchantId}-new`),
+      buildUserId: jest.fn().mockReturnValue(`${merchantId}-cac-kyb`),
+      verifyBusinessCac: jest.fn().mockResolvedValue({ success: true }),
     };
 
     return {
@@ -25,6 +34,11 @@ describe("KycService resumable hosted sessions", () => {
         smileIdService as any,
         {
           reevaluateReferrer: jest.fn().mockResolvedValue(0),
+        } as any,
+        {
+          get: jest.fn().mockImplementation((key: string) =>
+            key === "NODE_ENV" ? nodeEnv : undefined,
+          ),
         } as any,
       ),
       userModel,
@@ -43,6 +57,134 @@ describe("KycService resumable hosted sessions", () => {
       },
       bvn,
     },
+  });
+
+  const promaxMerchant = (cac: Record<string, any>) => ({
+    _id: { toString: () => merchantId },
+    businessName: "Firespot Foods",
+    planTier: "PROMAX",
+    planStatus: "verifying",
+    save: jest.fn().mockResolvedValue(undefined),
+    kyc: {
+      nin: { status: "passed", product: "enhanced_kyc" },
+      bvn: { status: "passed", product: "biometric_kyc" },
+      cac,
+    },
+  });
+
+  it("submits the current CAC step once using the server-owned defaults", async () => {
+    const user = promaxMerchant({ status: "failed" });
+    const { service, userModel, smileIdService } = makeService(user, null);
+
+    const result = await service.verifyCac(merchantId, {
+      rcNumber: " BN 123456 ",
+    });
+
+    expect(result).toEqual({ check: "cac", status: "pending" });
+    expect(userModel.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({
+        _id: merchantId,
+        "kyc.cac.status": { $ne: "pending" },
+      }),
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          "kyc.cac.registrationNumber": "BN 123456",
+          "kyc.cac.businessType": "bn",
+          "kyc.cac.submittedBusinessName": "Firespot Foods",
+        }),
+      }),
+    );
+    expect(smileIdService.verifyBusinessCac).toHaveBeenCalledWith({
+      userId: `${merchantId}-cac-kyb`,
+      jobId: `cac-${merchantId}-new`,
+      rcNumber: "BN 123456",
+    });
+  });
+
+  it("requires the CAC registration to match the merchant name in production", async () => {
+    const jobId = `cac-${merchantId}-active`;
+    const user = promaxMerchant({
+      status: "pending",
+      product: "kyb",
+      jobId,
+      registrationNumber: "BN123456",
+      submittedBusinessName: "Firespot Foods",
+    });
+    const { service, userModel, smileIdService } = makeService(user, null);
+    smileIdService.isSuccessfulBusinessResult.mockReturnValue(true);
+    smileIdService.getBusinessVerificationDetails.mockReturnValue({
+      resultCode: "1012",
+      verifyBusiness: "Verified",
+      returnedBusinessInfo: "Returned",
+      legalName: "Another Business",
+      registrationNumber: "123456",
+      searchNumber: "123456",
+      smileJobId: "smile-job-1",
+    });
+
+    await service.handleCallback({
+      PartnerParams: {
+        user_id: `${merchantId}-cac-kyb`,
+        job_id: jobId,
+        job_type: 7,
+      },
+      ResultCode: "1012",
+    });
+
+    expect(userModel.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({ "kyc.cac.jobId": jobId }),
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          "kyc.cac.status": "failed",
+          "kyc.cac.reason":
+            "This CAC registration does not match your business name. Check the number and try again.",
+          "kyc.cac.verifiedBusinessName": "Another Business",
+          "kyc.cac.resultCode": "1012",
+        }),
+      }),
+    );
+  });
+
+  it("skips only the business-name comparison in development", async () => {
+    const jobId = `cac-${merchantId}-active`;
+    const user = promaxMerchant({
+      status: "pending",
+      product: "kyb",
+      jobId,
+      registrationNumber: "BN123456",
+      submittedBusinessName: "Firespot Foods",
+    });
+    const { service, userModel, smileIdService } = makeService(
+      user,
+      null,
+      "development",
+    );
+    smileIdService.isSuccessfulBusinessResult.mockReturnValue(true);
+    smileIdService.getBusinessVerificationDetails.mockReturnValue({
+      resultCode: "1012",
+      verifyBusiness: "Verified",
+      returnedBusinessInfo: "Returned",
+      legalName: "Another Business",
+      registrationNumber: "123456",
+      searchNumber: "123456",
+      smileJobId: "smile-job-1",
+    });
+
+    await service.handleCallback({
+      PartnerParams: {
+        user_id: `${merchantId}-cac-kyb`,
+        job_id: jobId,
+        job_type: 7,
+      },
+      ResultCode: "1012",
+    });
+
+    expect(userModel.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({ "kyc.cac.jobId": jobId }),
+      expect.objectContaining({
+        $set: expect.objectContaining({ "kyc.cac.status": "passed" }),
+      }),
+    );
   });
 
   it("makes a created but unsubmitted session resumable", async () => {

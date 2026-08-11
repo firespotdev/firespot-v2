@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
+import { ConfigService } from '@nestjs/config'
 import { Model } from 'mongoose'
 import { User, UserDocument } from '../schemas/user.schema'
 import {
@@ -31,6 +32,32 @@ function isClientSideStep(step: KycStepDef): boolean {
   return step.product !== 'kyb'
 }
 
+export function normalizeBusinessName(value: string): string {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]/g, '')
+}
+
+export function normalizeCacRegistrationNumber(value: string): string {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .replace(/^(BN|RC|IT)/, '')
+}
+
+interface CheckResolution {
+  passed: boolean
+  reason?: string
+  evidence?: {
+    verifiedBusinessName?: string
+    smileJobId?: string
+    resultCode?: string
+  }
+}
+
 @Injectable()
 export class KycService {
   private readonly logger = new Logger(KycService.name)
@@ -39,7 +66,82 @@ export class KycService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private smileIdService: SmileIdService,
     private merchantReferralsService: MerchantReferralsService,
+    private configService: ConfigService,
   ) {}
+
+  private resolveCheckResult(
+    user: UserDocument,
+    check: KycCheck,
+    payload: any,
+    product?: string,
+  ): CheckResolution {
+    if (check !== 'cac') {
+      const passed = this.smileIdService.isSuccessfulResult(payload, product)
+      return {
+        passed,
+        reason: passed ? undefined : this.smileIdService.describeResult(payload),
+      }
+    }
+
+    const details = this.smileIdService.getBusinessVerificationDetails(payload)
+    const evidence = {
+      verifiedBusinessName: details.legalName || undefined,
+      smileJobId: details.smileJobId || undefined,
+      resultCode: details.resultCode || undefined,
+    }
+
+    if (!this.smileIdService.isSuccessfulBusinessResult(payload)) {
+      return {
+        passed: false,
+        reason:
+          this.smileIdService.describeResult(payload) ||
+          'We could not verify that CAC registration. Check the number and try again.',
+        evidence,
+      }
+    }
+
+    const state = (user.kyc as any)?.cac
+    const submittedNumber = normalizeCacRegistrationNumber(
+      state?.registrationNumber,
+    )
+    const returnedNumber = normalizeCacRegistrationNumber(
+      details.registrationNumber || details.searchNumber,
+    )
+    if (!submittedNumber || !returnedNumber || submittedNumber !== returnedNumber) {
+      return {
+        passed: false,
+        reason:
+          'The CAC registration returned by the registry does not match the number you submitted. Check it and try again.',
+        evidence,
+      }
+    }
+
+    // Development still requires a real SmileID/CAC success. It skips only
+    // the merchant-name comparison so any valid business-name registration
+    // can be used while developing the flow.
+    if (this.configService.get<string>('NODE_ENV') === 'development') {
+      return { passed: true, evidence }
+    }
+
+    const submittedBusinessName = normalizeBusinessName(
+      state?.submittedBusinessName || user.businessName || '',
+    )
+    const verifiedBusinessName = normalizeBusinessName(details.legalName)
+    if (
+      !submittedBusinessName ||
+      !verifiedBusinessName ||
+      submittedBusinessName !== verifiedBusinessName
+    ) {
+      return {
+        passed: false,
+        reason:
+          'This CAC registration does not match your business name. Check the number and try again.',
+        evidence,
+      }
+    }
+
+    return { passed: true, evidence }
+  }
 
   private async getMerchant(merchantId: string): Promise<UserDocument> {
     const user = await this.userModel.findById(merchantId).exec()
@@ -195,10 +297,13 @@ export class KycService {
           continue
         }
 
-        const passed = this.smileIdService.isSuccessfulResult(
+        const resolution = this.resolveCheckResult(
+          user,
+          check,
           result,
           step.product,
         )
+        const { passed } = resolution
         if (!passed && state.status === 'failed') continue
 
         const recorded = await this.recordCheck(
@@ -206,10 +311,12 @@ export class KycService {
           check,
           passed ? 'passed' : 'failed',
           state.jobId,
-          passed ? undefined : this.smileIdService.describeResult(result),
+          resolution.reason,
           step.product,
           undefined,
           state.jobId,
+          false,
+          resolution.evidence,
         )
         if (recorded) changed = true
       } catch (err) {
@@ -367,42 +474,105 @@ export class KycService {
     return result.matchedCount > 0
   }
 
-  /** Server-side CAC / business verification (KYB, async → callback). */
-  async verifyCac(
-    merchantId: string,
-    dto: { rcNumber: string; businessType?: string },
-  ) {
+  /**
+   * Claims the CAC attempt before calling SmileID. This both prevents a
+   * double-submit and ensures a fast callback finds the active job locally.
+   */
+  private async reserveCacCheck(
+    user: UserDocument,
+    jobId: string,
+    smileUserId: string,
+    registrationNumber: string,
+  ): Promise<boolean> {
+    const merchantId = user._id.toString()
+    const now = new Date()
+    const result = await this.userModel
+      .updateOne(
+        {
+          _id: merchantId,
+          'kyc.cac.status': { $ne: 'pending' },
+        },
+        {
+          $set: {
+            'kyc.cac.status': 'pending',
+            'kyc.cac.jobId': jobId,
+            'kyc.cac.checkedAt': now,
+            'kyc.cac.submittedAt': now,
+            'kyc.cac.reason': null,
+            'kyc.cac.product': 'kyb',
+            'kyc.cac.smileUserId': smileUserId,
+            'kyc.cac.registrationNumber': registrationNumber,
+            'kyc.cac.businessType': 'bn',
+            'kyc.cac.submittedBusinessName': user.businessName || '',
+          },
+          $unset: {
+            'kyc.cac.verifiedBusinessName': 1,
+            'kyc.cac.smileJobId': 1,
+            'kyc.cac.resultCode': 1,
+          },
+          $inc: { 'kyc.cac.attempts': 1 },
+        },
+      )
+      .exec()
+
+    if (result.matchedCount === 0) return false
+
+    await this.userModel
+      .updateOne(
+        { _id: merchantId, planStatus: { $in: ['paid', 'failed'] } },
+        { $set: { planStatus: 'verifying' } },
+      )
+      .exec()
+    return true
+  }
+
+  /** Server-side CAC business-name verification (KYB, async → callback). */
+  async verifyCac(merchantId: string, dto: { rcNumber: string }) {
     const user = await this.getMerchant(merchantId)
     const tier = this.assertPaid(user)
-    const cacStep = PLANS[tier].requiredSteps.find((s) => s.key === 'cac')
-    if (!cacStep) {
+    const nextStep = getNextStep(tier, (user.kyc || {}) as any)
+    if (!nextStep) {
+      throw new BadRequestException('Verification already complete')
+    }
+    if (nextStep.key !== 'cac' || nextStep.product !== 'kyb') {
+      const hasCac = PLANS[tier].requiredSteps.some((step) => step.key === 'cac')
+      if (hasCac) {
+        throw new BadRequestException(
+          'Complete the earlier verification steps before verifying CAC',
+        )
+      }
       throw new BadRequestException('CAC is not required for this plan')
+    }
+
+    const registrationNumber = dto.rcNumber.trim()
+    if (!registrationNumber) {
+      throw new BadRequestException('Enter your CAC registration number')
     }
 
     const jobId = this.smileIdService.buildJobId(merchantId, 'cac')
     const smileUserId = this.smileIdService.buildUserId(
       merchantId,
       'cac',
-      cacStep.product,
+      nextStep.product,
       user.kycGeneration,
     )
+
+    const reserved = await this.reserveCacCheck(
+      user,
+      jobId,
+      smileUserId,
+      registrationNumber,
+    )
+    if (!reserved) {
+      throw new BadRequestException('CAC verification is still being processed')
+    }
+
     try {
       await this.smileIdService.verifyBusinessCac({
         userId: smileUserId,
         jobId,
-        ...dto,
+        rcNumber: registrationNumber,
       })
-      await this.recordCheck(
-        merchantId,
-        'cac',
-        'pending',
-        jobId,
-        undefined,
-        cacStep.product,
-        smileUserId,
-        undefined,
-        true,
-      )
       return { check: 'cac', status: 'pending' }
     } catch (error) {
       this.logger.error(`CAC verification failed: ${error}`)
@@ -412,7 +582,9 @@ export class KycService {
         'failed',
         jobId,
         'Could not submit your business registration for verification.',
-        cacStep.product,
+        nextStep.product,
+        undefined,
+        jobId,
       )
       throw new BadRequestException('Could not verify CAC registration')
     }
@@ -463,16 +635,24 @@ export class KycService {
       return { received: true, pending: true }
     }
 
-    const passed = this.smileIdService.isSuccessfulResult(payload, product)
+    const resolution = this.resolveCheckResult(
+      user,
+      check,
+      payload,
+      product,
+    )
+    const { passed } = resolution
     const recorded = await this.recordCheck(
       merchantId,
       check,
       passed ? 'passed' : 'failed',
       jobId,
-      passed ? undefined : this.smileIdService.describeResult(payload),
+      resolution.reason,
       product,
       undefined,
       jobId,
+      false,
+      resolution.evidence,
     )
 
     if (recorded && passed) await this.finalizeIfComplete(merchantId)
@@ -491,6 +671,7 @@ export class KycService {
     smileUserId?: string,
     expectedJobId?: string,
     submitted = false,
+    evidence?: CheckResolution['evidence'],
   ): Promise<boolean> {
     const set: Record<string, unknown> = {
       [`kyc.${check}.status`]: status,
@@ -504,15 +685,26 @@ export class KycService {
     // Records which product proved this check, so a stronger tier can tell
     // that an older, weaker pass no longer satisfies its requirement.
     if (product) set[`kyc.${check}.product`] = product
+    if (evidence?.verifiedBusinessName !== undefined) {
+      set[`kyc.${check}.verifiedBusinessName`] =
+        evidence.verifiedBusinessName
+    }
+    if (evidence?.smileJobId !== undefined) {
+      set[`kyc.${check}.smileJobId`] = evidence.smileJobId
+    }
+    if (evidence?.resultCode !== undefined) {
+      set[`kyc.${check}.resultCode`] = evidence.resultCode
+    }
 
     const filter: Record<string, unknown> = { _id: merchantId }
     if (expectedJobId) {
       filter[`kyc.${check}.jobId`] = expectedJobId
     }
 
-    const update: Record<string, unknown> = {
-      $set: set,
-      $inc: { [`kyc.${check}.attempts`]: 1 },
+    const update: Record<string, unknown> = { $set: set }
+    // One attempt is one submitted job, not every callback/status transition.
+    if (!expectedJobId) {
+      update.$inc = { [`kyc.${check}.attempts`]: 1 }
     }
     if (status === 'pending') {
       if (submitted) {
@@ -607,10 +799,13 @@ export class KycService {
       return { check, passed: false, status: 'pending' as const }
     }
 
-    const passed = this.smileIdService.isSuccessfulResult(status, product)
-    const reason = passed
-      ? undefined
-      : this.smileIdService.describeResult(status)
+    const resolution = this.resolveCheckResult(
+      user,
+      check,
+      status,
+      product,
+    )
+    const { passed, reason } = resolution
 
     const recorded = await this.recordCheck(
       merchantId,
@@ -621,6 +816,8 @@ export class KycService {
       product,
       undefined,
       jobId,
+      false,
+      resolution.evidence,
     )
     if (recorded && passed) await this.finalizeIfComplete(merchantId)
     return { check, passed, status: passed ? 'passed' : 'failed', reason }

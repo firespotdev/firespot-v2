@@ -28,6 +28,18 @@ export interface KycCheckState {
    * submission time — either can change before the job is polled.
    */
   smileUserId?: string;
+  /** CAC registration number submitted for this business-verification job. */
+  registrationNumber?: string;
+  /** SmileID business type. CAC currently supports business names (`bn`). */
+  businessType?: "bn";
+  /** Business name snapshot used for the production registry-name comparison. */
+  submittedBusinessName?: string;
+  /** Legal name returned by the business registry through SmileID. */
+  verifiedBusinessName?: string;
+  /** SmileID's internal job reference, retained for support and audit. */
+  smileJobId?: string;
+  /** Terminal SmileID result code retained for support and audit. */
+  resultCode?: string;
 }
 
 @Schema({ timestamps: true })
@@ -400,7 +412,22 @@ export class User extends Document {
     type: {
       bvn: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
       nin: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
-      cac: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      cac: {
+        status: String,
+        jobId: String,
+        checkedAt: Date,
+        submittedAt: Date,
+        attempts: Number,
+        reason: String,
+        product: String,
+        smileUserId: String,
+        registrationNumber: String,
+        businessType: String,
+        submittedBusinessName: String,
+        verifiedBusinessName: String,
+        smileJobId: String,
+        resultCode: String,
+      },
     },
     default: {},
   })

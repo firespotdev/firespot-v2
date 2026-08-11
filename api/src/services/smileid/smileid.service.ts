@@ -169,10 +169,12 @@ export class SmileIdService {
     userId: string
     jobId: string
     rcNumber: string
-    businessType?: string
   }): Promise<any> {
     if (!this.isConfigured) {
       throw new Error('SmileID is not configured')
+    }
+    if (!this.callbackUrl) {
+      throw new Error('SmileID callback URL is not configured')
     }
     try {
       return await this.idApi().submitAsyncjob(
@@ -185,13 +187,51 @@ export class SmileIdService {
           country: SUPPORTED_COUNTRY,
           id_type: 'BUSINESS_REGISTRATION',
           id_number: params.rcNumber,
-          business_type: params.businessType || 'co',
+          // CAC currently supports business-name registrations only. Keep this
+          // server-owned so callers cannot submit a different KYB product.
+          business_type: 'bn',
         },
         this.callbackUrl,
       )
     } catch (error) {
       throw this.describeError('business verification', error)
     }
+  }
+
+  /** Documented fields returned by SmileID Business Verification (job type 7). */
+  getBusinessVerificationDetails(payload: any): {
+    resultCode: string
+    verifyBusiness: string
+    returnedBusinessInfo: string
+    legalName: string
+    registrationNumber: string
+    searchNumber: string
+    smileJobId: string
+  } {
+    const result = payload?.result || payload || {}
+    const actions = result.Actions || payload?.Actions || {}
+    const company =
+      result.company_information || payload?.company_information || {}
+
+    return {
+      resultCode: String(result.ResultCode || payload?.ResultCode || ''),
+      verifyBusiness: String(actions.Verify_Business || ''),
+      returnedBusinessInfo: String(actions.Return_Business_Info || ''),
+      legalName: String(company.legal_name || ''),
+      registrationNumber: String(company.registration_number || ''),
+      searchNumber: String(company.search_number || ''),
+      smileJobId: String(result.SmileJobID || payload?.SmileJobID || ''),
+    }
+  }
+
+  /** A CAC result passes only when SmileID confirms the lookup and its data. */
+  isSuccessfulBusinessResult(payload: any): boolean {
+    const details = this.getBusinessVerificationDetails(payload)
+    return (
+      details.resultCode === '1012' &&
+      /^verified$/i.test(details.verifyBusiness) &&
+      /^returned$/i.test(details.returnedBusinessInfo)
+    )
   }
 
   /**
@@ -255,6 +295,25 @@ export class SmileIdService {
     const code = String(payload.ResultCode || payload.result?.ResultCode || '')
     const actions = payload.Actions || payload.result?.Actions
     const resultText = payload.ResultText || payload.result?.ResultText
+    const isBusinessVerification =
+      String(
+        payload?.PartnerParams?.job_type ||
+          payload?.partner_params?.job_type ||
+          payload?.result?.PartnerParams?.job_type ||
+          '',
+      ) === '7' ||
+      Boolean(actions?.Verify_Business) ||
+      Boolean(payload?.company_information || payload?.result?.company_information)
+
+    if (isBusinessVerification && code === '1013') {
+      return 'That CAC registration was not found. Check the number and try again.'
+    }
+    if (isBusinessVerification && code === '1015') {
+      return 'The CAC database is temporarily unavailable. Please try again shortly.'
+    }
+    if (isBusinessVerification && code === '1016') {
+      return 'Business verification is temporarily unavailable. Please contact support.'
+    }
 
     if (code === '1022') {
       return 'The details you entered do not match the record for this ID. Enter them exactly as they appear on your official ID.'
