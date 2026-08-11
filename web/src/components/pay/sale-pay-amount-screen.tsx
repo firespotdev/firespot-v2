@@ -7,6 +7,7 @@ import { showNotificationToast } from '@/components/ui'
 import type { MerchantProfile } from '@/services/qr/interface'
 import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
 import { PaymentCheckoutFooter } from './payment-checkout-footer'
+import { ReceiptBenefitStrip } from './receipt-benefit-strip'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -16,7 +17,7 @@ interface SalePayAmountScreenProps {
   merchant: MerchantProfile
   account?: BankAccount
   onChangeAccount: () => void
-  onChangePaymentMethod: () => void
+  onChangePaymentMethod: (amount: number, description: string) => void
   selectedRail?: PaymentRail
   onCopy: (amount: number, description: string) => void
   onPayInstantly: (amount: number, description: string) => void
@@ -119,64 +120,72 @@ export function SalePayAmountScreen({
           </div>
 
           {/* Amount + description card */}
-          <div className="w-full bg-white border border-[#E5E7EB] rounded-[12px] mt-4 shadow-[0px_4px_8px_0px_#0000000A]">
-            <div className="p-4">
-              <p className="text-xs text-[#64748B] font-medium">Enter amount</p>
-              <div className="flex items-center gap-3 mt-1">
-                <div className="flex items-baseline shrink-0 font-bold">
-                  <span className="text-[32px] leading-none text-black">₦</span>
-                  <input
-                    inputMode="numeric"
-                    value={displayAmount}
-                    onChange={(e) =>
-                      setAmountDigits(e.target.value.replace(/\D/g, ''))
-                    }
-                    placeholder="0"
-                    className="w-28 text-[32px] leading-none text-black bg-transparent leading-none outline-none placeholder:text-[#9CA3AF]"
-                  />
+          <div className="mt-4 w-full">
+            <div className="relative z-10 rounded-[12px] border border-[#E5E7EB] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
+              <div className="p-4">
+                <p className="text-xs text-[#64748B] font-medium">
+                  Enter amount
+                </p>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="flex items-baseline shrink-0 font-bold">
+                    <span className="text-[32px] leading-none text-black">
+                      ₦
+                    </span>
+                    <input
+                      inputMode="numeric"
+                      value={displayAmount}
+                      onChange={(e) =>
+                        setAmountDigits(e.target.value.replace(/\D/g, ''))
+                      }
+                      placeholder="0"
+                      className="w-28 text-[32px] leading-none text-black bg-transparent leading-none outline-none placeholder:text-[#9CA3AF]"
+                    />
+                  </div>
+                  <div className="flex gap-2.5 overflow-x-auto scrollbar-hide min-w-0 -mr-4">
+                    {QUICK_AMOUNTS.map((value) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setAmountDigits(String(value))}
+                        className="shrink-0 last:mr-2 h-8 px-2 border border-[#F1F1F1] rounded-[6px] bg-[#F4F6F8] text-sm font-medium text-black flex items-center"
+                      >
+                        ₦ {formatInt(value)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-2.5 overflow-x-auto scrollbar-hide min-w-0 -mr-4">
-                  {QUICK_AMOUNTS.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setAmountDigits(String(value))}
-                      className="shrink-0 last:mr-2 h-8 px-2 border border-[#F1F1F1] rounded-[6px] bg-[#F4F6F8] text-sm font-medium text-black flex items-center"
-                    >
-                      ₦ {formatInt(value)}
-                    </button>
-                  ))}
+              </div>
+
+              <div className="border-t border-[#F1F1F1] p-4">
+                <p className="text-xs text-[#00000080] font-medium">
+                  Description
+                </p>
+                <div className="flex items-center gap-3 mt-1">
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Payment for..."
+                    className="flex-1 min-w-0 text-[20px] text-black bg-transparent outline-none placeholder:text-[#9CA3AF] font-bold"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      showNotificationToast({
+                        message: 'Coming soon',
+                        duration: 2000,
+                      })
+                    }
+                    className="shrink-0 h-8 px-2 rounded-[6px] border border-[#F1F1F1] bg-[#F4F6F8] text-sm font-medium text-black flex items-center gap-1"
+                  >
+                    <Plus size={16} color="black" />
+                    Select items
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-[#F1F1F1] p-4">
-              <p className="text-xs text-[#00000080] font-medium">
-                Description
-              </p>
-              <div className="flex items-center gap-3 mt-1">
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Payment for..."
-                  className="flex-1 min-w-0 text-[20px] text-black bg-transparent outline-none placeholder:text-[#9CA3AF] font-bold"
-                />
-                <button
-                  type="button"
-                  onClick={() =>
-                    showNotificationToast({
-                      message: 'Coming soon',
-                      duration: 2000,
-                    })
-                  }
-                  className="shrink-0 h-8 px-2 rounded-[6px] border border-[#F1F1F1] bg-[#F4F6F8] text-sm font-medium text-black flex items-center gap-1"
-                >
-                  <Plus size={16} color="black" />
-                  Select items
-                </button>
-              </div>
-            </div>
+            {merchant.hasDetailedReceipts && <ReceiptBenefitStrip />}
           </div>
         </div>
 
@@ -187,7 +196,9 @@ export function SalePayAmountScreen({
           qrType="static"
           onAction={handleAction}
           onChangeAccount={onChangeAccount}
-          onChangePaymentMethod={onChangePaymentMethod}
+          onChangePaymentMethod={() =>
+            onChangePaymentMethod(amountValue, description.trim())
+          }
           isSubmitting={isSubmitting}
         />
       </div>

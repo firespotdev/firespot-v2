@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  ArrowLeft,
   CreditCard,
   Landmark,
   Building2,
@@ -15,7 +16,7 @@ import { Button } from "@/components/ui/button";
 export interface PaystackChannelOption {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 }
 
 const PAYSTACK_CHANNEL_REGISTRY: PaystackChannelOption[] = [
@@ -68,50 +69,70 @@ export function ChannelPickerDrawer({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white font-satoshi">
-      <div className="flex-1 overflow-y-auto px-4 py-2">
-        <div className="divide-y divide-[#F1F5F9]">
+    <div className="flex h-full min-h-0 flex-col bg-white font-satoshi">
+      <header className="flex h-16 shrink-0 items-center border-b border-[#E7E9EC] bg-white px-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <button
+          type="button"
+          onClick={() => closeDrawer("channel-picker")}
+          aria-label="Back to payment screen"
+          className="flex size-11 items-center justify-center rounded-[12px] text-black transition-colors hover:bg-[#F4F6F8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#047857]"
+        >
+          <ArrowLeft className="size-7" strokeWidth={2} />
+        </button>
+      </header>
+
+      <div className="shrink-0 bg-[#F7F7F7] px-6 py-5">
+        <h2 className="text-[20px] font-bold leading-7 tracking-[-0.02em] text-black">
+          How would you like to pay?
+        </h2>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-y-auto bg-white">
+        <div className="divide-y divide-[#E7E9EC]">
           {displayedChannels.map((item) => {
             const Icon = item.icon;
             const isSelected = currentChannel === item.id;
 
             return (
-              <label
+              <button
+                type="button"
                 key={item.id}
                 onClick={() => setCurrentChannel(item.id)}
-                className="flex items-center justify-between py-4 cursor-pointer group"
+                aria-pressed={isSelected}
+                className="group flex min-h-20 w-full items-center justify-between gap-4 px-6 py-4 text-left transition-colors hover:bg-[#FAFAFA] focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#047857]"
               >
-                <div className="flex items-center gap-3.5">
-                  <div className="w-9 h-9 rounded-full bg-[#F8FAFC] flex items-center justify-center text-[#0F172A] shrink-0">
-                    <Icon className="w-5 h-5 text-[#0F172A]" />
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex size-9 shrink-0 items-center justify-center text-[#07966B]">
+                    <Icon className="size-6" strokeWidth={2} />
                   </div>
-                  <span className="font-semibold text-base text-[#0F172A]">
+                  <span className="truncate text-base font-medium text-black">
                     {item.label}
                   </span>
                 </div>
 
                 <div
-                  className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                  aria-hidden="true"
+                  className={`flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     isSelected
-                      ? "border-[#047857] bg-[#047857]"
-                      : "border-[#CBD5E1] group-hover:border-[#94A3B8]"
+                      ? "border-[#0AA879]"
+                      : "border-[#111111] group-hover:border-[#07966B]"
                   }`}
                 >
                   {isSelected && (
-                    <div className="w-2 h-2 rounded-full bg-white" />
+                    <div className="size-3 rounded-full bg-[#0AA879]" />
                   )}
                 </div>
-              </label>
+              </button>
             );
           })}
         </div>
       </div>
 
-      <div className="p-4 border-t border-[#E2E8F0] bg-white">
+      <div className="shrink-0 border-t border-[#E7E9EC] bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-5">
         <Button
           type="button"
           onClick={handleMakePayment}
-          className="w-full bg-[#047857] hover:bg-[#065F46] text-white font-bold text-base py-3.5 rounded-xl transition-colors"
+          className="min-h-14 w-full rounded-[12px] bg-[#075D4B] text-base font-bold text-white transition-colors hover:bg-[#064D3F] focus-visible:ring-[#075D4B]"
         >
           Make Payment
         </Button>

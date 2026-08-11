@@ -263,6 +263,11 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     fullScreen: true,
     Content: ChannelPickerDrawer,
+    noHeader: true,
+    hideHandle: true,
+    dismissible: false,
+    contentClassName:
+      'h-dvh bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
   },
   'sale-items': {
     title: '',

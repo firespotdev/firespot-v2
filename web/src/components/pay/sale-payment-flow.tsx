@@ -253,14 +253,16 @@ export function SalePaymentFlow({
     setStep('waiting')
   }
 
-  const handlePayInstantly = () => {
+  const handlePayInstantly = (
+    channel: string = effectiveSelectedChannel,
+  ) => {
     if (initializePaystack.isPending || isRedirectingToPaystack) return
     startPaystackRedirect()
     initializePaystack.mutate(
       {
         saleId: sale.id,
         serialNumber,
-        channel: effectiveSelectedChannel,
+        channel,
         customerFingerprint: getCustomerFingerprint(),
       },
       {
@@ -312,7 +314,10 @@ export function SalePaymentFlow({
               props: {
                 selectedChannel: effectiveSelectedChannel,
                 availableChannels: paystackChannels,
-                onSelectChannel: setSelectedChannel,
+                onSelectChannel: (channelId: string) => {
+                  setSelectedChannel(channelId)
+                  handlePayInstantly(channelId)
+                },
               },
             })
           } else if (rail === 'transfer') {

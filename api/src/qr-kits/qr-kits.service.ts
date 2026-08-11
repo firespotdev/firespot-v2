@@ -15,7 +15,10 @@ import {
   detectBrowserType,
 } from '../scans/utils/device-detector'
 import { QRCodeService } from '../services/qr-code.service'
-import { getCollectEligibility } from '../merchant-plans/constants/plans'
+import {
+  getCollectEligibility,
+  getEffectiveTier,
+} from '../merchant-plans/constants/plans'
 import { getMerchantPaystackChannels } from '../payments/paystack-collection-channels'
 import { customAlphabet } from 'nanoid'
 import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
@@ -147,6 +150,7 @@ export class QRKitsService {
       businessName: merchant.businessName,
       bankAccounts,
       profilePhotoUrl: merchant.profilePhotoUrl,
+      hasDetailedReceipts: Boolean(getEffectiveTier(merchant)),
       hasPaystackCollection,
       paystackCollectionChannels,
     }

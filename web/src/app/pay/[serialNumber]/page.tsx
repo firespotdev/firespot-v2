@@ -609,7 +609,10 @@ export default function PaymentPage() {
     })
   }
 
-  const handleOpenPaymentMethodDrawer = () => {
+  const handleOpenPaymentMethodDrawer = (
+    amount: number,
+    description: string,
+  ) => {
     if (!merchant?.hasPaystackCollection) {
       handleOpenBankDrawer()
       return
@@ -639,6 +642,7 @@ export default function PaymentPage() {
                 availableChannels: paystackChannels,
                 onSelectChannel: (channelId: string) => {
                   setSelectedChannel(channelId)
+                  handlePayInstantly(amount, description, channelId)
                 },
               },
             })
@@ -650,7 +654,19 @@ export default function PaymentPage() {
     })
   }
 
-  const handlePayInstantly = (amount: number, description: string) => {
+  function handlePayInstantly(
+    amount: number,
+    description: string,
+    channel: string = effectiveSelectedChannel,
+  ) {
+    if (amount <= 0) {
+      showNotificationToast({
+        message: 'Enter an amount first',
+        duration: 2000,
+      })
+      return
+    }
+
     if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
 
     let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
@@ -671,7 +687,7 @@ export default function PaymentPage() {
         serialNumber,
         amount,
         description,
-        channel: effectiveSelectedChannel,
+        channel,
         customerFingerprint: fingerprint,
         customerName: payerName,
       },
