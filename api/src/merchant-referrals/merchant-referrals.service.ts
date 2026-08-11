@@ -110,7 +110,7 @@ export class MerchantReferralsService {
               ],
             },
             { $set: { merchantReferralCode: code } },
-            { new: true },
+            { returnDocument: 'after' },
           )
           .exec()
       } catch (error: any) {
@@ -236,7 +236,7 @@ export class MerchantReferralsService {
             attributedAt: new Date(),
           },
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
       )
       .exec()
 
@@ -330,7 +330,11 @@ export class MerchantReferralsService {
               earnedAt: new Date(),
             },
           },
-          { upsert: true, new: true, setDefaultsOnInsert: true },
+          {
+            upsert: true,
+            returnDocument: 'after',
+            setDefaultsOnInsert: true,
+          },
         )
         .exec()
     } catch (error: any) {

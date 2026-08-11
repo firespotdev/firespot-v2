@@ -48,12 +48,20 @@ export interface SplitBreakdown {
 }
 
 /**
- * Computes the full fee breakdown for a transaction amount in Naira.
- * Values are rounded to 2 decimal places.
+ * Computes the full fee breakdown in Naira. Confirmed transactions should
+ * supply Paystack's reported fee; the pricing formula is a quote/legacy
+ * fallback only. Values are rounded to 2 decimal places.
  */
-export function splitBreakdown(amountNaira: number): SplitBreakdown {
+export function splitBreakdown(
+  amountNaira: number,
+  actualPaystackFeeNaira?: number,
+): SplitBreakdown {
   const gross = Math.max(0, amountNaira);
-  const paystackFeeUnrounded = calculatePaystackFee(gross);
+  const paystackFeeUnrounded =
+    typeof actualPaystackFeeNaira === "number" &&
+    Number.isFinite(actualPaystackFeeNaira)
+      ? Math.max(0, actualPaystackFeeNaira)
+      : calculatePaystackFee(gross);
   const firespotFeeUnrounded = calculateFirespotFee(gross);
 
   const paystackFee = Math.round(paystackFeeUnrounded * 100) / 100;

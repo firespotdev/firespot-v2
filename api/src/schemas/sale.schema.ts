@@ -34,7 +34,7 @@ export class Sale extends Document {
 
   @Prop({ enum: ['PENDING', 'CONFIRMED', 'CANCELLED', 'OUTSTANDING'], default: 'PENDING', index: true })
   status: string;
-  
+
   @Prop({ index: true, unique: true, sparse: true })
   reference?: string;
 
@@ -196,6 +196,12 @@ export class Sale extends Document {
 
   @Prop()
   paystackFee?: number;
+
+  @Prop()
+  paystackCurrency?: string;
+
+  @Prop()
+  paystackDomain?: string;
 
   @Prop()
   firespotFee?: number;

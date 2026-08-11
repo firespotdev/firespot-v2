@@ -55,7 +55,7 @@ export class CustomersService {
             userId: identity._id,
           },
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
       )
       .exec();
 
@@ -97,7 +97,7 @@ export class CustomersService {
             phoneNumber,
           },
         },
-        { upsert: true, new: true, setDefaultsOnInsert: true },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
       )
       .exec();
   }

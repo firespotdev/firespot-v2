@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common'
+import { NotFoundException, ServiceUnavailableException } from '@nestjs/common'
 import { Types } from 'mongoose'
 import { MerchantPlansService } from './merchant-plans.service'
 
@@ -86,7 +86,9 @@ const makeService = (overrides: Record<string, any> = {}) => {
 }
 
 /** A User stand-in carrying just the plan/subscription state under test. */
-const makeUser = (overrides: Record<string, any> = {}): Record<string, any> => ({
+const makeUser = (
+  overrides: Record<string, any> = {},
+): Record<string, any> => ({
   _id: new Types.ObjectId(),
   paystackCustomerCode: 'CUS_1',
   planTier: 'PRO',
@@ -470,10 +472,13 @@ describe('MerchantPlansService.verifyPayment', () => {
 
   it('refuses to grant when the amount paid does not match the order', async () => {
     const order = makeOrder({ amount: 6000 }) // expects 600000 kobo
-    const { service, planOrderModel, userModel, paystackService } = makeService()
+    const { service, planOrderModel, userModel, paystackService } =
+      makeService()
     paystackService.verifyTransaction.mockResolvedValue({
       status: 'success',
+      reference: 'PLAN-abc',
       amount: 100, // ₦1 — nowhere near the plan price
+      currency: 'NGN',
     })
     planOrderModel.findOne.mockReturnValue(query(order))
 
@@ -487,10 +492,13 @@ describe('MerchantPlansService.verifyPayment', () => {
 
   it('grants the tier when the amount matches', async () => {
     const order = makeOrder({ amount: 6000 })
-    const { service, planOrderModel, userModel, paystackService } = makeService()
+    const { service, planOrderModel, userModel, paystackService } =
+      makeService()
     paystackService.verifyTransaction.mockResolvedValue({
       status: 'success',
+      reference: 'PLAN-abc',
       amount: 600000,
+      currency: 'NGN',
       customerCode: 'CUS_1',
       authorizationCode: 'AUTH_1',
     })
@@ -501,7 +509,11 @@ describe('MerchantPlansService.verifyPayment', () => {
 
     const result = await service.verifyPayment('PLAN-abc')
 
-    expect(result).toMatchObject({ success: true, status: 'SUCCESSFUL', tier: 'PRO' })
+    expect(result).toMatchObject({
+      success: true,
+      status: 'SUCCESSFUL',
+      tier: 'PRO',
+    })
     expect(userModel.updateOne).toHaveBeenCalledTimes(1)
     const [, update] = userModel.updateOne.mock.calls[0]
     expect(update.$set).toMatchObject({
@@ -531,7 +543,9 @@ describe('MerchantPlansService.verifyPayment', () => {
     })
     paystackService.verifyTransaction.mockResolvedValue({
       status: 'success',
+      reference: 'PLAN-lite',
       amount: 100000,
+      currency: 'NGN',
     })
     planOrderModel.findOne.mockReturnValue(query(order))
     planOrderModel.findOneAndUpdate.mockReturnValue(query(order))
@@ -551,10 +565,13 @@ describe('MerchantPlansService.verifyPayment', () => {
 
   it('claims the order atomically so a racing caller cannot double-grant', async () => {
     const order = makeOrder()
-    const { service, planOrderModel, userModel, paystackService } = makeService()
+    const { service, planOrderModel, userModel, paystackService } =
+      makeService()
     paystackService.verifyTransaction.mockResolvedValue({
       status: 'success',
+      reference: 'PLAN-abc',
       amount: 600000,
+      currency: 'NGN',
     })
     planOrderModel.findOne.mockReturnValue(query(order))
     // Another caller already flipped it: the conditional update matches nothing.
@@ -577,7 +594,9 @@ describe('MerchantPlansService.verifyPayment', () => {
     const { service, planOrderModel, paystackService } = makeService()
     paystackService.verifyTransaction.mockResolvedValue({
       status: 'success',
+      reference: 'PLAN-nope',
       amount: 600000,
+      currency: 'NGN',
     })
     planOrderModel.findOne.mockReturnValue(query(null))
 
@@ -591,7 +610,9 @@ describe('MerchantPlansService.verifyPayment', () => {
     const { service, planOrderModel, paystackService } = makeService()
     paystackService.verifyTransaction.mockResolvedValue({
       status: 'success',
+      reference: 'PLAN-someone-elses',
       amount: 600000,
+      currency: 'NGN',
     })
     // No order matches this caller — it belongs to another merchant.
     planOrderModel.findOne.mockReturnValue(query(null))
@@ -609,7 +630,9 @@ describe('MerchantPlansService.verifyPayment', () => {
     const { service, planOrderModel, paystackService } = makeService()
     paystackService.verifyTransaction.mockResolvedValue({
       status: 'success',
+      reference: 'PLAN-abc',
       amount: 600000,
+      currency: 'NGN',
     })
     planOrderModel.findOne.mockReturnValue(query(order))
     planOrderModel.findOneAndUpdate.mockReturnValue(query(order))
@@ -620,18 +643,44 @@ describe('MerchantPlansService.verifyPayment', () => {
     expect(filter).toEqual({ paystackReference: 'PLAN-abc' })
   })
 
-  it('tolerates a missing amount rather than blocking the grant', async () => {
-    // Defensive: if Paystack ever omits amount we should not hard-fail a
-    // legitimate payment.
+  it('fails closed when Paystack omits the amount', async () => {
     const order = makeOrder()
-    const { service, planOrderModel, userModel, paystackService } = makeService()
-    paystackService.verifyTransaction.mockResolvedValue({ status: 'success' })
+    const { service, planOrderModel, userModel, paystackService } =
+      makeService()
+    paystackService.verifyTransaction.mockResolvedValue({
+      status: 'success',
+      reference: 'PLAN-abc',
+      currency: 'NGN',
+    })
     planOrderModel.findOne.mockReturnValue(query(order))
     planOrderModel.findOneAndUpdate.mockReturnValue(query(order))
 
     const result = await service.verifyPayment('PLAN-abc')
 
-    expect(result).toMatchObject({ success: true })
-    expect(userModel.updateOne).toHaveBeenCalled()
+    expect(result).toMatchObject({
+      success: false,
+      reason: 'amount_mismatch',
+    })
+    expect(userModel.updateOne).not.toHaveBeenCalled()
+  })
+})
+
+describe('MerchantPlansService recurring plan configuration', () => {
+  it('fails before collecting money when the recurring plan code is missing', async () => {
+    const merchant = makeUser({
+      planTier: undefined,
+      planStatus: undefined,
+      planInterval: 'monthly',
+      planCurrentPeriodEnd: undefined,
+    })
+    const { service, paystackService } = makeService({
+      userModel: { findById: jest.fn(() => query(merchant)) },
+    })
+
+    await expect(
+      service.purchase(merchant._id.toString(), 'PRO', 'monthly'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException)
+    expect(paystackService.initializeTransaction).not.toHaveBeenCalled()
+    expect(paystackService.chargeAuthorization).not.toHaveBeenCalled()
   })
 })

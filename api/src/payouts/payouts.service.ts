@@ -323,8 +323,11 @@ export class PayoutsService {
         const grossAmount =
           localSale?.grossAmount ?? (transaction.amount ?? 0) / 100;
         const paystackFee =
-          localSale?.paystackFee ?? (transaction.fees ?? 0) / 100;
+          typeof transaction.fees === "number"
+            ? transaction.fees / 100
+            : (localSale?.paystackFee ?? 0);
         const firespotFee = localSale?.firespotFee ?? 0;
+        const hasProviderFee = typeof transaction.fees === "number";
         return {
           id: transaction.id,
           reference: transaction.reference,
@@ -333,8 +336,9 @@ export class PayoutsService {
           paystackFee,
           firespotFee,
           fees: paystackFee + firespotFee,
-          netAmount:
-            localSale?.netAmount ?? grossAmount - paystackFee - firespotFee,
+          netAmount: hasProviderFee
+            ? grossAmount - paystackFee - firespotFee
+            : (localSale?.netAmount ?? grossAmount - paystackFee - firespotFee),
           channel: transaction.channel,
           paidAt: transaction.paid_at || transaction.paidAt,
         };

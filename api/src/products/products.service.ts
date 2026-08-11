@@ -51,7 +51,7 @@ export class ProductsService {
     const product = await this.productModel.findOneAndUpdate(
       { _id: new Types.ObjectId(id), merchantId: new Types.ObjectId(merchantId) },
       { $set: data },
-      { new: true },
+      { returnDocument: 'after' },
     ).exec();
 
     if (!product) {

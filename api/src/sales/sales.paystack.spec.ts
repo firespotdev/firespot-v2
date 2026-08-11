@@ -339,7 +339,11 @@ describe('SalesService Paystack collection integrity', () => {
 
     const result = await service.confirmPaystackSale('COL-1', {
       status: 'success',
+      reference: 'COL-1',
       amount: 500000,
+      currency: 'NGN',
+      fees: 12345,
+      domain: 'test',
       channel: 'card',
       paid_at: '2026-08-09T12:00:00.000Z',
     })
@@ -351,13 +355,16 @@ describe('SalesService Paystack collection integrity', () => {
         $set: expect.objectContaining({
           status: 'CONFIRMED',
           paymentMethod: 'Card',
+          paystackFee: 123.45,
+          paystackCurrency: 'NGN',
+          paystackDomain: 'test',
           amountPaid: 5000,
           totalDue: 5000,
           balanceOwed: 0,
           isPaidInFull: true,
         }),
       }),
-      { new: true },
+      { returnDocument: 'after' },
     )
     expect(dailyUsageModel.updateOne).toHaveBeenCalledWith(
       expect.objectContaining({ dayKey: '2026-08-09' }),
@@ -440,7 +447,7 @@ describe('SalesService Paystack collection integrity', () => {
           paystackAttemptStatus: 'initializing',
         }),
       }),
-      { new: true },
+      { returnDocument: 'after' },
     )
     expect(initialize).toHaveBeenCalledWith(
       expect.objectContaining({ sale: claimedSale, merchant, channel: 'card' }),
@@ -495,7 +502,11 @@ describe('SalesService Paystack collection integrity', () => {
       paystackService: {
         verifyTransaction: jest.fn().mockResolvedValue({
           status: 'success',
+          reference: 'COL-RETURN',
           amount: 500000,
+          currency: 'NGN',
+          fees: 12345,
+          domain: 'test',
           channel: 'card',
           paidAt: '2026-08-09T12:00:00.000Z',
         }),

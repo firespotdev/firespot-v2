@@ -19,6 +19,7 @@ import { getCollectEligibility } from '../merchant-plans/constants/plans'
 import { getMerchantPaystackChannels } from '../payments/paystack-collection-channels'
 import { customAlphabet } from 'nanoid'
 import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
+import { validatePaystackPaidValue } from '../payments/payment-validation'
 
 const generateDigitalSerial = customAlphabet(
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
@@ -133,7 +134,9 @@ export class QRKitsService {
         : []
 
     const canCollect = getCollectEligibility(merchant).canCollect
-    const hasPaystackCollection = Boolean(merchant.paystackSubaccountCode && canCollect)
+    const hasPaystackCollection = Boolean(
+      merchant.paystackSubaccountCode && canCollect,
+    )
     const paystackCollectionChannels = hasPaystackCollection
       ? getMerchantPaystackChannels(merchant)
       : []
@@ -276,6 +279,10 @@ export class QRKitsService {
     qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paystackReference = paystackResponse.reference
     qrKit.paystackAccessCode = paystackResponse.accessCode
+    // Snapshot the expected kobo amount at initialization so a later pricing
+    // change cannot alter what this payment must settle.
+    qrKit.activationAmount = activationAmount
+    qrKit.paystackExpectedAmountKobo = activationAmount
     await qrKit.save()
 
     return {
@@ -371,11 +378,21 @@ export class QRKitsService {
     // Verify payment with Paystack
     const verification = await this.paystackService.verifyTransaction(reference)
 
-    if (verification.status !== 'success') {
+    const validation = validatePaystackPaidValue(verification, {
+      reference,
+      amountKobo:
+        qrKit.paystackExpectedAmountKobo ??
+        nairaToKobo(getQRKitPricing(this.configService).activationAmount),
+    })
+    if (validation.valid === false) {
       qrKit.paymentStatus = 'failed'
       await qrKit.save()
       throw new HttpException(
-        'Payment verification failed',
+        {
+          code: 'PAYSTACK_PAYMENT_VALIDATION_FAILED',
+          message: 'Payment verification failed',
+          reason: validation.reason,
+        },
         HttpStatus.BAD_REQUEST,
       )
     }
@@ -427,7 +444,7 @@ export class QRKitsService {
     }
   }
 
-  async completeActivationByWebhook(reference: string) {
+  async completeActivationByWebhook(reference: string, webhookData: any) {
     const qrKit = await this.qrKitModel.findOne({
       paystackReference: reference,
     })
@@ -438,6 +455,25 @@ export class QRKitsService {
 
     if (qrKit.activationStatus === 'activated') {
       return { success: true, message: 'Already activated' }
+    }
+
+    const validation = validatePaystackPaidValue(webhookData, {
+      reference,
+      amountKobo:
+        qrKit.paystackExpectedAmountKobo ??
+        nairaToKobo(getQRKitPricing(this.configService).activationAmount),
+    })
+    if (validation.valid === false) {
+      qrKit.paymentStatus = 'failed'
+      await qrKit.save()
+      throw new HttpException(
+        {
+          code: 'PAYSTACK_PAYMENT_VALIDATION_FAILED',
+          message: 'Payment verification failed',
+          reason: validation.reason,
+        },
+        HttpStatus.BAD_REQUEST,
+      )
     }
 
     qrKit.paymentStatus = 'successful'
@@ -647,7 +683,7 @@ export class QRKitsService {
               source: 'admin-generated',
             },
           },
-          { new: true, sort: { createdAt: 1 } },
+          { returnDocument: 'after', sort: { createdAt: 1 } },
         )
 
         if (!qrKit) {

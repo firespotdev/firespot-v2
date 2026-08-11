@@ -64,6 +64,15 @@ describe("Fee Engine", () => {
   });
 
   describe("splitBreakdown", () => {
+    it("prefers Paystack's actual fee over the pricing estimate", () => {
+      expect(splitBreakdown(5000, 123.45)).toEqual({
+        gross: 5000,
+        paystackFee: 123.45,
+        firespotFee: 25,
+        net: 4851.55,
+      });
+    });
+
     it("calculates breakdown for ₦1,000", () => {
       const res = splitBreakdown(1000);
       expect(res).toEqual({

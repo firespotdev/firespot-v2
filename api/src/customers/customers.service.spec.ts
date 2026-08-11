@@ -49,7 +49,7 @@ describe("CustomersService", () => {
           phoneNumber: identity.fullPhoneNumber,
         }),
       }),
-      expect.objectContaining({ upsert: true, new: true }),
+      expect.objectContaining({ upsert: true, returnDocument: 'after' }),
     );
 
     await service.create(

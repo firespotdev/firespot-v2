@@ -1,14 +1,37 @@
-import { Injectable, HttpException, HttpStatus, Logger, Inject, forwardRef } from "@nestjs/common";
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Inject,
+  forwardRef,
+  OnModuleDestroy,
+  OnModuleInit,
+} from "@nestjs/common";
+import { createHash } from "crypto";
+import { InjectModel } from "@nestjs/mongoose";
+import { Model } from "mongoose";
 import { PaystackService } from "../users/services/paystack.service";
 import { QRKitsService } from "../qr-kits/qr-kits.service";
 import { QROrdersService } from "../qr-orders/qr-orders.service";
 import { MerchantPlansService } from "../merchant-plans/merchant-plans.service";
 import { SalesService } from "../sales/sales.service";
 import { PLAN_REFERENCE_PREFIX } from "../merchant-plans/constants/plans";
+import {
+  PaystackWebhookEvent,
+  PaystackWebhookEventDocument,
+} from "../schemas/paystack-webhook-event.schema";
+
+const WEBHOOK_POLL_MS = 5_000;
+const WEBHOOK_LOCK_TIMEOUT_MS = 5 * 60_000;
+const WEBHOOK_MAX_ATTEMPTS = 10;
+const WEBHOOK_BATCH_SIZE = 20;
 
 @Injectable()
-export class PaymentsService {
+export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PaymentsService.name);
+  private webhookTimer?: ReturnType<typeof setInterval>;
+  private drainingWebhookQueue = false;
 
   constructor(
     private paystackService: PaystackService,
@@ -17,7 +40,22 @@ export class PaymentsService {
     private merchantPlansService: MerchantPlansService,
     @Inject(forwardRef(() => SalesService))
     private salesService: SalesService,
+    @InjectModel(PaystackWebhookEvent.name)
+    private webhookEventModel: Model<PaystackWebhookEventDocument>,
   ) {}
+
+  onModuleInit() {
+    this.webhookTimer = setInterval(
+      () => void this.drainWebhookQueue(),
+      WEBHOOK_POLL_MS,
+    );
+    this.webhookTimer.unref?.();
+    void this.drainWebhookQueue();
+  }
+
+  onModuleDestroy() {
+    if (this.webhookTimer) clearInterval(this.webhookTimer);
+  }
 
   async handleWebhook(payload: any, signature: string, rawBody: string) {
     // Stays synchronous: a forged request must still be rejected with 401.
@@ -32,20 +70,131 @@ export class PaymentsService {
       );
     }
 
-    // Acknowledge first, then process. Handling an event can make outbound
-    // Paystack calls (fetchSubscription, disableSubscription); if that runs
-    // long the request times out, Paystack sees no 200, and it retries every
-    // 3 minutes for four tries then hourly for 72 hours — every retry redoing
-    // the same slow work, precisely when Paystack is already struggling.
-    // Safe because each handler is idempotent by design.
-    void this.processEvent(payload?.event, payload?.data).catch((error) =>
-      this.logger.error(
-        `Failed to process Paystack webhook "${payload?.event}": ${error}`,
-        error instanceof Error ? error.stack : undefined,
-      ),
-    );
+    const eventKey = createHash("sha256").update(rawBody).digest("hex");
+    const now = new Date();
+
+    // Return 200 only after durable storage. If MongoDB is unavailable this
+    // throws, Paystack receives a non-2xx response, and its own delivery retry
+    // remains our final safety net.
+    try {
+      await this.webhookEventModel
+        .updateOne(
+          { eventKey },
+          {
+            $setOnInsert: {
+              eventKey,
+              event: payload?.event || "unknown",
+              data: payload?.data || {},
+              status: "pending",
+              attempts: 0,
+              nextAttemptAt: now,
+            },
+          },
+          { upsert: true },
+        )
+        .exec();
+    } catch (error: any) {
+      // Concurrent upserts of the same delivery can race the unique index. A
+      // duplicate-key result means the event is already safely persisted.
+      if (error?.code !== 11000) throw error;
+    }
+
+    // Processing is intentionally detached from the HTTP response, but is no
+    // longer in-memory-only: a crash leaves a retryable database record.
+    void this.drainWebhookQueue();
 
     return { received: true };
+  }
+
+  private eligibleWebhookFilter(now: Date): Record<string, unknown> {
+    return {
+      $or: [
+        {
+          status: { $in: ["pending", "failed"] },
+          nextAttemptAt: { $lte: now },
+        },
+        {
+          status: "processing",
+          lockedAt: {
+            $lte: new Date(now.getTime() - WEBHOOK_LOCK_TIMEOUT_MS),
+          },
+        },
+      ],
+    };
+  }
+
+  private async claimNextWebhook(): Promise<PaystackWebhookEventDocument | null> {
+    const now = new Date();
+    return this.webhookEventModel
+      .findOneAndUpdate(
+        this.eligibleWebhookFilter(now) as any,
+        {
+          $set: { status: "processing", lockedAt: now },
+          $inc: { attempts: 1 },
+        },
+        { returnDocument: "after", sort: { createdAt: 1 } },
+      )
+      .exec() as unknown as Promise<PaystackWebhookEventDocument | null>;
+  }
+
+  private async drainWebhookQueue() {
+    if (this.drainingWebhookQueue) return;
+    this.drainingWebhookQueue = true;
+    try {
+      for (let i = 0; i < WEBHOOK_BATCH_SIZE; i += 1) {
+        const storedEvent = await this.claimNextWebhook();
+        if (!storedEvent) break;
+        await this.processStoredWebhook(storedEvent);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to drain Paystack webhook queue: ${error}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    } finally {
+      this.drainingWebhookQueue = false;
+    }
+  }
+
+  private async processStoredWebhook(
+    storedEvent: PaystackWebhookEventDocument,
+  ) {
+    try {
+      await this.processEvent(storedEvent.event, storedEvent.data);
+      await this.webhookEventModel
+        .updateOne(
+          { _id: storedEvent._id, status: "processing" },
+          {
+            $set: { status: "processed", processedAt: new Date() },
+            $unset: { lockedAt: 1, lastError: 1 },
+          },
+        )
+        .exec();
+    } catch (error) {
+      const attempts = storedEvent.attempts || 1;
+      const exhausted = attempts >= WEBHOOK_MAX_ATTEMPTS;
+      const retryDelayMs = Math.min(60_000, 1_000 * 2 ** (attempts - 1));
+      const message = error instanceof Error ? error.message : String(error);
+
+      await this.webhookEventModel
+        .updateOne(
+          { _id: storedEvent._id, status: "processing" },
+          {
+            $set: {
+              status: exhausted ? "dead_letter" : "failed",
+              nextAttemptAt: new Date(Date.now() + retryDelayMs),
+              lastError: message.slice(0, 2_000),
+            },
+            $unset: { lockedAt: 1 },
+          },
+        )
+        .exec();
+
+      this.logger.error(
+        `Paystack webhook ${storedEvent.eventKey} failed on attempt ${attempts}: ${message}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
   }
 
   /**
@@ -59,17 +208,17 @@ export class PaymentsService {
 
       // NOTE: the final branch is a catch-all for QR kit activation, so any
       // new payment type MUST be matched by prefix *before* it.
-      if (reference && reference.startsWith('ORD-')) {
+      if (reference && reference.startsWith("ORD-")) {
         await this.ordersService.verifyPayment(reference);
       } else if (reference && reference.startsWith(PLAN_REFERENCE_PREFIX)) {
         // charge.success carries no subscription_code and no email_token (and
         // `plan` is {}), so the subscription cannot be recorded from here —
         // subscription.create below is what does it.
         await this.merchantPlansService.verifyPayment(reference);
-      } else if (reference && reference.startsWith('COL-')) {
+      } else if (reference && reference.startsWith("COL-")) {
         await this.salesService.confirmPaystackSale(reference, data);
       } else {
-        await this.qrKitsService.completeActivationByWebhook(reference);
+        await this.qrKitsService.completeActivationByWebhook(reference, data);
       }
     }
 

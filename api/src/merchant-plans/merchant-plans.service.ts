@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { ConfigService } from '@nestjs/config'
@@ -35,6 +36,7 @@ import {
 } from './constants/plans'
 import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
 import { PaystackSubaccountsService } from '../users/services/paystack-subaccounts.service'
+import { validatePaystackPaidValue } from '../payments/payment-validation'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -216,7 +218,7 @@ export class MerchantPlansService {
   private hasReusableAuthorization(user: UserDocument) {
     return Boolean(
       user.paystackAuthorizationCode &&
-        user.paystackAuthorizationDetails?.reusable !== false,
+      user.paystackAuthorizationDetails?.reusable !== false,
     )
   }
 
@@ -238,6 +240,22 @@ export class MerchantPlansService {
       )
     }
     return undefined
+  }
+
+  private requirePlanCode(
+    tier: PlanTier,
+    interval: 'monthly' | 'annually',
+  ): string {
+    const planCode = this.planCodeFor(tier, interval)
+    if (planCode) return planCode
+
+    this.logger.error(
+      `Missing Paystack plan code for recurring ${tier} ${interval} billing`,
+    )
+    throw new ServiceUnavailableException({
+      code: 'PAYSTACK_PLAN_NOT_CONFIGURED',
+      message: 'Recurring plan billing is temporarily unavailable.',
+    })
   }
 
   /**
@@ -299,7 +317,12 @@ export class MerchantPlansService {
     }
 
     if (kind === 'noop') {
-      return { ...base, blocked: true, amountDue: 0, reason: 'You are already on this plan.' }
+      return {
+        ...base,
+        blocked: true,
+        amountDue: 0,
+        reason: 'You are already on this plan.',
+      }
     }
 
     // Free, deferred outcomes.
@@ -314,7 +337,12 @@ export class MerchantPlansService {
     }
 
     if (kind === 'purchase') {
-      return { ...base, blocked: false, amountDue: fullAmount, deferred: false }
+      return {
+        ...base,
+        blocked: false,
+        amountDue: fullAmount,
+        deferred: false,
+      }
     }
 
     // Prorated now: same-cadence upgrade, or a cadence extension.
@@ -450,6 +478,11 @@ export class MerchantPlansService {
       // 'purchase' → falls through to the normal full-price checkout below.
     }
 
+    const recurringPlanCode =
+      plan.billingType === 'monthly'
+        ? this.requirePlanCode(plan.tier, effectiveInterval)
+        : undefined
+
     const order = new this.planOrderModel({
       merchantId: new Types.ObjectId(merchantId),
       tier: plan.tier,
@@ -527,7 +560,7 @@ export class MerchantPlansService {
           planOrderId: order._id.toString(),
           type: 'PLAN',
         },
-        plan: this.planCodeFor(plan.tier, effectiveInterval),
+        plan: recurringPlanCode,
       })
 
       order.paystackReference = payment.reference
@@ -596,6 +629,10 @@ export class MerchantPlansService {
       paymentMethod?: PlanPaymentMethod
     },
   ) {
+    // Do not collect an upgrade amount unless the future recurring
+    // subscription can also be established.
+    this.requirePlanCode(params.tier as PlanTier, params.interval)
+
     const currentPlan = getPlan(user.planTier || '')
     const currentInterval = await this.currentInterval(user)
     const currentPeriods = currentInterval === 'annually' ? 12 : 1
@@ -779,9 +816,8 @@ export class MerchantPlansService {
     user.planInterval = interval
     // Verified against the NEW tier's requirements — a PRO merchant moving to
     // PRO MAX has not done CAC, so they are 'paid', not 'verified'.
-    user.planStatus = this.outstandingStep(user, tier) === null
-      ? 'verified'
-      : 'paid'
+    user.planStatus =
+      this.outstandingStep(user, tier) === null ? 'verified' : 'paid'
     user.pendingPlanChange = undefined
     // A paid upgrade clears any lapse or pending cancellation, whichever path
     // reached here. Clearing this centrally matters twice over: the two
@@ -853,13 +889,14 @@ export class MerchantPlansService {
     // authenticated merchant cannot settle or fail another merchant's order.
     // The Paystack webhook passes no caller — it is trusted once its signature
     // has been verified.
-    const orderFilter: Record<string, unknown> = { paystackReference: reference }
+    const orderFilter: Record<string, unknown> = {
+      paystackReference: reference,
+    }
     if (callerId && Types.ObjectId.isValid(callerId)) {
       orderFilter.merchantId = new Types.ObjectId(callerId)
     }
 
-    const verification =
-      await this.paystackService.verifyTransaction(reference)
+    const verification = await this.paystackService.verifyTransaction(reference)
 
     // Still settling. Bank transfer and USSD payments commonly return here
     // before the charge lands, and the merchant is redirected to /plan-status
@@ -881,23 +918,23 @@ export class MerchantPlansService {
       throw new NotFoundException('Plan order not found')
     }
 
-    // Paystack is explicit: never deliver value when the amount paid does not
-    // match what was ordered. `verification.amount` is kobo; order.amount is
-    // naira. A missing amount is tolerated rather than blocking a legitimate
-    // payment on a field Paystack should always send.
     const expectedKobo = Math.round(order.amount * 100)
-    if (
-      typeof verification.amount === 'number' &&
-      verification.amount !== expectedKobo
-    ) {
+    const validation = validatePaystackPaidValue(verification, {
+      reference,
+      amountKobo: expectedKobo,
+    })
+    if (validation.valid === false) {
       this.logger.error(
         JSON.stringify({
-          event: 'plan_payment_amount_mismatch',
+          event: 'plan_payment_validation_failed',
           reference,
           merchantId: String(order.merchantId),
           tier: order.tier,
           expectedKobo,
           paidKobo: verification.amount,
+          paidReference: verification.reference,
+          currency: verification.currency,
+          reason: validation.reason,
         }),
       )
       await this.planOrderModel
@@ -906,7 +943,7 @@ export class MerchantPlansService {
       return {
         success: false,
         status: 'FAILED' as const,
-        reason: 'amount_mismatch' as const,
+        reason: validation.reason,
       }
     }
 
@@ -919,7 +956,7 @@ export class MerchantPlansService {
       .findOneAndUpdate(
         { ...orderFilter, paymentStatus: { $ne: 'SUCCESSFUL' } },
         { paymentStatus: 'SUCCESSFUL', paidAt: new Date() },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec()
 
@@ -941,8 +978,7 @@ export class MerchantPlansService {
           user.paystackAuthorizationCode = verification.authorizationCode
         }
         if (verification.authorizationDetails) {
-          user.paystackAuthorizationDetails =
-            verification.authorizationDetails
+          user.paystackAuthorizationDetails = verification.authorizationDetails
         }
         if (verification.customerCode) {
           user.paystackCustomerCode = verification.customerCode
@@ -995,7 +1031,8 @@ export class MerchantPlansService {
       update.planCurrentPeriodEnd = periodEnd
       // Authoritative cadence — order history goes stale after a deferred
       // change lands without a new order.
-      update.planInterval = order.interval === 'annually' ? 'annually' : 'monthly'
+      update.planInterval =
+        order.interval === 'annually' ? 'annually' : 'monthly'
     }
 
     await this.userModel.updateOne({ _id: order.merchantId }, { $set: update })
@@ -1069,10 +1106,7 @@ export class MerchantPlansService {
    * Called only AFTER the new subscription exists — cancelling first would
    * strand the merchant with no access if the new payment failed.
    */
-  async supersedePreviousSubscriptions(
-    customerCode: string,
-    keepCode: string,
-  ) {
+  async supersedePreviousSubscriptions(customerCode: string, keepCode: string) {
     if (!customerCode || !keepCode) return
 
     const user = await this.userModel
@@ -1496,7 +1530,11 @@ export class MerchantPlansService {
       const interval = await this.currentInterval(user)
       const months = interval === 'annually' ? 12 : 1
 
-      const remoteEnd = this.resolveRenewalEnd(nextPaymentDate, previousEnd, now)
+      const remoteEnd = this.resolveRenewalEnd(
+        nextPaymentDate,
+        previousEnd,
+        now,
+      )
       let periodStart: Date
       let periodEnd: Date
 

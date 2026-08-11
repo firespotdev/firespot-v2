@@ -46,6 +46,8 @@ interface VerifyTransactionResponse {
     paid_at: string;
     channel: string;
     currency: string;
+    fees?: number;
+    domain?: string;
     // Present when the transaction was tied to a plan (subscription tiers)
     customer?: { customer_code?: string };
     plan?: string | { plan_code?: string };
@@ -323,6 +325,9 @@ export class PaystackService {
     amount: number;
     paidAt: string;
     channel?: string;
+    currency?: string;
+    fees?: number;
+    domain?: string;
     customerCode?: string;
     planCode?: string;
     authorizationCode?: string;
@@ -355,6 +360,9 @@ export class PaystackService {
           amount: d.amount,
           paidAt: d.paid_at,
           channel: d.channel,
+          currency: d.currency,
+          fees: d.fees,
+          domain: d.domain,
           customerCode: d.customer?.customer_code,
           planCode,
           authorizationCode: d.authorization?.authorization_code,

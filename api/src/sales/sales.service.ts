@@ -33,6 +33,7 @@ import { CustomersService } from '../customers/customers.service'
 import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
 import { PaystackService } from '../users/services/paystack.service'
 import { splitBreakdown } from '../payments/fees'
+import { validatePaystackPaidValue } from '../payments/payment-validation'
 import { CreatePaystackCollectSaleDto } from './dto/create-paystack-collect-sale.dto'
 import {
   getMerchantPaystackChannels,
@@ -305,7 +306,7 @@ export class SalesService {
           },
         },
         { $inc: { reservedAmount: amount } },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec()
 
@@ -368,8 +369,12 @@ export class SalesService {
         if (verification.status === 'success') {
           await this.confirmPaystackSale(sale.paystackReference!, {
             status: verification.status,
+            reference: verification.reference,
             amount: verification.amount,
             channel: verification.channel,
+            currency: verification.currency,
+            fees: verification.fees,
+            domain: verification.domain,
             paid_at: verification.paidAt,
           })
           continue
@@ -406,7 +411,7 @@ export class SalesService {
                   paystackReference: 1,
                 },
               },
-              { new: true },
+              { returnDocument: 'after' },
             )
             .exec()
           if (released && !attempt) {
@@ -1001,7 +1006,7 @@ export class SalesService {
             paystackAttemptStatus: 'initializing',
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec()
     if (!claimedSale) {
@@ -1185,7 +1190,7 @@ export class SalesService {
               capReservationStatus: 'released',
             },
           },
-          { new: true },
+          { returnDocument: 'after' },
         )
         .exec()
         .catch(() => null)
@@ -1228,7 +1233,7 @@ export class SalesService {
             verifiedAt: new Date(),
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec()
     if (!released) return
@@ -1256,7 +1261,7 @@ export class SalesService {
             verifiedAt: new Date(),
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec()
     if (!confirmed) return
@@ -1328,8 +1333,12 @@ export class SalesService {
     if (verification.status === 'success') {
       return this.confirmPaystackSale(attempt.reference, {
         status: verification.status,
+        reference: verification.reference,
         amount: verification.amount,
         channel: verification.channel,
+        currency: verification.currency,
+        fees: verification.fees,
+        domain: verification.domain,
         paid_at: verification.paidAt,
       })
     }
@@ -1372,18 +1381,22 @@ export class SalesService {
     }
 
     const expectedKobo = Math.round((sale.amount || 0) * 100)
-    if (
-      webhookData?.status !== 'success' ||
-      typeof webhookData?.amount !== 'number' ||
-      webhookData.amount !== expectedKobo
-    ) {
+    const validation = validatePaystackPaidValue(webhookData, {
+      reference: paystackReference,
+      amountKobo: expectedKobo,
+    })
+    if (validation.valid === false) {
       this.logger.error(
-        `confirmPaystackSale: Invalid verified payment for ${paystackReference}. Expected kobo: ${expectedKobo}, paid: ${webhookData?.amount}, status: ${webhookData?.status}`,
+        `confirmPaystackSale: Invalid verified payment for ${paystackReference}. Expected NGN kobo: ${expectedKobo}, paid: ${webhookData?.amount}, paid reference: ${webhookData?.reference}, currency: ${webhookData?.currency}, status: ${webhookData?.status}, reason: ${validation.reason}`,
       )
       return null
     }
 
-    const breakdown = splitBreakdown(sale.amount || 0)
+    const actualPaystackFeeNaira =
+      typeof webhookData?.fees === 'number' && Number.isFinite(webhookData.fees)
+        ? webhookData.fees / 100
+        : undefined
+    const breakdown = splitBreakdown(sale.amount || 0, actualPaystackFeeNaira)
     const channel = webhookData?.channel || sale.channel || 'online'
 
     const paymentMethod = this.paymentMethodForPaystackChannel(channel)
@@ -1399,6 +1412,8 @@ export class SalesService {
             recordedAt: Number.isNaN(paidAt.getTime()) ? new Date() : paidAt,
             grossAmount: breakdown.gross,
             paystackFee: breakdown.paystackFee,
+            paystackCurrency: webhookData.currency,
+            paystackDomain: webhookData.domain,
             firespotFee: breakdown.firespotFee,
             netAmount: breakdown.net,
             channel,
@@ -1423,7 +1438,7 @@ export class SalesService {
             capReservationStatus: 'confirmed',
           },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec()
 

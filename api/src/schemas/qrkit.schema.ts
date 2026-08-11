@@ -35,6 +35,11 @@ export class QRKit extends Document {
   @Prop({ default: 300000 }) // NGN 3,000 in kobo
   activationAmount: number
 
+  // Immutable expectation captured when a paid Paystack activation starts.
+  // Kept separate because legacy kits may carry a stale activationAmount.
+  @Prop()
+  paystackExpectedAmountKobo?: number
+
   @Prop({ default: 'pending', index: true })
   paymentStatus: string // 'pending' | 'successful' | 'failed'
 

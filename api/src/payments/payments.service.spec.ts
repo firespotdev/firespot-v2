@@ -92,7 +92,9 @@ const PAYLOADS = {
 }
 
 const makeService = (validSignature = true) => {
-  const paystackService = { verifyWebhookSignature: jest.fn(() => validSignature) }
+  const paystackService = {
+    verifyWebhookSignature: jest.fn(() => validSignature),
+  }
   const qrKitsService = { completeActivationByWebhook: jest.fn() }
   const ordersService = { verifyPayment: jest.fn() }
   const merchantPlansService = {
@@ -107,6 +109,14 @@ const makeService = (validSignature = true) => {
   const salesService = {
     confirmPaystackSale: jest.fn(),
   }
+  const webhookEventModel = {
+    updateOne: jest.fn(() => ({
+      exec: jest.fn().mockResolvedValue({ acknowledged: true }),
+    })),
+    findOneAndUpdate: jest.fn(() => ({
+      exec: jest.fn().mockResolvedValue(null),
+    })),
+  }
 
   const service = new PaymentsService(
     paystackService as any,
@@ -114,10 +124,19 @@ const makeService = (validSignature = true) => {
     ordersService as any,
     merchantPlansService as any,
     salesService as any,
+    webhookEventModel as any,
   )
   jest.spyOn((service as any).logger, 'error').mockImplementation(() => {})
 
-  return { service, paystackService, qrKitsService, ordersService, merchantPlansService, salesService }
+  return {
+    service,
+    paystackService,
+    qrKitsService,
+    ordersService,
+    merchantPlansService,
+    salesService,
+    webhookEventModel,
+  }
 }
 
 /** Invokes the router directly — handleWebhook dispatches it in the background. */
@@ -136,17 +155,8 @@ describe('PaymentsService.handleWebhook', () => {
     expect(merchantPlansService.verifyPayment).not.toHaveBeenCalled()
   })
 
-  it('acknowledges immediately without waiting for processing', async () => {
-    const { service, merchantPlansService } = makeService()
-    let resolveWork: () => void = () => {}
-    merchantPlansService.verifyPayment.mockReturnValue(
-      new Promise<void>((resolve) => {
-        resolveWork = resolve
-      }),
-    )
-
-    // Paystack times the request out and then retries for 72 hours, so the 200
-    // must not wait on outbound work.
+  it('persists the event before acknowledging it', async () => {
+    const { service, webhookEventModel } = makeService()
     const result = await service.handleWebhook(
       PAYLOADS.chargeSuccess,
       'sig',
@@ -154,16 +164,86 @@ describe('PaymentsService.handleWebhook', () => {
     )
 
     expect(result).toEqual({ received: true })
-    resolveWork()
+    expect(webhookEventModel.updateOne).toHaveBeenCalledWith(
+      expect.objectContaining({ eventKey: expect.any(String) }),
+      expect.objectContaining({
+        $setOnInsert: expect.objectContaining({
+          event: 'charge.success',
+          status: 'pending',
+        }),
+      }),
+      { upsert: true },
+    )
   })
 
-  it('does not reject when background processing throws', async () => {
-    const { service, merchantPlansService } = makeService()
-    merchantPlansService.verifyPayment.mockRejectedValue(new Error('boom'))
+  it('uses the same event key when Paystack redelivers an identical body', async () => {
+    const { service, webhookEventModel } = makeService()
+    const rawBody = JSON.stringify(PAYLOADS.chargeSuccess)
+
+    await service.handleWebhook(PAYLOADS.chargeSuccess, 'sig', rawBody)
+    await service.handleWebhook(PAYLOADS.chargeSuccess, 'sig', rawBody)
+
+    const firstFilter = webhookEventModel.updateOne.mock.calls[0][0]
+    const secondFilter = webhookEventModel.updateOne.mock.calls[1][0]
+    expect(firstFilter.eventKey).toBe(secondFilter.eventKey)
+  })
+
+  it('does not acknowledge when durable storage fails', async () => {
+    const { service, webhookEventModel } = makeService()
+    webhookEventModel.updateOne.mockReturnValueOnce({
+      exec: jest.fn().mockRejectedValue(new Error('mongo unavailable')),
+    } as any)
 
     await expect(
       service.handleWebhook(PAYLOADS.chargeSuccess, 'sig', '{}'),
-    ).resolves.toEqual({ received: true })
+    ).rejects.toThrow('mongo unavailable')
+  })
+
+  it('records a failed attempt for retry without losing the event', async () => {
+    const { service, merchantPlansService, webhookEventModel } = makeService()
+    merchantPlansService.verifyPayment.mockRejectedValue(new Error('boom'))
+    const storedEvent = {
+      _id: 'event-1',
+      eventKey: 'key-1',
+      event: PAYLOADS.chargeSuccess.event,
+      data: PAYLOADS.chargeSuccess.data,
+      status: 'processing',
+      attempts: 1,
+    }
+
+    await (service as any).processStoredWebhook(storedEvent)
+
+    expect(webhookEventModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'event-1', status: 'processing' },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          status: 'failed',
+          lastError: 'boom',
+          nextAttemptAt: expect.any(Date),
+        }),
+      }),
+    )
+  })
+
+  it('dead-letters an event after the final retry attempt', async () => {
+    const { service, merchantPlansService, webhookEventModel } = makeService()
+    merchantPlansService.verifyPayment.mockRejectedValue(new Error('boom'))
+
+    await (service as any).processStoredWebhook({
+      _id: 'event-10',
+      eventKey: 'key-10',
+      event: PAYLOADS.chargeSuccess.event,
+      data: PAYLOADS.chargeSuccess.data,
+      status: 'processing',
+      attempts: 10,
+    })
+
+    expect(webhookEventModel.updateOne).toHaveBeenCalledWith(
+      { _id: 'event-10', status: 'processing' },
+      expect.objectContaining({
+        $set: expect.objectContaining({ status: 'dead_letter' }),
+      }),
+    )
   })
 })
 
@@ -180,7 +260,9 @@ describe('PaymentsService event routing', () => {
       'PLAN-abc-1699999999',
     )
     // charge.success has no subscription_code, so there is nothing to attach.
-    expect(merchantPlansService.attachSubscriptionByCustomer).not.toHaveBeenCalled()
+    expect(
+      merchantPlansService.attachSubscriptionByCustomer,
+    ).not.toHaveBeenCalled()
     expect(qrKitsService.completeActivationByWebhook).not.toHaveBeenCalled()
     expect(ordersService.verifyPayment).not.toHaveBeenCalled()
   })
@@ -195,6 +277,7 @@ describe('PaymentsService event routing', () => {
 
     expect(qrKitsService.completeActivationByWebhook).toHaveBeenCalledWith(
       'somekitref',
+      { reference: 'somekitref', customer: {} },
     )
   })
 
@@ -203,13 +286,17 @@ describe('PaymentsService event routing', () => {
 
     await process(service, PAYLOADS.subscriptionCreate)
 
-    expect(merchantPlansService.attachSubscriptionByCustomer).toHaveBeenCalledWith(
+    expect(
+      merchantPlansService.attachSubscriptionByCustomer,
+    ).toHaveBeenCalledWith(
       'CUS_xnxdt6s1zg1f4nx',
       'SUB_vsyqdmlzble3uii',
       undefined, // Paystack does not send email_token on this event
       { planCode: 'PLN_gx2wn530m0i3w3m', interval: 'monthly' },
     )
-    expect(merchantPlansService.supersedePreviousSubscriptions).toHaveBeenCalled()
+    expect(
+      merchantPlansService.supersedePreviousSubscriptions,
+    ).toHaveBeenCalled()
   })
 
   it('reads the NESTED subscription code on invoice.payment_failed', async () => {
@@ -228,7 +315,9 @@ describe('PaymentsService event routing', () => {
 
     await process(service, PAYLOADS.subscriptionNotRenew)
 
-    expect(merchantPlansService.markSubscriptionNonRenewing).toHaveBeenCalledWith(
+    expect(
+      merchantPlansService.markSubscriptionNonRenewing,
+    ).toHaveBeenCalledWith(
       'CUS_8gbmdpvn12c67ix',
       'SUB_d638sdiWAio7jnl',
       '086x99rmqc4qhcw',
@@ -286,7 +375,11 @@ describe('PaymentsService event routing', () => {
 
   it('routes a COL- charge to salesService.confirmPaystackSale', async () => {
     const { service, salesService, qrKitsService } = makeService()
-    const payloadData = { reference: 'COL-123456789012', amount: 500000, channel: 'card' }
+    const payloadData = {
+      reference: 'COL-123456789012',
+      amount: 500000,
+      channel: 'card',
+    }
 
     await process(service, {
       event: 'charge.success',

@@ -156,7 +156,17 @@ describe("PayoutsService", () => {
     });
     saleModel.find.mockReturnValue({
       select: jest.fn(() => ({
-        lean: jest.fn(() => query([])),
+        lean: jest.fn(() =>
+          query([
+            {
+              paystackReference: "COL-55",
+              grossAmount: 5000,
+              paystackFee: 999,
+              firespotFee: 25,
+              netAmount: 3976,
+            },
+          ]),
+        ),
       })),
     });
 
@@ -171,8 +181,10 @@ describe("PayoutsService", () => {
     expect(result.transactions[0]).toMatchObject({
       reference: "COL-55",
       amount: 5000,
-      fees: 200,
-      netAmount: 4800,
+      paystackFee: 200,
+      firespotFee: 25,
+      fees: 225,
+      netAmount: 4775,
     });
   });
 });
