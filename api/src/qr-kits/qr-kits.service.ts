@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { ConfigService } from '@nestjs/config'
 import { Model, Types } from 'mongoose'
 import { nanoid } from 'nanoid'
+import { generateReference } from '../common/reference'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { Agent, AgentDocument } from '../admin/schemas/agent.schema'
@@ -201,7 +202,7 @@ export class QRKitsService {
     const pricing = getQRKitPricing(this.configService)
     const activationAmount = nairaToKobo(pricing.activationAmount)
 
-    const reference = `qrkit_${qrKit.serialNumber}_${nanoid(10)}`
+    const reference = `qrkit_${qrKit.serialNumber}_${generateReference('', 10)}`
 
     const hasEntitlement =
       !!user.availableKitEntitlements && user.availableKitEntitlements > 0

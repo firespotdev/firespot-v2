@@ -107,6 +107,35 @@ const makePendingSale = (overrides: Record<string, any> = {}) => ({
 })
 
 describe('SalesService Paystack collection integrity', () => {
+  it('rejects an authenticated merchant initializing payment to their own account', async () => {
+    const merchantId = new Types.ObjectId()
+    const sale = makePendingSale({
+      merchantId,
+      isCollection: true,
+      serialNumber: 'FS-QR-1',
+      customerFingerprint: 'merchant-browser',
+    })
+    const { service, saleModel } = makeService({
+      saleModel: {
+        findOne: jest.fn(() => query(sale)),
+        findOneAndUpdate: jest.fn(),
+      },
+    })
+
+    await expect(
+      service.initializeExistingPaystackSale(
+        sale._id.toString(),
+        {
+          serialNumber: 'FS-QR-1',
+          channel: 'card',
+          customerFingerprint: 'merchant-browser',
+        },
+        merchantId.toString(),
+      ),
+    ).rejects.toThrow("You can't pay your own account")
+    expect(saleModel.findOneAndUpdate).not.toHaveBeenCalled()
+  })
+
   it('counts only collection sales recorded inside the Lagos collection day', async () => {
     const merchantId = new Types.ObjectId()
     const saleModel = {
@@ -358,7 +387,7 @@ describe('SalesService Paystack collection integrity', () => {
     ).resolves.toMatch(/^\d{4}-\d{2}-\d{2}$/)
     await expect(
       (service as any).reservePaystackDailyCap(merchant, 20000),
-    ).rejects.toThrow("Payment couldn't be completed")
+    ).rejects.toThrow('Payment failed. Please try another payment method')
     expect(dailyUsageModel.findOneAndUpdate).toHaveBeenCalledTimes(2)
   })
 

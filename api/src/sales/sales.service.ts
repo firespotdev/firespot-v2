@@ -17,7 +17,6 @@ import { RecordSaleDto } from './dto/record-sale.dto'
 import { EditSaleDto } from './dto/edit-sale.dto'
 import { SalesQueryDto } from './dto/sales-query.dto'
 import { RecordRepaymentDto } from './dto/record-repayment.dto'
-import { nanoid } from 'nanoid'
 import {
   MerchantCustomer,
   MerchantCustomerDocument,
@@ -54,6 +53,7 @@ import {
   ReconcilePaystackSaleDto,
 } from './dto/initialize-paystack-sale.dto'
 import { SmsService } from '../services/sms/sms.service'
+import { generateReference } from '../common/reference'
 
 const CUSTOMER_COLLECTION_UNAVAILABLE_MESSAGE =
   'Payment failed. Please try another payment method'
@@ -96,6 +96,15 @@ export class SalesService {
       .to(sale.merchantId.toString())
       .to(`sale-${sale._id.toString()}`)
       .emit(event, sale)
+  }
+
+  private assertPayerIsNotMerchant(
+    merchantId: string | Types.ObjectId,
+    payerUserId?: string,
+  ): void {
+    if (payerUserId && String(merchantId) === String(payerUserId)) {
+      throw new ForbiddenException("You can't pay your own account")
+    }
   }
 
   private payerEmailAlias(identity: string): string {
@@ -655,7 +664,11 @@ export class SalesService {
     }
   }
 
-  async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
+  async createPendingSale(
+    dto: CreatePendingSaleDto,
+    payerUserId?: string,
+  ): Promise<Sale> {
+    this.assertPayerIsNotMerchant(dto.merchantId, payerUserId)
     const description = this.normalizeDescription(dto.description)
 
     // Check if this fingerprint has any confirmed sales for this merchant already
@@ -669,7 +682,7 @@ export class SalesService {
     const customerPurchaseCount = confirmedSalesCount + 1 // Including this potential sale
 
     // Generate unique reference
-    const reference = `FS-${nanoid(8).toUpperCase()}`
+    const reference = generateReference('FS-', 8)
 
     let qrKitName = undefined
     if (dto.serialNumber) {
@@ -798,7 +811,7 @@ export class SalesService {
       status: 'PENDING',
       source: 'QR scan',
       isCollection: true,
-      reference: `FS-${nanoid(8).toUpperCase()}`,
+      reference: generateReference('FS-', 8),
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
       // A collection request is not a recorded payment or a debt. These
@@ -842,6 +855,7 @@ export class SalesService {
     }
 
     const merchantId = String(qrKit.merchantId)
+    this.assertPayerIsNotMerchant(merchantId, payerUserId)
     const merchant = await this.userModel.findById(merchantId).exec()
     if (!merchant) {
       throw new NotFoundException('Merchant not found')
@@ -854,7 +868,7 @@ export class SalesService {
     }
 
     const description = this.normalizeDescription(dto.description)
-    const fsReference = `FS-${nanoid(8).toUpperCase()}`
+    const fsReference = generateReference('FS-', 8)
     const merchantObjectId = new Types.ObjectId(merchantId)
 
     const sale = new this.saleModel({
@@ -916,6 +930,7 @@ export class SalesService {
       })
       .exec()
     if (!sale) throw new NotFoundException('Sale not found')
+    this.assertPayerIsNotMerchant(sale.merchantId, payerUserId)
     if (sale.status !== 'PENDING' || !sale.isCollection) {
       throw new UnprocessableEntityException(
         'This payment request can no longer be paid.',
@@ -1060,6 +1075,7 @@ export class SalesService {
       customerName,
       cancelSaleOnFailure,
     } = params
+    this.assertPayerIsNotMerchant(merchant._id, payerUserId)
     await this.assertCanCollect(merchant._id)
     const channel = this.resolvePaystackChannel(merchant, requestedChannel)
 
@@ -1068,7 +1084,7 @@ export class SalesService {
       throw new BadRequestException('Sale amount must be greater than zero')
     }
 
-    const paystackReference = `COL-${nanoid(12)}`
+    const paystackReference = generateReference('COL-', 12)
     const capReservationDay = await this.reservePaystackDailyCap(
       merchant,
       amount,
@@ -1501,7 +1517,7 @@ export class SalesService {
       recordedAt: new Date(),
       customerType: 'New', // Default for manual as per request
       source: 'Manual',
-      reference: `FS-${nanoid(8).toUpperCase()}`,
+      reference: generateReference('FS-', 8),
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
       isPaidInFull: amounts.isPaidInFull,
@@ -2227,6 +2243,7 @@ export class SalesService {
     saleId: string,
     serialNumber: string,
     customerFingerprint?: string,
+    payerUserId?: string,
   ) {
     if (!mongoose.isValidObjectId(saleId)) {
       throw new NotFoundException('Sale not found')
@@ -2239,6 +2256,7 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
+    this.assertPayerIsNotMerchant(sale.merchantId, payerUserId)
     if (sale.status !== 'PENDING') {
       throw new UnprocessableEntityException(
         'This transaction is no longer awaiting payment',
@@ -2398,12 +2416,14 @@ export class SalesService {
     serialNumber: string,
     customerFingerprint: string,
     fileBuffer: Buffer,
+    payerUserId?: string,
   ): Promise<Sale> {
     const sale = await this.requirePendingCustomerSale(
       saleId,
       serialNumber,
       customerFingerprint,
     )
+    this.assertPayerIsNotMerchant(sale.merchantId, payerUserId)
     const upload = await this.cloudinaryService.uploadDocument(fileBuffer)
     sale.receiptUrl = upload.url
     sale.receiptPublicId = upload.publicId
@@ -2490,6 +2510,7 @@ export class SalesService {
       })
       .exec()
     if (!sale) return { success: false }
+    this.assertPayerIsNotMerchant(sale.merchantId, userId)
 
     const relationship = await this.customersService.findOrCreateForUser(
       sale.merchantId,
@@ -2962,12 +2983,14 @@ export class SalesService {
     targetBankName?: string,
     targetAccountNumber?: string,
     sourceBankName?: string,
+    payerUserId?: string,
   ): Promise<Sale> {
     const sale = await this.requirePendingCustomerSale(
       saleId,
       serialNumber,
       customerFingerprint,
     )
+    this.assertPayerIsNotMerchant(sale.merchantId, payerUserId)
     sale.isCopied = true
     if (targetBankName?.trim()) {
       sale.targetBankName = targetBankName.trim()

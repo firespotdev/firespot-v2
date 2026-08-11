@@ -37,9 +37,13 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @ApiOperation({ summary: 'Create a pending sale' })
+  @UseGuards(OptionalJwtAuthGuard)
   @Post('pending')
-  async createPendingSale(@Body() dto: CreatePendingSaleDto) {
-    return this.salesService.createPendingSale(dto);
+  async createPendingSale(
+    @Body() dto: CreatePendingSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.createPendingSale(dto, (user as any)?.userId);
   }
 
   @ApiOperation({ summary: 'Initialize a Paystack collection sale from customer pay page' })
@@ -258,20 +262,24 @@ export class SalesController {
   }
 
   @ApiOperation({ summary: 'Tell the merchant that the customer has paid' })
+  @UseGuards(OptionalJwtAuthGuard)
   @Patch(':id/customer-paid')
   async markSalePaidByCustomer(
     @Param('id') saleId: string,
     @Body() dto: CustomerSaleActionDto,
     @Headers('x-customer-fingerprint') customerFingerprint?: string,
+    @GetUser() user?: User,
   ) {
     return this.salesService.markSalePaidByCustomer(
       saleId,
       dto.serialNumber,
       customerFingerprint,
+      (user as any)?.userId,
     );
   }
 
   @ApiOperation({ summary: 'Upload customer payment receipt screenshot' })
+  @UseGuards(OptionalJwtAuthGuard)
   @Post(':id/receipt')
   @UseInterceptors(FileInterceptor('receipt'))
   async uploadReceipt(
@@ -279,12 +287,14 @@ export class SalesController {
     @Query('serialNumber') serialNumber: string,
     @Headers('x-customer-fingerprint') customerFingerprint: string,
     @UploadedFile() file: Express.Multer.File,
+    @GetUser() user?: User,
   ) {
     return this.salesService.uploadReceipt(
       saleId,
       serialNumber,
       customerFingerprint,
       file.buffer,
+      (user as any)?.userId,
     );
   }
 
@@ -311,11 +321,13 @@ export class SalesController {
   }
 
   @ApiOperation({ summary: 'Record customer copying account number' })
+  @UseGuards(OptionalJwtAuthGuard)
   @Patch(':id/copy')
   async recordCopy(
     @Param('id') saleId: string,
     @Body() dto: CustomerSaleActionDto,
     @Headers('x-customer-fingerprint') customerFingerprint: string,
+    @GetUser() user?: User,
   ) {
     return this.salesService.recordCopy(
       saleId,
@@ -324,6 +336,7 @@ export class SalesController {
       dto.targetBankName,
       dto.targetAccountNumber,
       dto.sourceBankName,
+      (user as any)?.userId,
     );
   }
 

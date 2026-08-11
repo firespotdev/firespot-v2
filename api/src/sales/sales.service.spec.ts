@@ -941,6 +941,17 @@ describe("SalesService amount invariants", () => {
   });
 
   describe("authenticated payer identity", () => {
+    it("does not let a merchant open a static payment to their own account", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const countDocuments = jest.fn();
+      const service = createService({ countDocuments });
+
+      await expect(
+        service.createPendingSale({ merchantId } as any, merchantId),
+      ).rejects.toThrow("You can't pay your own account");
+      expect(countDocuments).not.toHaveBeenCalled();
+    });
+
     it("claims a pending sale using the server-authenticated user identity", async () => {
       const save = jest.fn().mockResolvedValue(undefined);
       const sale = {
@@ -975,6 +986,24 @@ describe("SalesService amount invariants", () => {
       expect(sale.customerId).toBe(customerId);
       expect(sale.customerName).toBe("Ada Okafor");
       expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not let a merchant claim their own pending sale", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const saleModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ merchantId }),
+        }),
+      };
+      const customersService = {
+        findOrCreateForUser: jest.fn(),
+      };
+      const service = createService(saleModel, {}, customersService);
+
+      await expect(
+        service.claimSalePayer("507f1f77bcf86cd799439013", merchantId),
+      ).rejects.toThrow("You can't pay your own account");
+      expect(customersService.findOrCreateForUser).not.toHaveBeenCalled();
     });
   });
 });
