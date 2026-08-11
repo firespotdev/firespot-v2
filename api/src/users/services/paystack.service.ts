@@ -119,6 +119,37 @@ interface PaystackErrorResponse {
   message?: string;
 }
 
+export interface PaystackRefund {
+  id: number;
+  transaction?: number | { id?: number; reference?: string };
+  amount: number;
+  currency?: string;
+  status: string;
+  refund_reference?: string;
+  expected_at?: string;
+  customer_note?: string;
+  merchant_note?: string;
+}
+
+export interface PaystackDisputeRecord {
+  id: number;
+  amount: number;
+  currency?: string;
+  status: string;
+  category?: string;
+  resolution?: string;
+  dueAt?: string;
+  due_at?: string;
+  refund_amount?: number;
+  transaction?:
+    | number
+    | {
+        id?: number;
+        reference?: string;
+        amount?: number;
+      };
+}
+
 interface CachedVerification {
   accountName: string;
   accountNumber: string;
@@ -320,6 +351,7 @@ export class PaystackService {
   }
 
   async verifyTransaction(reference: string): Promise<{
+    id: number;
     status: string;
     reference: string;
     amount: number;
@@ -355,6 +387,7 @@ export class PaystackService {
         const planCode =
           typeof d.plan === "string" ? d.plan : d.plan?.plan_code;
         return {
+          id: d.id,
           status: d.status,
           reference: d.reference,
           amount: d.amount,
@@ -388,6 +421,171 @@ export class PaystackService {
         throw new HttpException(
           error.response?.data?.message || "Failed to verify payment",
           HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async createRefund(params: {
+    transaction: string | number;
+    amount?: number;
+    currency?: string;
+    customerNote?: string;
+    merchantNote?: string;
+  }): Promise<PaystackRefund> {
+    return this.requestData<PaystackRefund>("post", "/refund", {
+      transaction: params.transaction,
+      amount: params.amount,
+      currency: params.currency,
+      customer_note: params.customerNote,
+      merchant_note: params.merchantNote,
+    });
+  }
+
+  async fetchRefund(id: string | number): Promise<PaystackRefund> {
+    return this.requestData<PaystackRefund>("get", `/refund/${id}`);
+  }
+
+  async retryRefundWithCustomerDetails(
+    id: string | number,
+    details: { currency: string; accountNumber: string; bankId: number },
+  ): Promise<PaystackRefund> {
+    return this.requestData<PaystackRefund>(
+      "post",
+      `/refund/retry_with_customer_details/${id}`,
+      {
+        refund_account_details: {
+          currency: details.currency,
+          account_number: details.accountNumber,
+          bank_id: details.bankId,
+        },
+      },
+    );
+  }
+
+  async listDisputes(
+    params: {
+      status?: string;
+      page?: number;
+      perPage?: number;
+    } = {},
+  ): Promise<PaystackDisputeRecord[]> {
+    const response = await axios.get<
+      PaystackListResponse<PaystackDisputeRecord>
+    >(`${this.baseUrl}/dispute`, {
+      headers: { Authorization: `Bearer ${this.paystackSecretKey}` },
+      params: {
+        status: params.status,
+        page: params.page,
+        perPage: params.perPage,
+      },
+    });
+    return response.data.data;
+  }
+
+  async fetchDispute(id: string | number): Promise<PaystackDisputeRecord> {
+    return this.requestData<PaystackDisputeRecord>("get", `/dispute/${id}`);
+  }
+
+  async getDisputeUploadUrl(
+    id: string | number,
+    filename: string,
+  ): Promise<{ signedUrl: string; fileName: string }> {
+    const data = await this.requestData<any>(
+      "get",
+      `/dispute/${id}/upload_url?upload_filename=${encodeURIComponent(filename)}`,
+    );
+    return {
+      signedUrl: data.signedUrl || data.signed_url,
+      fileName: data.fileName || data.file_name || filename,
+    };
+  }
+
+  async uploadDisputeEvidenceFile(
+    signedUrl: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    await axios.put(signedUrl, buffer, {
+      headers: { "Content-Type": contentType },
+      maxBodyLength: Infinity,
+    });
+  }
+
+  async addDisputeEvidence(
+    id: string | number,
+    params: {
+      customerEmail?: string;
+      customerName?: string;
+      customerPhone?: string;
+      serviceDetails: string;
+      deliveryAddress?: string;
+      deliveryDate?: string;
+    },
+  ): Promise<any> {
+    return this.requestData<any>("post", `/dispute/${id}/evidence`, {
+      customer_email: params.customerEmail,
+      customer_name: params.customerName,
+      customer_phone: params.customerPhone,
+      service_details: params.serviceDetails,
+      delivery_address: params.deliveryAddress,
+      delivery_date: params.deliveryDate,
+    });
+  }
+
+  async resolveDispute(
+    id: string | number,
+    params: {
+      resolution: "merchant-accepted" | "declined";
+      message: string;
+      refundAmount?: number;
+      uploadedFilename?: string;
+      evidenceId?: number;
+    },
+  ): Promise<PaystackDisputeRecord> {
+    return this.requestData<PaystackDisputeRecord>(
+      "put",
+      `/dispute/${id}/resolve`,
+      {
+        resolution: params.resolution,
+        message: params.message,
+        refund_amount: params.refundAmount,
+        uploaded_filename: params.uploadedFilename,
+        evidence: params.evidenceId,
+      },
+    );
+  }
+
+  private async requestData<T>(
+    method: "get" | "post" | "put",
+    path: string,
+    data?: Record<string, unknown>,
+  ): Promise<T> {
+    try {
+      const response = await axios.request<{
+        status: boolean;
+        message: string;
+        data: T;
+      }>({
+        method,
+        url: `${this.baseUrl}${path}`,
+        data,
+        headers: {
+          Authorization: `Bearer ${this.paystackSecretKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.data.status) {
+        throw new HttpException(response.data.message, HttpStatus.BAD_REQUEST);
+      }
+      return response.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new HttpException(
+          (error.response?.data as PaystackErrorResponse | undefined)
+            ?.message || "Paystack request failed",
+          error.response?.status || HttpStatus.BAD_REQUEST,
         );
       }
       throw error;

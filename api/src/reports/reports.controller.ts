@@ -1,12 +1,36 @@
-import { Controller, Get, Post, Body, UseGuards, Request, UseInterceptors, UploadedFile } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  UseInterceptors,
+  UploadedFile,
+} from "@nestjs/common";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ReportsService } from "./reports.service";
+import { IsMongoId, IsNotEmpty, IsString, MaxLength } from "class-validator";
 
 class CreateReportDto {
+  @IsMongoId()
   saleId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
   category: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1000)
   description: string;
 }
 

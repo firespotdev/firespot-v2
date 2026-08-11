@@ -11,6 +11,7 @@ import {
   PaystackWebhookEvent,
   PaystackWebhookEventSchema,
 } from "../schemas/paystack-webhook-event.schema";
+import { PaymentCasesModule } from "../payment-cases/payment-cases.module";
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import {
     forwardRef(() => QROrdersModule),
     MerchantPlansModule,
     forwardRef(() => SalesModule),
+    PaymentCasesModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

@@ -21,6 +21,8 @@ import {
   PaystackWebhookEvent,
   PaystackWebhookEventDocument,
 } from "../schemas/paystack-webhook-event.schema";
+import { RefundsService } from "../payment-cases/refunds.service";
+import { DisputesService } from "../payment-cases/disputes.service";
 
 const WEBHOOK_POLL_MS = 5_000;
 const WEBHOOK_LOCK_TIMEOUT_MS = 5 * 60_000;
@@ -42,6 +44,8 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     private salesService: SalesService,
     @InjectModel(PaystackWebhookEvent.name)
     private webhookEventModel: Model<PaystackWebhookEventDocument>,
+    private refundsService: RefundsService,
+    private disputesService: DisputesService,
   ) {}
 
   onModuleInit() {
@@ -220,6 +224,14 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       } else {
         await this.qrKitsService.completeActivationByWebhook(reference, data);
       }
+    }
+
+    if (event.startsWith("refund.")) {
+      await this.refundsService.handleWebhook(event, data);
+    }
+
+    if (event.startsWith("charge.dispute.")) {
+      await this.disputesService.handleWebhook(event, data);
     }
 
     // ---- Subscription lifecycle (PRO / PRO MAX) ----

@@ -117,6 +117,8 @@ const makeService = (validSignature = true) => {
       exec: jest.fn().mockResolvedValue(null),
     })),
   }
+  const refundsService = { handleWebhook: jest.fn() }
+  const disputesService = { handleWebhook: jest.fn() }
 
   const service = new PaymentsService(
     paystackService as any,
@@ -125,6 +127,8 @@ const makeService = (validSignature = true) => {
     merchantPlansService as any,
     salesService as any,
     webhookEventModel as any,
+    refundsService as any,
+    disputesService as any,
   )
   jest.spyOn((service as any).logger, 'error').mockImplementation(() => {})
 
@@ -136,6 +140,8 @@ const makeService = (validSignature = true) => {
     merchantPlansService,
     salesService,
     webhookEventModel,
+    refundsService,
+    disputesService,
   }
 }
 
@@ -249,6 +255,30 @@ describe('PaymentsService.handleWebhook', () => {
 
 describe('PaymentsService event routing', () => {
   afterEach(() => jest.clearAllMocks())
+
+  it('routes refund lifecycle events to the refund processor', async () => {
+    const { service, refundsService } = makeService()
+    const data = { id: 42, status: 'processed', refund_reference: 'REF_123' }
+
+    await process(service, { event: 'refund.processed', data })
+
+    expect(refundsService.handleWebhook).toHaveBeenCalledWith(
+      'refund.processed',
+      data,
+    )
+  })
+
+  it('routes dispute lifecycle events to the dispute processor', async () => {
+    const { service, disputesService } = makeService()
+    const data = { id: 91, status: 'awaiting-merchant-feedback' }
+
+    await process(service, { event: 'charge.dispute.create', data })
+
+    expect(disputesService.handleWebhook).toHaveBeenCalledWith(
+      'charge.dispute.create',
+      data,
+    )
+  })
 
   it('routes a PLAN- charge to plan verification only', async () => {
     const { service, merchantPlansService, qrKitsService, ordersService } =

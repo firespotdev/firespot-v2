@@ -28,6 +28,7 @@ import { KycModule } from './kyc/kyc.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { MerchantReferralsModule } from './merchant-referrals/merchant-referrals.module';
 import { PayoutsModule } from './payouts/payouts.module';
+import { PaymentCasesModule } from './payment-cases/payment-cases.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { PayoutsModule } from './payouts/payouts.module';
     FeedbackModule,
     MerchantReferralsModule,
     PayoutsModule,
+    PaymentCasesModule,
   ],
   controllers: [AppController],
   providers: [

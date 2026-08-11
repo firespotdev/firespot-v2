@@ -212,6 +212,23 @@ export class Sale extends Document {
   @Prop({ index: true, unique: true, sparse: true })
   paystackReference?: string;
 
+  @Prop({ index: true, sparse: true })
+  paystackTransactionId?: number;
+
+  // Atomic counters used to prevent concurrent refunds exceeding the original
+  // Paystack collection. Values are always stored in kobo.
+  @Prop({ default: 0, min: 0 })
+  refundReservedAmountKobo?: number;
+
+  @Prop({ default: 0, min: 0 })
+  refundedAmountKobo?: number;
+
+  @Prop({ default: 0, min: 0 })
+  disputeReversedAmountKobo?: number;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: "Refund" }], default: [] })
+  finalizedRefundIds?: Types.ObjectId[];
+
   @Prop()
   channel?: string;
 

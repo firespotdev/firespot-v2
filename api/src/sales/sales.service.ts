@@ -1421,6 +1421,8 @@ export class SalesService {
             settlementStatus: 'pending',
             paymentRail: 'paystack',
             paystackReference,
+            paystackTransactionId:
+              typeof webhookData?.id === 'number' ? webhookData.id : undefined,
             paystackAttemptStatus: 'success',
             isPaidInFull: true,
             amountPaid: breakdown.gross,

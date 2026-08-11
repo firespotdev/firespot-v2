@@ -103,6 +103,33 @@ export class CloudinaryService {
     });
   }
 
+  async uploadEvidence(
+    fileBuffer: Buffer,
+    folder: string = "flare/dispute-evidence",
+  ): Promise<{ url: string; publicId: string }> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder, resource_type: "auto" },
+        (error, result) => {
+          if (error || !result) {
+            reject(
+              new HttpException(
+                "Failed to upload evidence",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+              ),
+            );
+            return;
+          }
+          resolve({ url: result.secure_url, publicId: result.public_id });
+        },
+      );
+      const readableStream = new Readable();
+      readableStream.push(fileBuffer);
+      readableStream.push(null);
+      readableStream.pipe(uploadStream);
+    });
+  }
+
   async uploadBanner(
     fileBuffer: Buffer,
   ): Promise<{ url: string; publicId: string }> {
