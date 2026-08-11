@@ -1,14 +1,17 @@
 'use client'
 
 import Image from 'next/image'
-import { ChevronDown, Share, X } from 'lucide-react'
-import { Button, TagFooter } from '@/components/ui'
-import { BankLogo } from '@/components/ui/bank-logo'
+import {
+  ChevronDown,
+  Share,
+  X,
+} from 'lucide-react'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatSaleTime } from './utils'
 import { useDrawerStore } from '@/services/drawer'
-import { maskAccountNumber } from '@/lib/utils'
+import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
+import { PaymentCheckoutFooter } from './payment-checkout-footer'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -17,9 +20,14 @@ interface SaleRequestScreenProps {
   merchant: MerchantProfile
   account?: BankAccount
   onChangeAccount: () => void
+  onChangePaymentMethod: () => void
+  selectedRail: PaymentRail
   onCopy: () => void
+  onPayInstantly: () => void
   onShare: () => void
   onClose: () => void
+  hasPaystackCollection?: boolean
+  isSubmitting?: boolean
 }
 
 export function SaleRequestScreen({
@@ -27,9 +35,14 @@ export function SaleRequestScreen({
   merchant,
   account,
   onChangeAccount,
+  onChangePaymentMethod,
+  selectedRail,
   onCopy,
+  onPayInstantly,
   onShare,
   onClose,
+  hasPaystackCollection = false,
+  isSubmitting = false,
 }: SaleRequestScreenProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
@@ -132,35 +145,16 @@ export function SaleRequestScreen({
           </p>
         </div>
 
-        {/* Bottom card */}
-        <div className="shrink-0 bg-white rounded-t-[12px] border-t border-[#F1F1F1] px-4 pt-4 pb-2">
-          {account && (
-            <div className="flex items-center gap-3 mb-4">
-              <BankLogo
-                bankName={account.bankName}
-                size={24}
-                className="rounded-[6px] border border-[#f4f6f8]"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-[#64748B]">Transfer to</p>
-                <p className="font-bold text-sm text-[#0F172A] truncate">
-                  {account.bankName} ({maskAccountNumber(account.accountNumber)})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onChangeAccount}
-                className="bg-[#F1F1F1] rounded-full h-9 px-4 text-[10px] font-bold tracking-[1px] text-black uppercase shrink-0"
-              >
-                Change
-              </button>
-            </div>
-          )}
-
-          <Button onClick={onCopy}>Copy account number</Button>
-
-          <TagFooter className="py-4" />
-        </div>
+        <PaymentCheckoutFooter
+          merchant={{ ...merchant, hasPaystackCollection }}
+          account={account}
+          selectedRail={selectedRail}
+          qrType="dynamic"
+          onAction={selectedRail === 'multiple' ? onPayInstantly : onCopy}
+          onChangeAccount={onChangeAccount}
+          onChangePaymentMethod={onChangePaymentMethod}
+          isSubmitting={isSubmitting}
+        />
       </div>
     </div>
   )

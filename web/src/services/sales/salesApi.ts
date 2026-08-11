@@ -44,11 +44,66 @@ export interface EditSalePayload {
   paymentMethod?: string;
 }
 
+export interface CreatePaystackCollectPayload {
+  serialNumber: string;
+  amount: number;
+  description?: string;
+  channel?: string;
+  customerFingerprint?: string;
+  customerName?: string;
+}
+
+export interface CreatePaystackCollectResponse {
+  sale: Sale;
+  authorizationUrl: string;
+  accessCode: string;
+  paystackReference: string;
+}
+
 export const SalesApi = {
   createPendingSale: async (
     payload: CreatePendingSalePayload,
   ): Promise<Sale> => {
     const { data } = await publicApiClient.post('/sales/pending', payload);
+    return data;
+  },
+
+  createPaystackCollectSale: async (
+    payload: CreatePaystackCollectPayload,
+  ): Promise<CreatePaystackCollectResponse> => {
+    const { data } = await apiClient.post(
+      '/sales/collect/paystack',
+      payload,
+    );
+    return data;
+  },
+
+  initializeExistingPaystackSale: async (
+    saleId: string,
+    payload: {
+      serialNumber: string;
+      channel?: string;
+      customerFingerprint?: string;
+    },
+  ): Promise<CreatePaystackCollectResponse> => {
+    const { data } = await apiClient.post(
+      `/sales/${saleId}/paystack/initialize`,
+      payload,
+    );
+    return data;
+  },
+
+  reconcilePaystackSale: async (
+    saleId: string,
+    serialNumber: string,
+  ): Promise<Sale> => {
+    const { data } = await apiClient.post(
+      `/sales/${saleId}/paystack/reconcile`,
+      {
+        serialNumber,
+        customerFingerprint: getCustomerFingerprint(),
+      },
+    );
     return data;
   },
 

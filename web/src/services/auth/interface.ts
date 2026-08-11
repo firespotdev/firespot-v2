@@ -115,6 +115,7 @@ export interface User {
   effectiveVerificationLevel?: 'PRO' | 'PROMAX' | null
   planCurrentPeriodEnd?: string | null
   planGraceUntil?: string | null
+  hasPayoutAccount?: boolean
   isLapsed?: boolean
   /**
    * Set on each OTP verification. The upgrade prompt keys its dismissal to

@@ -17,6 +17,14 @@ import { UsersModule } from '../users/users.module';
 import { AccountLinkingModule } from '../account-linking/account-linking.module';
 import { CustomersModule } from '../customers/customers.module';
 import { MerchantReferralsModule } from '../merchant-referrals/merchant-referrals.module';
+import {
+  DailyCollectionUsage,
+  DailyCollectionUsageSchema,
+} from '../schemas/daily-collection-usage.schema';
+import {
+  PaystackPaymentAttempt,
+  PaystackPaymentAttemptSchema,
+} from '../schemas/paystack-payment-attempt.schema';
 
 @Module({
   imports: [
@@ -26,6 +34,14 @@ import { MerchantReferralsModule } from '../merchant-referrals/merchant-referral
       { name: QRKit.name, schema: QRKitSchema },
       { name: MerchantCustomer.name, schema: MerchantCustomerSchema },
       { name: Product.name, schema: ProductSchema },
+      {
+        name: DailyCollectionUsage.name,
+        schema: DailyCollectionUsageSchema,
+      },
+      {
+        name: PaystackPaymentAttempt.name,
+        schema: PaystackPaymentAttemptSchema,
+      },
     ]),
     EventsModule,
     FirebaseModule,
@@ -35,6 +51,7 @@ import { MerchantReferralsModule } from '../merchant-referrals/merchant-referral
     MerchantReferralsModule,
   ],
   controllers: [SalesController],
-  providers: [SalesService]
+  providers: [SalesService],
+  exports: [SalesService],
 })
 export class SalesModule {}

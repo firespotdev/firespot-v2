@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { X, Check, FileText, type LucideIcon } from 'lucide-react'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
@@ -9,6 +10,7 @@ interface NotificationToastProps {
   message: string
   icon?: LucideIcon
   mode?: 'success' | 'info' | 'error'
+  onDismiss?: () => void
 }
 
 function NotificationToastContent({
@@ -16,11 +18,24 @@ function NotificationToastContent({
   icon,
   mode = 'info',
   toastId,
+  onDismiss,
 }: NotificationToastProps & { toastId: string | number }) {
-  const Icon = icon || (mode === 'success' ? Check : mode === 'error' ? X : null)
+  const [isDismissed, setIsDismissed] = useState(false)
+  const Icon =
+    icon || (mode === 'success' ? Check : mode === 'error' ? X : null)
+
+  const dismissNotification = () => {
+    setIsDismissed(true)
+    onDismiss?.()
+    // Let React remove the visible card first. Sonner then cleans up its
+    // positioning wrapper without controlling whether the card disappears.
+    window.setTimeout(() => toast.dismiss(toastId), 0)
+  }
+
+  if (isDismissed) return null
 
   return (
-    <div className="flex items-center gap-3 w-fit">
+    <div className="firespot-notification-content flex min-w-0 items-center gap-2 rounded-[20px] border border-[#DFDFDF] bg-white p-1.5 shadow-[0px_4px_8px_rgba(0,0,0,0.04)]">
       {Icon && (
         <div
           className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
@@ -35,16 +50,26 @@ function NotificationToastContent({
         </div>
       )}
 
-      <p className="flex-1 text-sm text-black font-medium whitespace-nowrap">
+      <p className="firespot-notification-message min-w-0 flex-1 text-pretty text-[13px] font-medium leading-[120%] text-black">
         {message}
       </p>
 
       <button
         type="button"
-        onClick={() => toast.dismiss(toastId)}
-        className="shrink-0 p-1 text-gray-400 hover:text-gray-600 transition-colors"
+        onPointerDown={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          dismissNotification()
+        }}
+        onClick={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          dismissNotification()
+        }}
+        aria-label="Dismiss notification"
+        className="relative z-10 flex size-6 shrink-0 cursor-pointer items-center justify-end pl-1 pointer-events-auto"
       >
-        <X className="w-4 h-4" />
+        <X size={16} color="#4C5563" />
       </button>
     </div>
   )
@@ -54,8 +79,15 @@ export function showNotificationToast({
   message,
   icon,
   mode = 'info',
-  duration = 3000,
-}: NotificationToastProps & { duration?: number }) {
+  duration,
+  toastId,
+  onDismiss,
+}: NotificationToastProps & {
+  duration?: number
+  toastId?: string | number
+}) {
+  const resolvedDuration = duration ?? (message.length > 80 ? 6000 : 3000)
+
   return toast.custom(
     (id) => (
       <NotificationToastContent
@@ -63,13 +95,14 @@ export function showNotificationToast({
         icon={icon}
         mode={mode}
         toastId={id}
+        onDismiss={onDismiss}
       />
     ),
     {
-      duration,
+      id: toastId,
+      duration: resolvedDuration,
       unstyled: true,
-      className:
-        'bg-white rounded-full py-2 px-3 shadow-[0px_4px_12px_rgba(0,0,0,0.15)] border border-gray-100 w-fit mx-auto',
+      className: 'firespot-notification-toast mx-auto',
     },
   )
 }

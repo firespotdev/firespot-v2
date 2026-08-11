@@ -105,7 +105,6 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
         label: 'Payouts',
         icon: <ArrowCircleDown2 size={24} />,
         href: '/payouts',
-        proGateLabel: 'Available in',
       },
     ],
   },

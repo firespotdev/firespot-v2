@@ -55,6 +55,8 @@ import { DayTimeEditorDrawer } from './day-time-editor-drawer'
 import { ActiveHoursBookingDrawer } from './active-hours-booking-drawer'
 import { BusinessIntroDrawer } from './business-intro-drawer'
 import { RecordSaleDrawer } from './record-sale-drawer'
+import { RailPickerDrawer } from './rail-picker-drawer'
+import { ChannelPickerDrawer } from './channel-picker-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -249,6 +251,18 @@ const DRAWER_CONFIG: Record<
       'h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
     // The sheet should visibly slide back down when dismissed.
     animateOnClose: true,
+  },
+  'rail-picker': {
+    title: 'Change payment method',
+    direction: 'bottom',
+    Content: RailPickerDrawer,
+    fullScreen: true,
+  },
+  'channel-picker': {
+    title: 'How would you like to pay?',
+    direction: 'bottom',
+    fullScreen: true,
+    Content: ChannelPickerDrawer,
   },
   'sale-items': {
     title: '',

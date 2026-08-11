@@ -2,12 +2,11 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
-import { ArrowUpRight, Plus, Share, X } from 'lucide-react'
-import { Button, Spinner, showNotificationToast } from '@/components/ui'
-import { BankLogo } from '@/components/ui/bank-logo'
+import { Plus, Share, X } from 'lucide-react'
+import { showNotificationToast } from '@/components/ui'
 import type { MerchantProfile } from '@/services/qr/interface'
-import { maskAccountNumber } from '@/lib/utils'
+import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
+import { PaymentCheckoutFooter } from './payment-checkout-footer'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -17,7 +16,10 @@ interface SalePayAmountScreenProps {
   merchant: MerchantProfile
   account?: BankAccount
   onChangeAccount: () => void
+  onChangePaymentMethod: () => void
+  selectedRail?: PaymentRail
   onCopy: (amount: number, description: string) => void
+  onPayInstantly: (amount: number, description: string) => void
   onShare: () => void
   onClose: () => void
   isSubmitting?: boolean
@@ -31,7 +33,10 @@ export function SalePayAmountScreen({
   merchant,
   account,
   onChangeAccount,
+  onChangePaymentMethod,
+  selectedRail = 'multiple',
   onCopy,
+  onPayInstantly,
   onShare,
   onClose,
   isSubmitting = false,
@@ -42,8 +47,9 @@ export function SalePayAmountScreen({
   const amountValue = Number(amountDigits || '0')
   const displayAmount = amountDigits ? formatInt(Number(amountDigits)) : ''
   const accountName = account?.accountName || merchant.businessName
+  const hasPaystackCollection = Boolean(merchant.hasPaystackCollection)
 
-  const handleCopy = () => {
+  const handleAction = () => {
     if (amountValue <= 0) {
       showNotificationToast({
         message: 'Enter an amount first',
@@ -51,7 +57,12 @@ export function SalePayAmountScreen({
       })
       return
     }
-    onCopy(amountValue, description.trim())
+
+    if (hasPaystackCollection && selectedRail === 'multiple') {
+      onPayInstantly(amountValue, description.trim())
+    } else {
+      onCopy(amountValue, description.trim())
+    }
   }
 
   return (
@@ -112,7 +123,7 @@ export function SalePayAmountScreen({
             <div className="p-4">
               <p className="text-xs text-[#64748B] font-medium">Enter amount</p>
               <div className="flex items-center gap-3 mt-1">
-                <div className="flex items-baseline shrink-0 font-sofia-pro">
+                <div className="flex items-baseline shrink-0 font-bold">
                   <span className="text-[32px] leading-none text-black">₦</span>
                   <input
                     inputMode="numeric"
@@ -121,7 +132,7 @@ export function SalePayAmountScreen({
                       setAmountDigits(e.target.value.replace(/\D/g, ''))
                     }
                     placeholder="0"
-                    className="w-28 text-[32px] leading-none text-black bg-transparent -tracking-[4px] outline-none placeholder:text-[#9CA3AF]"
+                    className="w-28 text-[32px] leading-none text-black bg-transparent leading-none outline-none placeholder:text-[#9CA3AF]"
                   />
                 </div>
                 <div className="flex gap-2.5 overflow-x-auto scrollbar-hide min-w-0 -mr-4">
@@ -169,43 +180,16 @@ export function SalePayAmountScreen({
           </div>
         </div>
 
-        {/* Bottom card */}
-        <div className="shrink-0 bg-white rounded-t-[12px] border-t border-[#F1F1F1] px-4 pt-4 pb-6">
-          {account && (
-            <div className="flex items-center gap-3 mb-4">
-              <BankLogo
-                bankName={account.bankName}
-                size={24}
-                className="rounded-[6px] border border-[#f4f6f8]"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-[#64748B]">Transfer to</p>
-                <p className="font-bold text-sm text-[#0F172A] truncate">
-                  {account.bankName} ({maskAccountNumber(account.accountNumber)})
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={onChangeAccount}
-                className="bg-[#F1F1F1] rounded-full h-9 px-4 text-[10px] font-bold tracking-[1px] text-black uppercase shrink-0"
-              >
-                Change
-              </button>
-            </div>
-          )}
-
-          <Button onClick={handleCopy} disabled={isSubmitting}>
-            {isSubmitting ? <Spinner /> : 'Copy account number'}
-          </Button>
-
-          <Link
-            href="/login?intent=merchant"
-            className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
-          >
-            I want something like this for my business
-            <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
-          </Link>
-        </div>
+        <PaymentCheckoutFooter
+          merchant={merchant}
+          account={account}
+          selectedRail={selectedRail}
+          qrType="static"
+          onAction={handleAction}
+          onChangeAccount={onChangeAccount}
+          onChangePaymentMethod={onChangePaymentMethod}
+          isSubmitting={isSubmitting}
+        />
       </div>
     </div>
   )

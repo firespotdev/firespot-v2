@@ -7,6 +7,7 @@ import {
 import {
   SalesApi,
   CreatePendingSalePayload,
+  CreatePaystackCollectPayload,
   RecordSalePayload,
   EditSalePayload,
 } from './salesApi';
@@ -15,6 +16,56 @@ export const useCreatePendingSale = () => {
   return useMutation({
     mutationFn: (payload: CreatePendingSalePayload) =>
       SalesApi.createPendingSale(payload),
+  });
+};
+
+export const useCreatePaystackCollectSale = () => {
+  return useMutation({
+    mutationFn: (payload: CreatePaystackCollectPayload) =>
+      SalesApi.createPaystackCollectSale(payload),
+  });
+};
+
+export const useInitializeExistingPaystackSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+      channel,
+      customerFingerprint,
+    }: {
+      saleId: string;
+      serialNumber: string;
+      channel?: string;
+      customerFingerprint?: string;
+    }) =>
+      SalesApi.initializeExistingPaystackSale(saleId, {
+        serialNumber,
+        channel,
+        customerFingerprint,
+      }),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+    },
+  });
+};
+
+export const useReconcilePaystackSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.reconcilePaystackSale(saleId, serialNumber),
+    onSettled: (_, __, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
   });
 };
 

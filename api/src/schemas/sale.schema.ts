@@ -16,6 +16,14 @@ export class Sale extends Document {
   @Prop()
   customerName?: string;
 
+  @Prop()
+  customerPhone?: string;
+
+  // Stable opaque alias supplied to Paystack, which requires an email even
+  // though Firespot identifies personal users by verified phone number.
+  @Prop()
+  payerPaystackEmail?: string;
+
   // Global, merchant-independent customer identity. For debt this is required;
   // it may point to a phone-linked placeholder User until OTP registration.
   @Prop({ type: Types.ObjectId, ref: "User", index: true })
@@ -36,7 +44,23 @@ export class Sale extends Document {
   @Prop()
   description?: string;
 
-  @Prop({ enum: ['Bank Transfer', 'Cash', 'POS', 'Other'] })
+  @Prop({
+    enum: [
+      'Bank Transfer',
+      'Cash',
+      'POS',
+      'Other',
+      'Card',
+      'Bank',
+      'USSD',
+      'QR',
+      'Apple Pay',
+      'Payattitude',
+      'Mobile Money',
+      'EFT',
+      'Capitec Pay',
+    ],
+  })
   paymentMethod?: string;
 
   @Prop()
@@ -130,6 +154,19 @@ export class Sale extends Document {
   @Prop({ default: false, index: true })
   isCollection?: boolean;
 
+  @Prop({ enum: ["manual_transfer", "paystack"], index: true })
+  paymentRail?: "manual_transfer" | "paystack";
+
+  @Prop({
+    enum: ["initializing", "pending", "success", "failed", "abandoned"],
+  })
+  paystackAttemptStatus?:
+    | "initializing"
+    | "pending"
+    | "success"
+    | "failed"
+    | "abandoned";
+
   @Prop({ default: false })
   isScanned?: boolean;
 
@@ -152,6 +189,40 @@ export class Sale extends Document {
     paymentMethod: string;
     recordedAt?: Date;
   }>;
+
+  // Paystack Collection Rail breakdown fields
+  @Prop()
+  grossAmount?: number;
+
+  @Prop()
+  paystackFee?: number;
+
+  @Prop()
+  firespotFee?: number;
+
+  @Prop()
+  netAmount?: number;
+
+  @Prop({ index: true, unique: true, sparse: true })
+  paystackReference?: string;
+
+  @Prop()
+  channel?: string;
+
+  @Prop({ enum: ['pending', 'processing', 'success', 'failed'] })
+  settlementStatus?: string;
+
+  @Prop()
+  capReservationDay?: string;
+
+  @Prop()
+  capReservationAmount?: number;
+
+  @Prop({ enum: ['active', 'confirmed', 'released'] })
+  capReservationStatus?: string;
+
+  @Prop()
+  capReservationLastCheckedAt?: Date;
 
   createdAt?: Date;
   updatedAt?: Date;

@@ -5,6 +5,7 @@ import { User, UserDocument } from "../schemas/user.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { Product, ProductDocument } from "../schemas/product.schema";
 import { PaystackService } from "./services/paystack.service";
+import { PaystackSubaccountsService } from "./services/paystack-subaccounts.service";
 import { CloudinaryService } from "./services/cloudinary.service";
 import { MerchantReferralsService } from "../merchant-referrals/merchant-referrals.service";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
@@ -44,6 +45,7 @@ export class UsersService {
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
     private merchantReferralsService: MerchantReferralsService,
+    private paystackSubaccountsService: PaystackSubaccountsService,
   ) {}
 
   async verifyBankAccount(dto: VerifyAccountDto) {
@@ -539,6 +541,7 @@ export class UsersService {
     } as any);
 
     await user.save();
+    await this.paystackSubaccountsService.ensureForUser(user);
 
     return {
       message: "Bank account added successfully",
@@ -596,6 +599,7 @@ export class UsersService {
     account.isPrimary = true;
 
     await user.save();
+    await this.paystackSubaccountsService.ensureForUser(user);
 
     return {
       message: "Primary bank account updated successfully",
@@ -641,6 +645,9 @@ export class UsersService {
     }
 
     await user.save();
+    if (wasPrimary) {
+      await this.paystackSubaccountsService.ensureForUser(user);
+    }
 
     return {
       message: "Bank account deleted successfully",
@@ -882,6 +889,7 @@ export class UsersService {
       // Collecting needs a plan AND completed KYC; recording never does.
       canCollect: getCollectEligibility(user).canCollect,
       collectBlockedReason: getCollectEligibility(user).reason,
+      hasPayoutAccount: Boolean(user.paystackSubaccountCode),
       // Used by the client to re-surface the upgrade prompt once per login
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,

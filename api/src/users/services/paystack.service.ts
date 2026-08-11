@@ -73,6 +73,50 @@ interface CreateSubscriptionResponse {
   data: { subscription_code: string; email_token: string; status: string };
 }
 
+export interface PaystackPaginationMeta {
+  total?: number;
+  skipped?: number;
+  perPage?: number;
+  page?: number;
+  pageCount?: number;
+}
+
+export interface PaystackSettlement {
+  id: number;
+  domain?: string;
+  status: string;
+  effective_amount?: number;
+  total_amount?: number;
+  amount?: number;
+  total_processed?: number;
+  total_fees?: number;
+  settlement_date?: string;
+  createdAt?: string;
+  total_count?: number;
+}
+
+export interface PaystackSettlementTransaction {
+  id: number;
+  reference?: string;
+  status?: string;
+  amount?: number;
+  fees?: number;
+  channel?: string;
+  paid_at?: string;
+  paidAt?: string;
+}
+
+interface PaystackListResponse<T> {
+  status: boolean;
+  message: string;
+  data: T[];
+  meta?: PaystackPaginationMeta;
+}
+
+interface PaystackErrorResponse {
+  message?: string;
+}
+
 interface CachedVerification {
   accountName: string;
   accountNumber: string;
@@ -218,6 +262,8 @@ export class PaystackService {
     metadata?: Record<string, any>;
     subaccount?: string;
     transactionCharge?: number;
+    bearer?: "account" | "subaccount";
+    channels?: string[];
     /** Paystack plan code. When set, paying creates a recurring subscription. */
     plan?: string;
   }): Promise<{
@@ -236,6 +282,8 @@ export class PaystackService {
           metadata: params.metadata,
           subaccount: params.subaccount,
           transaction_charge: params.transactionCharge,
+          bearer: params.bearer,
+          channels: params.channels,
           plan: params.plan,
         },
         {
@@ -274,6 +322,7 @@ export class PaystackService {
     reference: string;
     amount: number;
     paidAt: string;
+    channel?: string;
     customerCode?: string;
     planCode?: string;
     authorizationCode?: string;
@@ -305,6 +354,7 @@ export class PaystackService {
           reference: d.reference,
           amount: d.amount,
           paidAt: d.paid_at,
+          channel: d.channel,
           customerCode: d.customer?.customer_code,
           planCode,
           authorizationCode: d.authorization?.authorization_code,
@@ -604,6 +654,64 @@ export class PaystackService {
       if (axios.isAxiosError(error)) {
         throw new HttpException(
           error.response?.data?.message || "Failed to update subaccount",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async listSettlements(
+    subaccountCode: string,
+    params?: { perPage?: number; page?: number },
+  ): Promise<PaystackListResponse<PaystackSettlement>> {
+    try {
+      const response = await axios.get<
+        PaystackListResponse<PaystackSettlement>
+      >(`${this.baseUrl}/settlement`, {
+        params: {
+          subaccount: subaccountCode,
+          perPage: params?.perPage || 50,
+          page: params?.page || 1,
+        },
+        headers: {
+          Authorization: `Bearer ${this.paystackSecretKey}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError<PaystackErrorResponse>(error)) {
+        throw new HttpException(
+          error.response?.data?.message || "Failed to fetch settlements",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      throw error;
+    }
+  }
+
+  async getSettlementTransactions(
+    settlementId: string,
+    params?: { perPage?: number; page?: number },
+  ): Promise<PaystackListResponse<PaystackSettlementTransaction>> {
+    try {
+      const response = await axios.get<
+        PaystackListResponse<PaystackSettlementTransaction>
+      >(`${this.baseUrl}/settlement/${settlementId}/transactions`, {
+        params: {
+          perPage: params?.perPage || 50,
+          page: params?.page || 1,
+        },
+        headers: {
+          Authorization: `Bearer ${this.paystackSecretKey}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError<PaystackErrorResponse>(error)) {
+        throw new HttpException(
+          error.response?.data?.message ||
+            "Failed to fetch settlement transactions",
           HttpStatus.BAD_REQUEST,
         );
       }

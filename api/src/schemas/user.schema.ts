@@ -370,6 +370,10 @@ export class User extends Document {
   @Prop({ enum: ["LITE", "PRO", "PROMAX"], index: true })
   planTier?: string;
 
+  /** Rolling 24-hour, atomically claimed SMS throttle for collection-cap failures. */
+  @Prop()
+  lastDailyLimitAlertAt?: Date;
+
   @Prop({
     enum: ["none", "paid", "verifying", "verified", "failed"],
     default: "none",
@@ -419,6 +423,20 @@ export class User extends Document {
   // Paystack billing refs for the recurring tiers
   @Prop()
   paystackCustomerCode?: string;
+
+  // Paystack subaccount code for collection rail payouts
+  @Prop({ index: true })
+  paystackSubaccountCode?: string;
+
+  // Bank details attached to the subaccount (for drift detection)
+  @Prop()
+  subaccountBankCode?: string;
+
+  @Prop()
+  subaccountAccountNumber?: string;
+
+  @Prop()
+  subaccountPercentageCharge?: number;
 
   // Legacy: codes only. Kept readable so existing rows still resolve; new
   // subscriptions are written to `subscriptions` below.

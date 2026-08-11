@@ -19,6 +19,8 @@ import { useGenerateDigitalQRKit } from '@/services/qr'
 import { useQRKitPricing } from '@/services/qr-orders'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
+import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
+import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 
 type ViewMode = 'scan' | 'serial' | 'confirm' | 'callback'
 type ApiError = {
@@ -77,6 +79,11 @@ function ActivatePageContent() {
   const { data: user } = useUserProfile()
   const checkSerial = useCheckSerialNumber()
   const initiateActivation = useInitiateActivation()
+  const {
+    isRedirectingToPaystack,
+    startPaystackRedirect,
+    cancelPaystackRedirect,
+  } = usePaystackRedirectState()
   const generateDigitalQRKit = useGenerateDigitalQRKit()
   const { pricing } = useQRKitPricing()
 
@@ -312,9 +319,12 @@ function ActivatePageContent() {
   }
 
   const handlePayment = () => {
+    if (initiateActivation.isPending || isRedirectingToPaystack) return
+    if (!isActivationFree) startPaystackRedirect()
     initiateActivation.mutate(validatedSerial, {
       onSuccess: (data) => {
         if (data.isAutoActivated || !data.authorizationUrl) {
+          cancelPaystackRedirect()
           showNotificationToast({
             message: data.message || 'QR kit activated!',
             mode: 'success',
@@ -328,12 +338,17 @@ function ActivatePageContent() {
         window.location.href = data.authorizationUrl
       },
       onError: (error: unknown) => {
+        cancelPaystackRedirect()
         const apiError = error as ApiError
         const message =
           apiError.response?.data?.message || 'Failed to initiate payment'
         showNotificationToast({ message, mode: 'error' })
       },
     })
+  }
+
+  if (isRedirectingToPaystack) {
+    return <PaystackRedirectingScreen />
   }
 
   const handleProceedWithoutLinking = () => {

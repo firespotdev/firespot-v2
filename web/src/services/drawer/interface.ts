@@ -41,6 +41,8 @@ export type DrawerContentType =
   | 'sale-items'
   | 'business-intro'
   | 'record-sale'
+  | 'rail-picker'
+  | 'channel-picker'
 
 
 

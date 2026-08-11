@@ -187,3 +187,30 @@
   margin: 0 auto !important;
   pointer-events: auto !important;
 }
+
+/* Notification messages need a definite line box. A shrink-to-fit toast uses
+   the text's single-line intrinsic width, which can overflow before wrapping. */
+[data-sonner-toast].firespot-notification-toast {
+  left: 50% !important;
+  right: auto !important;
+  width: min(420px, calc(100vw - 2rem)) !important;
+  max-width: min(420px, calc(100vw - 2rem)) !important;
+  margin: 0 !important;
+  translate: -50% 0;
+}
+
+.firespot-notification-content {
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  margin-inline: auto;
+  overflow-x: hidden;
+}
+
+.firespot-notification-message {
+  max-width: 100%;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word;
+}

@@ -104,16 +104,20 @@ const makeService = (validSignature = true) => {
     markSubscriptionEnded: jest.fn(),
     renewPeriod: jest.fn(),
   }
+  const salesService = {
+    confirmPaystackSale: jest.fn(),
+  }
 
   const service = new PaymentsService(
     paystackService as any,
     qrKitsService as any,
     ordersService as any,
     merchantPlansService as any,
+    salesService as any,
   )
   jest.spyOn((service as any).logger, 'error').mockImplementation(() => {})
 
-  return { service, paystackService, qrKitsService, ordersService, merchantPlansService }
+  return { service, paystackService, qrKitsService, ordersService, merchantPlansService, salesService }
 }
 
 /** Invokes the router directly — handleWebhook dispatches it in the background. */
@@ -278,5 +282,21 @@ describe('PaymentsService event routing', () => {
     })
 
     expect(merchantPlansService.renewPeriod).not.toHaveBeenCalled()
+  })
+
+  it('routes a COL- charge to salesService.confirmPaystackSale', async () => {
+    const { service, salesService, qrKitsService } = makeService()
+    const payloadData = { reference: 'COL-123456789012', amount: 500000, channel: 'card' }
+
+    await process(service, {
+      event: 'charge.success',
+      data: payloadData,
+    })
+
+    expect(salesService.confirmPaystackSale).toHaveBeenCalledWith(
+      'COL-123456789012',
+      payloadData,
+    )
+    expect(qrKitsService.completeActivationByWebhook).not.toHaveBeenCalled()
   })
 })

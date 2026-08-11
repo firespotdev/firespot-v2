@@ -35,6 +35,8 @@ export function GlobalSocket() {
   const { isAuthenticated, user } = useAuthStore()
   const [soundEnabled] = usePreference('soundEnabled', true)
   const soundEnabledRef = useRef(soundEnabled)
+  const confirmedSaleIdsRef = useRef(new Set<string>())
+  const paystackConfirmationMutedUntilRef = useRef(0)
 
   // Sync ref with state
   useEffect(() => {
@@ -184,16 +186,67 @@ export function GlobalSocket() {
       invalidateSales()
     }
 
+    const handlePaymentProcessing = (sale: Sale) => {
+      if (isViewingSale(sale._id)) {
+        invalidateSales()
+        return
+      }
+      showNotificationToast({
+        message: 'A customer is completing a Paystack payment',
+        duration: 3000,
+      })
+      invalidateSales()
+    }
+
+    const handleSaleConfirmed = (sale: Sale) => {
+      const saleId = String(sale._id || '')
+      if (saleId && confirmedSaleIdsRef.current.has(saleId)) {
+        invalidateSales()
+        return
+      }
+      if (saleId) confirmedSaleIdsRef.current.add(saleId)
+
+      if (Date.now() < paystackConfirmationMutedUntilRef.current) {
+        invalidateSales()
+        return
+      }
+
+      if (isViewingSale(sale._id)) {
+        invalidateSales()
+        return
+      }
+      if (sale.paymentRail === 'paystack') {
+        showNotificationToast({
+          message: 'Paystack payment confirmed and recorded',
+          mode: 'success',
+          duration: 3500,
+          // One active confirmation toast, even if the same Paystack result is
+          // delivered through differently shaped sale events.
+          toastId: 'paystack-payment-confirmed',
+          onDismiss: () => {
+            // A duplicate confirmation event must not immediately recreate a
+            // notification the merchant deliberately closed.
+            paystackConfirmationMutedUntilRef.current = Date.now() + 10_000
+          },
+        })
+      }
+      invalidateSales()
+    }
+
     socket.on('sale.pending', handleSalePending)
     socket.on('receipt.uploaded', handleReceiptUploaded)
     socket.on('payment.declared', handlePaymentDeclared)
     socket.on('sale.cancelled', handleSaleCancelled)
+    socket.on('payment.processing', handlePaymentProcessing)
+    socket.on('sale.confirmed', handleSaleConfirmed)
 
     return () => {
       socket.off('sale.pending', handleSalePending)
       socket.off('receipt.uploaded', handleReceiptUploaded)
       socket.off('payment.declared', handlePaymentDeclared)
       socket.off('sale.cancelled', handleSaleCancelled)
+      socket.off('payment.processing', handlePaymentProcessing)
+      socket.off('sale.confirmed', handleSaleConfirmed)
     }
   }, [socket, queryClient, user?.role])
 

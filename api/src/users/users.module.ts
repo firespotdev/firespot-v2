@@ -9,6 +9,7 @@ import { QRKit, QRKitSchema } from "../schemas/qrkit.schema";
 import { Product, ProductSchema } from "../schemas/product.schema";
 import { AuthModule } from "../auth/auth.module";
 import { MerchantReferralsModule } from "../merchant-referrals/merchant-referrals.module";
+import { PaystackSubaccountsService } from "./services/paystack-subaccounts.service";
 
 @Module({
   imports: [
@@ -21,7 +22,17 @@ import { MerchantReferralsModule } from "../merchant-referrals/merchant-referral
     MerchantReferralsModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, PaystackService, CloudinaryService],
-  exports: [UsersService, PaystackService, CloudinaryService],
+  providers: [
+    UsersService,
+    PaystackService,
+    PaystackSubaccountsService,
+    CloudinaryService,
+  ],
+  exports: [
+    UsersService,
+    PaystackService,
+    PaystackSubaccountsService,
+    CloudinaryService,
+  ],
 })
 export class UsersModule {}

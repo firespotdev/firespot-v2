@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
@@ -25,10 +25,6 @@ import { DonutChart, DonutChartLegend } from '@/components/ui/donut-chart'
 import { StatCard, BreakdownItem, CustomChart } from '@/components/insights'
 import { formatCurrency } from '@/lib/utils'
 import { useSalesStats } from '@/services/sales/hooks'
-import {
-  generateMockSalesStats,
-  generateMockMerchantInsights,
-} from '@/lib/mock-data'
 
 const PAY_METHOD_COLORS = [
   '#E74C3C',
@@ -44,14 +40,11 @@ export default function InsightsPage() {
   const [filter, setFilter] = useState<InsightsQuery>({
     preset: 'today',
   })
-
   const { data: salesStats } = useSalesStats(filter)
 
   const { data: insights, isLoading, error } = useMerchantInsights(filter)
 
   const { data: bankAccountsData } = useBankAccounts()
-
-  // Auth + merchant capability are enforced by the (merchant) layout.
 
   const handleOpenFilter = () => {
     openDrawer({
@@ -310,7 +303,7 @@ export default function InsightsPage() {
                 value={insights.qrKitScans.totalScans}
                 expandable={insights.qrKitScans.breakdown.length > 0}
               >
-                {insights.qrKitScans.breakdown.map((kit, index) => (
+                {insights.qrKitScans.breakdown.map((kit) => (
                   <BreakdownItem
                     key={kit.qrKitId}
                     label={kit.serialNumber}

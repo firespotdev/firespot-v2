@@ -5,6 +5,7 @@ import { UsersModule } from "../users/users.module";
 import { QRKitsModule } from "../qr-kits/qr-kits.module";
 import { QROrdersModule } from "../qr-orders/qr-orders.module";
 import { MerchantPlansModule } from "../merchant-plans/merchant-plans.module";
+import { SalesModule } from "../sales/sales.module";
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { MerchantPlansModule } from "../merchant-plans/merchant-plans.module";
     forwardRef(() => QRKitsModule),
     forwardRef(() => QROrdersModule),
     MerchantPlansModule,
+    forwardRef(() => SalesModule),
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService],

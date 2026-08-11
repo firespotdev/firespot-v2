@@ -16,13 +16,19 @@ import type { MerchantProfile } from '@/services/qr/interface'
 import { SalesApi } from '@/services/sales/salesApi'
 import {
   useCreatePendingSale,
+  useCreatePaystackCollectSale,
   useRecordScan,
   useRecordCopy,
   useClaimSalePayer,
   usePublicSale,
 } from '@/services/sales/hooks'
+import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
+import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
 import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
 import { SalePayAmountScreen } from '@/components/pay/sale-pay-amount-screen'
+import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
+import { PaystackWaitingScreen } from '@/components/pay/paystack-waiting-screen'
+import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
@@ -43,22 +49,34 @@ export default function PaymentPage() {
   )
 
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
+  const [selectedRail, setSelectedRail] = useState<PaymentRail>('multiple')
+  const [selectedChannel, setSelectedChannel] = useState<string>(
+    DEFAULT_PAYSTACK_CHANNEL,
+  )
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const createPendingSale = useCreatePendingSale()
-  const recordSaleScan = useRecordScan()
+  const createPaystackCollectSale = useCreatePaystackCollectSale()
+  const {
+    isRedirectingToPaystack,
+    startPaystackRedirect,
+    cancelPaystackRedirect,
+  } = usePaystackRedirectState()
+  const { mutate: recordSaleScan } = useRecordScan()
   const recordSaleCopy = useRecordCopy()
   const claimSalePayer = useClaimSalePayer()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const authUser = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const customerExitPath = isAuthenticated ? '/home' : '/'
+  const isReturningFromPaystack =
+    Boolean(saleId) && searchParams.get('payment') === 'paystack-return'
 
   useEffect(() => {
     if (saleId) {
-      recordSaleScan.mutate(saleId)
+      recordSaleScan(saleId)
     }
-  }, [saleId])
+  }, [recordSaleScan, saleId])
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
   // Dynamic QR sale (public, limited view). A failed or cancelled dynamic sale
@@ -145,7 +163,7 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (!error && merchant) {
-      setBrandedSvg(null)
+      queueMicrotask(() => setBrandedSvg(null))
       return
     }
 
@@ -216,6 +234,13 @@ export default function PaymentPage() {
         !publicSale ||
         publicSale.status === 'CANCELLED'))
   ) {
+    if (isReturningFromPaystack) {
+      return (
+        <PaystackWaitingScreen
+          onMinimize={() => router.replace(customerExitPath)}
+        />
+      )
+    }
     return <LoadingPage innerBg="#FFFFFF" />
   }
 
@@ -551,6 +576,10 @@ export default function PaymentPage() {
   const sortedBankAccounts = sortBankAccounts(
     merchant.bankAccounts,
   ) as BankAccount[]
+  const paystackChannels = merchant.paystackCollectionChannels || []
+  const effectiveSelectedChannel = paystackChannels.includes(selectedChannel)
+    ? selectedChannel
+    : paystackChannels[0] || selectedChannel
   const bankAccount =
     sortedBankAccounts[selectedBankIndex] || sortedBankAccounts[0]
 
@@ -578,6 +607,98 @@ export default function PaymentPage() {
         },
       },
     })
+  }
+
+  const handleOpenPaymentMethodDrawer = () => {
+    if (!merchant?.hasPaystackCollection) {
+      handleOpenBankDrawer()
+      return
+    }
+
+    openDrawer({
+      type: 'rail-picker',
+      direction: 'bottom',
+      props: {
+        hasSavedCards: false,
+        selectedRail,
+        paystackChannels,
+        onSelectRail: (rail: PaymentRail) => {
+          setSelectedRail(rail)
+          if (rail === 'multiple') {
+            if (paystackChannels.length <= 1) {
+              if (paystackChannels[0]) {
+                setSelectedChannel(paystackChannels[0])
+              }
+              return
+            }
+            openDrawer({
+              type: 'channel-picker',
+              direction: 'bottom',
+              props: {
+                selectedChannel: effectiveSelectedChannel,
+                availableChannels: paystackChannels,
+                onSelectChannel: (channelId: string) => {
+                  setSelectedChannel(channelId)
+                },
+              },
+            })
+          } else if (rail === 'transfer') {
+            handleOpenBankDrawer()
+          }
+        },
+      },
+    })
+  }
+
+  const handlePayInstantly = (amount: number, description: string) => {
+    if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
+
+    let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
+    if (!fingerprint) {
+      fingerprint =
+        crypto.randomUUID?.() ||
+        `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+      localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+    }
+
+    const payerName =
+      [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
+      undefined
+
+    startPaystackRedirect()
+    createPaystackCollectSale.mutate(
+      {
+        serialNumber,
+        amount,
+        description,
+        channel: effectiveSelectedChannel,
+        customerFingerprint: fingerprint,
+        customerName: payerName,
+      },
+      {
+        onSuccess: (res) => {
+          if (res.authorizationUrl) {
+            window.location.href = res.authorizationUrl
+          } else {
+            cancelPaystackRedirect()
+            showNotificationToast({
+              message: 'Failed to start payment. Please try again.',
+              mode: 'error',
+            })
+          }
+        },
+        onError: (err: unknown) => {
+          cancelPaystackRedirect()
+          const msg =
+            (err as { response?: { data?: { message?: string } } })?.response
+              ?.data?.message || 'Failed to start payment. Please try again.'
+          showNotificationToast({
+            message: msg,
+            mode: 'error',
+          })
+        },
+      },
+    )
   }
 
   // Payer enters an amount, copies the account, and hands off to the shared
@@ -621,7 +742,7 @@ export default function PaymentPage() {
         serialNumber,
       },
       {
-        onSuccess: (sale: any) => {
+        onSuccess: (sale: { _id?: string }) => {
           const newSaleId = sale?._id
           if (!newSaleId) {
             showNotificationToast({
@@ -668,12 +789,19 @@ export default function PaymentPage() {
     )
   }
 
+  if (isRedirectingToPaystack) {
+    return <PaystackRedirectingScreen />
+  }
+
   return (
     <SalePayAmountScreen
       merchant={merchant}
       account={bankAccount}
       onChangeAccount={handleOpenBankDrawer}
+      onChangePaymentMethod={handleOpenPaymentMethodDrawer}
+      selectedRail={selectedRail}
       onCopy={handlePayAmountCopy}
+      onPayInstantly={handlePayInstantly}
       onShare={() => {
         openDrawer({
           type: 'share-transfer',
@@ -685,7 +813,11 @@ export default function PaymentPage() {
         })
       }}
       onClose={() => router.push('/')}
-      isSubmitting={createPendingSale.isPending || recordSaleCopy.isPending}
+      isSubmitting={
+        createPendingSale.isPending ||
+        createPaystackCollectSale.isPending ||
+        recordSaleCopy.isPending
+      }
     />
   )
 }

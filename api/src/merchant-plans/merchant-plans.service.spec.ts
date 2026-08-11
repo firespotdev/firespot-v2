@@ -28,7 +28,7 @@ const makeService = (overrides: Record<string, any> = {}) => {
     ...overrides.planOrderModel,
   }
   const userModel = {
-    findById: jest.fn(),
+    findById: jest.fn(() => query(makeUser())),
     findOne: jest.fn(),
     updateOne: jest.fn().mockResolvedValue({ acknowledged: true }),
     ...overrides.userModel,
@@ -54,6 +54,10 @@ const makeService = (overrides: Record<string, any> = {}) => {
     reevaluateReferrer: jest.fn().mockResolvedValue(undefined),
     ...overrides.merchantReferralsService,
   }
+  const paystackSubaccountsService = {
+    ensureForUser: jest.fn().mockResolvedValue({ status: 'ready' }),
+    ...overrides.paystackSubaccountsService,
+  }
 
   const service = new MerchantPlansService(
     planOrderModel as any,
@@ -62,6 +66,7 @@ const makeService = (overrides: Record<string, any> = {}) => {
     storesService as any,
     configService as any,
     merchantReferralsService as any,
+    paystackSubaccountsService as any,
   )
   // Silence expected error/warn logging in tests.
   jest.spyOn((service as any).logger, 'error').mockImplementation(() => {})
@@ -76,6 +81,7 @@ const makeService = (overrides: Record<string, any> = {}) => {
     storesService,
     configService,
     merchantReferralsService,
+    paystackSubaccountsService,
   }
 }
 
@@ -505,6 +511,42 @@ describe('MerchantPlansService.verifyPayment', () => {
       cancelAtPeriodEnd: false,
       paystackCustomerCode: 'CUS_1',
     })
+  })
+
+  it('provisions payouts after a successful LITE purchase', async () => {
+    const order = makeOrder({
+      tier: 'LITE',
+      amount: 1000,
+      billingType: 'one_time',
+    })
+    const updatedLiteUser = makeUser({ planTier: 'LITE', planStatus: 'paid' })
+    const {
+      service,
+      planOrderModel,
+      userModel,
+      paystackService,
+      paystackSubaccountsService,
+    } = makeService({
+      userModel: { findById: jest.fn(() => query(updatedLiteUser)) },
+    })
+    paystackService.verifyTransaction.mockResolvedValue({
+      status: 'success',
+      amount: 100000,
+    })
+    planOrderModel.findOne.mockReturnValue(query(order))
+    planOrderModel.findOneAndUpdate.mockReturnValue(query(order))
+
+    await service.verifyPayment('PLAN-lite')
+
+    expect(userModel.updateOne).toHaveBeenCalledWith(
+      { _id: order.merchantId },
+      expect.objectContaining({
+        $set: expect.objectContaining({ planTier: 'LITE' }),
+      }),
+    )
+    expect(paystackSubaccountsService.ensureForUser).toHaveBeenCalledWith(
+      updatedLiteUser,
+    )
   })
 
   it('claims the order atomically so a racing caller cannot double-grant', async () => {

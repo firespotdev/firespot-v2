@@ -14,6 +14,8 @@ import {
   detectBrowserType,
 } from '../scans/utils/device-detector'
 import { QRCodeService } from '../services/qr-code.service'
+import { getCollectEligibility } from '../merchant-plans/constants/plans'
+import { getMerchantPaystackChannels } from '../payments/paystack-collection-channels'
 import { customAlphabet } from 'nanoid'
 import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
 
@@ -77,7 +79,7 @@ export class QRKitsService {
       .findOne({ serialNumber: serialNumber.toUpperCase() })
       .populate(
         'merchantId',
-        'businessName bankAccounts profilePhotoUrl merchantSlug',
+        'businessName bankAccounts profilePhotoUrl merchantSlug paystackSubaccountCode planTier planStatus planGraceUntil cancelAtPeriodEnd planCurrentPeriodEnd kycCompletedAt',
       )
 
     if (!qrKit) {
@@ -129,12 +131,20 @@ export class QRKitsService {
           }))
         : []
 
+    const canCollect = getCollectEligibility(merchant).canCollect
+    const hasPaystackCollection = Boolean(merchant.paystackSubaccountCode && canCollect)
+    const paystackCollectionChannels = hasPaystackCollection
+      ? getMerchantPaystackChannels(merchant)
+      : []
+
     return {
       id: merchant._id,
       merchantSlug: merchant.merchantSlug,
       businessName: merchant.businessName,
       bankAccounts,
       profilePhotoUrl: merchant.profilePhotoUrl,
+      hasPaystackCollection,
+      paystackCollectionChannels,
     }
   }
 

@@ -92,4 +92,6 @@ export interface MerchantProfile {
     isPrimary: boolean
   }[]
   profilePhotoUrl?: string
+  hasPaystackCollection?: boolean
+  paystackCollectionChannels?: string[]
 }

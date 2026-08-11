@@ -38,6 +38,14 @@ export interface PublicSale {
   targetAccountNumber?: string;
   sourceBankName?: string;
   paymentMethod?: string;
+  paymentRail?: 'manual_transfer' | 'paystack';
+  paystackAttemptStatus?:
+    | 'initializing'
+    | 'pending'
+    | 'success'
+    | 'failed'
+    | 'abandoned';
+  channel?: string;
   description?: string;
   serialNumber?: string;
   merchant: PublicSaleMerchant | null;
@@ -71,6 +79,7 @@ export interface Sale {
   customerUserId?: string;
   customerName?: string;
   customerPhone?: string;
+  payerPaystackEmail?: string;
   items?: SaleItem[];
   receiptUrl?: string;
   receiptPublicId?: string;
@@ -78,6 +87,14 @@ export interface Sale {
   cancelledBy?: 'merchant' | 'customer';
   dueDate?: string | Date;
   isCollection?: boolean;
+  paymentRail?: 'manual_transfer' | 'paystack';
+  paystackAttemptStatus?:
+    | 'initializing'
+    | 'pending'
+    | 'success'
+    | 'failed'
+    | 'abandoned';
+  channel?: string;
   location?: string;
   repayments?: Array<{
     amount: number;

@@ -3,7 +3,6 @@
 import Image from 'next/image'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { Button, TagFooter } from '@/components/ui'
-import { LoadingPage } from '@/components/layout/LoadingPage'
 import { useDrawerStore } from '@/services/drawer'
 import { useFeedbackEligibility } from '@/services/feedback'
 import type { PublicSale } from '@/services/sales/interface'
@@ -23,8 +22,10 @@ export function SaleSuccessScreen({
   onClose,
 }: SaleSuccessScreenProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-  const { data: feedbackEligibility, isLoading: isFeedbackLoading } =
-    useFeedbackEligibility(sale.id, sale.serialNumber)
+  const { data: feedbackEligibility } = useFeedbackEligibility(
+    sale.id,
+    sale.serialNumber,
+  )
 
   const merchantName =
     sale.merchant?.businessName || merchant.businessName || 'Your vendor'
@@ -32,10 +33,6 @@ export function SaleSuccessScreen({
 
   const handleViewReceipt = () => {
     openDrawer({ type: 'sale-receipt', props: { sale, merchant } })
-  }
-
-  if (isFeedbackLoading) {
-    return <LoadingPage innerBg="#F4F6F8" />
   }
 
   return (
@@ -59,10 +56,10 @@ export function SaleSuccessScreen({
           </div>
 
           <h1 className="font-bold text-[20px] text-black -tracking-[0.4px] leading-[110%] mt-6 max-w-75">
-            {merchantName} has been notified about your payment.
+            {merchantName} has received your payment.
           </h1>
           <p className="text-sm text-[#00000080] font-medium mt-3 max-w-85">
-            Transfer of NGN{formatAmount(sale.amount)} confirmed
+            Payment of NGN {formatAmount(sale.amount)} confirmed
             {confirmedAt ? ` on ${confirmedAt}.` : '.'}
           </p>
 

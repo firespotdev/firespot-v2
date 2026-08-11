@@ -26,6 +26,14 @@ export class SmsService {
   }
 
   /**
+   * Lets notification workflows preserve their production throttles while
+   * remaining repeatable in development, where an SMS is only a console log.
+   */
+  isMockEnabled(): boolean {
+    return this.isMockMode();
+  }
+
+  /**
    * Send a generic SMS via Termii
    */
   async sendSms(to: string, message: string): Promise<any> {

@@ -34,6 +34,7 @@ import {
   type PlanPaymentMethod,
 } from './constants/plans'
 import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
+import { PaystackSubaccountsService } from '../users/services/paystack-subaccounts.service'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -61,6 +62,7 @@ export class MerchantPlansService {
     private storesService: StoresService,
     private configService: ConfigService,
     private merchantReferralsService: MerchantReferralsService,
+    private paystackSubaccountsService: PaystackSubaccountsService,
   ) {}
 
   private reevaluateReferralEligibility(merchantId: string | Types.ObjectId) {
@@ -791,6 +793,7 @@ export class MerchantPlansService {
     this.applyBadgeForTier(user, tier)
     await user.save()
     this.reevaluateReferralEligibility(user._id as Types.ObjectId)
+    await this.paystackSubaccountsService.ensureForUser(user)
 
     // Retire the old subscription and start the new one on the renewal date,
     // so billing stays aligned and nothing double-charges.
@@ -996,6 +999,11 @@ export class MerchantPlansService {
     }
 
     await this.userModel.updateOne({ _id: order.merchantId }, { $set: update })
+    const userQuery = this.userModel.findById(order.merchantId)
+    const updatedUser = userQuery ? await userQuery.exec() : null
+    if (updatedUser) {
+      await this.paystackSubaccountsService.ensureForUser(updatedUser)
+    }
 
     return {
       success: true,

@@ -33,6 +33,22 @@ describe("SalesService amount invariants", () => {
       {} as any,
       customersService as any,
       { evaluateReferredMerchant: jest.fn().mockResolvedValue(null) } as any,
+      { initializeTransaction: jest.fn() } as any,
+      { sendSms: jest.fn().mockResolvedValue({ status: "sent" }) } as any,
+      {
+        findOne: jest.fn(() => ({
+          exec: jest.fn().mockResolvedValue(null),
+        })),
+        findOneAndUpdate: jest.fn(),
+        updateOne: jest.fn(),
+      } as any,
+      {
+        findOne: jest.fn(() => ({
+          exec: jest.fn().mockResolvedValue(null),
+        })),
+        findOneAndUpdate: jest.fn(),
+        updateOne: jest.fn(),
+      } as any,
     );
   };
 
@@ -216,6 +232,84 @@ describe("SalesService amount invariants", () => {
       expect((sale as any).amountPaid).toBe(2500);
       expect((sale as any).balanceOwed).toBe(0);
       expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["recorded", false, 0],
+      ["collection", true, 1],
+    ])(
+      "applies the daily cap only when confirming a %s sale",
+      async (_, isCollection, expectedChecks) => {
+        const merchantId = "507f1f77bcf86cd799439012";
+        const saleId = "507f1f77bcf86cd799439013";
+        const sale = {
+          _id: { toString: () => saleId },
+          merchantId: { toString: () => merchantId },
+          status: "PENDING",
+          isCollection,
+          amount: 2500,
+          serialNumber: "FS-QR-1",
+          items: [],
+          repayments: [],
+          save: jest.fn(),
+        };
+        sale.save.mockImplementation(async () => sale);
+        const service = createService({
+          findOne: jest.fn().mockResolvedValue(sale),
+        });
+        const capCheck = jest
+          .spyOn(service as any, "assertDailyCap")
+          .mockResolvedValue(undefined);
+
+        await service.recordSale(merchantId, saleId, {
+          amount: 2500,
+          paymentMethod: "Bank Transfer",
+          isPaidInFull: true,
+        });
+
+        expect(capCheck).toHaveBeenCalledTimes(expectedChecks);
+        if (isCollection) {
+          expect(capCheck).toHaveBeenCalledWith(merchantId, 2500);
+        }
+      },
+    );
+
+    it("checks only collection sales when confirming all pending sales", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const sales = [
+        {
+          _id: { toString: () => "507f1f77bcf86cd799439013" },
+          amount: 1_000_000,
+          status: "PENDING",
+          isCollection: false,
+          items: [],
+        },
+        {
+          _id: { toString: () => "507f1f77bcf86cd799439016" },
+          amount: 50_000,
+          status: "PENDING",
+          isCollection: true,
+          items: [],
+        },
+      ];
+      const service = createService({
+        find: jest.fn(() => ({
+          sort: jest.fn(() => ({
+            exec: jest.fn().mockResolvedValue(sales),
+          })),
+        })),
+      });
+      const capCheck = jest
+        .spyOn(service as any, "assertDailyCap")
+        .mockResolvedValue(undefined);
+      jest
+        .spyOn(service, "recordSale")
+        .mockImplementation(async (_, saleId) => ({ _id: saleId }) as any);
+
+      await service.confirmAllSales(merchantId);
+
+      expect(capCheck).toHaveBeenCalledTimes(1);
+      expect(capCheck).toHaveBeenCalledWith(merchantId, 50_000);
     });
 
     it("does not one-tap confirm an archived pending sale", async () => {

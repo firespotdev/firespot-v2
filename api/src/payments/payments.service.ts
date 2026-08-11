@@ -1,8 +1,9 @@
-import { Injectable, HttpException, HttpStatus, Logger } from "@nestjs/common";
+import { Injectable, HttpException, HttpStatus, Logger, Inject, forwardRef } from "@nestjs/common";
 import { PaystackService } from "../users/services/paystack.service";
 import { QRKitsService } from "../qr-kits/qr-kits.service";
 import { QROrdersService } from "../qr-orders/qr-orders.service";
 import { MerchantPlansService } from "../merchant-plans/merchant-plans.service";
+import { SalesService } from "../sales/sales.service";
 import { PLAN_REFERENCE_PREFIX } from "../merchant-plans/constants/plans";
 
 @Injectable()
@@ -14,6 +15,8 @@ export class PaymentsService {
     private qrKitsService: QRKitsService,
     private ordersService: QROrdersService,
     private merchantPlansService: MerchantPlansService,
+    @Inject(forwardRef(() => SalesService))
+    private salesService: SalesService,
   ) {}
 
   async handleWebhook(payload: any, signature: string, rawBody: string) {
@@ -63,6 +66,8 @@ export class PaymentsService {
         // `plan` is {}), so the subscription cannot be recorded from here —
         // subscription.create below is what does it.
         await this.merchantPlansService.verifyPayment(reference);
+      } else if (reference && reference.startsWith('COL-')) {
+        await this.salesService.confirmPaystackSale(reference, data);
       } else {
         await this.qrKitsService.completeActivationByWebhook(reference);
       }

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
@@ -13,11 +13,21 @@ import { SaleRequestScreen } from './sale-request-screen'
 import { SaleWaitingScreen } from './sale-waiting-screen'
 import { SaleSuccessScreen } from './sale-success-screen'
 import { useCancelSaleAsCustomer } from '@/services/sales/hooks'
+import {
+  useInitializeExistingPaystackSale,
+  useReconcilePaystackSale,
+} from '@/services/sales/hooks'
 import { useAuthStore } from '@/services/auth'
 import { LoadingPage } from '@/components/layout/LoadingPage'
+import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
+import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
+import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
+import { PaystackWaitingScreen } from './paystack-waiting-screen'
+import { PaystackRedirectingScreen } from './paystack-redirecting-screen'
+import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
-type SaleStep = 'request' | 'waiting' | 'success'
+type SaleStep = 'request' | 'waiting' | 'paystack' | 'success'
 
 interface SalePaymentFlowProps {
   sale: PublicSale
@@ -32,6 +42,12 @@ interface SalePaymentFlowProps {
 
 function deriveStep(sale: PublicSale): SaleStep {
   if (sale.status === 'CONFIRMED') return 'success'
+  if (
+    sale.paymentRail === 'paystack' &&
+    ['initializing', 'pending'].includes(sale.paystackAttemptStatus || '')
+  ) {
+    return 'paystack'
+  }
   if (sale.receiptUrl || sale.customerMarkedPaidAt || sale.isCopied) {
     return 'waiting'
   }
@@ -51,9 +67,17 @@ export function SalePaymentFlow({
   onTrackCopy,
 }: SalePaymentFlowProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const cancelSale = useCancelSaleAsCustomer()
+  const initializePaystack = useInitializeExistingPaystackSale()
+  const reconcilePaystack = useReconcilePaystackSale()
+  const {
+    isRedirectingToPaystack,
+    startPaystackRedirect,
+    cancelPaystackRedirect,
+  } = usePaystackRedirectState()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const customerExitPath = isAuthenticated ? '/home' : '/'
 
@@ -72,15 +96,28 @@ export function SalePaymentFlow({
   )
 
   const [step, setStep] = useState<SaleStep>(() => deriveStep(sale))
+  const [selectedRail, setSelectedRail] = useState<PaymentRail>(() =>
+    merchant.hasPaystackCollection && sale.paymentRail !== 'manual_transfer'
+      ? 'multiple'
+      : 'transfer',
+  )
+  const [selectedChannel, setSelectedChannel] = useState(
+    merchant.paystackCollectionChannels?.[0] || DEFAULT_PAYSTACK_CHANNEL,
+  )
   const [isFinishing, setIsFinishing] = useState(false)
   const [selectedAccountIndex, setSelectedAccountIndex] =
     useState(initialAccountIndex)
   const [fromBankName, setFromBankName] = useState<string | null>(
     sale.sourceBankName || null,
   )
+  const hasReconciledReturn = useRef(false)
 
   const account: BankAccount | undefined =
     sortedBankAccounts[selectedAccountIndex] || sortedBankAccounts[0]
+  const paystackChannels = merchant.paystackCollectionChannels || []
+  const effectiveSelectedChannel = paystackChannels.includes(selectedChannel)
+    ? selectedChannel
+    : paystackChannels[0] || selectedChannel
 
   const invalidateSale = () => {
     queryClient.invalidateQueries({ queryKey: ['public-sale', sale.id] })
@@ -124,9 +161,45 @@ export function SalePaymentFlow({
       setStep('success')
     } else if (sale.status === 'CANCELLED') {
       handleCancelled()
+    } else {
+      setStep(deriveStep(sale))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sale.status])
+  }, [sale.status, sale.paymentRail, sale.paystackAttemptStatus])
+
+  useEffect(() => {
+    if (
+      searchParams.get('payment') !== 'paystack-return' ||
+      sale.status !== 'PENDING' ||
+      sale.paymentRail !== 'paystack' ||
+      hasReconciledReturn.current
+    ) {
+      return
+    }
+
+    hasReconciledReturn.current = true
+    reconcilePaystack.mutate(
+      { saleId: sale.id, serialNumber },
+      {
+        onError: (error: unknown) => {
+          showNotificationToast({
+            message:
+              (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message ||
+              'We could not confirm this payment yet. We will keep checking.',
+            mode: 'error',
+          })
+        },
+      },
+    )
+  }, [
+    reconcilePaystack,
+    sale.id,
+    sale.paymentRail,
+    sale.status,
+    searchParams,
+    serialNumber,
+  ])
 
   const handleClose = () => {
     if (cancelSale.isPending) return
@@ -178,6 +251,76 @@ export function SalePaymentFlow({
     })
     void onTrackCopy(account.accountNumber, account.bankName)
     setStep('waiting')
+  }
+
+  const handlePayInstantly = () => {
+    if (initializePaystack.isPending || isRedirectingToPaystack) return
+    startPaystackRedirect()
+    initializePaystack.mutate(
+      {
+        saleId: sale.id,
+        serialNumber,
+        channel: effectiveSelectedChannel,
+        customerFingerprint: getCustomerFingerprint(),
+      },
+      {
+        onSuccess: (result) => {
+          if (result.authorizationUrl) {
+            window.location.href = result.authorizationUrl
+            return
+          }
+          cancelPaystackRedirect()
+          showNotificationToast({
+            message: 'Failed to start Paystack payment. Please try again.',
+            mode: 'error',
+          })
+        },
+        onError: (error: unknown) => {
+          cancelPaystackRedirect()
+          showNotificationToast({
+            message:
+              (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message ||
+              'Failed to start Paystack payment. Please try again.',
+            mode: 'error',
+          })
+        },
+      },
+    )
+  }
+
+  const handleChangePaymentMethod = () => {
+    openDrawer({
+      type: 'rail-picker',
+      direction: 'bottom',
+      props: {
+        hasSavedCards: false,
+        selectedRail,
+        paystackChannels,
+        onSelectRail: (rail: PaymentRail) => {
+          setSelectedRail(rail)
+          if (rail === 'multiple') {
+            if (paystackChannels.length <= 1) {
+              if (paystackChannels[0]) {
+                setSelectedChannel(paystackChannels[0])
+              }
+              return
+            }
+            openDrawer({
+              type: 'channel-picker',
+              direction: 'bottom',
+              props: {
+                selectedChannel: effectiveSelectedChannel,
+                availableChannels: paystackChannels,
+                onSelectChannel: setSelectedChannel,
+              },
+            })
+          } else if (rail === 'transfer') {
+            handleChangeAccount()
+          }
+        },
+      },
+    })
   }
 
   const handleChangeAccount = () => {
@@ -239,12 +382,24 @@ export function SalePaymentFlow({
     return <LoadingPage innerBg="#F4F6F8" />
   }
 
+  if (isRedirectingToPaystack) {
+    return <PaystackRedirectingScreen />
+  }
+
   if (step === 'success') {
     return (
       <SaleSuccessScreen
         sale={sale}
         merchant={merchant}
         onClose={handleFinish}
+      />
+    )
+  }
+
+  if (step === 'paystack') {
+    return (
+      <PaystackWaitingScreen
+        onMinimize={handleMinimize}
       />
     )
   }
@@ -271,9 +426,14 @@ export function SalePaymentFlow({
       merchant={merchant}
       account={account}
       onChangeAccount={handleChangeAccount}
+      onChangePaymentMethod={handleChangePaymentMethod}
+      selectedRail={selectedRail}
       onCopy={handleCopy}
+      onPayInstantly={handlePayInstantly}
       onShare={handleShare}
       onClose={handleClose}
+      hasPaystackCollection={merchant.hasPaystackCollection}
+      isSubmitting={initializePaystack.isPending}
     />
   )
 }

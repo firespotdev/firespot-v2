@@ -51,10 +51,16 @@ export function CollectPaymentDrawer({
   const [step, setStep] = useState<'qr' | 'uploaded' | 'loading'>('qr')
   const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false)
   const [overrideView, setOverrideView] = useState<
-    'qr' | 'waiting' | 'confirm' | null
+    'qr' | 'waiting' | 'confirm' | 'paystack' | null
   >(null)
 
   const activeView = useMemo(() => {
+    if (
+      sale.paymentRail === 'paystack' &&
+      sale.status === 'PENDING'
+    ) {
+      return 'paystack'
+    }
     return (
       overrideView ||
       // A receipt or an explicit "I have paid" declaration advances the
@@ -127,6 +133,13 @@ export function CollectPaymentDrawer({
       }
     }
 
+    const handlePaymentProcessing = (data: any) => {
+      if (data._id === sale._id) {
+        setSale(data)
+        setOverrideView('paystack')
+      }
+    }
+
     const handleSaleScanned = (data: any) => {
       if (data._id === sale._id) {
         setSale(data)
@@ -154,6 +167,7 @@ export function CollectPaymentDrawer({
     socket.on('receipt.deleted', handleReceiptDeleted)
     socket.on('payment.declared', handlePaymentDeclared)
     socket.on('sale.confirmed', handleSaleConfirmed)
+    socket.on('payment.processing', handlePaymentProcessing)
     socket.on('sale.scanned', handleSaleScanned)
     socket.on('sale.copied', handleSaleCopied)
     socket.on('sale.cancelled', handleSaleCancelled)
@@ -163,6 +177,7 @@ export function CollectPaymentDrawer({
       socket.off('receipt.deleted', handleReceiptDeleted)
       socket.off('payment.declared', handlePaymentDeclared)
       socket.off('sale.confirmed', handleSaleConfirmed)
+      socket.off('payment.processing', handlePaymentProcessing)
       socket.off('sale.scanned', handleSaleScanned)
       socket.off('sale.copied', handleSaleCopied)
       socket.off('sale.cancelled', handleSaleCancelled)
@@ -497,6 +512,19 @@ export function CollectPaymentDrawer({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeView === 'paystack' && (
+          <div className="flex w-full flex-col items-center py-8 text-center">
+            <GreenSpinner innerBg="white" size={16} />
+            <h3 className="mt-6 text-xl font-bold leading-tight text-black">
+              Paystack is confirming payment
+            </h3>
+            <p className="mt-2 max-w-72 text-sm font-medium text-[#00000080]">
+              This sale will be recorded automatically once Paystack confirms
+              receipt. No manual approval is needed.
+            </p>
           </div>
         )}
 

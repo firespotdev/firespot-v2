@@ -72,7 +72,11 @@ export function ProfileShareDrawer({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl)
-    showNotificationToast({ message: 'Link copied', mode: 'success' })
+    showNotificationToast({
+      message: 'Link copied',
+      mode: 'success',
+      duration: 30000,
+    })
   }
 
   const handleShare = async () => {

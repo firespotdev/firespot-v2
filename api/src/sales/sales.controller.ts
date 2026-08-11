@@ -21,7 +21,13 @@ import { EditSaleDto } from './dto/edit-sale.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
 import { CustomerSaleActionDto } from './dto/customer-sale-action.dto';
 import { RecordRepaymentDto } from './dto/record-repayment.dto';
+import { CreatePaystackCollectSaleDto } from './dto/create-paystack-collect-sale.dto';
+import {
+  InitializePaystackSaleDto,
+  ReconcilePaystackSaleDto,
+} from './dto/initialize-paystack-sale.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '../schemas/user.schema';
 
@@ -34,6 +40,49 @@ export class SalesController {
   @Post('pending')
   async createPendingSale(@Body() dto: CreatePendingSaleDto) {
     return this.salesService.createPendingSale(dto);
+  }
+
+  @ApiOperation({ summary: 'Initialize a Paystack collection sale from customer pay page' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post('collect/paystack')
+  async createPaystackCollectSale(
+    @Body() dto: CreatePaystackCollectSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.createPaystackCollectSale(
+      dto,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Initialize Paystack for an existing dynamic sale' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post(':id/paystack/initialize')
+  async initializeExistingPaystackSale(
+    @Param('id') saleId: string,
+    @Body() dto: InitializePaystackSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.initializeExistingPaystackSale(
+      saleId,
+      dto,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Reconcile a returning Paystack checkout' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post(':id/paystack/reconcile')
+  async reconcilePaystackSale(
+    @Param('id') saleId: string,
+    @Body() dto: ReconcilePaystackSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.reconcilePaystackSale(
+      saleId,
+      dto,
+      (user as any)?.userId,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')

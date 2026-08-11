@@ -8,6 +8,8 @@ import { BusinessPaymentsForm } from '@/components/auth/business-payments-form'
 import { useMerchantSetup, useAuthStore, useAuthReady } from '@/services/auth'
 import { useInitiateActivation } from '@/services/users'
 import { showNotificationToast } from '@/components/ui'
+import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
+import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 
 type Step = 'about' | 'payments'
 
@@ -66,6 +68,11 @@ function MerchantOnboardingPageContent() {
   const user = useAuthStore((state) => state.user)
   const merchantSetup = useMerchantSetup()
   const initiateActivation = useInitiateActivation()
+  const {
+    isRedirectingToPaystack,
+    startPaystackRedirect,
+    cancelPaystackRedirect,
+  } = usePaystackRedirectState()
   const hydrated = useAuthReady()
 
   // Guard: must be authenticated; existing merchants have nothing to set up
@@ -134,9 +141,11 @@ function MerchantOnboardingPageContent() {
             router.replace('/profile')
             return
           }
+          startPaystackRedirect()
           initiateActivation.mutate(draft.serialNumber, {
             onSuccess: (activation) => {
               if (activation.isAutoActivated || !activation.authorizationUrl) {
+                cancelPaystackRedirect()
                 showNotificationToast({
                   message: activation.message || 'QR kit activated!',
                   mode: 'success',
@@ -147,6 +156,7 @@ function MerchantOnboardingPageContent() {
               window.location.href = activation.authorizationUrl
             },
             onError: (activationError: unknown) => {
+              cancelPaystackRedirect()
               const apiError = activationError as ApiError
               setError(
                 apiError.response?.data?.message ||
@@ -211,6 +221,10 @@ function MerchantOnboardingPageContent() {
         },
       },
     )
+  }
+
+  if (isRedirectingToPaystack) {
+    return <PaystackRedirectingScreen />
   }
 
   return (

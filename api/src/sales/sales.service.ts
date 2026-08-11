@@ -32,9 +32,37 @@ import {
 } from '../merchant-plans/constants/plans'
 import { CustomersService } from '../customers/customers.service'
 import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
+import { PaystackService } from '../users/services/paystack.service'
+import { splitBreakdown } from '../payments/fees'
+import { CreatePaystackCollectSaleDto } from './dto/create-paystack-collect-sale.dto'
+import {
+  getMerchantPaystackChannels,
+  type PaystackCollectionChannel,
+} from '../payments/paystack-collection-channels'
+import { Logger } from '@nestjs/common'
+import { createHash } from 'crypto'
+import {
+  DailyCollectionUsage,
+  DailyCollectionUsageDocument,
+} from '../schemas/daily-collection-usage.schema'
+import {
+  PaystackPaymentAttempt,
+  PaystackPaymentAttemptDocument,
+} from '../schemas/paystack-payment-attempt.schema'
+import {
+  InitializePaystackSaleDto,
+  ReconcilePaystackSaleDto,
+} from './dto/initialize-paystack-sale.dto'
+import { SmsService } from '../services/sms/sms.service'
+
+const CUSTOMER_COLLECTION_UNAVAILABLE_MESSAGE =
+  'Payment failed. Please try another payment method'
+const DAILY_LIMIT_ALERT_WINDOW_MS = 24 * 60 * 60 * 1000
 
 @Injectable()
 export class SalesService {
+  private readonly logger = new Logger(SalesService.name)
+
   constructor(
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
@@ -47,6 +75,12 @@ export class SalesService {
     private accountLinkingService: AccountLinkingService,
     private customersService: CustomersService,
     private merchantReferralsService: MerchantReferralsService,
+    private paystackService: PaystackService,
+    private smsService: SmsService,
+    @InjectModel(DailyCollectionUsage.name)
+    private dailyCollectionUsageModel: Model<DailyCollectionUsageDocument>,
+    @InjectModel(PaystackPaymentAttempt.name)
+    private paystackPaymentAttemptModel: Model<PaystackPaymentAttemptDocument>,
   ) {}
 
   private evaluateReferralVolume(merchantId: string | Types.ObjectId) {
@@ -62,6 +96,342 @@ export class SalesService {
       .to(sale.merchantId.toString())
       .to(`sale-${sale._id.toString()}`)
       .emit(event, sale)
+  }
+
+  private payerEmailAlias(identity: string): string {
+    const digest = createHash('sha256')
+      .update(`firespot-paystack-payer:${identity}`)
+      .digest('hex')
+      .slice(0, 32)
+    return `payer+${digest}@firespot.co`
+  }
+
+  private paystackCallbackUrl(sale: SaleDocument): string {
+    const frontendUrl = (
+      process.env.FRONTEND_URL || 'https://pay.firespot.co'
+    ).replace(/\/$/, '')
+    return `${frontendUrl}/pay/${encodeURIComponent(sale.serialNumber || '')}?saleId=${encodeURIComponent(String(sale._id))}&payment=paystack-return`
+  }
+
+  private paymentMethodForPaystackChannel(channel?: string): string {
+    const labels: Record<string, string> = {
+      card: 'Card',
+      bank_transfer: 'Bank Transfer',
+      bank: 'Bank',
+      ussd: 'USSD',
+      qr: 'QR',
+      apple_pay: 'Apple Pay',
+      payattitude: 'Payattitude',
+      mobile_money: 'Mobile Money',
+      eft: 'EFT',
+      capitec_pay: 'Capitec Pay',
+    }
+    return (channel && labels[channel]) || 'Other'
+  }
+
+  private resolvePaystackChannel(
+    merchant: UserDocument,
+    requestedChannel?: string,
+  ): PaystackCollectionChannel {
+    const enabled = getMerchantPaystackChannels(merchant)
+    const resolved =
+      getEffectiveTier(merchant) === 'LITE'
+        ? enabled[0]
+        : (requestedChannel as PaystackCollectionChannel | undefined) ||
+          enabled[0]
+    if (!resolved || !enabled.includes(resolved)) {
+      throw new BadRequestException(
+        'That payment channel is not currently available.',
+      )
+    }
+    return resolved
+  }
+
+  private collectionDay(now = new Date()): {
+    dayKey: string
+    startOfDay: Date
+    endOfDay: Date
+  } {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Lagos',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now)
+    const value = (type: Intl.DateTimeFormatPartTypes) =>
+      parts.find((part) => part.type === type)?.value || ''
+    const dayKey = `${value('year')}-${value('month')}-${value('day')}`
+    // Nigeria is UTC+1 year-round and does not observe daylight saving time.
+    const startOfDay = new Date(`${dayKey}T00:00:00.000+01:00`)
+    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
+    return { dayKey, startOfDay, endOfDay }
+  }
+
+  private async recordedAmountForDay(
+    merchantId: string | Types.ObjectId,
+    startOfDay: Date,
+    endOfDay: Date,
+  ): Promise<number> {
+    const todaysSales = await this.saleModel
+      .find({
+        merchantId: new Types.ObjectId(merchantId),
+        isCollection: true,
+        status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
+        recordedAt: { $gte: startOfDay, $lt: endOfDay },
+      })
+      .select('status amount amountPaid')
+      .exec()
+
+    return todaysSales.reduce((sum, sale) => {
+      if (sale.status === 'CONFIRMED') {
+        return sum + (sale.amountPaid ?? sale.amount ?? 0)
+      }
+      return sum + (sale.amountPaid ?? 0)
+    }, 0)
+  }
+
+  private async notifyMerchantOfCollectionLimit(params: {
+    merchant: UserDocument
+    tier: keyof typeof PLANS
+    cap: number
+    attemptedAmount: number
+    remainingAmount: number
+  }): Promise<void> {
+    const { merchant, tier, cap, attemptedAmount, remainingAmount } = params
+    if (!merchant.fullPhoneNumber) return
+
+    const frontendUrl = (
+      process.env.FRONTEND_URL || 'https://pay.firespot.co'
+    ).replace(/\/$/, '')
+    const message =
+      `Firespot: A ₦${attemptedAmount.toLocaleString('en-NG')} payment failed because only ` +
+      `₦${remainingAmount.toLocaleString('en-NG')} remains on your ₦${cap.toLocaleString('en-NG')} ${tier} daily collection limit. ` +
+      `Upgrade to collect more: ${frontendUrl}/plans`
+
+    try {
+      // Mock delivery is only a console log, so keep it repeatable while
+      // testing. The rolling anti-spam claim remains mandatory for real SMS.
+      if (this.smsService.isMockEnabled()) {
+        await this.smsService.sendSms(merchant.fullPhoneNumber, message)
+        return
+      }
+
+      const cutoff = new Date(Date.now() - DAILY_LIMIT_ALERT_WINDOW_MS)
+      const claim = await this.userModel
+        .updateOne(
+          {
+            _id: merchant._id,
+            $or: [
+              { lastDailyLimitAlertAt: { $exists: false } },
+              { lastDailyLimitAlertAt: { $lte: cutoff } },
+            ],
+          },
+          { $set: { lastDailyLimitAlertAt: new Date() } },
+        )
+        .exec()
+
+      if (claim.modifiedCount !== 1) return
+
+      await this.smsService.sendSms(merchant.fullPhoneNumber, message)
+    } catch (error) {
+      this.logger.error(
+        `Could not send daily collection limit SMS to merchant ${merchant._id}: ${error}`,
+      )
+    }
+  }
+
+  private async reservePaystackDailyCap(
+    merchant: UserDocument,
+    amount: number,
+  ): Promise<string> {
+    const tier = getEffectiveTier(merchant)
+    if (!tier || !PLANS[tier]) {
+      throw new ForbiddenException(
+        'A business plan is required to collect payments.',
+      )
+    }
+
+    const cap = PLANS[tier].dailyCap
+    const { dayKey, startOfDay, endOfDay } = this.collectionDay()
+    const merchantId = new Types.ObjectId(String(merchant._id))
+    await this.reconcileStalePaystackReservations(merchantId, dayKey)
+    const recordedToday = await this.recordedAmountForDay(
+      merchantId,
+      startOfDay,
+      endOfDay,
+    )
+
+    try {
+      await this.dailyCollectionUsageModel.updateOne(
+        { merchantId, dayKey },
+        { $setOnInsert: { merchantId, dayKey, reservedAmount: 0 } },
+        { upsert: true },
+      )
+    } catch (error) {
+      // Concurrent first reservations can race on the compound unique index.
+      // The winning document is exactly the one the atomic claim below needs.
+      const code =
+        error && typeof error === 'object' && 'code' in error
+          ? error.code
+          : undefined
+      if (code !== 11000) throw error
+    }
+
+    const reserved = await this.dailyCollectionUsageModel
+      .findOneAndUpdate(
+        {
+          merchantId,
+          dayKey,
+          $expr: {
+            $lte: [
+              {
+                $add: [
+                  recordedToday,
+                  { $ifNull: ['$reservedAmount', 0] },
+                  amount,
+                ],
+              },
+              cap,
+            ],
+          },
+        },
+        { $inc: { reservedAmount: amount } },
+        { new: true },
+      )
+      .exec()
+
+    if (!reserved) {
+      const usage = await this.dailyCollectionUsageModel
+        .findOne({ merchantId, dayKey })
+        .exec()
+      const remainingAmount = Math.max(
+        0,
+        this.roundMoney(
+          cap - recordedToday - Number(usage?.reservedAmount || 0),
+        ),
+      )
+      await this.notifyMerchantOfCollectionLimit({
+        merchant,
+        tier,
+        cap,
+        attemptedAmount: amount,
+        remainingAmount,
+      })
+      throw new UnprocessableEntityException({
+        code: 'PAYMENT_UNAVAILABLE',
+        message: CUSTOMER_COLLECTION_UNAVAILABLE_MESSAGE,
+      })
+    }
+
+    return dayKey
+  }
+
+  private async reconcileStalePaystackReservations(
+    merchantId: Types.ObjectId,
+    dayKey: string,
+  ): Promise<void> {
+    const recheckBefore = new Date(Date.now() - 15 * 60 * 1000)
+    const stale = await this.saleModel
+      .find({
+        merchantId,
+        status: 'PENDING',
+        paystackReference: { $exists: true },
+        capReservationDay: dayKey,
+        capReservationStatus: 'active',
+        createdAt: { $lte: recheckBefore },
+        $or: [
+          { capReservationLastCheckedAt: { $exists: false } },
+          { capReservationLastCheckedAt: { $lte: recheckBefore } },
+        ],
+      })
+      .select(
+        'paystackReference capReservationDay capReservationAmount merchantId',
+      )
+      .limit(20)
+      .exec()
+
+    const terminalStatuses = new Set(['abandoned', 'failed', 'reversed'])
+    for (const sale of stale) {
+      try {
+        const verification = await this.paystackService.verifyTransaction(
+          sale.paystackReference!,
+        )
+        if (verification.status === 'success') {
+          await this.confirmPaystackSale(sale.paystackReference!, {
+            status: verification.status,
+            amount: verification.amount,
+            channel: verification.channel,
+            paid_at: verification.paidAt,
+          })
+          continue
+        }
+
+        if (terminalStatuses.has(verification.status)) {
+          const attempt = await this.paystackPaymentAttemptModel
+            .findOne({ reference: sale.paystackReference })
+            .exec()
+          if (attempt) {
+            await this.releaseFailedPaystackAttempt(
+              attempt,
+              verification.status,
+            )
+          }
+          const released = await this.saleModel
+            .findOneAndUpdate(
+              {
+                _id: sale._id,
+                status: 'PENDING',
+                capReservationStatus: 'active',
+              },
+              {
+                $set: {
+                  capReservationStatus: 'released',
+                  capReservationLastCheckedAt: new Date(),
+                  paystackAttemptStatus:
+                    verification.status === 'abandoned'
+                      ? 'abandoned'
+                      : 'failed',
+                },
+                $unset: {
+                  paymentRail: 1,
+                  paystackReference: 1,
+                },
+              },
+              { new: true },
+            )
+            .exec()
+          if (released && !attempt) {
+            await this.releasePaystackDailyCap(
+              released.merchantId,
+              released.capReservationDay,
+              released.capReservationAmount,
+            )
+          }
+          continue
+        }
+
+        await this.saleModel.updateOne(
+          { _id: sale._id, status: 'PENDING' },
+          { $set: { capReservationLastCheckedAt: new Date() } },
+        )
+      } catch (error) {
+        this.logger.warn(
+          `Could not reconcile collection reservation ${sale.paystackReference}: ${error}`,
+        )
+      }
+    }
+  }
+
+  private async releasePaystackDailyCap(
+    merchantId: Types.ObjectId,
+    dayKey?: string,
+    amount?: number,
+  ): Promise<void> {
+    if (!dayKey || !amount || amount <= 0) return
+    await this.dailyCollectionUsageModel.updateOne(
+      { merchantId, dayKey, reservedAmount: { $gte: amount } },
+      { $inc: { reservedAmount: -amount } },
+    )
   }
 
   private async requirePendingCustomerSale(
@@ -89,6 +459,11 @@ export class SalesService {
         'This transaction is no longer awaiting payment',
       )
     }
+    if (sale.paymentRail === 'paystack') {
+      throw new UnprocessableEntityException(
+        'This payment is being confirmed automatically by Paystack.',
+      )
+    }
 
     const normalizedFingerprint = customerFingerprint.trim()
     if (
@@ -100,8 +475,17 @@ export class SalesService {
     if (!sale.customerFingerprint) {
       sale.customerFingerprint = normalizedFingerprint
     }
+    sale.paymentRail = 'manual_transfer'
 
     return sale
+  }
+
+  private assertMerchantCanRecordSale(sale: SaleDocument): void {
+    if (sale.paymentRail === 'paystack') {
+      throw new UnprocessableEntityException(
+        'Paystack payments are recorded automatically after Paystack confirms receipt of funds.',
+      )
+    }
   }
 
   private roundMoney(value: number): number {
@@ -196,7 +580,9 @@ export class SalesService {
   }
 
   /**
-   * Hard-blocks recording once the merchant's plan daily cap is reached.
+   * Hard-blocks starting or confirming a collection once the merchant's plan
+   * daily cap is reached. Recorded sales never call this method and never
+   * contribute to recordedAmountForDay.
    *
    * The cap comes from getEffectiveTier, not the raw planTier: a merchant
    * whose subscription lapsed past its grace window is capped at the LITE
@@ -222,26 +608,18 @@ export class SalesService {
     if (!tier || !PLANS[tier]) return // grandfathered / no plan → exempt
 
     const cap = PLANS[tier].dailyCap
-    const startOfDay = new Date()
-    startOfDay.setHours(0, 0, 0, 0)
-
-    const todaysSales = await this.saleModel
-      .find({
-        merchantId: new Types.ObjectId(merchantId),
-        status: { $in: ['CONFIRMED', 'OUTSTANDING'] },
-        createdAt: { $gte: startOfDay },
-      })
-      .select('status amount amountPaid')
+    const { dayKey, startOfDay, endOfDay } = this.collectionDay()
+    const recordedToday = await this.recordedAmountForDay(
+      merchantId,
+      startOfDay,
+      endOfDay,
+    )
+    const usage = await this.dailyCollectionUsageModel
+      .findOne({ merchantId: new Types.ObjectId(merchantId), dayKey })
       .exec()
+    const reservedToday = usage?.reservedAmount || 0
 
-    const recordedToday = todaysSales.reduce((sum, sale) => {
-      if (sale.status === 'CONFIRMED') {
-        return sum + (sale.amountPaid ?? sale.amount ?? 0)
-      }
-      return sum + (sale.amountPaid ?? 0)
-    }, 0)
-
-    if (recordedToday + incomingAmount > cap) {
+    if (recordedToday + reservedToday + incomingAmount > cap) {
       throw new UnprocessableEntityException(
         `Daily limit reached. Your ${tier} plan allows up to ₦${cap.toLocaleString()} per day. Upgrade to collect more.`,
       )
@@ -279,7 +657,6 @@ export class SalesService {
 
   async createPendingSale(dto: CreatePendingSaleDto): Promise<Sale> {
     const description = this.normalizeDescription(dto.description)
-    await this.assertDailyCap(dto.merchantId, dto.amount || 0)
 
     // Check if this fingerprint has any confirmed sales for this merchant already
     const confirmedSalesCount = await this.saleModel.countDocuments({
@@ -444,6 +821,634 @@ export class SalesService {
     return sale
   }
 
+  async createPaystackCollectSale(
+    dto: CreatePaystackCollectSaleDto,
+    payerUserId?: string,
+  ): Promise<{
+    sale: Sale
+    authorizationUrl: string
+    accessCode: string
+    paystackReference: string
+  }> {
+    const qrKit = await this.qrKitModel
+      .findOne({
+        serialNumber: dto.serialNumber,
+        activationStatus: 'activated',
+      })
+      .exec()
+
+    if (!qrKit || !qrKit.merchantId) {
+      throw new NotFoundException('QR kit not found or unassigned')
+    }
+
+    const merchantId = String(qrKit.merchantId)
+    const merchant = await this.userModel.findById(merchantId).exec()
+    if (!merchant) {
+      throw new NotFoundException('Merchant not found')
+    }
+
+    if (!merchant.paystackSubaccountCode) {
+      throw new BadRequestException(
+        'Merchant has no Paystack subaccount. Collection via Paystack is unavailable.',
+      )
+    }
+
+    const description = this.normalizeDescription(dto.description)
+    const fsReference = `FS-${nanoid(8).toUpperCase()}`
+    const merchantObjectId = new Types.ObjectId(merchantId)
+
+    const sale = new this.saleModel({
+      merchantId: merchantObjectId,
+      amount: dto.amount,
+      description,
+      status: 'PENDING',
+      source: 'QR scan',
+      isCollection: true,
+      reference: fsReference,
+      channel: dto.channel,
+      serialNumber: dto.serialNumber,
+      qrKitName: qrKit.name || dto.serialNumber,
+      customerFingerprint: dto.customerFingerprint,
+      paymentMethod: this.paymentMethodForPaystackChannel(dto.channel),
+    })
+
+    try {
+      await sale.save()
+      const initialized = await this.initializePaystackForSale({
+        sale,
+        merchant,
+        payerUserId,
+        channel: dto.channel,
+        customerFingerprint: dto.customerFingerprint,
+        customerName: dto.customerName,
+        cancelSaleOnFailure: true,
+      })
+
+      this.eventsGateway.server.to(merchantId).emit('sale.pending', sale)
+      return initialized
+    } catch (error) {
+      if (sale._id && sale.status === 'PENDING') {
+        await this.saleModel
+          .updateOne(
+            { _id: sale._id, status: 'PENDING' },
+            { $set: { status: 'CANCELLED', cancelledBy: 'customer' } },
+          )
+          .exec()
+          .catch(() => undefined)
+      }
+      throw error
+    }
+  }
+
+  async initializeExistingPaystackSale(
+    saleId: string,
+    dto: InitializePaystackSaleDto,
+    payerUserId?: string,
+  ) {
+    if (!Types.ObjectId.isValid(saleId)) {
+      throw new NotFoundException('Sale not found')
+    }
+
+    const sale = await this.saleModel
+      .findOne({
+        _id: new Types.ObjectId(saleId),
+        serialNumber: dto.serialNumber.trim().toUpperCase(),
+      })
+      .exec()
+    if (!sale) throw new NotFoundException('Sale not found')
+    if (sale.status !== 'PENDING' || !sale.isCollection) {
+      throw new UnprocessableEntityException(
+        'This payment request can no longer be paid.',
+      )
+    }
+    if (sale.receiptUrl || sale.customerMarkedPaidAt || sale.isCopied) {
+      throw new UnprocessableEntityException(
+        'This payment is already using direct bank transfer.',
+      )
+    }
+    if (
+      sale.customerUserId &&
+      payerUserId &&
+      String(sale.customerUserId) !== payerUserId
+    ) {
+      throw new ForbiddenException('This payment belongs to another customer')
+    }
+    const isAuthenticatedOwner = Boolean(
+      sale.customerUserId &&
+      payerUserId &&
+      String(sale.customerUserId) === payerUserId,
+    )
+    if (
+      !isAuthenticatedOwner &&
+      sale.customerFingerprint &&
+      sale.customerFingerprint !== dto.customerFingerprint
+    ) {
+      throw new ForbiddenException('This payment belongs to another customer')
+    }
+
+    const activeAttempt = await this.paystackPaymentAttemptModel
+      .findOne({
+        saleId: sale._id,
+        status: { $in: ['initializing', 'pending'] },
+      })
+      .sort({ createdAt: -1 })
+      .exec()
+    if (activeAttempt?.authorizationUrl) {
+      return {
+        sale,
+        authorizationUrl: activeAttempt.authorizationUrl,
+        accessCode: activeAttempt.accessCode || '',
+        paystackReference: activeAttempt.reference,
+      }
+    }
+    if (activeAttempt) {
+      throw new UnprocessableEntityException(
+        'This Paystack payment is still being initialized. Please try again shortly.',
+      )
+    }
+
+    // Claim the sale before reserving the merchant's cap or creating a
+    // transaction. This makes repeated taps idempotent and prevents two
+    // Paystack attempts from being initialized for the same dynamic sale.
+    const claimedSale = await this.saleModel
+      .findOneAndUpdate(
+        {
+          _id: sale._id,
+          status: 'PENDING',
+          paymentRail: { $ne: 'paystack' },
+          receiptUrl: { $exists: false },
+          customerMarkedPaidAt: { $exists: false },
+          isCopied: { $ne: true },
+        },
+        {
+          $set: {
+            paymentRail: 'paystack',
+            paystackAttemptStatus: 'initializing',
+          },
+        },
+        { new: true },
+      )
+      .exec()
+    if (!claimedSale) {
+      throw new UnprocessableEntityException(
+        'This payment method is already being initialized. Please try again shortly.',
+      )
+    }
+
+    try {
+      const merchant = await this.userModel
+        .findById(claimedSale.merchantId)
+        .exec()
+      if (!merchant) throw new NotFoundException('Merchant not found')
+      if (!merchant.paystackSubaccountCode) {
+        throw new BadRequestException(
+          'Merchant has no Paystack subaccount. Collection via Paystack is unavailable.',
+        )
+      }
+
+      return await this.initializePaystackForSale({
+        sale: claimedSale,
+        merchant,
+        payerUserId,
+        channel: dto.channel,
+        customerFingerprint: dto.customerFingerprint,
+        customerName: claimedSale.customerName,
+        cancelSaleOnFailure: false,
+      })
+    } catch (error) {
+      // Validation or cap checks can fail before the shared initializer reaches
+      // its own cleanup block. Release only this still-unstarted claim.
+      await this.saleModel
+        .updateOne(
+          {
+            _id: claimedSale._id,
+            status: 'PENDING',
+            paystackAttemptStatus: 'initializing',
+            paystackReference: { $exists: false },
+          },
+          {
+            $unset: { paymentRail: 1 },
+            $set: { paystackAttemptStatus: 'failed' },
+          },
+        )
+        .exec()
+        .catch(() => undefined)
+      throw error
+    }
+  }
+
+  private async initializePaystackForSale(params: {
+    sale: SaleDocument
+    merchant: UserDocument
+    payerUserId?: string
+    channel?: string
+    customerFingerprint?: string
+    customerName?: string
+    cancelSaleOnFailure: boolean
+  }): Promise<{
+    sale: Sale
+    authorizationUrl: string
+    accessCode: string
+    paystackReference: string
+  }> {
+    const {
+      sale,
+      merchant,
+      payerUserId,
+      channel: requestedChannel,
+      customerFingerprint,
+      customerName,
+      cancelSaleOnFailure,
+    } = params
+    await this.assertCanCollect(merchant._id)
+    const channel = this.resolvePaystackChannel(merchant, requestedChannel)
+
+    const amount = Number(sale.amount || 0)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Sale amount must be greater than zero')
+    }
+
+    const paystackReference = `COL-${nanoid(12)}`
+    const capReservationDay = await this.reservePaystackDailyCap(
+      merchant,
+      amount,
+    )
+    const amountKobo = Math.round(amount * 100)
+    const merchantId = String(merchant._id)
+    const payer =
+      payerUserId && Types.ObjectId.isValid(payerUserId)
+        ? await this.userModel.findById(payerUserId).exec()
+        : null
+    const payerIdentity = payer
+      ? `user:${String(payer._id)}`
+      : customerFingerprint
+        ? `fingerprint:${customerFingerprint}`
+        : `transaction:${paystackReference}`
+    const payerPaystackEmail = this.payerEmailAlias(payerIdentity)
+    const payerName = payer
+      ? [payer.firstName, payer.lastName].filter(Boolean).join(' ') || undefined
+      : customerName
+    const payerPhone = payer?.fullPhoneNumber
+    const callbackUrl = this.paystackCallbackUrl(sale)
+
+    const attempt = new this.paystackPaymentAttemptModel({
+      saleId: sale._id,
+      merchantId: merchant._id,
+      reference: paystackReference,
+      amountKobo,
+      channel,
+      status: 'initializing',
+      customerFingerprint,
+      capReservationDay,
+      capReservationAmount: amount,
+      capReservationStatus: 'active',
+    })
+
+    sale.paymentRail = 'paystack'
+    sale.paystackAttemptStatus = 'initializing'
+    sale.paystackReference = paystackReference
+    sale.channel = channel
+    sale.paymentMethod = this.paymentMethodForPaystackChannel(channel)
+    sale.customerFingerprint = sale.customerFingerprint || customerFingerprint
+    sale.customerName = payerName || sale.customerName
+    sale.customerPhone = payerPhone || sale.customerPhone
+    sale.customerUserId = payer?._id || sale.customerUserId
+    sale.payerPaystackEmail = payerPaystackEmail
+    sale.capReservationDay = capReservationDay
+    sale.capReservationAmount = amount
+    sale.capReservationStatus = 'active'
+
+    try {
+      await attempt.save()
+      await sale.save()
+      const paystackSession = await this.paystackService.initializeTransaction({
+        email: payerPaystackEmail,
+        amount: amountKobo,
+        reference: paystackReference,
+        callbackUrl,
+        subaccount: merchant.paystackSubaccountCode,
+        bearer: 'subaccount',
+        channels: channel ? [channel] : undefined,
+        metadata: {
+          merchantId,
+          saleId: String(sale._id),
+          serialNumber: sale.serialNumber,
+          fsReference: sale.reference,
+          payerUserId: payer?._id?.toString(),
+          payerPhone,
+        },
+      })
+
+      attempt.status = 'pending'
+      attempt.authorizationUrl = paystackSession.authorizationUrl
+      attempt.accessCode = paystackSession.accessCode
+      sale.paystackAttemptStatus = 'pending'
+      await Promise.all([attempt.save(), sale.save()])
+
+      this.eventsGateway.server
+        .to(merchantId)
+        .to(`sale-${String(sale._id)}`)
+        .emit('payment.processing', sale)
+
+      return {
+        sale,
+        authorizationUrl: paystackSession.authorizationUrl,
+        accessCode: paystackSession.accessCode,
+        paystackReference,
+      }
+    } catch (error) {
+      const released = await this.paystackPaymentAttemptModel
+        .findOneAndUpdate(
+          {
+            _id: attempt._id,
+            capReservationStatus: 'active',
+          },
+          {
+            $set: {
+              status: 'failed',
+              capReservationStatus: 'released',
+            },
+          },
+          { new: true },
+        )
+        .exec()
+        .catch(() => null)
+      if (released || attempt.isNew) {
+        await this.releasePaystackDailyCap(
+          merchant._id,
+          capReservationDay,
+          amount,
+        ).catch(() => undefined)
+      }
+
+      sale.paystackAttemptStatus = 'failed'
+      sale.capReservationStatus = 'released'
+      if (cancelSaleOnFailure) {
+        sale.status = 'CANCELLED'
+        sale.cancelledBy = 'customer'
+      } else {
+        sale.paymentRail = undefined
+        sale.paystackReference = undefined
+      }
+      await sale.save().catch(() => undefined)
+      throw error
+    }
+  }
+
+  private async releaseFailedPaystackAttempt(
+    attempt: PaystackPaymentAttemptDocument,
+    status: string,
+  ): Promise<void> {
+    const released = await this.paystackPaymentAttemptModel
+      .findOneAndUpdate(
+        {
+          _id: attempt._id,
+          capReservationStatus: 'active',
+        },
+        {
+          $set: {
+            status: status === 'abandoned' ? 'abandoned' : 'failed',
+            capReservationStatus: 'released',
+            verifiedAt: new Date(),
+          },
+        },
+        { new: true },
+      )
+      .exec()
+    if (!released) return
+
+    await this.releasePaystackDailyCap(
+      released.merchantId,
+      released.capReservationDay,
+      released.capReservationAmount,
+    )
+  }
+
+  private async markPaystackAttemptConfirmed(
+    attempt: PaystackPaymentAttemptDocument,
+  ): Promise<void> {
+    const confirmed = await this.paystackPaymentAttemptModel
+      .findOneAndUpdate(
+        {
+          _id: attempt._id,
+          capReservationStatus: 'active',
+        },
+        {
+          $set: {
+            status: 'success',
+            capReservationStatus: 'confirmed',
+            verifiedAt: new Date(),
+          },
+        },
+        { new: true },
+      )
+      .exec()
+    if (!confirmed) return
+
+    await this.releasePaystackDailyCap(
+      confirmed.merchantId,
+      confirmed.capReservationDay,
+      confirmed.capReservationAmount,
+    )
+  }
+
+  async reconcilePaystackSale(
+    saleId: string,
+    dto: ReconcilePaystackSaleDto,
+    payerUserId?: string,
+  ) {
+    if (!Types.ObjectId.isValid(saleId)) {
+      throw new NotFoundException('Sale not found')
+    }
+    const sale = await this.saleModel
+      .findOne({
+        _id: new Types.ObjectId(saleId),
+        serialNumber: dto.serialNumber.trim().toUpperCase(),
+      })
+      .exec()
+    if (!sale) throw new NotFoundException('Sale not found')
+    if (sale.status === 'CONFIRMED') return sale
+    if (sale.status !== 'PENDING' || sale.paymentRail !== 'paystack') {
+      throw new UnprocessableEntityException(
+        'This sale has no active Paystack payment.',
+      )
+    }
+    if (
+      sale.customerUserId &&
+      payerUserId &&
+      String(sale.customerUserId) !== payerUserId
+    ) {
+      throw new ForbiddenException('This payment belongs to another customer')
+    }
+    const isAuthenticatedOwner = Boolean(
+      sale.customerUserId &&
+      payerUserId &&
+      String(sale.customerUserId) === payerUserId,
+    )
+    if (
+      !isAuthenticatedOwner &&
+      sale.customerFingerprint &&
+      sale.customerFingerprint !== dto.customerFingerprint
+    ) {
+      throw new ForbiddenException('This payment belongs to another customer')
+    }
+
+    const attempt = await this.paystackPaymentAttemptModel
+      .findOne({
+        saleId: sale._id,
+        status: { $in: ['initializing', 'pending'] },
+      })
+      .sort({ createdAt: -1 })
+      .exec()
+    if (!attempt) {
+      throw new UnprocessableEntityException(
+        'No active Paystack payment was found.',
+      )
+    }
+
+    const verification = await this.paystackService.verifyTransaction(
+      attempt.reference,
+    )
+    if (verification.status === 'success') {
+      return this.confirmPaystackSale(attempt.reference, {
+        status: verification.status,
+        amount: verification.amount,
+        channel: verification.channel,
+        paid_at: verification.paidAt,
+      })
+    }
+
+    if (new Set(['failed', 'abandoned', 'reversed']).has(verification.status)) {
+      await this.releaseFailedPaystackAttempt(attempt, verification.status)
+      sale.paymentRail = undefined
+      sale.paystackReference = undefined
+      sale.paystackAttemptStatus =
+        verification.status === 'abandoned' ? 'abandoned' : 'failed'
+      sale.capReservationStatus = 'released'
+      await sale.save()
+    }
+
+    return sale
+  }
+
+  async confirmPaystackSale(
+    paystackReference: string,
+    webhookData: any,
+  ): Promise<Sale | null> {
+    const attempt = await this.paystackPaymentAttemptModel
+      .findOne({ reference: paystackReference })
+      .exec()
+    const sale = attempt
+      ? await this.saleModel.findById(attempt.saleId).exec()
+      : await this.saleModel.findOne({ paystackReference }).exec()
+
+    if (!sale) {
+      this.logger.error(
+        `confirmPaystackSale: Sale not found for reference ${paystackReference}`,
+      )
+      return null
+    }
+
+    if (sale.status === 'CONFIRMED') {
+      if (attempt) await this.markPaystackAttemptConfirmed(attempt)
+      this.logger.log(`confirmPaystackSale: Sale ${sale._id} already confirmed`)
+      return sale
+    }
+
+    const expectedKobo = Math.round((sale.amount || 0) * 100)
+    if (
+      webhookData?.status !== 'success' ||
+      typeof webhookData?.amount !== 'number' ||
+      webhookData.amount !== expectedKobo
+    ) {
+      this.logger.error(
+        `confirmPaystackSale: Invalid verified payment for ${paystackReference}. Expected kobo: ${expectedKobo}, paid: ${webhookData?.amount}, status: ${webhookData?.status}`,
+      )
+      return null
+    }
+
+    const breakdown = splitBreakdown(sale.amount || 0)
+    const channel = webhookData?.channel || sale.channel || 'online'
+
+    const paymentMethod = this.paymentMethodForPaystackChannel(channel)
+    const paidAt = webhookData?.paid_at
+      ? new Date(webhookData.paid_at)
+      : new Date()
+    const confirmedSale = await this.saleModel
+      .findOneAndUpdate(
+        { _id: sale._id, status: 'PENDING' },
+        {
+          $set: {
+            status: 'CONFIRMED',
+            recordedAt: Number.isNaN(paidAt.getTime()) ? new Date() : paidAt,
+            grossAmount: breakdown.gross,
+            paystackFee: breakdown.paystackFee,
+            firespotFee: breakdown.firespotFee,
+            netAmount: breakdown.net,
+            channel,
+            paymentMethod,
+            settlementStatus: 'pending',
+            paymentRail: 'paystack',
+            paystackReference,
+            paystackAttemptStatus: 'success',
+            isPaidInFull: true,
+            amountPaid: breakdown.gross,
+            totalDue: breakdown.gross,
+            balanceOwed: 0,
+            repayments: [
+              {
+                amount: breakdown.gross,
+                paymentMethod,
+                recordedAt: Number.isNaN(paidAt.getTime())
+                  ? new Date()
+                  : paidAt,
+              },
+            ],
+            capReservationStatus: 'confirmed',
+          },
+        },
+        { new: true },
+      )
+      .exec()
+
+    if (!confirmedSale) {
+      return this.saleModel.findById(sale._id).exec()
+    }
+
+    const releaseReservation = attempt
+      ? this.markPaystackAttemptConfirmed(attempt)
+      : this.releasePaystackDailyCap(
+          confirmedSale.merchantId,
+          confirmedSale.capReservationDay,
+          confirmedSale.capReservationAmount,
+        )
+    await releaseReservation.catch((error) =>
+      this.logger.error(
+        `Could not release confirmed cap reservation ${paystackReference}: ${error}`,
+      ),
+    )
+
+    if (confirmedSale.customerUserId && !confirmedSale.customerId) {
+      const relationship = await this.customersService.findOrCreateForUser(
+        confirmedSale.merchantId,
+        confirmedSale.customerUserId,
+      )
+      if (relationship?._id) {
+        confirmedSale.customerId = relationship._id as Types.ObjectId
+        await confirmedSale.save()
+      }
+    }
+
+    this.evaluateReferralVolume(confirmedSale.merchantId)
+    this.emitSaleEvent('sale.confirmed', confirmedSale)
+
+    this.logger.log(
+      `Paystack sale ${confirmedSale._id} confirmed via webhook. Gross: ₦${breakdown.gross}, Net: ₦${breakdown.net}`,
+    )
+
+    return confirmedSale
+  }
+
   async createManualSale(
     merchantId: string,
     dto: RecordSaleDto,
@@ -456,7 +1461,6 @@ export class SalesService {
       customer?.userId ??
       (customer ? await this.resolveCustomerUserId(customer._id) : undefined)
     const amounts = this.normalizeRecordedAmounts(dto, !!customerUserId)
-    await this.assertDailyCap(merchantId, amounts.total)
 
     let targetBankName = dto.targetBankName
 
@@ -688,6 +1692,9 @@ export class SalesService {
       targetAccountNumber: sale.targetAccountNumber,
       sourceBankName: sale.sourceBankName,
       paymentMethod: sale.paymentMethod,
+      paymentRail: sale.paymentRail,
+      paystackAttemptStatus: sale.paystackAttemptStatus,
+      channel: sale.channel,
       description: sale.description,
       serialNumber: sale.serialNumber,
       merchant: merchant
@@ -938,6 +1945,7 @@ export class SalesService {
   }
 
   private oneTapRecordPayload(sale: SaleDocument): RecordSaleDto {
+    this.assertMerchantCanRecordSale(sale)
     const amount = this.roundMoney(Number(sale.amount))
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new BadRequestException(
@@ -1013,7 +2021,16 @@ export class SalesService {
     const totalAmount = this.roundMoney(
       pending.reduce((total, item) => total + item.payload.amount, 0),
     )
-    await this.assertDailyCap(merchantId, totalAmount)
+    const collectionTotal = this.roundMoney(
+      pending.reduce(
+        (total, item) =>
+          item.sale.isCollection ? total + item.payload.amount : total,
+        0,
+      ),
+    )
+    if (collectionTotal > 0) {
+      await this.assertDailyCap(merchantId, collectionTotal)
+    }
 
     const confirmed: Sale[] = []
     for (const item of pending) {
@@ -1053,6 +2070,7 @@ export class SalesService {
         'Only a pending sale can be recorded',
       )
     }
+    this.assertMerchantCanRecordSale(sale)
     if (sale.isArchived) {
       throw new UnprocessableEntityException(
         'An archived sale cannot be recorded',
@@ -1075,15 +2093,19 @@ export class SalesService {
       (customer ? await this.resolveCustomerUserId(customer._id) : undefined)
     const amounts = this.normalizeRecordedAmounts(dto, !!customerUserId)
 
-    // Confirming a pending sale is the point the amount is actually recorded.
-    if (!skipDailyCap) {
-      await this.assertDailyCap(merchantId, amounts.total)
+    // Only collection-originated sales consume collection allowance. A
+    // merchant can record ordinary sales without a plan or daily ceiling.
+    if (!skipDailyCap && sale.isCollection && amounts.amountPaid > 0) {
+      await this.assertDailyCap(merchantId, amounts.amountPaid)
     }
 
     sale.status = amounts.isPaidInFull ? 'CONFIRMED' : 'OUTSTANDING'
     sale.amount = amounts.total
     sale.description = description
     sale.paymentMethod = dto.paymentMethod || 'Other'
+    if (sale.paymentMethod === 'Bank Transfer') {
+      sale.paymentRail = 'manual_transfer'
+    }
     sale.recordedAt = new Date()
     sale.isPaidInFull = amounts.isPaidInFull
     sale.amountPaid = amounts.amountPaid
@@ -1150,6 +2172,11 @@ export class SalesService {
         'Only a pending sale can be cancelled',
       )
     }
+    if (sale.paymentRail === 'paystack') {
+      throw new UnprocessableEntityException(
+        'A Paystack payment must finish verification before it can be cancelled.',
+      )
+    }
 
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'merchant'
@@ -1176,6 +2203,11 @@ export class SalesService {
     if (sale.status !== 'PENDING') {
       throw new UnprocessableEntityException(
         'This transaction can no longer be cancelled',
+      )
+    }
+    if (sale.paymentRail === 'paystack') {
+      throw new UnprocessableEntityException(
+        'A Paystack payment must finish verification before it can be cancelled.',
       )
     }
     if (sale.receiptUrl || sale.customerMarkedPaidAt) {
@@ -1212,6 +2244,11 @@ export class SalesService {
         'This transaction is no longer awaiting payment',
       )
     }
+    if (sale.paymentRail === 'paystack') {
+      throw new UnprocessableEntityException(
+        'This payment is being confirmed automatically by Paystack.',
+      )
+    }
 
     const normalizedFingerprint = customerFingerprint?.trim()
     let shouldSave = false
@@ -1233,6 +2270,7 @@ export class SalesService {
       shouldSave = true
     }
     if (isNewExplicitDeclaration) {
+      sale.paymentRail = 'manual_transfer'
       sale.customerMarkedPaidExplicitly = true
       shouldSave = true
     }

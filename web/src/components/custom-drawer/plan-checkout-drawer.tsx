@@ -20,6 +20,8 @@ import {
 } from '@/services/merchant-plans'
 import { formatCurrency } from '@/lib/utils'
 import Image from 'next/image'
+import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
+import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
 
 interface PlanCheckoutDrawerProps {
   tier: PlanTier
@@ -36,6 +38,11 @@ export function PlanCheckoutDrawer({
   const { data } = usePlanCatalog()
   const { data: paymentMethodsData } = usePlanPaymentMethods()
   const purchase = usePurchasePlan()
+  const {
+    isRedirectingToPaystack,
+    startPaystackRedirect,
+    cancelPaystackRedirect,
+  } = usePaystackRedirectState()
   // Quoted by the same code that charges, so the figure shown is the figure
   // taken — a mid-cycle change is credited and differs from list price.
   const { data: preview } = usePlanPreview({ tier, interval })
@@ -71,6 +78,8 @@ export function PlanCheckoutDrawer({
     method: PlanPaymentMethod,
     fallBackToPaystack = true,
   ) => {
+    if (isRedirectingToPaystack) return
+    if (method === 'PAYSTACK_CHECKOUT') startPaystackRedirect()
     purchase.mutate(
       {
         tier,
@@ -84,6 +93,7 @@ export function PlanCheckoutDrawer({
             window.location.href = res.authorizationUrl
             return
           }
+          cancelPaystackRedirect()
           // Charged the saved card (or nothing to pay) — no redirect needed.
           showNotificationToast({
             message:
@@ -112,6 +122,7 @@ export function PlanCheckoutDrawer({
           }
         },
         onError: (err: unknown) => {
+          cancelPaystackRedirect()
           const response = (
             err as {
               response?: {
@@ -143,6 +154,10 @@ export function PlanCheckoutDrawer({
         },
       },
     )
+  }
+
+  if (isRedirectingToPaystack) {
+    return <PaystackRedirectingScreen />
   }
 
   return (
