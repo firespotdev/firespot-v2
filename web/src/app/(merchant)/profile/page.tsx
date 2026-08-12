@@ -9,7 +9,7 @@ import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, VerifiedBadge } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
-import { useMerchantInsights, type InsightsQuery } from '@/services/insights'
+import type { InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import { useSalesStats, useSales } from '@/services/sales/hooks'
 import Link from 'next/link'
@@ -30,7 +30,6 @@ export default function ProfilePage() {
     preset: 'today',
   })
   const { data: profile, isLoading } = useUserProfile()
-  const { data: insights } = useMerchantInsights({ preset: 'today' })
   const { data: qrKitsData } = useUserQRKits()
   const { data: salesStats } = useSalesStats(filter)
   const { data: collectedStats } = useSalesStats({
@@ -178,7 +177,7 @@ export default function ProfilePage() {
               collectedAmount={collectedStats?.todaySalesAmount ?? 0}
               recordedAmount={recordedStats?.todaySalesAmount ?? 0}
               salesCount={salesStats?.todaySalesCount ?? 0}
-              ordersCount={insights?.qrKitScans?.totalScans ?? 0}
+              ordersCount={0}
               owingCount={owingCount}
               quickActions={<MerchantQuickActionStack className="mb-4" />}
               isAmountHidden={isAmountHidden}
@@ -232,24 +231,24 @@ export default function ProfilePage() {
           {/* Stats Section - Link to Insights, Recents, and Owing */}
           <div className="grid grid-cols-4 gap-2 w-full text-center">
             {/* Sales */}
-            <Link href="/history" className="flex flex-col items-center group">
+            <div className="flex flex-col items-center">
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 {salesStats?.todaySalesCount ?? 0}
               </span>
-              <span className="text-[13px] text-[#00000080] font-medium mt-1.5 transition-colors">
+              <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 Sales
               </span>
-            </Link>
+            </div>
 
             {/* Orders */}
-            <Link href="/history" className="flex flex-col items-center group">
+            <div className="flex flex-col items-center">
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
-                {insights?.qrKitScans?.totalScans ?? 0}
+                0
               </span>
-              <span className="text-[13px] text-[#00000080] font-medium mt-1.5 transition-colors">
+              <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 Orders
               </span>
-            </Link>
+            </div>
 
             {/* Unconfirmed */}
             {(() => {
