@@ -380,6 +380,7 @@ function ManageBusinessDropdown({
     {
       label: 'Products',
       icon: <Box1 size={24} />,
+      href: '/products',
       proGateLabel: 'Available in',
     },
     {

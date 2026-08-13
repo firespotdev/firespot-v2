@@ -4,6 +4,9 @@ export interface CartItem {
   price: number
   quantity: number
   selectedVariant?: {
+    label?: string
+    values?: Array<{ optionId?: string; optionName?: string; valueId?: string; value: string }>
+    /** Legacy sale snapshots created before generic option sets. */
     size?: string
     color?: string
   }

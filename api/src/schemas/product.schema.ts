@@ -18,8 +18,32 @@ export class Product extends Document {
   @Prop()
   imageUrl?: string;
 
-  @Prop({ index: true })
-  category?: string;
+  @Prop({ type: Types.ObjectId, ref: 'ProductCategory', index: true })
+  categoryId: Types.ObjectId;
+
+  @Prop({ default: false, index: true })
+  isArchived: boolean;
+
+  @Prop()
+  archivedAt?: Date;
+
+  @Prop({ type: [{ id: String, name: String, values: [{ id: String, value: String }] }], default: [] })
+  options?: Array<{
+    id: string;
+    name: string;
+    values: Array<{ id: string; value: string }>;
+  }>;
+
+  @Prop({ type: [{ combinationKey: String, optionValueIds: [String], price: Number }], default: [] })
+  variantPriceOverrides?: Array<{
+    combinationKey: string;
+    optionValueIds: string[];
+    price: number;
+  }>;
+
+  /** Option combinations the merchant does not sell. */
+  @Prop({ type: [String], default: [] })
+  excludedVariantKeys?: string[];
 
   @Prop({
     type: [{
@@ -42,5 +66,5 @@ export class Product extends Document {
 export const ProductSchema = SchemaFactory.createForClass(Product);
 export type ProductDocument = Product & Document;
 
-ProductSchema.index({ merchantId: 1, category: 1 });
+ProductSchema.index({ merchantId: 1, categoryId: 1, isArchived: 1 });
 ProductSchema.index({ merchantId: 1, name: "text", description: "text" });

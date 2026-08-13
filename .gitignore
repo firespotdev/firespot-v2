@@ -20,3 +20,6 @@ pnpm-debug.log*
 /CLAUDE.md
 /.agents/
 .codex
+PRODUCT.md
+DESIGN.md
+.impeccable

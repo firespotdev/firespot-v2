@@ -1,17 +1,20 @@
 'use client'
 
 import { Plus, Search, X, Image as ImageIcon } from 'lucide-react'
+import { useProductCategories } from '@/services/products/hooks'
+import type { Product } from '@/services/products/productsApi'
+import type { DrawerConfig } from '@/services/drawer'
 
 interface ItemsTabProps {
   searchQuery: string
   setSearchQuery: (q: string) => void
   activeCategory: string
   setActiveCategory: (cat: string) => void
-  products: any[]
+  products: Product[]
   getProductCartQuantity: (id: string) => number
-  handleProductAddTapped: (prod: any) => void
-  getGroupedProducts: () => Record<string, any[]>
-  openDrawer: (config: any) => void
+  handleProductAddTapped: (prod: Product) => void
+  getGroupedProducts: () => Record<string, Product[]>
+  openDrawer: (config: DrawerConfig) => void
 }
 
 export function ItemsTab({
@@ -25,6 +28,7 @@ export function ItemsTab({
   getGroupedProducts,
   openDrawer,
 }: ItemsTabProps) {
+  const { data: catalogue } = useProductCategories()
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       {/* Search Input Bar */}
@@ -52,17 +56,23 @@ export function ItemsTab({
       {/* Category horizontal filter tags */}
       {!searchQuery && (
         <div className="flex gap-2 overflow-x-auto px-4 py-2.5 scrollbar-hide shrink-0 select-none">
-          {['All', 'Combos', 'Perfumes', 'Scents'].map((cat) => (
+          {[
+            { id: 'All', name: 'All' },
+            ...(catalogue?.categories || []).map((category) => ({
+              id: category._id,
+              name: category.name,
+            })),
+          ].map((cat) => (
             <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                activeCategory === cat
+                activeCategory === cat.id
                   ? 'bg-black text-white border-black'
                   : 'bg-white text-[#8E8E93] border-[#E9EBED] hover:text-black'
               }`}
             >
-              {cat}
+              {cat.name}
             </button>
           ))}
         </div>
@@ -127,7 +137,7 @@ export function ItemsTab({
             {searchQuery ? (
               /* Flat list for search results */
               <div className="flex flex-col gap-4">
-                {products.map((prod: any) => {
+                {products.map((prod) => {
                   const cartQty = getProductCartQuantity(prod._id)
                   return (
                     <div
@@ -187,7 +197,7 @@ export function ItemsTab({
                         {categoryName}
                       </h3>
                       <div className="flex flex-col gap-4">
-                        {items.map((prod: any) => {
+                        {items.map((prod) => {
                           const cartQty = getProductCartQuantity(prod._id)
                           return (
                             <div

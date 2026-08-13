@@ -115,10 +115,7 @@ export class Sale extends Document {
       productName: String,
       price: Number,
       quantity: Number,
-      selectedVariant: {
-        size: String,
-        color: String,
-      },
+      selectedVariant: { type: Object },
     }],
     default: [],
   })
@@ -127,10 +124,7 @@ export class Sale extends Document {
     productName: string;
     price: number;
     quantity: number;
-    selectedVariant?: {
-      size?: string;
-      color?: string;
-    };
+    selectedVariant?: Record<string, unknown>;
   }>;
 
   @Prop()

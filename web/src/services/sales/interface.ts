@@ -9,6 +9,8 @@ export interface SaleItem {
   price?: number;
   quantity?: number;
   selectedVariant?: {
+    label?: string;
+    values?: Array<{ optionId?: string; optionName?: string; valueId?: string; value: string }>;
     size?: string;
     color?: string;
   };

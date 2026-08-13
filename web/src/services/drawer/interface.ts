@@ -43,6 +43,13 @@ export type DrawerContentType =
   | 'record-sale'
   | 'rail-picker'
   | 'channel-picker'
+  | 'catalogue-actions'
+  | 'add-product'
+  | 'category-form'
+  | 'category-options'
+  | 'delete-category'
+  | 'archive-product'
+  | 'product-option-editor'
 
 
 

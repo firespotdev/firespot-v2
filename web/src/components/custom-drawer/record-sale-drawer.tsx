@@ -54,7 +54,7 @@ export function RecordSaleDrawer({
   const [searchQuery, setSearchQuery] = useState('')
   const { data: products = [] } = useProducts({
     search: searchQuery,
-    category: activeCategory,
+    categoryId: activeCategory === 'All' ? undefined : activeCategory,
   })
 
   // Collecting requires a verified plan; recording never does.
@@ -79,19 +79,37 @@ export function RecordSaleDrawer({
         type: 'variant-selector',
         props: {
           product,
-          onAdd: (size: string, color: string, qty: number) =>
-            cart.addProductToCart(product, size, color, qty),
+          onAdd: (
+            selectedVariant: {
+              label: string
+              price: number
+              values: Array<{
+                optionId: string
+                optionName: string
+                valueId: string
+                value: string
+              }>
+            },
+            qty: number,
+          ) =>
+            cart.addProductToCart(
+              product,
+              { label: selectedVariant.label, values: selectedVariant.values },
+              qty,
+              selectedVariant.price,
+            ),
         },
       })
     } else {
-      cart.addProductToCart(product, undefined, undefined, 1)
+      cart.addProductToCart(product, undefined, 1)
     }
   }
 
   const getGroupedProducts = () => {
     const groups: Record<string, Product[]> = {}
     products.forEach((prod) => {
-      const cat = prod.category || 'General'
+      const cat =
+        typeof prod.categoryId === 'object' ? prod.categoryId.name : 'Uncategorised'
       if (!groups[cat]) {
         groups[cat] = []
       }

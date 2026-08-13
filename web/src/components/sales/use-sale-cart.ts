@@ -158,11 +158,12 @@ export function useSaleCart({ prefillSale }: Options) {
 
   const addProductToCart = (
     prod: { _id: string; name: string; price: number },
-    size?: string,
-    color?: string,
+    selectedVariant?: CartItem['selectedVariant'],
     qty: number = 1,
+    variantPrice?: number,
   ) => {
-    const id = `${prod._id}-${size || ''}-${color || ''}`
+    const id = `${prod._id}-${selectedVariant?.values?.map((value) => value.valueId).join('-') || ''}`
+    const effectivePrice = variantPrice ?? prod.price
     setPreservedExistingTotal(null)
     setCartItems((prev) => {
       const existingIndex = prev.findIndex((item) => item.id === id)
@@ -178,9 +179,9 @@ export function useSaleCart({ prefillSale }: Options) {
               {
                 id,
                 name: prod.name,
-                price: prod.price,
+                price: effectivePrice,
                 quantity: qty,
-                selectedVariant: size || color ? { size, color } : undefined,
+                selectedVariant,
               },
             ]
 

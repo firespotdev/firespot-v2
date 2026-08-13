@@ -57,6 +57,13 @@ import { BusinessIntroDrawer } from './business-intro-drawer'
 import { RecordSaleDrawer } from './record-sale-drawer'
 import { RailPickerDrawer } from './rail-picker-drawer'
 import { ChannelPickerDrawer } from './channel-picker-drawer'
+import { CatalogueActionsDrawer } from './catalogue-actions-drawer'
+import { AddProductDrawer } from './add-product-drawer'
+import { CategoryFormDrawer } from './category-form-drawer'
+import { CategoryOptionsDrawer } from './category-options-drawer'
+import { DeleteCategoryDrawer } from './delete-category-drawer'
+import { ArchiveProductDrawer } from './archive-product-drawer'
+import { ProductOptionEditorDrawer } from './product-option-editor-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -267,7 +274,7 @@ const DRAWER_CONFIG: Record<
     hideHandle: true,
     dismissible: false,
     contentClassName:
-      'h-dvh bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
+      'h-dvh overflow-hidden bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
   },
   'sale-items': {
     title: '',
@@ -363,6 +370,63 @@ const DRAWER_CONFIG: Record<
     noHeader: true,
     direction: 'bottom',
     dismissible: true,
+  },
+  'catalogue-actions': {
+    title: '',
+    Content: CatalogueActionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-[#F7F8FA]',
+  },
+  'add-product': {
+    title: '',
+    Content: AddProductDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: true,
+    hideHandle: true,
+    dismissible: false,
+    contentClassName:
+      'h-dvh bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
+  },
+  'category-form': {
+    title: '',
+    Content: CategoryFormDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-white',
+  },
+  'category-options': {
+    title: '',
+    Content: CategoryOptionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-white',
+  },
+  'delete-category': {
+    title: '',
+    Content: DeleteCategoryDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-white',
+  },
+  'archive-product': {
+    title: '',
+    Content: ArchiveProductDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-white',
+  },
+  'product-option-editor': {
+    title: '',
+    Content: ProductOptionEditorDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: true,
+    hideHandle: true,
+    dismissible: false,
+    contentClassName:
+      'h-dvh bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
   },
   custom: {
     title: '',
@@ -564,10 +628,14 @@ export function CustomDrawer() {
               'plan-checkout',
               'cancel-plan',
               'business-intro',
+              'category-form',
+              'category-options',
+              'delete-category',
+              'archive-product',
             ].includes(config.type)
               ? 'bg-white'
               : 'bg-[#f5f6f8]'
-          } max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80dvh] data-[vaul-drawer-direction=bottom]:overscroll-contain`}
+          } max-w-125 mx-auto rounded-t-3xl data-[vaul-drawer-direction=bottom]:max-h-[80dvh] data-[vaul-drawer-direction=bottom]:overscroll-contain ${contentClassName || ''}`}
         >
           {noHeader ? (
             <>

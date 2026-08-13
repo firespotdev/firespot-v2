@@ -1,163 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Plus, Minus } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Minus, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
+import type { Product, ProductOptionValue } from '@/services/products/productsApi'
 
-interface Props {
-  product: any
-  onAdd: (size: string, color: string, quantity: number) => void
-}
+interface Props { product: Product; onAdd: (variant: { label: string; values: Array<{ optionId: string; optionName: string; valueId: string; value: string }>; price: number }, quantity: number) => void }
+const money = (value: number) => new Intl.NumberFormat('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
 
 export function VariantSelectorDrawer({ product, onAdd }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
-  const [selectedSize, setSelectedSize] = useState(
-    product.variants?.[0]?.size || '',
-  )
-  const [selectedColor, setSelectedColor] = useState(
-    product.variants?.[0]?.color || '',
-  )
+  const [selected, setSelected] = useState<Record<string, ProductOptionValue>>(() => Object.fromEntries(product.options.map((option) => [option.id, option.values[0]])))
   const [quantity, setQuantity] = useState(1)
-
-  const sizes = Array.from(
-    new Set(product.variants?.map((v: any) => v.size).filter(Boolean) || []),
-  ) as string[]
-  const colors = Array.from(
-    new Set(product.variants?.map((v: any) => v.color).filter(Boolean) || []),
-  ) as string[]
-
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(val)
-  }
-
-  return (
-    <div className="w-full flex flex-col font-satoshi p-6 bg-white max-w-125 mx-auto">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-5 shrink-0">
-        <h2 className="text-base font-bold text-black">Select a variant</h2>
-        <button
-          onClick={closeDrawer}
-          className="p-1.5 hover:bg-gray-100 rounded-full transition-all flex items-center justify-center"
-        >
-          <X className="w-5 h-5 text-[#8E8E93]" />
-        </button>
-      </div>
-
-      {/* Product Summary Card */}
-      <div className="flex items-center gap-3.5 p-4 bg-[#F4F6F8] rounded-4xl mb-5 text-left border border-[#E9EBED]">
-        <div className="relative w-14 h-14 bg-white rounded-[10px] flex items-center justify-center text-gray-400 shrink-0 overflow-hidden border border-[#E9EBED]">
-          {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-6 h-6 border-2 border-gray-300 rounded" />
-          )}
-          {quantity > 1 && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-sm">
-              {quantity}
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col text-left justify-center">
-          <span className="text-sm font-bold text-black leading-tight">
-            {product.name}
-          </span>
-          <span className="text-xs text-[#00000060] mt-1">
-            {product.description || 'Premium product item'}
-          </span>
-          <span className="text-sm font-bold text-black mt-1.5">
-            NGN {formatCurrency(product.price)}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-5 text-left">
-        {/* Sizes */}
-        {sizes.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-[#8E8E93] font-bold tracking-wider uppercase">
-              Size
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {sizes.map((size: string) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all ${
-                    selectedSize === size
-                      ? 'border-black bg-white text-black shadow-sm'
-                      : 'border-[#E9EBED] bg-white text-black hover:border-gray-400 font-medium'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Colours */}
-        {colors.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-[#8E8E93] font-bold tracking-wider uppercase">
-              Colour
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {colors.map((color: string) => (
-                <button
-                  key={color}
-                  onClick={() => setSelectedColor(color)}
-                  className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all ${
-                    selectedColor === color
-                      ? 'border-black bg-white text-black shadow-sm'
-                      : 'border-[#E9EBED] bg-white text-black hover:border-gray-400 font-medium'
-                  }`}
-                >
-                  {color}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom row: quantity selector + record button */}
-        <div className="flex justify-between items-center mt-3 border-t border-[#F4F6F8] pt-4">
-          <div className="flex items-center bg-[#F4F6F8] rounded-xl px-2 py-1 h-12 border border-[#E9EBED]">
-            <button
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="px-3 h-full text-black hover:opacity-70 transition-opacity flex items-center justify-center"
-            >
-              <Minus className="w-3.5 h-3.5 stroke-[3px]" />
-            </button>
-            <span className="text-sm font-bold text-black px-1 min-w-[20px] text-center">
-              {quantity}
-            </span>
-            <button
-              onClick={() => setQuantity((q) => q + 1)}
-              className="px-3 h-full text-black hover:opacity-70 transition-opacity flex items-center justify-center"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3px]" />
-            </button>
-          </div>
-
-          <Button
-            onClick={() => {
-              onAdd(selectedSize, selectedColor, quantity)
-              closeDrawer()
-            }}
-            className="h-12 bg-black hover:bg-black/90 text-white font-bold rounded-full px-8 text-sm tracking-[0.2px] transition-all"
-          >
-            Add to sale
-          </Button>
-        </div>
-      </div>
-    </div>
-  )
+  const variant = useMemo(() => product.variants.find((entry) => entry.optionValueIds.every((id) => Object.values(selected).some((value) => value.id === id))), [product.variants, selected])
+  const price = variant?.price ?? product.price
+  return <div className="flex w-full max-w-125 flex-col bg-white p-6 font-satoshi"><div className="mb-5 flex items-center justify-between"><h2 className="text-xl font-bold">Select a variant</h2><button type="button" onClick={closeDrawer} aria-label="Close" className="p-2"><X /></button></div><div className="mb-6 flex gap-3 rounded-[16px] border border-[#E9EBED] bg-[#F4F6F8] p-3"><div className="h-14 w-14 overflow-hidden rounded-[10px] bg-white">{product.imageUrl && <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />}</div><div><p className="font-bold">{product.name}</p><p className="mt-1 text-sm text-[#647084]">NGN {money(price)}</p></div></div><div className="space-y-5">{product.options.map((option) => <div key={option.id}><p className="mb-2 text-sm font-bold uppercase tracking-wide text-[#647084]">{option.name}</p><div className="flex flex-wrap gap-2">{option.values.map((value) => <button key={value.id} type="button" onClick={() => setSelected((current) => ({ ...current, [option.id]: value }))} className={`rounded-[12px] border px-4 py-2 text-sm font-bold ${selected[option.id]?.id === value.id ? 'border-black text-black' : 'border-[#E9EBED] text-[#647084]'}`}>{value.value}</button>)}</div></div>)}</div><div className="mt-7 flex items-center justify-between border-t border-[#F1F1F1] pt-4"><div className="flex h-12 items-center rounded-[12px] bg-[#F4F6F8]"><button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="p-3"><Minus size={16} /></button><span className="min-w-8 text-center font-bold">{quantity}</span><button type="button" onClick={() => setQuantity((value) => value + 1)} className="p-3"><Plus size={16} /></button></div><Button className="w-auto px-7" onClick={() => { onAdd({ label: variant?.label || '', values: product.options.map((option) => ({ optionId: option.id, optionName: option.name, valueId: selected[option.id].id, value: selected[option.id].value })), price }, quantity); closeDrawer() }}>Add to sale</Button></div></div>
 }
