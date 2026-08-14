@@ -1,7 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Minus, ChevronRight } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  Image as ImageIcon,
+  Minus,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
 import { Calendar } from '@/components/ui/calendar'
@@ -17,7 +24,10 @@ interface CartItem {
   name: string
   price: number
   quantity: number
+  imageUrl?: string
   selectedVariant?: {
+    label?: string
+    values?: Array<{ optionName?: string; value: string }>
     size?: string
     color?: string
   }
@@ -115,12 +125,13 @@ export function CurrentSaleDrawer({
   }
 
   return (
-    <div className="w-full flex flex-col font-satoshi px-3 bg-white max-w-125 mx-auto">
+    <div className="mx-auto flex max-h-[80dvh] w-full max-w-125 flex-col bg-white font-satoshi">
       {/* Header */}
-      <div className="flex justify-between items-center shrink-0 py-2">
+      <div className="flex shrink-0 items-center justify-between border-b border-[#F1F1F1] px-4 py-2">
         <button
           onClick={closeDrawer}
-          className="p-1 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center text-black"
+          aria-label="Close current sale"
+          className="flex h-9 w-9 items-center justify-center text-black"
         >
           <ChevronDown className="w-6 h-6 stroke-[2.5px]" />
         </button>
@@ -132,60 +143,133 @@ export function CurrentSaleDrawer({
             onClear()
             closeDrawer()
           }}
-          className="text-xs font-medium text-black underline underline-offset-4 hover:opacity-80"
+          className="h-9 px-1 text-sm font-medium text-black underline underline-offset-4"
         >
           Clear
         </button>
       </div>
 
       {/* Items list */}
-      <div className="-mx-3 px-3 flex-1 overflow-y-auto max-h-55 mb-4 border-b border-[#F4F6F8] bg-[#FCFBFB]">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4">
         {cartItems.length >= 1 ? (
-          <div className="flex flex-col gap-3.5 py-4">
-            {cartItems.map((item) => (
-              <div key={item.id} className="flex justify-between items-center">
-                <div className="flex flex-col text-left">
-                  <span className="text-[14px] font-bold text-[#6B7280]">
-                    {item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}
-                  </span>
-                  {item.selectedVariant && (
-                    <span className="text-[11px] text-[#8E8E93] font-medium mt-0.5">
-                      {item.selectedVariant.size &&
-                        `Size: ${item.selectedVariant.size}`}
-                      {item.selectedVariant.size &&
-                        item.selectedVariant.color &&
-                        ' . '}
-                      {item.selectedVariant.color &&
-                        `Color: ${item.selectedVariant.color}`}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-[14px] font-bold text-[#111827]">
-                    NGN {formatCurrency(item.price * item.quantity)}
-                  </span>
-                  <button
-                    onClick={() => onUpdateQty(item.id, -1)}
-                    className="w-9 h-9 rounded-[10px] bg-[#F1F1F1] hover:bg-gray-200 active:bg-gray-300 flex items-center justify-center text-black transition-colors"
+          <div>
+            {cartItems.map((item) => {
+              const isAmountItem = item.id.startsWith('custom')
+
+              if (isAmountItem) {
+                return (
+                  <article
+                    key={item.id}
+                    className="flex items-center gap-3 border-b border-[#F1F1F1] py-4"
                   >
-                    <Minus className="w-4 h-4 stroke-[2px]" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                    <p className="min-w-0 flex-1 truncate text-[14px] font-bold text-[#6B7280]">
+                      {item.name}
+                    </p>
+                    <p className="shrink-0 text-[14px] font-bold text-[#111827]">
+                      NGN {formatCurrency(item.price * item.quantity)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateQty(item.id, -item.quantity)}
+                      aria-label={`Remove ${item.name}`}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#F1F1F1] text-black"
+                    >
+                      <Minus size={16} />
+                    </button>
+                  </article>
+                )
+              }
+
+              return (
+                <article
+                  key={item.id}
+                  className="border-b border-[#F1F1F1] py-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1 text-left">
+                      <p className="text-[14px] font-medium text-[#111827]">
+                        {item.name}
+                      </p>
+                      {item.selectedVariant && (
+                        <p className="mt-1 truncate text-sm font-medium text-[#6B7280]">
+                          {item.selectedVariant.label ||
+                            item.selectedVariant.values
+                              ?.map((value) => value.value)
+                              .join(' / ') ||
+                            [
+                              item.selectedVariant.size,
+                              item.selectedVariant.color,
+                            ]
+                              .filter(Boolean)
+                              .join(' / ')}
+                        </p>
+                      )}
+                    </div>
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-[5px] bg-[#F1F1F1]">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="grid h-full w-full place-items-center text-[#9CA3AF]">
+                          <ImageIcon size={20} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateQty(item.id, -item.quantity)}
+                      aria-label={`Remove ${item.name}`}
+                      className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#F1F1F1]"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <div className="flex h-9 items-center rounded-[10px] bg-[#F1F1F1]">
+                      <button
+                        type="button"
+                        onClick={() => onUpdateQty(item.id, -1)}
+                        aria-label={`Decrease ${item.name} quantity`}
+                        className="grid h-9 w-9 place-items-center"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="min-w-8 text-center text-[14px] font-bold">
+                        {item.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onUpdateQty(item.id, 1)}
+                        aria-label={`Increase ${item.name} quantity`}
+                        className="grid h-9 w-9 place-items-center"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                    <span className="ml-auto shrink-0 text-[14px] font-bold text-[#111827]">
+                      NGN {formatCurrency(item.price * item.quantity)}
+                    </span>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         ) : null}
       </div>
 
       {/* Financial calculations */}
-      <div className="flex flex-col gap-3 border-b border-[#F4F6F8] shrink-0 text-left">
+      <div className="shrink-0 space-y-3 border-b border-[#F1F1F1] px-4 py-4 text-left">
         <div className="flex justify-between items-center text-sm text-[#6B7280] font-medium">
           <span>Subtotal</span>
           <span className="font-medium text-[#111827]">
             NGN {formatCurrency(totalAmount)}
           </span>
         </div>
-        <div className="flex justify-between items-center text-sm border-t border-[#F4F6F8] font-bold text-[#111827] py-4">
+        <div className="flex items-center justify-between border-t border-[#F1F1F1] pt-4 text-[16px] font-bold text-[#111827]">
           <span>Total</span>
           <span>NGN {formatCurrency(totalAmount)}</span>
         </div>
@@ -193,7 +277,7 @@ export function CurrentSaleDrawer({
 
       {/* Checkout Metadata fields (Clickable to edit) */}
       {mode === 'record' && (
-        <div className="flex flex-col gap-3 py-4 shrink-0 text-left">
+        <div className="flex shrink-0 flex-col gap-3 px-4 py-4 text-left">
           {/* Paid now / Paid in full (Only display when set) */}
           {hasSetInstallment && (
             <>
@@ -323,9 +407,17 @@ export function CurrentSaleDrawer({
         <button
           onClick={handleContinue}
           disabled={isContinueDisabled}
-          className="w-full h-12 bg-black hover:bg-black/90 active:bg-black/85 disabled:bg-black/60 disabled:cursor-not-allowed text-white font-bold mb-4 rounded-full text-sm tracking-[0.2px] transition-all mt-2 shrink-0 flex items-center justify-center gap-2"
+          className="mx-4 mb-[max(1rem,env(safe-area-inset-bottom))] mt-2 flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-black text-sm font-bold tracking-[0.2px] text-white hover:bg-black/90 active:bg-black/85 disabled:cursor-not-allowed disabled:bg-black/60"
         >
-          {isPending ? <Spinner /> : <span>Continue</span>}
+          {isPending ? (
+            <Spinner />
+          ) : (
+            <span>
+              {mode === 'collect'
+                ? `Collect NGN ${formatCurrency(totalAmount)}`
+                : 'Continue'}
+            </span>
+          )}
         </button>
       )}
     </div>

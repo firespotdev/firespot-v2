@@ -1,40 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ProductsApi, CreateProductPayload } from './productsApi';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ProductsApi, type CreateProductPayload } from './productsApi'
 
-export const useProducts = (params?: { search?: string; category?: string }) => {
-  return useQuery({
-    queryKey: ['products', params],
-    queryFn: () => ProductsApi.getProducts(params),
-  });
-};
-
-export const useCreateProduct = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: CreateProductPayload) => ProductsApi.createProduct(payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-  });
-};
-
-export const useUpdateProduct = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: Partial<CreateProductPayload> }) =>
-      ProductsApi.updateProduct(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-  });
-};
-
-export const useDeleteProduct = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => ProductsApi.deleteProduct(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-  });
-};
+const invalidateCatalogue = (client: ReturnType<typeof useQueryClient>) => {
+  client.invalidateQueries({ queryKey: ['products'] })
+  client.invalidateQueries({ queryKey: ['product-categories'] })
+}
+export const useProducts = (params?: { search?: string; categoryId?: string; archived?: boolean }) => useQuery({ queryKey: ['products', params], queryFn: () => ProductsApi.getProducts(params) })
+export const useProductCategories = (search?: string) => useQuery({ queryKey: ['product-categories', search], queryFn: () => ProductsApi.getCategories(search) })
+export const useCreateProduct = () => { const client = useQueryClient(); return useMutation({ mutationFn: ({ payload, image }: { payload: CreateProductPayload; image?: File | null }) => ProductsApi.createProduct(payload, image), onSuccess: () => invalidateCatalogue(client) }) }
+export const useUpdateProduct = () => { const client = useQueryClient(); return useMutation({ mutationFn: ({ id, payload, image }: { id: string; payload: CreateProductPayload; image?: File | null }) => ProductsApi.updateProduct(id, payload, image), onSuccess: () => invalidateCatalogue(client) }) }
+export const useArchiveProduct = () => { const client = useQueryClient(); return useMutation({ mutationFn: ProductsApi.archiveProduct, onSuccess: () => invalidateCatalogue(client) }) }
+export const useRestoreProduct = () => { const client = useQueryClient(); return useMutation({ mutationFn: ({ id, categoryId }: { id: string; categoryId: string }) => ProductsApi.restoreProduct(id, categoryId), onSuccess: () => invalidateCatalogue(client) }) }
+export const useCreateCategories = () => { const client = useQueryClient(); return useMutation({ mutationFn: ProductsApi.createCategories, onSuccess: () => invalidateCatalogue(client) }) }
+export const useUpdateCategory = () => { const client = useQueryClient(); return useMutation({ mutationFn: ({ id, name }: { id: string; name: string }) => ProductsApi.updateCategory(id, name), onSuccess: () => invalidateCatalogue(client) }) }
+export const useDeleteCategory = () => { const client = useQueryClient(); return useMutation({ mutationFn: ProductsApi.deleteCategory, onSuccess: () => invalidateCatalogue(client) }) }

@@ -1709,6 +1709,8 @@ export class SalesService {
       amount: sale.amount,
       items: (sale.items || []).map((item: any) => ({
         productName: item.productName,
+        productDescription: item.productDescription,
+        productImageUrl: item.productImageUrl,
         price: item.price,
         quantity: item.quantity,
         selectedVariant: item.selectedVariant,

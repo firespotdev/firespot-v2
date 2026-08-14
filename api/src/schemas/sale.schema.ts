@@ -113,24 +113,22 @@ export class Sale extends Document {
     type: [{
       productId: String,
       productName: String,
+      productDescription: String,
+      productImageUrl: String,
       price: Number,
       quantity: Number,
-      selectedVariant: {
-        size: String,
-        color: String,
-      },
+      selectedVariant: { type: Object },
     }],
     default: [],
   })
   items?: Array<{
     productId: string;
     productName: string;
+    productDescription?: string;
+    productImageUrl?: string;
     price: number;
     quantity: number;
-    selectedVariant?: {
-      size?: string;
-      color?: string;
-    };
+    selectedVariant?: Record<string, unknown>;
   }>;
 
   @Prop()

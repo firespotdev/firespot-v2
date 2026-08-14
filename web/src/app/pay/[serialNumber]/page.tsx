@@ -610,10 +610,7 @@ export default function PaymentPage() {
     })
   }
 
-  const handleOpenPaymentMethodDrawer = (
-    amount: number,
-    description: string,
-  ) => {
+  const handleOpenPaymentMethodDrawer = () => {
     if (!merchant?.hasPaystackCollection) {
       handleOpenBankDrawer()
       return
@@ -628,37 +625,22 @@ export default function PaymentPage() {
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
           setSelectedRail(rail)
-          if (rail === 'multiple') {
-            if (paystackChannels.length <= 1) {
-              if (paystackChannels[0]) {
-                setSelectedChannel(paystackChannels[0])
-              }
-              return
-            }
-            openDrawer({
-              type: 'channel-picker',
-              direction: 'bottom',
-              props: {
-                selectedChannel: effectiveSelectedChannel,
-                availableChannels: paystackChannels,
-                onSelectChannel: (channelId: string) => {
-                  setSelectedChannel(channelId)
-                  handlePayInstantly(amount, description, channelId)
-                },
-              },
-            })
-          } else if (rail === 'transfer') {
-            handleOpenBankDrawer()
+          if (
+            rail === 'multiple' &&
+            !paystackChannels.includes(selectedChannel) &&
+            paystackChannels[0]
+          ) {
+            setSelectedChannel(paystackChannels[0])
           }
         },
       },
     })
   }
 
-  function handlePayInstantly(
+  function startPaystackPayment(
     amount: number,
     description: string,
-    channel: string = effectiveSelectedChannel,
+    channel: string,
   ) {
     if (amount <= 0) {
       showNotificationToast({
@@ -716,6 +698,38 @@ export default function PaymentPage() {
         },
       },
     )
+  }
+
+  function handlePayInstantly(amount: number, description: string) {
+    if (amount <= 0) {
+      showNotificationToast({
+        message: 'Enter an amount first',
+        duration: 2000,
+      })
+      return
+    }
+
+    if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
+    if (paystackChannels.length === 0) {
+      showNotificationToast({
+        message: 'No instant payment method is currently available.',
+        mode: 'error',
+      })
+      return
+    }
+
+    openDrawer({
+      type: 'channel-picker',
+      direction: 'bottom',
+      props: {
+        selectedChannel: effectiveSelectedChannel,
+        availableChannels: paystackChannels,
+        onSelectChannel: (channelId: string) => {
+          setSelectedChannel(channelId)
+          startPaystackPayment(amount, description, channelId)
+        },
+      },
+    })
   }
 
   // Payer enters an amount, copies the account, and hands off to the shared

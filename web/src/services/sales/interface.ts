@@ -6,9 +6,13 @@ export type PaymentMethod = 'Bank Transfer' | 'Cash' | 'POS' | 'Other';
 export interface SaleItem {
   productId?: string;
   productName?: string;
+  productDescription?: string;
+  productImageUrl?: string;
   price?: number;
   quantity?: number;
   selectedVariant?: {
+    label?: string;
+    values?: Array<{ optionId?: string; optionName?: string; valueId?: string; value: string }>;
     size?: string;
     color?: string;
   };

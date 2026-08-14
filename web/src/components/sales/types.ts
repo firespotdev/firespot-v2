@@ -3,7 +3,12 @@ export interface CartItem {
   name: string
   price: number
   quantity: number
+  imageUrl?: string
+  description?: string
   selectedVariant?: {
+    label?: string
+    values?: Array<{ optionId?: string; optionName?: string; valueId?: string; value: string }>
+    /** Legacy sale snapshots created before generic option sets. */
     size?: string
     color?: string
   }

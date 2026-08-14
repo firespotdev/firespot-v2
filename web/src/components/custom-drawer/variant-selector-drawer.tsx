@@ -1,163 +1,248 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Plus, Minus } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Image as ImageIcon, Minus, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
+import type {
+  Product,
+  ProductOptionValue,
+  ProductVariant,
+} from '@/services/products/productsApi'
 
 interface Props {
-  product: any
-  onAdd: (size: string, color: string, quantity: number) => void
+  product: Product
+  cartQuantity?: number
+  onAdd: (
+    variant: {
+      label: string
+      values: Array<{
+        optionId: string
+        optionName: string
+        valueId: string
+        value: string
+      }>
+      price: number
+    },
+    quantity: number,
+  ) => void
 }
 
-export function VariantSelectorDrawer({ product, onAdd }: Props) {
+const money = (value: number) =>
+  new Intl.NumberFormat('en-NG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+
+const selectionFromVariant = (product: Product, variant: ProductVariant) =>
+  Object.fromEntries(
+    product.options.flatMap((option) => {
+      const value = option.values.find((entry) =>
+        variant.optionValueIds.includes(entry.id),
+      )
+      return value ? [[option.id, value]] : []
+    }),
+  ) as Record<string, ProductOptionValue>
+
+export function VariantSelectorDrawer({
+  product,
+  cartQuantity = 0,
+  onAdd,
+}: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
-  const [selectedSize, setSelectedSize] = useState(
-    product.variants?.[0]?.size || '',
-  )
-  const [selectedColor, setSelectedColor] = useState(
-    product.variants?.[0]?.color || '',
+  const firstVariant = product.variants[0]
+  const [selected, setSelected] = useState<
+    Record<string, ProductOptionValue>
+  >(() =>
+    firstVariant
+      ? selectionFromVariant(product, firstVariant)
+      : Object.fromEntries(
+          product.options.flatMap((option) =>
+            option.values[0] ? [[option.id, option.values[0]]] : [],
+          ),
+        ),
   )
   const [quantity, setQuantity] = useState(1)
 
-  const sizes = Array.from(
-    new Set(product.variants?.map((v: any) => v.size).filter(Boolean) || []),
-  ) as string[]
-  const colors = Array.from(
-    new Set(product.variants?.map((v: any) => v.color).filter(Boolean) || []),
-  ) as string[]
+  const selectedIds = useMemo(
+    () => Object.values(selected).map((value) => value.id),
+    [selected],
+  )
+  const variant = useMemo(
+    () =>
+      product.variants.find(
+        (entry) =>
+          entry.optionValueIds.length === selectedIds.length &&
+          entry.optionValueIds.every((id) => selectedIds.includes(id)),
+      ),
+    [product.variants, selectedIds],
+  )
+  const price = variant?.price ?? product.price
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(val)
+  const isValueAvailable = (optionId: string, valueId: string) => {
+    const otherSelectedIds = product.options
+      .filter((option) => option.id !== optionId)
+      .map((option) => selected[option.id]?.id)
+      .filter(Boolean)
+    return product.variants.some(
+      (entry) =>
+        entry.optionValueIds.includes(valueId) &&
+        otherSelectedIds.every((id) => entry.optionValueIds.includes(id)),
+    )
+  }
+
+  const selectValue = (optionId: string, value: ProductOptionValue) => {
+    const next = { ...selected, [optionId]: value }
+    const nextIds = Object.values(next).map((entry) => entry.id)
+    const exactVariant = product.variants.find(
+      (entry) =>
+        entry.optionValueIds.length === nextIds.length &&
+        entry.optionValueIds.every((id) => nextIds.includes(id)),
+    )
+    if (exactVariant) {
+      setSelected(next)
+      return
+    }
+
+    const compatibleVariant = product.variants.find((entry) =>
+      entry.optionValueIds.includes(value.id),
+    )
+    if (compatibleVariant) {
+      setSelected(selectionFromVariant(product, compatibleVariant))
+    }
+  }
+
+  const addToSale = () => {
+    if (!variant) return
+    onAdd(
+      {
+        label: variant.label,
+        values: product.options.map((option) => ({
+          optionId: option.id,
+          optionName: option.name,
+          valueId: selected[option.id].id,
+          value: selected[option.id].value,
+        })),
+        price,
+      },
+      quantity,
+    )
+    closeDrawer()
   }
 
   return (
-    <div className="w-full flex flex-col font-satoshi p-6 bg-white max-w-125 mx-auto">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-5 shrink-0">
-        <h2 className="text-base font-bold text-black">Select a variant</h2>
+    <div className="flex max-h-[80dvh] w-full max-w-125 flex-col bg-white font-satoshi">
+      <header className="flex shrink-0 items-center justify-between border-b border-[#F1F1F1] px-4 py-3">
+        <span className="w-9" aria-hidden="true" />
+        <h2 className="text-[16px] font-bold">Select a variant</h2>
         <button
-          onClick={closeDrawer}
-          className="p-1.5 hover:bg-gray-100 rounded-full transition-all flex items-center justify-center"
+          type="button"
+          onClick={() => closeDrawer()}
+          aria-label="Close variant selector"
+          className="grid h-9 w-9 place-items-center"
         >
-          <X className="w-5 h-5 text-[#8E8E93]" />
+          <X size={24} />
         </button>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex gap-3 border-b border-[#F1F1F1] px-4 py-3">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[8px] bg-[#F1F1F1]">
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="grid h-full w-full place-items-center text-[#9CA3AF]">
+                <ImageIcon size={20} />
+              </div>
+            )}
+            {cartQuantity > 0 && (
+              <span className="absolute inset-0 grid place-items-center bg-black/45 text-[22px] font-bold text-white">
+                {cartQuantity}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-bold">{product.name}</p>
+            <p className="truncate text-sm font-medium text-[#6B7280]">
+              {product.description || 'Premium item'}
+            </p>
+            <p className="mt-1 text-[14px] font-medium text-[#374151]">
+              NGN {money(price)}
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-6 px-4 py-5">
+          {product.options.map((option) => (
+            <fieldset key={option.id}>
+              <legend className="mb-2 text-sm font-medium text-[#647084]">
+                {option.name}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {option.values.map((value) => {
+                  const isSelected = selected[option.id]?.id === value.id
+                  const isAvailable = isValueAvailable(option.id, value.id)
+                  return (
+                    <button
+                      key={value.id}
+                      type="button"
+                      disabled={!isAvailable}
+                      aria-pressed={isSelected}
+                      onClick={() => selectValue(option.id, value)}
+                      className={`min-h-11 rounded-[10px] border px-4 text-sm font-medium transition-colors ${
+                        isSelected
+                          ? 'border-black bg-[#F7F8FA] text-black'
+                          : isAvailable
+                            ? 'border-[#D8DADF] bg-white text-[#111827]'
+                            : 'cursor-not-allowed border-[#F1F1F1] bg-white text-[#D1D5DB]'
+                      }`}
+                    >
+                      {value.value}
+                    </button>
+                  )
+                })}
+              </div>
+            </fieldset>
+          ))}
+        </div>
       </div>
 
-      {/* Product Summary Card */}
-      <div className="flex items-center gap-3.5 p-4 bg-[#F4F6F8] rounded-4xl mb-5 text-left border border-[#E9EBED]">
-        <div className="relative w-14 h-14 bg-white rounded-[10px] flex items-center justify-center text-gray-400 shrink-0 overflow-hidden border border-[#E9EBED]">
-          {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-6 h-6 border-2 border-gray-300 rounded" />
-          )}
-          {quantity > 1 && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-sm">
-              {quantity}
-            </div>
-          )}
-        </div>
-        <div className="flex flex-col text-left justify-center">
-          <span className="text-sm font-bold text-black leading-tight">
-            {product.name}
-          </span>
-          <span className="text-xs text-[#00000060] mt-1">
-            {product.description || 'Premium product item'}
-          </span>
-          <span className="text-sm font-bold text-black mt-1.5">
-            NGN {formatCurrency(product.price)}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-5 text-left">
-        {/* Sizes */}
-        {sizes.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-[#8E8E93] font-bold tracking-wider uppercase">
-              Size
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {sizes.map((size: string) => (
-                <button
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all ${
-                    selectedSize === size
-                      ? 'border-black bg-white text-black shadow-sm'
-                      : 'border-[#E9EBED] bg-white text-black hover:border-gray-400 font-medium'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Colours */}
-        {colors.length > 0 && (
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-[#8E8E93] font-bold tracking-wider uppercase">
-              Colour
-            </span>
-            <div className="flex flex-wrap gap-2">
-              {colors.map((color: string) => (
-                <button
-                  key={color}
-                  onClick={() => setSelectedColor(color)}
-                  className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all ${
-                    selectedColor === color
-                      ? 'border-black bg-white text-black shadow-sm'
-                      : 'border-[#E9EBED] bg-white text-black hover:border-gray-400 font-medium'
-                  }`}
-                >
-                  {color}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom row: quantity selector + record button */}
-        <div className="flex justify-between items-center mt-3 border-t border-[#F4F6F8] pt-4">
-          <div className="flex items-center bg-[#F4F6F8] rounded-xl px-2 py-1 h-12 border border-[#E9EBED]">
-            <button
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="px-3 h-full text-black hover:opacity-70 transition-opacity flex items-center justify-center"
-            >
-              <Minus className="w-3.5 h-3.5 stroke-[3px]" />
-            </button>
-            <span className="text-sm font-bold text-black px-1 min-w-[20px] text-center">
-              {quantity}
-            </span>
-            <button
-              onClick={() => setQuantity((q) => q + 1)}
-              className="px-3 h-full text-black hover:opacity-70 transition-opacity flex items-center justify-center"
-            >
-              <Plus className="w-3.5 h-3.5 stroke-[3px]" />
-            </button>
-          </div>
-
-          <Button
-            onClick={() => {
-              onAdd(selectedSize, selectedColor, quantity)
-              closeDrawer()
-            }}
-            className="h-12 bg-black hover:bg-black/90 text-white font-bold rounded-full px-8 text-sm tracking-[0.2px] transition-all"
+      <footer className="flex shrink-0 items-center justify-between border-t border-[#F1F1F1] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="flex h-11 items-center rounded-[12px] bg-[#F1F1F1]">
+          <button
+            type="button"
+            onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+            disabled={quantity === 1}
+            aria-label="Decrease quantity"
+            className="grid h-11 w-11 place-items-center disabled:opacity-40"
           >
-            Add to sale
-          </Button>
+            <Minus size={16} />
+          </button>
+          <span className="min-w-8 text-center text-[16px] font-bold">
+            {quantity}
+          </span>
+          <button
+            type="button"
+            onClick={() => setQuantity((current) => current + 1)}
+            aria-label="Increase quantity"
+            className="grid h-11 w-11 place-items-center"
+          >
+            <Plus size={16} />
+          </button>
         </div>
-      </div>
+        <Button
+          type="button"
+          disabled={!variant}
+          onClick={addToSale}
+          className="h-11 w-auto px-7"
+        >
+          Add to sale
+        </Button>
+      </footer>
     </div>
   )
 }

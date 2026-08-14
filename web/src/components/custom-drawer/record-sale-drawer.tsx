@@ -14,6 +14,7 @@ import { ItemsTab } from '@/components/sales/ItemsTab'
 import { useSaleCart } from '@/components/sales/use-sale-cart'
 import { useSaleCheckoutFlow } from '@/components/sales/use-sale-checkout-flow'
 import type { SaleMode } from '@/components/sales/types'
+import { BasketIcon } from '@phosphor-icons/react'
 
 interface Props {
   /** Id of the sale being edited, with `isEditMode`. */
@@ -52,9 +53,13 @@ export function RecordSaleDrawer({
 
   const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
-  const { data: products = [] } = useProducts({
+  const [isProductSearchActive, setIsProductSearchActive] = useState(false)
+  const { data: products = [], isLoading: productsLoading } = useProducts({
     search: searchQuery,
-    category: activeCategory,
+    categoryId:
+      isProductSearchActive || activeCategory === 'All'
+        ? undefined
+        : activeCategory,
   })
 
   // Collecting requires a verified plan; recording never does.
@@ -79,19 +84,40 @@ export function RecordSaleDrawer({
         type: 'variant-selector',
         props: {
           product,
-          onAdd: (size: string, color: string, qty: number) =>
-            cart.addProductToCart(product, size, color, qty),
+          onAdd: (
+            selectedVariant: {
+              label: string
+              price: number
+              values: Array<{
+                optionId: string
+                optionName: string
+                valueId: string
+                value: string
+              }>
+            },
+            qty: number,
+          ) =>
+            cart.addProductToCart(
+              product,
+              { label: selectedVariant.label, values: selectedVariant.values },
+              qty,
+              selectedVariant.price,
+            ),
+          cartQuantity: cart.getProductCartQuantity(product._id),
         },
       })
     } else {
-      cart.addProductToCart(product, undefined, undefined, 1)
+      cart.addProductToCart(product, undefined, 1)
     }
   }
 
   const getGroupedProducts = () => {
     const groups: Record<string, Product[]> = {}
     products.forEach((prod) => {
-      const cat = prod.category || 'General'
+      const cat =
+        typeof prod.categoryId === 'object'
+          ? prod.categoryId.name
+          : 'Uncategorised'
       if (!groups[cat]) {
         groups[cat] = []
       }
@@ -110,6 +136,7 @@ export function RecordSaleDrawer({
   }
 
   const effectiveItems = cart.getEffectiveItems()
+  const selectedItemCount = effectiveItems.length
   const hasSaleValue =
     (cart.activeTab === 'amount' &&
       !!cart.amount &&
@@ -122,7 +149,18 @@ export function RecordSaleDrawer({
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-white font-satoshi">
       {/* Top Header */}
       <div className="flex justify-between items-center px-4 py-2">
-        <span className="w-10 shrink-0" aria-hidden="true" />
+        <button
+          type="button"
+          aria-label="Cart"
+          className="relative -ml-2 shrink-0 rounded-full p-2 text-black"
+        >
+          <BasketIcon className="w-6 h-6" />
+          {selectedItemCount > 0 && (
+            <span className="absolute right-1 top-0.5 grid h-[17px] w-[17px] place-items-center rounded-full bg-[#FF2D55] text-[9px] font-bold leading-none tabular-nums text-white">
+              {selectedItemCount > 99 ? '99+' : selectedItemCount}
+            </span>
+          )}
+        </button>
 
         {/* Tab switch replacing 'Enter amount' title */}
         <TabSwitch
@@ -140,7 +178,7 @@ export function RecordSaleDrawer({
           aria-label="Close"
           className="p-2 -mr-2 rounded-full shrink-0 text-black"
         >
-          <X className="w-6 h-6 stroke-[2.5px]" />
+          <X className="w-6 h-6" />
         </button>
       </div>
 
@@ -162,9 +200,12 @@ export function RecordSaleDrawer({
         <ItemsTab
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          isSearchActive={isProductSearchActive}
+          setIsSearchActive={setIsProductSearchActive}
           activeCategory={activeCategory}
           setActiveCategory={setActiveCategory}
           products={products}
+          isLoading={productsLoading}
           getProductCartQuantity={cart.getProductCartQuantity}
           handleProductAddTapped={handleProductAddTapped}
           getGroupedProducts={getGroupedProducts}
@@ -177,9 +218,9 @@ export function RecordSaleDrawer({
         {/* Left Column: Selection text */}
         <div className="flex flex-col text-left">
           <span className="text-sm font-bold text-black">
-            {effectiveItems.length === 1
+            {selectedItemCount === 1
               ? '1 item selected'
-              : `${effectiveItems.length} items selected`}
+              : `${selectedItemCount} items selected`}
           </span>
           <button
             type="button"
