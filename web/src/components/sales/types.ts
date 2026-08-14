@@ -3,6 +3,8 @@ export interface CartItem {
   name: string
   price: number
   quantity: number
+  imageUrl?: string
+  description?: string
   selectedVariant?: {
     label?: string
     values?: Array<{ optionId?: string; optionName?: string; valueId?: string; value: string }>

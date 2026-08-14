@@ -47,6 +47,8 @@ export function useSaleCart({ prefillSale }: Options) {
           item.productName || editSaleData.description || `Item ${index + 1}`,
         price: Number(item.price),
         quantity: Number(item.quantity),
+        imageUrl: item.productImageUrl,
+        description: item.productDescription,
         selectedVariant: item.selectedVariant,
       }))
 
@@ -157,7 +159,13 @@ export function useSaleCart({ prefillSale }: Options) {
   }
 
   const addProductToCart = (
-    prod: { _id: string; name: string; price: number },
+    prod: {
+      _id: string
+      name: string
+      price: number
+      imageUrl?: string
+      description?: string
+    },
     selectedVariant?: CartItem['selectedVariant'],
     qty: number = 1,
     variantPrice?: number,
@@ -181,6 +189,8 @@ export function useSaleCart({ prefillSale }: Options) {
                 name: prod.name,
                 price: effectivePrice,
                 quantity: qty,
+                imageUrl: prod.imageUrl,
+                description: prod.description,
                 selectedVariant,
               },
             ]

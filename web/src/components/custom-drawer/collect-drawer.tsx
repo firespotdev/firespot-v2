@@ -269,11 +269,7 @@ export function CollectPaymentDrawer({
     )
   }
 
-  const itemCount =
-    sale.items?.reduce(
-      (sum: number, item: any) => sum + (item.quantity || 1),
-      0,
-    ) || 0
+  const itemCount = sale.items?.length || 0
   const customerPhotoUrl =
     typeof sale.customerId === 'object'
       ? sale.customerId?.profilePhotoUrl

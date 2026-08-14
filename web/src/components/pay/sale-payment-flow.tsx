@@ -254,9 +254,7 @@ export function SalePaymentFlow({
     setStep('waiting')
   }
 
-  const handlePayInstantly = (
-    channel: string = effectiveSelectedChannel,
-  ) => {
+  const startPaystackPayment = (channel: string) => {
     if (initializePaystack.isPending || isRedirectingToPaystack) return
     startPaystackRedirect()
     initializePaystack.mutate(
@@ -292,6 +290,30 @@ export function SalePaymentFlow({
     )
   }
 
+  const handlePayInstantly = () => {
+    if (initializePaystack.isPending || isRedirectingToPaystack) return
+    if (paystackChannels.length === 0) {
+      showNotificationToast({
+        message: 'No instant payment method is currently available.',
+        mode: 'error',
+      })
+      return
+    }
+
+    openDrawer({
+      type: 'channel-picker',
+      direction: 'bottom',
+      props: {
+        selectedChannel: effectiveSelectedChannel,
+        availableChannels: paystackChannels,
+        onSelectChannel: (channelId: string) => {
+          setSelectedChannel(channelId)
+          startPaystackPayment(channelId)
+        },
+      },
+    })
+  }
+
   const handleChangePaymentMethod = () => {
     openDrawer({
       type: 'rail-picker',
@@ -302,27 +324,12 @@ export function SalePaymentFlow({
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
           setSelectedRail(rail)
-          if (rail === 'multiple') {
-            if (paystackChannels.length <= 1) {
-              if (paystackChannels[0]) {
-                setSelectedChannel(paystackChannels[0])
-              }
-              return
-            }
-            openDrawer({
-              type: 'channel-picker',
-              direction: 'bottom',
-              props: {
-                selectedChannel: effectiveSelectedChannel,
-                availableChannels: paystackChannels,
-                onSelectChannel: (channelId: string) => {
-                  setSelectedChannel(channelId)
-                  handlePayInstantly(channelId)
-                },
-              },
-            })
-          } else if (rail === 'transfer') {
-            handleChangeAccount()
+          if (
+            rail === 'multiple' &&
+            !paystackChannels.includes(selectedChannel) &&
+            paystackChannels[0]
+          ) {
+            setSelectedChannel(paystackChannels[0])
           }
         },
       },

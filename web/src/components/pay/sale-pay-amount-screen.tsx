@@ -17,7 +17,7 @@ interface SalePayAmountScreenProps {
   merchant: MerchantProfile
   account?: BankAccount
   onChangeAccount: () => void
-  onChangePaymentMethod: (amount: number, description: string) => void
+  onChangePaymentMethod: () => void
   selectedRail?: PaymentRail
   onCopy: (amount: number, description: string) => void
   onPayInstantly: (amount: number, description: string) => void
@@ -196,9 +196,7 @@ export function SalePayAmountScreen({
           qrType="static"
           onAction={handleAction}
           onChangeAccount={onChangeAccount}
-          onChangePaymentMethod={() =>
-            onChangePaymentMethod(amountValue, description.trim())
-          }
+          onChangePaymentMethod={onChangePaymentMethod}
           isSubmitting={isSubmitting}
         />
       </div>

@@ -1,263 +1,238 @@
 'use client'
 
-import { Plus, Search, X, Image as ImageIcon } from 'lucide-react'
+import { Image as ImageIcon, Plus, Search, X } from 'lucide-react'
 import { useProductCategories } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import type { DrawerConfig } from '@/services/drawer'
 
 interface ItemsTabProps {
   searchQuery: string
-  setSearchQuery: (q: string) => void
+  setSearchQuery: (query: string) => void
+  isSearchActive: boolean
+  setIsSearchActive: (active: boolean) => void
   activeCategory: string
-  setActiveCategory: (cat: string) => void
+  setActiveCategory: (category: string) => void
   products: Product[]
+  isLoading: boolean
   getProductCartQuantity: (id: string) => number
-  handleProductAddTapped: (prod: Product) => void
+  handleProductAddTapped: (product: Product) => void
   getGroupedProducts: () => Record<string, Product[]>
   openDrawer: (config: DrawerConfig) => void
+}
+
+const money = (value: number) =>
+  new Intl.NumberFormat('en-NG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+
+function ProductRow({
+  product,
+  quantity,
+  onAdd,
+}: {
+  product: Product
+  quantity: number
+  onAdd: () => void
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 border-b border-[#F1F1F1] py-2 last:border-0">
+      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[8px] bg-[#F1F1F1]">
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="grid h-full w-full place-items-center text-[#9CA3AF]">
+            <ImageIcon size={20} />
+          </div>
+        )}
+        {quantity > 0 && (
+          <span className="absolute inset-0 grid place-items-center bg-black/45 text-[22px] font-bold text-white">
+            {quantity}
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[14px] font-bold text-[#111827]">
+          {product.name}
+        </p>
+        <p className="truncate text-sm font-medium text-[#6B7280]">
+          {product.description || 'Premium item'}
+        </p>
+        <p className="mt-1 text-[14px] font-medium text-[#374151]">
+          NGN {money(product.price)}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onAdd}
+        aria-label={`Add ${product.name}`}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#F1F1F1] text-black"
+      >
+        <Plus size={18} />
+      </button>
+    </div>
+  )
 }
 
 export function ItemsTab({
   searchQuery,
   setSearchQuery,
+  isSearchActive,
+  setIsSearchActive,
   activeCategory,
   setActiveCategory,
   products,
+  isLoading,
   getProductCartQuantity,
   handleProductAddTapped,
   getGroupedProducts,
   openDrawer,
 }: ItemsTabProps) {
   const { data: catalogue } = useProductCategories()
+  const trimmedQuery = searchQuery.trim()
+  const isSearching = trimmedQuery.length > 0
+  const visibleProducts =
+    isSearchActive && !isSearching ? products.slice(0, 4) : products
+
+  const closeSearch = () => {
+    setSearchQuery('')
+    setIsSearchActive(false)
+  }
+
+  const renderProduct = (product: Product) => (
+    <ProductRow
+      key={product._id}
+      product={product}
+      quantity={getProductCartQuantity(product._id)}
+      onAdd={() => handleProductAddTapped(product)}
+    />
+  )
+
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-white">
-      {/* Search Input Bar */}
-      <div className="px-4 py-2 border-b border-[#F4F6F8]">
-        <div className="flex items-center bg-[#F4F6F8] rounded-[12px] px-3 py-2 focus-within:ring-2 focus-within:ring-[#0085FF] focus-within:bg-white transition-all border border-transparent focus-within:border-[#0085FF]">
-          <Search className="w-4 h-4 text-[#8E8E93] mr-2" />
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
+      <div className="px-3 pt-2">
+        <div className="relative">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280]"
+          />
           <input
             type="text"
-            placeholder="Search products"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-sm focus:outline-none text-black"
+            onFocus={() => setIsSearchActive(true)}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search products"
+            className="h-9 w-full rounded-[30px] border-2 border-[#F1F1F1] bg-white pl-11 pr-11 text-sm font-medium outline-none placeholder:text-[#00000066] focus:border-[#0075FF] focus:ring-2 focus:ring-[#0075FF]/20"
           />
-          {searchQuery && (
+          {isSearchActive && (
             <button
-              onClick={() => setSearchQuery('')}
-              className="p-0.5 hover:bg-gray-200 rounded-full transition-colors flex items-center justify-center shrink-0"
+              type="button"
+              onClick={closeSearch}
+              aria-label="Close product search"
+              className="absolute right-3 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-full bg-[#6B7280] text-white"
             >
-              <X className="w-3.5 h-3.5 text-[#8E8E93]" />
+              <X size={16} strokeWidth={2} />
             </button>
           )}
         </div>
       </div>
 
-      {/* Category horizontal filter tags */}
-      {!searchQuery && (
-        <div className="flex gap-2 overflow-x-auto px-4 py-2.5 scrollbar-hide shrink-0 select-none">
+      {!isSearchActive && (
+        <div className="scrollbar-hide flex shrink-0 gap-2 overflow-x-auto border-b border-[#F1F1F1] px-3 py-3">
           {[
             { id: 'All', name: 'All' },
             ...(catalogue?.categories || []).map((category) => ({
               id: category._id,
               name: category.name,
             })),
-          ].map((cat) => (
+          ].map((category) => (
             <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                activeCategory === cat.id
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-[#8E8E93] border-[#E9EBED] hover:text-black'
+              key={category.id}
+              type="button"
+              onClick={() => setActiveCategory(category.id)}
+              className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium ${
+                activeCategory === category.id
+                  ? 'bg-black text-white'
+                  : 'bg-[#F1F1F1] text-black'
               }`}
             >
-              {cat.name}
+              {category.name}
             </button>
           ))}
         </div>
       )}
 
-      {/* Search Query Results Subtitle */}
-      {searchQuery && products.length > 0 && (
-        <div className="px-4 py-2.5 text-left shrink-0 select-none">
-          <span className="text-xs text-[#8E8E93] font-medium">
-            {products.length === 1 ? '1 result' : `${products.length} results`}{' '}
-            for &ldquo;{searchQuery}&rdquo;
-          </span>
-        </div>
-      )}
-
-      {/* Main content list / empty states */}
-      <div className="flex-1 overflow-y-auto px-4 pb-20 flex flex-col">
-        {products.length === 0 ? (
-          searchQuery ? (
-            /* Search query empty state */
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 select-none">
-              <img
-                src="/images/search.png"
-                alt="Search products"
-                className="w-24 h-24 object-contain mb-5"
-              />
-              <h3 className="text-[17px] font-bold text-black mb-1.5">
-                Search products
-              </h3>
-              <p className="text-xs text-[#8E8E93] font-medium max-w-60 leading-relaxed">
-                Find products easily by searching with the name or any keyword
-                of the product.
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-24">
+        {isSearchActive ? (
+          <>
+            <h2
+              className={`py-3 ${
+                isSearching
+                  ? 'text-sm font-medium text-[#9CA3AF]'
+                  : 'text-[16px] font-bold'
+              }`}
+            >
+              {isSearching
+                ? `${products.length} ${products.length === 1 ? 'result' : 'results'} for “${trimmedQuery}”`
+                : 'Frequent searches'}
+            </h2>
+            {isLoading ? (
+              <p className="py-12 text-center text-sm text-[#6B7280]">
+                Loading products…
               </p>
-            </div>
-          ) : (
-            /* Database products empty state */
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-12 select-none">
-              <img
-                src="/images/box.png"
-                alt="No products"
-                className="w-24 h-24 object-contain mb-5"
-              />
-              <h3 className="text-[17px] font-bold text-black mb-1.5">
-                No products yet
-              </h3>
-              <p className="text-xs text-[#8E8E93] font-medium max-w-60 mb-6 leading-relaxed">
-                Upload your products and start collecting payments for them with
-                Firespot.
-              </p>
-              <button
-                onClick={() => openDrawer({ type: 'obtain-kit' })}
-                className="h-10 px-6 bg-black hover:bg-black/90 active:bg-black/85 text-white font-bold rounded-full text-xs flex items-center gap-1.5 transition-all shadow-sm"
-              >
-                <Plus className="w-4 h-4 stroke-[3px]" />
-                ADD PRODUCT
-              </button>
-            </div>
-          )
-        ) : (
-          /* Products list */
-          <div className="flex flex-col py-2">
-            {searchQuery ? (
-              /* Flat list for search results */
-              <div className="flex flex-col gap-4">
-                {products.map((prod) => {
-                  const cartQty = getProductCartQuantity(prod._id)
-                  return (
-                    <div
-                      key={prod._id}
-                      className="flex items-center justify-between border-b border-[#F4F6F8] pb-3 last:border-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="relative w-12 h-12 bg-[#F4F6F8] rounded-[10px] flex items-center justify-center text-gray-400 shrink-0 overflow-hidden">
-                          {prod.imageUrl ? (
-                            <img
-                              src={prod.imageUrl}
-                              alt={prod.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <ImageIcon className="w-5 h-5" />
-                          )}
-                          {cartQty > 0 && (
-                            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-[13px]">
-                              {cartQty}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col text-left justify-center">
-                          <span className="text-sm font-bold text-black leading-tight">
-                            {prod.name}
-                          </span>
-                          <span className="text-xs text-[#00000060] mt-0.5">
-                            {prod.description || 'Premium item'}
-                          </span>
-                          <span className="text-sm font-bold text-black mt-1">
-                            ₦{prod.price?.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleProductAddTapped(prod)}
-                        className="w-8 h-8 bg-[#F4F6F8] hover:bg-gray-200 active:bg-gray-300 rounded-xl flex items-center justify-center text-black font-bold transition-all"
-                      >
-                        <Plus className="w-4 h-4 stroke-[3px]" />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
+            ) : visibleProducts.length > 0 ? (
+              <div>{visibleProducts.map(renderProduct)}</div>
             ) : (
-              /* Grouped category list for browsing */
-              <div className="flex flex-col gap-6">
-                {Object.entries(getGroupedProducts()).map(
-                  ([categoryName, items]) => (
-                    <div
-                      key={categoryName}
-                      className="flex flex-col gap-3 font-satoshi"
-                    >
-                      <h3 className="text-[14px] font-bold text-black text-left capitalize px-0.5 mt-2">
-                        {categoryName}
-                      </h3>
-                      <div className="flex flex-col gap-4">
-                        {items.map((prod) => {
-                          const cartQty = getProductCartQuantity(prod._id)
-                          return (
-                            <div
-                              key={prod._id}
-                              className="flex items-center justify-between border-b border-[#F4F6F8] pb-3 last:border-0"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="relative w-12 h-12 bg-[#F4F6F8] rounded-[10px] flex items-center justify-center text-gray-400 shrink-0 overflow-hidden">
-                                  {prod.imageUrl ? (
-                                    <img
-                                      src={prod.imageUrl}
-                                      alt={prod.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <ImageIcon className="w-5 h-5" />
-                                  )}
-                                  {cartQty > 0 && (
-                                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white font-bold text-[13px]">
-                                      {cartQty}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex flex-col text-left justify-center">
-                                  <span className="text-sm font-bold text-black leading-tight">
-                                    {prod.name}
-                                  </span>
-                                  <span className="text-xs text-[#00000060] mt-0.5">
-                                    {prod.description || 'Premium item'}
-                                  </span>
-                                  <span className="text-sm font-bold text-black mt-1">
-                                    ₦{prod.price?.toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => handleProductAddTapped(prod)}
-                                className="w-8 h-8 bg-[#F4F6F8] hover:bg-gray-200 active:bg-gray-300 rounded-xl flex items-center justify-center text-black font-bold transition-all"
-                              >
-                                <Plus className="w-4 h-4 stroke-[3px]" />
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ),
-                )}
+              <div className="flex min-h-64 flex-col items-center justify-center text-center">
+                <Search size={32} className="text-[#9CA3AF]" />
+                <h3 className="mt-4 text-[16px] font-bold">
+                  No products found
+                </h3>
+                <p className="mt-1 max-w-60 text-sm text-[#6B7280]">
+                  Try another product name or keyword.
+                </p>
               </div>
             )}
-
-            {/* End of list message */}
-            {!searchQuery && (
-              <div className="text-center py-6 select-none shrink-0 border-t border-[#F4F6F8] mt-6">
-                <span className="text-xs text-[#8E8E93] font-medium">
-                  You&rsquo;ve reached the end of the list
-                </span>
-              </div>
+          </>
+        ) : isLoading ? (
+          <p className="py-12 text-center text-sm text-[#6B7280]">
+            Loading products…
+          </p>
+        ) : products.length > 0 ? (
+          <div className="space-y-3 py-3">
+            {Object.entries(getGroupedProducts()).map(
+              ([categoryName, categoryProducts]) => (
+                <section key={categoryName}>
+                  <h2 className="mb-2 text-[16px] font-bold capitalize">
+                    {categoryName}
+                  </h2>
+                  <div className="border-b border-[#F1F1F1] pb-3">
+                    {categoryProducts.map(renderProduct)}
+                  </div>
+                </section>
+              ),
             )}
+          </div>
+        ) : (
+          <div className="flex min-h-80 flex-col items-center justify-center text-center">
+            <ImageIcon size={36} className="text-[#9CA3AF]" />
+            <h3 className="mt-4 text-[16px] font-bold">No products yet</h3>
+            <p className="mt-1 max-w-60 text-sm text-[#6B7280]">
+              Add products to your catalogue before recording itemised sales.
+            </p>
+            <button
+              type="button"
+              onClick={() => openDrawer({ type: 'add-product' })}
+              className="mt-5 flex h-10 items-center gap-2 rounded-full bg-black px-5 text-xs font-bold text-white"
+            >
+              <Plus size={16} /> ADD PRODUCT
+            </button>
           </div>
         )}
       </div>

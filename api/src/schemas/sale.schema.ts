@@ -113,6 +113,8 @@ export class Sale extends Document {
     type: [{
       productId: String,
       productName: String,
+      productDescription: String,
+      productImageUrl: String,
       price: Number,
       quantity: Number,
       selectedVariant: { type: Object },
@@ -122,6 +124,8 @@ export class Sale extends Document {
   items?: Array<{
     productId: string;
     productName: string;
+    productDescription?: string;
+    productImageUrl?: string;
     price: number;
     quantity: number;
     selectedVariant?: Record<string, unknown>;

@@ -160,6 +160,8 @@ export function useSaleCheckoutFlow({
             ? undefined
             : item.id.split('-')[0],
         productName: item.name,
+        productDescription: item.description,
+        productImageUrl: item.imageUrl,
         price: item.price,
         quantity: item.quantity,
         selectedVariant: item.selectedVariant,
@@ -285,17 +287,17 @@ export function useSaleCheckoutFlow({
       return
     }
 
-    cart.setCartItems((prev) => {
-      const updated = prev
-        .map((item) =>
-          item.id === id
-            ? { ...item, quantity: Math.max(0, item.quantity + delta) }
-            : item,
-        )
-        .filter((item) => item.quantity > 0)
-      cart.setPreservedExistingTotal(null)
-      return syncDrawer(updated, cart.getEffectiveItems(updated))
-    })
+    const updated = cart.cartItems
+      .map((item) =>
+        item.id === id
+          ? { ...item, quantity: Math.max(0, item.quantity + delta) }
+          : item,
+      )
+      .filter((item) => item.quantity > 0)
+
+    cart.setCartItems(updated)
+    cart.setPreservedExistingTotal(null)
+    syncDrawer(updated, cart.getEffectiveItems(updated))
   }
 
   const openPaymentMethodStep = (
@@ -430,6 +432,8 @@ export function useSaleCheckoutFlow({
             ? undefined
             : item.id.split('-')[0],
         productName: item.name,
+        productDescription: item.description,
+        productImageUrl: item.imageUrl,
         price: item.price,
         quantity: item.quantity,
         selectedVariant: item.selectedVariant,
