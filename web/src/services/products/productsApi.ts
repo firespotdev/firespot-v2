@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/utils/axios'
+import { apiClient, publicApiClient } from '@/lib/utils/axios'
 
 export interface ProductOptionValue { id: string; value: string }
 export interface ProductOption { id: string; name: string; values: ProductOptionValue[] }
@@ -44,6 +44,11 @@ export interface CreateProductPayload {
   imageUrl?: string
 }
 
+export interface PublicCatalogue {
+  categories: ProductCategory[]
+  products: Product[]
+}
+
 const productFormData = (payload: CreateProductPayload, image: File) => {
   const formData = new FormData()
   formData.append('image', image)
@@ -58,6 +63,12 @@ const productFormData = (payload: CreateProductPayload, image: File) => {
 }
 
 export const ProductsApi = {
+  getPublicCatalogue: async (merchantId: string): Promise<PublicCatalogue> =>
+    (
+      await publicApiClient.get(
+        `/public/merchants/${encodeURIComponent(merchantId)}/catalogue`,
+      )
+    ).data,
   getProducts: async (params?: { search?: string; categoryId?: string; archived?: boolean }): Promise<Product[]> => {
     const { data } = await apiClient.get('/products', { params })
     return data

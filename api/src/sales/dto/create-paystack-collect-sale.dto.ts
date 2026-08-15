@@ -1,4 +1,11 @@
-import { IsIn, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import {
+  IsArray,
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from "class-validator";
 import { PAYSTACK_COLLECTION_CHANNELS } from "../../payments/paystack-collection-channels";
 
 export { PAYSTACK_COLLECTION_CHANNELS };
@@ -27,4 +34,8 @@ export class CreatePaystackCollectSaleDto {
   @IsOptional()
   @IsString()
   customerName?: string;
+
+  @IsOptional()
+  @IsArray()
+  items?: any[];
 }

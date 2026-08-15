@@ -64,6 +64,8 @@ import { CategoryOptionsDrawer } from './category-options-drawer'
 import { DeleteCategoryDrawer } from './delete-category-drawer'
 import { ArchiveProductDrawer } from './archive-product-drawer'
 import { ProductOptionEditorDrawer } from './product-option-editor-drawer'
+import { PayCatalogueDrawer } from './pay-catalogue-drawer'
+import { PayCurrentPurchaseDrawer } from './pay-current-purchase-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -428,6 +430,22 @@ const DRAWER_CONFIG: Record<
     contentClassName:
       'h-dvh bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
   },
+  'pay-catalogue': {
+    title: 'Select products',
+    Content: PayCatalogueDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    dismissible: false,
+    contentClassName:
+      'overflow-hidden bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh',
+  },
+  'pay-current-purchase': {
+    title: 'Current purchase',
+    Content: PayCurrentPurchaseDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'overflow-hidden bg-white',
+  },
   custom: {
     title: '',
     Content: () => null,
@@ -632,6 +650,8 @@ export function CustomDrawer() {
               'category-options',
               'delete-category',
               'archive-product',
+              'pay-catalogue',
+              'pay-current-purchase',
             ].includes(config.type)
               ? 'bg-white'
               : 'bg-[#f5f6f8]'

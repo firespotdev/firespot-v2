@@ -19,6 +19,9 @@ interface SalePayAmountScreenProps {
   onChangeAccount: () => void
   onChangePaymentMethod: () => void
   selectedRail?: PaymentRail
+  selectedItemsCount?: number
+  selectedItemsTotal?: number
+  onSelectItems: () => void
   onCopy: (amount: number, description: string) => void
   onPayInstantly: (amount: number, description: string) => void
   onShare: () => void
@@ -36,6 +39,9 @@ export function SalePayAmountScreen({
   onChangeAccount,
   onChangePaymentMethod,
   selectedRail = 'multiple',
+  selectedItemsCount = 0,
+  selectedItemsTotal = 0,
+  onSelectItems,
   onCopy,
   onPayInstantly,
   onShare,
@@ -45,8 +51,15 @@ export function SalePayAmountScreen({
   const [amountDigits, setAmountDigits] = useState('')
   const [description, setDescription] = useState('')
 
-  const amountValue = Number(amountDigits || '0')
-  const displayAmount = amountDigits ? formatInt(Number(amountDigits)) : ''
+  const hasSelectedItems = selectedItemsCount > 0
+  const amountValue = hasSelectedItems
+    ? selectedItemsTotal
+    : Number(amountDigits || '0')
+  const displayAmount = hasSelectedItems
+    ? formatInt(selectedItemsTotal)
+    : amountDigits
+      ? formatInt(Number(amountDigits))
+      : ''
   const accountName = account?.accountName || merchant.businessName
   const hasPaystackCollection = Boolean(merchant.hasPaystackCollection)
 
@@ -134,6 +147,7 @@ export function SalePayAmountScreen({
                     <input
                       inputMode="numeric"
                       value={displayAmount}
+                      readOnly={hasSelectedItems}
                       onChange={(e) =>
                         setAmountDigits(e.target.value.replace(/\D/g, ''))
                       }
@@ -146,8 +160,9 @@ export function SalePayAmountScreen({
                       <button
                         key={value}
                         type="button"
+                        disabled={hasSelectedItems}
                         onClick={() => setAmountDigits(String(value))}
-                        className="shrink-0 last:mr-2 h-8 px-2 border border-[#F1F1F1] rounded-[6px] bg-[#F4F6F8] text-sm font-medium text-black flex items-center"
+                        className="shrink-0 last:mr-2 h-8 px-2 border border-[#F1F1F1] rounded-[6px] bg-[#F4F6F8] text-sm font-medium text-black flex items-center disabled:opacity-40"
                       >
                         ₦ {formatInt(value)}
                       </button>
@@ -170,16 +185,13 @@ export function SalePayAmountScreen({
                   />
                   <button
                     type="button"
-                    onClick={() =>
-                      showNotificationToast({
-                        message: 'Coming soon',
-                        duration: 2000,
-                      })
-                    }
+                    onClick={onSelectItems}
                     className="shrink-0 h-8 px-2 rounded-[6px] border border-[#F1F1F1] bg-[#F4F6F8] text-sm font-medium text-black flex items-center gap-1"
                   >
                     <Plus size={16} color="black" />
-                    Select items
+                    {hasSelectedItems
+                      ? `${selectedItemsCount} selected`
+                      : 'Select items'}
                   </button>
                 </div>
               </div>

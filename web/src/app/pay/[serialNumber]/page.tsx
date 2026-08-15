@@ -33,6 +33,7 @@ import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
+import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -54,6 +55,9 @@ export default function PaymentPage() {
   const [selectedChannel, setSelectedChannel] = useState<string>(
     DEFAULT_PAYSTACK_CHANNEL,
   )
+  const purchaseItems = usePurchaseCartStore((state) => state.items)
+  const clearPurchase = usePurchaseCartStore((state) => state.clear)
+  const resetPurchase = usePurchaseCartStore((state) => state.reset)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const createPendingSale = useCreatePendingSale()
@@ -67,11 +71,16 @@ export default function PaymentPage() {
   const recordSaleCopy = useRecordCopy()
   const claimSalePayer = useClaimSalePayer()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const authUser = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const customerExitPath = isAuthenticated ? '/home' : '/'
   const isReturningFromPaystack =
     Boolean(saleId) && searchParams.get('payment') === 'paystack-return'
+
+  useEffect(() => {
+    resetPurchase()
+  }, [resetPurchase, serialNumber])
 
   useEffect(() => {
     if (saleId) {
@@ -583,6 +592,19 @@ export default function PaymentPage() {
     : paystackChannels[0] || selectedChannel
   const bankAccount =
     sortedBankAccounts[selectedBankIndex] || sortedBankAccounts[0]
+  const purchaseTotal = purchaseItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  )
+  const purchaseSaleItems = purchaseItems.map((item) => ({
+    productId: item.id.split('-')[0],
+    productName: item.name,
+    productDescription: item.description,
+    productImageUrl: item.imageUrl,
+    price: item.price,
+    quantity: item.quantity,
+    selectedVariant: item.selectedVariant,
+  }))
 
   const handleOpenBankDrawer = () => {
     if (
@@ -604,6 +626,16 @@ export default function PaymentPage() {
           )
           if (index !== -1) {
             setSelectedBankIndex(index)
+            usePurchaseCartStore.getState().setSelectedBankIndex(index)
+            if (
+              useDrawerStore
+                .getState()
+                .configs.some(
+                  (config) => config.type === 'pay-current-purchase',
+                )
+            ) {
+              openCurrentPurchase()
+            }
           }
         },
       },
@@ -621,16 +653,24 @@ export default function PaymentPage() {
       direction: 'bottom',
       props: {
         hasSavedCards: false,
-        selectedRail,
+        selectedRail: usePurchaseCartStore.getState().selectedRail,
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
           setSelectedRail(rail)
+          usePurchaseCartStore.getState().setSelectedRail(rail)
           if (
             rail === 'multiple' &&
             !paystackChannels.includes(selectedChannel) &&
             paystackChannels[0]
           ) {
             setSelectedChannel(paystackChannels[0])
+          }
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase(rail)
           }
         },
       },
@@ -664,6 +704,7 @@ export default function PaymentPage() {
       [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
       undefined
 
+    closeAllDrawers()
     startPaystackRedirect()
     createPaystackCollectSale.mutate(
       {
@@ -673,10 +714,12 @@ export default function PaymentPage() {
         channel,
         customerFingerprint: fingerprint,
         customerName: payerName,
+        items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
       },
       {
         onSuccess: (res) => {
           if (res.authorizationUrl) {
+            clearPurchase()
             window.location.href = res.authorizationUrl
           } else {
             cancelPaystackRedirect()
@@ -771,6 +814,7 @@ export default function PaymentPage() {
           : 'QR scan',
         targetBankName: bankName,
         serialNumber,
+        items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
       },
       {
         onSuccess: (sale: { _id?: string }) => {
@@ -784,6 +828,8 @@ export default function PaymentPage() {
           }
 
           const continueToWaiting = () => {
+            closeAllDrawers()
+            clearPurchase()
             recordCopy.mutate({ serialNumber, accountNumber, bankName })
             // Mark copied so the flow resumes at "waiting", then hand off.
             recordSaleCopy.mutate(
@@ -820,6 +866,58 @@ export default function PaymentPage() {
     )
   }
 
+  function openCurrentPurchase(
+    rail = usePurchaseCartStore.getState().selectedRail,
+  ) {
+    const currentBankIndex =
+      usePurchaseCartStore.getState().selectedBankIndex
+    const currentAccount =
+      sortedBankAccounts[currentBankIndex] || sortedBankAccounts[0]
+    openDrawer({
+      type: 'pay-current-purchase',
+      direction: 'bottom',
+      props: {
+        merchant,
+        account: currentAccount,
+        selectedRail: rail,
+        onChangePaymentMethod: handleOpenPaymentMethodDrawer,
+        onPay: handlePurchasePay,
+      },
+    })
+  }
+
+  const handleOpenCatalogue = () => {
+    openDrawer({
+      type: 'pay-catalogue',
+      direction: 'bottom',
+      props: {
+        merchant,
+        onCheckout: openCurrentPurchase,
+      },
+    })
+  }
+
+  function handlePurchasePay() {
+    const currentItems = usePurchaseCartStore.getState().items
+    const total = currentItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    )
+    const description = currentItems
+      .map((item) =>
+        item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name,
+      )
+      .join(', ')
+    if (
+      merchant?.hasPaystackCollection &&
+      usePurchaseCartStore.getState().selectedRail === 'multiple'
+    ) {
+      handlePayInstantly(total, description)
+    } else {
+      handlePayAmountCopy(total, description)
+    }
+  }
+
   if (isRedirectingToPaystack) {
     return <PaystackRedirectingScreen />
   }
@@ -831,6 +929,9 @@ export default function PaymentPage() {
       onChangeAccount={handleOpenBankDrawer}
       onChangePaymentMethod={handleOpenPaymentMethodDrawer}
       selectedRail={selectedRail}
+      selectedItemsCount={purchaseItems.length}
+      selectedItemsTotal={purchaseTotal}
+      onSelectItems={handleOpenCatalogue}
       onCopy={handlePayAmountCopy}
       onPayInstantly={handlePayInstantly}
       onShare={() => {

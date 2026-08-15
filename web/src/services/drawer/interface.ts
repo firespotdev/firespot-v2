@@ -50,6 +50,8 @@ export type DrawerContentType =
   | 'delete-category'
   | 'archive-product'
   | 'product-option-editor'
+  | 'pay-catalogue'
+  | 'pay-current-purchase'
 
 
 

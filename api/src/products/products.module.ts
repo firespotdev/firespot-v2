@@ -6,7 +6,10 @@ import {
   ProductCategorySchema,
 } from '../schemas/product-category.schema';
 import { CloudinaryService } from '../users/services/cloudinary.service';
-import { ProductsController } from "./products.controller";
+import {
+  ProductsController,
+  PublicProductsController,
+} from "./products.controller";
 import { ProductsService } from "./products.service";
 
 @Module({
@@ -16,7 +19,7 @@ import { ProductsService } from "./products.service";
       { name: ProductCategory.name, schema: ProductCategorySchema },
     ]),
   ],
-  controllers: [ProductsController],
+  controllers: [ProductsController, PublicProductsController],
   providers: [ProductsService, CloudinaryService],
   exports: [ProductsService],
 })

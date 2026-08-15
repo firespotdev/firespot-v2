@@ -219,6 +219,57 @@ export class ProductsService {
     return products.map((product) => this.serialize(product));
   }
 
+  async findPublicCatalogue(merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      throw new NotFoundException("Merchant catalogue not found");
+    }
+
+    const merchantObjectId = this.merchantObjectId(merchantId);
+    const [categories, products] = await Promise.all([
+      this.categoryModel
+        .find({ merchantId: merchantObjectId })
+        .sort({ sortOrder: 1, name: 1 })
+        .lean(),
+      this.productModel
+        .find({ merchantId: merchantObjectId, isArchived: false })
+        .sort({ name: 1 })
+        .exec(),
+    ]);
+
+    const productCounts = new Map<string, number>();
+    for (const product of products) {
+      const categoryId = String(product.categoryId || "");
+      productCounts.set(categoryId, (productCounts.get(categoryId) || 0) + 1);
+    }
+
+    return {
+      categories: categories.map((category) => ({
+        _id: category._id,
+        name: category.name,
+        sortOrder: category.sortOrder,
+        productCount: productCounts.get(String(category._id)) || 0,
+      })),
+      products: products.map((product) => {
+        const serialized = this.serialize(product);
+        return {
+          _id: serialized._id,
+          name: serialized.name,
+          description: serialized.description,
+          price: serialized.price,
+          imageUrl: serialized.imageUrl,
+          categoryId: serialized.categoryId,
+          isArchived: false,
+          options: serialized.options || [],
+          variantPriceOverrides: serialized.variantPriceOverrides || [],
+          excludedVariantKeys: serialized.excludedVariantKeys || [],
+          variants: serialized.variants || [],
+          createdAt: serialized.createdAt,
+          updatedAt: serialized.updatedAt,
+        };
+      }),
+    };
+  }
+
   async update(
     id: string,
     merchantId: string,

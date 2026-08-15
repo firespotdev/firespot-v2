@@ -51,6 +51,7 @@ export interface CreatePaystackCollectPayload {
   channel?: string;
   customerFingerprint?: string;
   customerName?: string;
+  items?: any[];
 }
 
 export interface CreatePaystackCollectResponse {

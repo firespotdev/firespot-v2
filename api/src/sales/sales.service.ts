@@ -889,6 +889,7 @@ export class SalesService {
       qrKitName: qrKit.name || dto.serialNumber,
       customerFingerprint: dto.customerFingerprint,
       paymentMethod: this.paymentMethodForPaystackChannel(dto.channel),
+      items: dto.items || [],
     })
 
     try {

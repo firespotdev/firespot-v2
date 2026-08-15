@@ -13,6 +13,7 @@ import type {
 interface Props {
   product: Product
   cartQuantity?: number
+  actionLabel?: string
   onAdd: (
     variant: {
       label: string
@@ -47,20 +48,20 @@ const selectionFromVariant = (product: Product, variant: ProductVariant) =>
 export function VariantSelectorDrawer({
   product,
   cartQuantity = 0,
+  actionLabel = 'Add to sale',
   onAdd,
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const firstVariant = product.variants[0]
-  const [selected, setSelected] = useState<
-    Record<string, ProductOptionValue>
-  >(() =>
-    firstVariant
-      ? selectionFromVariant(product, firstVariant)
-      : Object.fromEntries(
-          product.options.flatMap((option) =>
-            option.values[0] ? [[option.id, option.values[0]]] : [],
+  const [selected, setSelected] = useState<Record<string, ProductOptionValue>>(
+    () =>
+      firstVariant
+        ? selectionFromVariant(product, firstVariant)
+        : Object.fromEntries(
+            product.options.flatMap((option) =>
+              option.values[0] ? [[option.id, option.values[0]]] : [],
+            ),
           ),
-        ),
   )
   const [quantity, setQuantity] = useState(1)
 
@@ -131,15 +132,15 @@ export function VariantSelectorDrawer({
   }
 
   return (
-    <div className="flex max-h-[80dvh] w-full max-w-125 flex-col bg-white font-satoshi">
-      <header className="flex shrink-0 items-center justify-between border-b border-[#F1F1F1] px-4 py-3">
+    <div className="flex max-h-[80dvh] w-full max-w-125 flex-col bg-white">
+      <header className="flex shrink-0 items-center justify-between border-b border-[#F1F1F1] px-4 py-2">
         <span className="w-9" aria-hidden="true" />
         <h2 className="text-[16px] font-bold">Select a variant</h2>
         <button
           type="button"
           onClick={() => closeDrawer()}
           aria-label="Close variant selector"
-          className="grid h-9 w-9 place-items-center"
+          className="grid p-1.5 place-items-center"
         >
           <X size={24} />
         </button>
@@ -176,7 +177,7 @@ export function VariantSelectorDrawer({
           </div>
         </div>
 
-        <div className="space-y-6 px-4 py-5">
+        <div className="space-y-6 p-4">
           {product.options.map((option) => (
             <fieldset key={option.id}>
               <legend className="mb-2 text-sm font-medium text-[#647084]">
@@ -212,7 +213,7 @@ export function VariantSelectorDrawer({
       </div>
 
       <footer className="flex shrink-0 items-center justify-between border-t border-[#F1F1F1] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="flex h-11 items-center rounded-[12px] bg-[#F1F1F1]">
+        <div className="flex h-10 items-center rounded-[10px] bg-[#F1F1F1]">
           <button
             type="button"
             onClick={() => setQuantity((current) => Math.max(1, current - 1))}
@@ -240,7 +241,7 @@ export function VariantSelectorDrawer({
           onClick={addToSale}
           className="h-11 w-auto px-7"
         >
-          Add to sale
+          {actionLabel}
         </Button>
       </footer>
     </div>

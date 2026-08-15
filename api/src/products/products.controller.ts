@@ -115,3 +115,14 @@ export class ProductsController {
     return this.productsService.deleteCategory(id, req.user.userId)
   }
 }
+
+@ApiTags('products')
+@Controller('public/merchants')
+export class PublicProductsController {
+  constructor(private readonly productsService: ProductsService) {}
+
+  @Get(':merchantId/catalogue')
+  getCatalogue(@Param('merchantId') merchantId: string) {
+    return this.productsService.findPublicCatalogue(merchantId)
+  }
+}
