@@ -29,16 +29,13 @@ export function CacVerificationForm({
         onSubmit()
       }}
     >
-      <Label htmlFor="cac-registration-number">
-        CAC registration number
-      </Label>
+      <Label htmlFor="cac-registration-number">CAC registration number</Label>
       <Input
         ref={inputRef}
         id="cac-registration-number"
         name="cacRegistrationNumber"
         type="text"
         inputMode="text"
-        autoCapitalize="characters"
         autoComplete="off"
         spellCheck={false}
         maxLength={64}
@@ -48,8 +45,8 @@ export function CacVerificationForm({
         aria-describedby={
           error ? 'cac-registration-error' : 'cac-registration-hint'
         }
-        placeholder="Enter your CAC registration number"
-        className="font-medium uppercase"
+        placeholder="Enter your CAC number"
+        className="font-medium uppercase h-11 rounded-[12px]"
         onChange={(event) => onChange(event.target.value)}
       />
       {error ? (
@@ -60,14 +57,7 @@ export function CacVerificationForm({
         >
           {error}
         </p>
-      ) : (
-        <p
-          id="cac-registration-hint"
-          className="mt-1.5 text-xs font-medium leading-[135%] text-[#4C5563]"
-        >
-          Business name registrations are currently supported.
-        </p>
-      )}
+      ) : null}
     </form>
   )
 }

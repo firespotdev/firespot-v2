@@ -62,9 +62,6 @@ export function useSaleCheckoutFlow({
   const [hasSetInstallment, setHasSetInstallment] = useState<boolean>(false)
   const [checkoutCustomer, setCheckoutCustomer] = useState<any>(null)
   const [checkoutDueDate, setCheckoutDueDate] = useState<string>('')
-  const [checkoutMode, setCheckoutMode] = useState<'record' | 'collect'>(
-    'record',
-  )
 
   // Seed the checkout fields from the sale being edited or confirmed, once per
   // sale. useSaleCart does the same for the amount, description and items.
@@ -256,7 +253,7 @@ export function useSaleCheckoutFlow({
     amountPaidVal = checkoutAmountPaid,
     cust = checkoutCustomer,
     dueDateVal = checkoutDueDate,
-    mode: CheckoutMode = checkoutMode,
+    mode: CheckoutMode = 'record',
     installmentConfigured = hasSetInstallment,
   ) => {
     const syncDrawer = (updated: CartItem[], effective: CartItem[]) => {
@@ -307,6 +304,7 @@ export function useSaleCheckoutFlow({
     cust = checkoutCustomer,
     itemsList = cart.cartItems,
     totVal = cart.getTotal(),
+    mode: CheckoutMode = 'record',
   ) => {
     openDrawer({
       type: 'payment-method',
@@ -322,6 +320,7 @@ export function useSaleCheckoutFlow({
             cust,
             itemsList,
             totVal,
+            mode,
           )
         },
       },
@@ -335,6 +334,7 @@ export function useSaleCheckoutFlow({
     cust = checkoutCustomer,
     itemsList = cart.cartItems,
     totVal = cart.getTotal(),
+    mode: CheckoutMode = 'record',
   ) => {
     openDrawer({
       type: 'split-payment',
@@ -351,6 +351,7 @@ export function useSaleCheckoutFlow({
             cust,
             itemsList,
             totVal,
+            mode,
           )
         },
         onContinue: (newInstType: 'full' | 'part', newAmountPaid: number) => {
@@ -365,6 +366,7 @@ export function useSaleCheckoutFlow({
             cust,
             itemsList,
             totVal,
+            mode,
           )
         },
       },
@@ -378,6 +380,7 @@ export function useSaleCheckoutFlow({
     cust = checkoutCustomer,
     itemsList = cart.cartItems,
     totVal = cart.getTotal(),
+    mode: CheckoutMode = 'record',
   ) => {
     openDrawer({
       type: 'customer-select',
@@ -393,6 +396,7 @@ export function useSaleCheckoutFlow({
             cust,
             itemsList,
             totVal,
+            mode,
           )
         },
         onSelect: (newCust: any) => {
@@ -406,7 +410,7 @@ export function useSaleCheckoutFlow({
             itemsList,
             totVal,
             checkoutDueDate,
-            checkoutMode,
+            mode,
             true,
           )
         },
@@ -476,7 +480,7 @@ export function useSaleCheckoutFlow({
     itemsList = cart.cartItems,
     totVal = cart.getTotal(),
     dueDateVal = checkoutDueDate,
-    mode: CheckoutMode = checkoutMode,
+    mode: CheckoutMode = 'record',
     installmentConfigured = hasSetInstallment,
   ) => {
     const reopenWith = (
@@ -599,6 +603,7 @@ export function useSaleCheckoutFlow({
               cust,
               itemsList,
               totVal,
+              mode,
             )
             return
           }
@@ -622,7 +627,6 @@ export function useSaleCheckoutFlow({
   }
 
   const handleRecordTapped = () => {
-    setCheckoutMode('record')
     const updatedCart = cart.getEffectiveItems()
     const totVal = cart.getTotal()
 
@@ -634,11 +638,11 @@ export function useSaleCheckoutFlow({
       checkoutCustomer,
       updatedCart,
       totVal,
+      'record',
     )
   }
 
   const handleCollectTapped = () => {
-    setCheckoutMode('collect')
     const updatedCart = cart.getEffectiveItems()
     const totalVal = cart.getTotal()
 
