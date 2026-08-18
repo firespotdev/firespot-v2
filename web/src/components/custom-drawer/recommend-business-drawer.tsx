@@ -147,7 +147,7 @@ export function RecommendBusinessDrawer({
               <QRCodeSVG
                 value={recommendUrl}
                 size={280}
-                level="L"
+                level="H"
                 marginSize={0}
                 fgColor="url(#recommend-business-qr-gradient)"
                 className="h-auto w-full rounded-[14px]"
@@ -162,12 +162,12 @@ export function RecommendBusinessDrawer({
             )}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="relative">
-                <div className="flex h-[63px] w-[63px] items-center justify-center overflow-hidden">
+                <div className="flex h-[70px] w-[70px] items-center justify-center overflow-hidden">
                   <Image
                     src="/images/recommend.png"
                     alt="Profile"
-                    width={63}
-                    height={63}
+                    width={70}
+                    height={70}
                     className="h-full w-full object-cover"
                   />
                 </div>

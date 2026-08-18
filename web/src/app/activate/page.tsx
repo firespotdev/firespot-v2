@@ -665,7 +665,7 @@ function ActivatePageContent() {
                           <QRCodeSVG
                             value="https://lite.firespot.co"
                             size={180}
-                            level="L"
+                            level="H"
                             includeMargin={false}
                           />
                         </div>
@@ -676,7 +676,7 @@ function ActivatePageContent() {
                         <QRCodeSVG
                           value="https://lite.firespot.co"
                           size={192}
-                          level="L"
+                          level="H"
                           includeMargin={false}
                         />
                       </div>

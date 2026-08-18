@@ -332,7 +332,7 @@ export default function PaymentPage() {
                         <QRCodeSVG
                           value="https://lite.firespot.co"
                           size={180}
-                          level="L"
+                          level="H"
                           includeMargin={false}
                         />
                       </div>
@@ -342,7 +342,7 @@ export default function PaymentPage() {
                       <QRCodeSVG
                         value="https://lite.firespot.co"
                         size={192}
-                        level="L"
+                        level="H"
                         includeMargin={false}
                       />
                     </div>

@@ -117,7 +117,7 @@ export function ShareTransferDrawer({
               <QRCodeSVG
                 value={shareUrl}
                 size={240}
-                level="L"
+                level="H"
                 fgColor="#000000"
                 includeMargin={false}
                 style={{ width: '100%', height: 'auto' }}
@@ -125,14 +125,14 @@ export function ShareTransferDrawer({
             </div>
 
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="relative h-[63px] w-[63px]">
+              <div className="relative w-[70px] h-[70px]">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 shadow-lg border-white bg-white">
                   {profilePhotoUrl ? (
                     <Image
                       src={profilePhotoUrl}
                       alt="Business Logo"
-                      width={63}
-                      height={63}
+                      width={70}
+                      height={70}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -147,8 +147,8 @@ export function ShareTransferDrawer({
                   <Image
                     src="/images/firespot_logo.png"
                     alt="Firespot Logo"
-                    width={15}
-                    height={15}
+                    width={16}
+                    height={16}
                   />
                 </div>
               </div>
