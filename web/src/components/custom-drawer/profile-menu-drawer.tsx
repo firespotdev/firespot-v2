@@ -671,37 +671,37 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                       profile?.profilePhotoUrl || '/images/default_avatar.png',
                     x: undefined,
                     y: undefined,
-                    height: 20,
-                    width: 20,
+                    height: 18,
+                    width: 18,
                     excavate: true,
                   }}
                 />
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="relative">
-                    <div className="flex h-[35px] w-[35px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#CED7E1] shadow-sm">
+                    <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#CED7E1] shadow-sm">
                       {profile?.profilePhotoUrl ? (
                         <Image
                           src={profile.profilePhotoUrl}
                           alt="Profile"
-                          width={22}
-                          height={22}
+                          width={20}
+                          height={20}
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <Image
                           src="/icons/store_solid.svg"
                           alt="store icon"
-                          width={22}
-                          height={22}
+                          width={20}
+                          height={20}
                         />
                       )}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 h-[14px] w-[14px] rounded-[4px] border border-[#F4F6F8] bg-white">
+                    <div className="absolute -bottom-1 -right-1 h-[13px] w-[13px] rounded-[4px] border border-[#F4F6F8] bg-white">
                       <Image
                         src="/images/firespot_logo.png"
                         alt="logo"
-                        width={12}
-                        height={12}
+                        width={11}
+                        height={11}
                         className="h-full w-full rounded-[3px] object-contain"
                       />
                     </div>

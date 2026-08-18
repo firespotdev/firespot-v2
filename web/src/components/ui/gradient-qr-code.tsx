@@ -33,7 +33,7 @@ export function GradientQRCode({
   className,
   centerImageUrl,
   centerImageAlt = 'Merchant',
-  centerImageSize = 35,
+  centerImageSize = 32,
 }: GradientQRCodeProps) {
   const gradientId = useId()
 
