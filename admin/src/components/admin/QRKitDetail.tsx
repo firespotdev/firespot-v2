@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import {
   useQRCodeSVG,
   useAssignQRKits,
@@ -65,7 +65,13 @@ function StatusBadge({
 export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
   const { data: svgData, isLoading } = useQRCodeSVG(qrKit.qrCodeSvgUrl)
   const { pricing } = useQRKitPricing()
-  const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
+  const brandedSvg = useMemo(
+    () =>
+      svgData
+        ? applyBrandingToSVG(svgData, GRADIENT_START, GRADIENT_END, null, 20)
+        : null,
+    [svgData],
+  )
   const [isDownloading, setIsDownloading] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const assignQRKits = useAssignQRKits()
@@ -80,19 +86,6 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
       ? qrKit.agentId
       : qrKit.agentId?._id || null
 
-  useEffect(() => {
-    if (svgData) {
-      const branded = applyBrandingToSVG(
-        svgData,
-        GRADIENT_START,
-        GRADIENT_END,
-        null,
-        20,
-      )
-      setBrandedSvg(branded)
-    }
-  }, [svgData])
-
   const handleDownloadPDF = async () => {
     if (!cardRef.current || isDownloading) return
 
@@ -100,8 +93,8 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
     try {
       await downloadElementAsPDF(cardRef.current, {
         filename: `firespot-qr-kit-${qrKit.serialNumber}.pdf`,
-        scale: 3,
-        backgroundColor: '#000000',
+        scale: 4,
+        backgroundColor: '#FFFFFF',
       })
       adminToast.success('PDF downloaded successfully')
     } catch (error) {
@@ -395,7 +388,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-0.5 w-1/2">
                           <p className="text-white text-[6px]">
                             <span className="text-[#FFFFFF80]">or go to </span>
-                            pay.firespot.co
+                            lite.firespot.co
                           </p>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img

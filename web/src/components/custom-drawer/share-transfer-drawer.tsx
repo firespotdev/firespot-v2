@@ -125,14 +125,14 @@ export function ShareTransferDrawer({
             </div>
 
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="relative w-[70px] h-[70px]">
+              <div className="relative h-[81px] w-[81px]">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 shadow-lg border-white bg-white">
                   {profilePhotoUrl ? (
                     <Image
                       src={profilePhotoUrl}
                       alt="Business Logo"
-                      width={70}
-                      height={70}
+                      width={81}
+                      height={81}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -147,8 +147,8 @@ export function ShareTransferDrawer({
                   <Image
                     src="/images/firespot_logo.png"
                     alt="Firespot Logo"
-                    width={16}
-                    height={16}
+                    width={18}
+                    height={18}
                   />
                 </div>
               </div>

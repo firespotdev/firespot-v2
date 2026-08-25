@@ -241,31 +241,31 @@ export function PersonalProfileMenuDrawer({
                 />
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="relative">
-                    <div className="flex h-[35px] w-[35px] items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#CED7E1] shadow-xs">
+                    <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#CED7E1] shadow-xs">
                       {user?.profilePhotoUrl ? (
                         <Image
                           src={user.profilePhotoUrl}
                           alt="Profile"
-                          width={22}
-                          height={22}
+                          width={25}
+                          height={25}
                           className="h-full w-full object-cover"
                         />
                       ) : (
                         <Image
                           src="/images/default_avatar.png"
                           alt="Default avatar"
-                          width={22}
-                          height={22}
+                          width={25}
+                          height={25}
                           className="h-full w-full object-cover"
                         />
                       )}
                     </div>
-                    <div className="absolute -bottom-1 -right-1 h-[14px] w-[14px] rounded-[4px] border border-[#F4F6F8] bg-white">
+                    <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-[4px] border border-[#F4F6F8] bg-white">
                       <Image
                         src="/images/firespot_logo.png"
                         alt="Firespot"
-                        width={12}
-                        height={12}
+                        width={14}
+                        height={14}
                         className="h-full w-full rounded-[3px] object-contain"
                       />
                     </div>

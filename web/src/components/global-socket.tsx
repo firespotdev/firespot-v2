@@ -92,7 +92,8 @@ export function GlobalSocket() {
         .configs.some(
           (c) =>
             c.type === 'collect-payment' &&
-            (c.props as any)?.sale?._id === saleId,
+            (c.props as { sale?: { _id?: string } } | undefined)?.sale?._id ===
+              saleId,
         )
 
     // Opens the collect drawer for a customer-initiated sale (its view adapts
@@ -117,6 +118,11 @@ export function GlobalSocket() {
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
     }
 
+    const syncSale = (sale: Sale) => {
+      if (!sale._id) return
+      queryClient.setQueryData(['sale', String(sale._id)], sale)
+    }
+
     const handleSalePending = (sale: Sale) => {
       // Merchant-initiated collect sales are handled in their own drawer.
       if (sale.isCollection) return
@@ -134,7 +140,7 @@ export function GlobalSocket() {
       }
 
       showNewPaymentToast({
-        time: formatPaymentTime((sale as any).createdAt),
+        time: formatPaymentTime(sale.createdAt),
         // Checkmark takes the merchant into the confirm flow (prefilled amount
         // + description, records onto this existing sale).
         onView: () =>
@@ -187,6 +193,7 @@ export function GlobalSocket() {
     }
 
     const handlePaymentProcessing = (sale: Sale) => {
+      syncSale(sale)
       if (isViewingSale(sale._id)) {
         invalidateSales()
         return
@@ -199,6 +206,7 @@ export function GlobalSocket() {
     }
 
     const handleSaleConfirmed = (sale: Sale) => {
+      syncSale(sale)
       const saleId = String(sale._id || '')
       if (saleId && confirmedSaleIdsRef.current.has(saleId)) {
         invalidateSales()

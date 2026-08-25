@@ -11,6 +11,7 @@ import {
   RecordSalePayload,
   EditSalePayload,
 } from './salesApi';
+import type { Sale } from './interface';
 
 export const useCreatePendingSale = () => {
   return useMutation({
@@ -115,11 +116,22 @@ export const useInfiniteSales = (
   });
 };
 
-export const useSale = (id?: string) => {
+export const useSale = (
+  id?: string,
+  options?: {
+    initialData?: Sale;
+    recoveryIntervalMs?: number | false;
+  },
+) => {
   return useQuery({
     queryKey: ['sale', id],
     queryFn: () => SalesApi.getSale(id!),
     enabled: !!id,
+    initialData: options?.initialData,
+    refetchInterval: (query) =>
+      query.state.data?.status === 'PENDING'
+        ? options?.recoveryIntervalMs || false
+        : false,
   });
 };
 

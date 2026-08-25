@@ -24,6 +24,14 @@ export interface PublicSaleMerchant {
   profilePhotoUrl?: string;
 }
 
+export interface SaleCustomer {
+  _id?: string;
+  name?: string;
+  businessName?: string;
+  phoneNumber?: string;
+  profilePhotoUrl?: string;
+}
+
 /** Limited sale view served by the public GET /sales/:id/public endpoint */
 export interface PublicSale {
   id: string;
@@ -57,7 +65,7 @@ export interface PublicSale {
 
 export interface Sale {
   _id: string;
-  merchantId: any;
+  merchantId: CustomerSaleMerchant | string;
   customerFingerprint?: string;
   customerType?: CustomerType;
   source?: SaleSource;
@@ -79,7 +87,7 @@ export interface Sale {
   amountPaid?: number;
   totalDue?: number;
   balanceOwed?: number;
-  customerId?: any;
+  customerId?: SaleCustomer | string;
   customerUserId?: string;
   customerName?: string;
   customerPhone?: string;
@@ -88,6 +96,8 @@ export interface Sale {
   receiptUrl?: string;
   receiptPublicId?: string;
   customerMarkedPaidAt?: string | Date;
+  isScanned?: boolean;
+  isCopied?: boolean;
   cancelledBy?: 'merchant' | 'customer';
   dueDate?: string | Date;
   isCollection?: boolean;

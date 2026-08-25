@@ -118,7 +118,7 @@ export class SalesService {
 
   private paystackCallbackUrl(sale: SaleDocument): string {
     const frontendUrl = (
-      process.env.FRONTEND_URL || 'https://pay.firespot.co'
+      process.env.FRONTEND_URL || 'https://lite.firespot.co'
     ).replace(/\/$/, '')
     return `${frontendUrl}/pay/${encodeURIComponent(sale.serialNumber || '')}?saleId=${encodeURIComponent(String(sale._id))}&payment=paystack-return`
   }
@@ -211,7 +211,7 @@ export class SalesService {
     if (!merchant.fullPhoneNumber) return
 
     const frontendUrl = (
-      process.env.FRONTEND_URL || 'https://pay.firespot.co'
+      process.env.FRONTEND_URL || 'https://lite.firespot.co'
     ).replace(/\/$/, '')
     const message =
       `Firespot: A ₦${attemptedAmount.toLocaleString('en-NG')} payment failed because only ` +
@@ -1611,6 +1611,7 @@ export class SalesService {
         filter.status = { $in: ['CONFIRMED', 'OUTSTANDING'] }
       } else if (upperStatus === 'UNCONFIRMED' || upperStatus === 'PENDING') {
         filter.status = 'PENDING'
+        filter.paymentRail = { $ne: 'paystack' }
       } else if (upperStatus === 'ARCHIVED' || upperStatus === 'CANCELLED') {
         filter.$or = [
           { isArchived: true },
@@ -1811,6 +1812,7 @@ export class SalesService {
       merchantId: merchantObjectId,
       status: 'PENDING',
       isArchived: { $ne: true },
+      paymentRail: { $ne: 'paystack' },
     }
     if (query?.mode === 'recorded') {
       pendingFilter.isCollection = { $ne: true }
@@ -2028,6 +2030,11 @@ export class SalesService {
         'Only an active pending sale can be confirmed',
       )
     }
+    if (sale.paymentRail === 'paystack') {
+      throw new UnprocessableEntityException(
+        'Paystack payments are confirmed automatically',
+      )
+    }
 
     return this.recordSale(merchantId, saleId, this.oneTapRecordPayload(sale))
   }
@@ -2039,6 +2046,7 @@ export class SalesService {
         merchantId: merchantObjectId,
         status: 'PENDING',
         isArchived: { $ne: true },
+        paymentRail: { $ne: 'paystack' },
       })
       .sort({ createdAt: 1 })
       .exec()
@@ -2383,6 +2391,11 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
+    if (sale.status === 'PENDING' && sale.paymentRail === 'paystack') {
+      throw new UnprocessableEntityException(
+        'A pending Paystack payment cannot be archived',
+      )
+    }
     sale.isArchived = true
     return sale.save()
   }
@@ -2393,6 +2406,7 @@ export class SalesService {
         merchantId: new Types.ObjectId(merchantId),
         status: 'PENDING',
         isArchived: { $ne: true },
+        paymentRail: { $ne: 'paystack' },
       },
       { $set: { isArchived: true } },
     )

@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef, useState } from 'react'
 import { Share, Download, Copy, Check } from 'lucide-react'
 import { Button, TagFooter, CircularIconButton } from '../ui'
 import { format } from 'date-fns'
@@ -8,6 +9,7 @@ import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatCurrency } from '@/lib/utils'
 import { getSaleDescription } from '@/lib/utils/sales'
+import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 
 interface SaleReceiptDrawerProps {
   sale: PublicSale
@@ -20,13 +22,15 @@ export function SaleReceiptDrawer({
   merchant,
   closeDrawer,
 }: SaleReceiptDrawerProps) {
+  const receiptRef = useRef<HTMLDivElement>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
   if (!sale) return null
 
   const formatDate = (date: string | Date | undefined) => {
     if (!date) return 'N/A'
     try {
       return format(new Date(date), 'MMMM do, yyyy . h:mm a')
-    } catch (e) {
+    } catch {
       return String(date)
     }
   }
@@ -49,6 +53,29 @@ export function SaleReceiptDrawer({
     }
   }
 
+  const handleDownload = async () => {
+    if (!receiptRef.current || isDownloading) return
+    setIsDownloading(true)
+    try {
+      await downloadElementAsPNG(receiptRef.current, {
+        filename: `firespot-receipt-${sale.reference || sale.id}.png`,
+        scale: 3,
+        backgroundColor: '#FFFFFF',
+      })
+      showNotificationToast({
+        message: 'Receipt downloaded successfully',
+        mode: 'success',
+      })
+    } catch {
+      showNotificationToast({
+        message: 'Failed to download receipt. Please try again.',
+        mode: 'error',
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full font-satoshi bg-white">
       {/* Header */}
@@ -59,7 +86,7 @@ export function SaleReceiptDrawer({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-center pt-8 px-4">
+        <div ref={receiptRef} className="flex flex-col items-center pt-8 px-4">
           {/* Status Icon Ring */}
           <div className="w-16 h-16 rounded-full border-4 border-[#24C166] flex items-center justify-center mb-4 bg-white shrink-0">
             <Check className="text-[#24C166]" size={32} strokeWidth={3} />
@@ -78,7 +105,10 @@ export function SaleReceiptDrawer({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2 justify-center mb-6 w-full">
+          <div
+            data-export-exclude
+            className="flex gap-2 justify-center mb-6 w-full"
+          >
             <Button
               variant="outline"
               className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
@@ -90,10 +120,11 @@ export function SaleReceiptDrawer({
             <Button
               variant="outline"
               className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
-              onClick={() => window.print()}
+              onClick={handleDownload}
+              disabled={isDownloading}
             >
               <Download size={16} className="text-black" />
-              DOWNLOAD RECEIPT
+              {isDownloading ? 'GENERATING…' : 'DOWNLOAD RECEIPT'}
             </Button>
           </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import {
   Share,
@@ -8,7 +8,6 @@ import {
   Heart,
   Copy,
   Check,
-  MoreVertical,
   MoreHorizontal,
 } from 'lucide-react'
 import { useRouter } from '@bprogress/next/app'
@@ -29,6 +28,7 @@ import {
 import { resolveSaleMerchant } from '@/lib/utils/customer-sale'
 import { formatCurrency } from '@/lib/utils'
 import { getSaleDescription } from '@/lib/utils/sales'
+import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 
 interface ActivityDetailsDrawerProps {
   sale: CustomerSale
@@ -63,6 +63,8 @@ function DetailRow({
 export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
   const router = useRouter()
   const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
+  const receiptRef = useRef<HTMLDivElement>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const merchant = resolveSaleMerchant(sale)
   const businessName = merchant.businessName || 'Merchant'
@@ -143,6 +145,29 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
     }
   }
 
+  const handleDownloadReceipt = async () => {
+    if (!receiptRef.current || isDownloading) return
+    setIsDownloading(true)
+    try {
+      await downloadElementAsPNG(receiptRef.current, {
+        filename: `firespot-receipt-${reference || sale._id}.png`,
+        scale: 3,
+        backgroundColor: '#FFFFFF',
+      })
+      showNotificationToast({
+        message: 'Receipt downloaded successfully',
+        mode: 'success',
+      })
+    } catch {
+      showNotificationToast({
+        message: 'Failed to download receipt. Please try again.',
+        mode: 'error',
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full font-satoshi bg-white">
       {/* Header */}
@@ -153,13 +178,16 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
           icon={<MoreHorizontal size={20} />}
           size="sm"
           onClick={() =>
-            openDrawer({ type: 'activity-options', props: { sale } })
+            openDrawer({
+              type: 'activity-options',
+              props: { sale, onDownloadReceipt: handleDownloadReceipt },
+            })
           }
         />
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-center pt-8 px-4">
+        <div ref={receiptRef} className="flex flex-col items-center pt-8 px-4">
           {/* Merchant avatar */}
           <div className="w-20 h-20 rounded-full bg-[#E9EDF1] border border-[#F1F1F1] overflow-hidden flex items-center justify-center shrink-0">
             {merchant.profilePhotoUrl ? (
@@ -189,7 +217,10 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
           </p>
 
           {/* Action buttons */}
-          <div className="flex gap-2 justify-start w-full overflow-x-auto scrollbar-hide mt-5 mb-6 px-0.5">
+          <div
+            data-export-exclude
+            className="flex gap-2 justify-start w-full overflow-x-auto scrollbar-hide mt-5 mb-6 px-0.5"
+          >
             <Button
               variant="outline"
               onClick={handleShare}

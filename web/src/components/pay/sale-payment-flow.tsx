@@ -26,6 +26,7 @@ import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import { PaystackWaitingScreen } from './paystack-waiting-screen'
 import { PaystackRedirectingScreen } from './paystack-redirecting-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
+import { useFeedbackEligibility } from '@/services/feedback'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 type SaleStep = 'request' | 'waiting' | 'paystack' | 'success'
@@ -96,7 +97,7 @@ export function SalePaymentFlow({
     ),
   )
 
-  const [step, setStep] = useState<SaleStep>(() => deriveStep(sale))
+  const [hasCopiedAccount, setHasCopiedAccount] = useState(false)
   const [selectedRail, setSelectedRail] = useState<PaymentRail>(() =>
     merchant.hasPaystackCollection && sale.paymentRail !== 'manual_transfer'
       ? 'multiple'
@@ -112,6 +113,15 @@ export function SalePaymentFlow({
     sale.sourceBankName || null,
   )
   const hasReconciledReturn = useRef(false)
+  const saleStep = deriveStep(sale)
+  const step =
+    saleStep === 'request' && hasCopiedAccount ? 'waiting' : saleStep
+  const shouldLoadFeedbackEligibility =
+    step === 'success' && sale.status === 'CONFIRMED'
+  const feedbackEligibility = useFeedbackEligibility(
+    shouldLoadFeedbackEligibility ? sale.id : undefined,
+    shouldLoadFeedbackEligibility ? sale.serialNumber : undefined,
+  )
 
   const account: BankAccount | undefined =
     sortedBankAccounts[selectedAccountIndex] || sortedBankAccounts[0]
@@ -148,7 +158,6 @@ export function SalePaymentFlow({
   useSaleSocket(sale.id, {
     onConfirmed: () => {
       invalidateSale()
-      setStep('success')
     },
     onCancelled: handleCancelled,
     onReceiptUploaded: invalidateSale,
@@ -156,17 +165,14 @@ export function SalePaymentFlow({
     onPaymentDeclared: invalidateSale,
   })
 
-  // Polling fallback: react to status changes on the fetched sale
+  // Polling fallback: react to cancellation on the fetched sale. Other sale
+  // state changes are derived directly during render.
   useEffect(() => {
-    if (sale.status === 'CONFIRMED') {
-      setStep('success')
-    } else if (sale.status === 'CANCELLED') {
+    if (sale.status === 'CANCELLED') {
       handleCancelled()
-    } else {
-      setStep(deriveStep(sale))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sale.status, sale.paymentRail, sale.paystackAttemptStatus])
+  }, [sale.status])
 
   useEffect(() => {
     if (
@@ -211,10 +217,11 @@ export function SalePaymentFlow({
           clearActiveTransaction()
           router.replace(customerExitPath)
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
           showNotificationToast({
             message:
-              error?.response?.data?.message ||
+              (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message ||
               'Could not end this transaction. Please try again.',
           })
         },
@@ -251,7 +258,7 @@ export function SalePaymentFlow({
       duration: 2000,
     })
     void onTrackCopy(account.accountNumber, account.bankName)
-    setStep('waiting')
+    setHasCopiedAccount(true)
   }
 
   const startPaystackPayment = (channel: string) => {
@@ -400,10 +407,18 @@ export function SalePaymentFlow({
   }
 
   if (step === 'success') {
+    if (
+      sale.status !== 'CONFIRMED' ||
+      (shouldLoadFeedbackEligibility && !feedbackEligibility.isFetched)
+    ) {
+      return <LoadingPage innerBg="#F4F6F8" />
+    }
+
     return (
       <SaleSuccessScreen
         sale={sale}
         merchant={merchant}
+        feedbackEligibility={feedbackEligibility.data}
         onClose={handleFinish}
       />
     )

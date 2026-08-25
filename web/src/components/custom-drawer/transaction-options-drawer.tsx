@@ -5,8 +5,6 @@ import {
   Download,
   PencilLine,
   Share,
-  Mail,
-  Wallet,
   RotateCcw,
   PlusCircle,
   Bell,
@@ -26,11 +24,13 @@ import {
 interface TransactionOptionsDrawerProps {
   sale: Sale
   closeDrawer: () => void
+  onDownloadReceipt?: () => Promise<void> | void
 }
 
 export function TransactionOptionsDrawer({
   sale,
   closeDrawer,
+  onDownloadReceipt,
 }: TransactionOptionsDrawerProps) {
   const router = useRouter()
   const { openDrawer, closeDrawer: storeCloseDrawer } = useDrawerStore()
@@ -49,11 +49,12 @@ export function TransactionOptionsDrawer({
       sale.balanceOwed > 0 &&
       !sale.isPaidInFull)
   const isArchived = merchantStatus === 'Archived'
-  const creationDate = new Date(
-    sale.createdAt || sale.recordedAt || Date.now(),
-  ).getTime()
+  const creationSource = sale.createdAt || sale.recordedAt
+  const creationDate = creationSource ? new Date(creationSource).getTime() : 0
+  // eslint-disable-next-line react-hooks/purity
+  const openedAt = Date.now()
   const isEditWindowOpen =
-    !sale.hasBeenEdited && Date.now() - creationDate <= 24 * 60 * 60 * 1000
+    !sale.hasBeenEdited && openedAt - creationDate <= 24 * 60 * 60 * 1000
   const isEditable = isConfirmed && isEditWindowOpen && !isArchived
 
   return (
@@ -124,9 +125,17 @@ export function TransactionOptionsDrawer({
                 <Download size={24} className="text-[#111827] stroke-[2.2px]" />
               }
               title="Download receipt"
-              onClick={() => {
-                closeDrawer()
-                window.print()
+              onClick={async () => {
+                if (onDownloadReceipt) {
+                  await onDownloadReceipt()
+                  closeDrawer()
+                  return
+                }
+                storeCloseDrawer('transaction-options')
+                openDrawer({
+                  type: 'transaction-details',
+                  props: { sale, autoDownloadReceipt: true },
+                })
               }}
             />
           </ActionList>

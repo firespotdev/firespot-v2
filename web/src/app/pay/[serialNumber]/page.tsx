@@ -491,7 +491,7 @@ export default function PaymentPage() {
                 <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-0.5 w-1/2">
                   <p className="text-white text-[6px] font-sofia">
                     <span className="text-[#FFFFFF80]">or go to </span>
-                    pay.firespot.co
+                    lite.firespot.co
                   </p>
                   <Image
                     src="/images/world.png"
@@ -869,8 +869,7 @@ export default function PaymentPage() {
   function openCurrentPurchase(
     rail = usePurchaseCartStore.getState().selectedRail,
   ) {
-    const currentBankIndex =
-      usePurchaseCartStore.getState().selectedBankIndex
+    const currentBankIndex = usePurchaseCartStore.getState().selectedBankIndex
     const currentAccount =
       sortedBankAccounts[currentBankIndex] || sortedBankAccounts[0]
     openDrawer({

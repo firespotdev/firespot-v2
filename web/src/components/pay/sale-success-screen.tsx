@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { Button, TagFooter } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
-import { useFeedbackEligibility } from '@/services/feedback'
+import type { FeedbackEligibility } from '@/services/feedback'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatConfirmationDate } from './utils'
@@ -13,19 +13,17 @@ import { FeedbackPrompt } from './feedback-prompt'
 interface SaleSuccessScreenProps {
   sale: PublicSale
   merchant: MerchantProfile
+  feedbackEligibility?: FeedbackEligibility
   onClose: () => void
 }
 
 export function SaleSuccessScreen({
   sale,
   merchant,
+  feedbackEligibility,
   onClose,
 }: SaleSuccessScreenProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
-  const { data: feedbackEligibility } = useFeedbackEligibility(
-    sale.id,
-    sale.serialNumber,
-  )
 
   const merchantName =
     sale.merchant?.businessName || merchant.businessName || 'Your vendor'

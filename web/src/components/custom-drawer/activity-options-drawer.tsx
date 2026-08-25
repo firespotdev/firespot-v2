@@ -31,9 +31,13 @@ import {
 interface ActivityOptionsDrawerProps {
   sale: CustomerSale
   closeDrawer: () => void
+  onDownloadReceipt?: () => Promise<void> | void
 }
 
-export function ActivityOptionsDrawer({ sale }: ActivityOptionsDrawerProps) {
+export function ActivityOptionsDrawer({
+  sale,
+  onDownloadReceipt,
+}: ActivityOptionsDrawerProps) {
   const router = useRouter()
   const { closeDrawer: storeCloseDrawer, closeAllDrawers } = useDrawerStore()
 
@@ -154,9 +158,9 @@ export function ActivityOptionsDrawer({ sale }: ActivityOptionsDrawerProps) {
           <ActionListItem
             icon={<DownloadSimpleIcon size={24} className="text-[#111827] " />}
             title="Download receipt"
-            onClick={() => {
+            onClick={async () => {
+              await onDownloadReceipt?.()
               close()
-              window.print()
             }}
           />
           <ActionListItem

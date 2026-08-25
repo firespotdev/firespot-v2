@@ -598,6 +598,12 @@ describe("SalesService amount invariants", () => {
         count: 2,
         totalAmount: 3500,
       });
+      expect(saleModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "PENDING",
+          paymentRail: { $ne: "paystack" },
+        }),
+      );
       expect(recordSale).toHaveBeenCalledTimes(2);
       expect(recordSale).toHaveBeenCalledWith(
         merchantId,
@@ -622,9 +628,46 @@ describe("SalesService amount invariants", () => {
         expect.objectContaining({
           status: "PENDING",
           isArchived: { $ne: true },
+          paymentRail: { $ne: "paystack" },
         }),
         { $set: { isArchived: true } },
       );
+    });
+
+    it("does not let a merchant confirm a pending Paystack payment", async () => {
+      const service = createService({
+        findOne: jest.fn().mockResolvedValue({
+          status: "PENDING",
+          paymentRail: "paystack",
+          isArchived: false,
+        }),
+      });
+
+      await expect(
+        service.confirmSale(
+          "507f1f77bcf86cd799439012",
+          "507f1f77bcf86cd799439013",
+        ),
+      ).rejects.toThrow("Paystack payments are confirmed automatically");
+    });
+
+    it("does not let a merchant archive a pending Paystack payment", async () => {
+      const sale = {
+        status: "PENDING",
+        paymentRail: "paystack",
+        save: jest.fn(),
+      };
+      const service = createService({
+        findOne: jest.fn().mockResolvedValue(sale),
+      });
+
+      await expect(
+        service.archiveSale(
+          "507f1f77bcf86cd799439012",
+          "507f1f77bcf86cd799439013",
+        ),
+      ).rejects.toThrow("A pending Paystack payment cannot be archived");
+      expect(sale.save).not.toHaveBeenCalled();
     });
   });
 
@@ -882,6 +925,39 @@ describe("SalesService amount invariants", () => {
   describe("recent sales queries", () => {
     const merchantId = "507f1f77bcf86cd799439012";
 
+    it("excludes Paystack payments from the unconfirmed view", async () => {
+      const find = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockReturnValue({
+              populate: jest.fn().mockReturnValue({
+                exec: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          }),
+        }),
+      });
+      const countDocuments = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(0),
+      });
+      const service = createService({ find, countDocuments });
+
+      await service.getSales(merchantId, { status: "PENDING" });
+
+      expect(find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "PENDING",
+          paymentRail: { $ne: "paystack" },
+        }),
+      );
+      expect(countDocuments).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "PENDING",
+          paymentRail: { $ne: "paystack" },
+        }),
+      );
+    });
+
     it("returns confirmed and outstanding sales for the recorded view", async () => {
       const execSales = jest.fn().mockResolvedValue([]);
       const find = jest.fn().mockReturnValue({
@@ -933,6 +1009,7 @@ describe("SalesService amount invariants", () => {
             $match: expect.objectContaining({
               status: "PENDING",
               isArchived: { $ne: true },
+              paymentRail: { $ne: "paystack" },
             }),
           },
         ]),

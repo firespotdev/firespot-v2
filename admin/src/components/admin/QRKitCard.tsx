@@ -183,7 +183,7 @@ const QRKitCard = forwardRef<HTMLDivElement, QRKitCardProps>(function QRKitCard(
         <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-0.5 w-1/2">
           <p className="text-white text-[6px]">
             <span className="text-[#FFFFFF80]">or go to </span>
-            pay.firespot.co
+            lite.firespot.co
           </p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/world.png" alt="world" width={8.8} height={8.8} />

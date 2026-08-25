@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import { useRouter } from '@bprogress/next/app'
-import { Button, EmptyState, Input } from '@/components/ui'
+import { Button, EmptyState, Input, LoaderCircle } from '@/components/ui'
 import { useProductCategories, useProducts } from '@/services/products/hooks'
 import { useDrawerStore } from '@/services/drawer'
 
@@ -71,6 +71,15 @@ export default function ProductsPage() {
             </button>
           )}
         </div>
+        {!isSearching && products.isLoading && (
+          <div
+            role="status"
+            aria-label="Loading products"
+            className="flex min-h-[65dvh] items-center justify-center"
+          >
+            <LoaderCircle />
+          </div>
+        )}
         {!isSearching && !hasProducts && !products.isLoading && (
           <div className="flex min-h-[65dvh] items-center">
             <EmptyState
@@ -97,8 +106,12 @@ export default function ProductsPage() {
                   “{searchQuery}”
                 </p>
                 {products.isLoading ? (
-                  <div className="flex items-center justify-center py-16">
-                    Loading products…
+                  <div
+                    role="status"
+                    aria-label="Loading products"
+                    className="flex items-center justify-center py-16"
+                  >
+                    <LoaderCircle />
                   </div>
                 ) : (
                   products.data?.map((product) => (

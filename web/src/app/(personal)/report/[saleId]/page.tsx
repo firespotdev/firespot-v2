@@ -167,7 +167,9 @@ function DisputeReportPageContent() {
             </span>
             <div className="flex justify-between items-center mt-1">
               <span className="text-sm font-bold text-black">
-                {sale.merchantId?.businessName || 'Merchant'}
+                {(typeof sale.merchantId === 'object' &&
+                  sale.merchantId?.businessName) ||
+                  'Merchant'}
               </span>
               <span className="text-sm font-bold text-[#FF3B30]">
                 ₦{sale.amount?.toLocaleString()}

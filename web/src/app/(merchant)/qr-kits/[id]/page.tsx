@@ -128,8 +128,8 @@ export default function QRKitDetailPage() {
     try {
       await downloadElementAsPDF(cardRef.current, {
         filename: `firespot-qr-kit-${qrKit.serialNumber}.pdf`,
-        scale: 3,
-        backgroundColor: '#000000',
+        scale: 4,
+        backgroundColor: '#F4F6F8',
       })
       showNotificationToast({
         message: 'PDF downloaded successfully',
@@ -240,13 +240,13 @@ export default function QRKitDetailPage() {
                     )}
 
                     {/* Business Logo Overlay*/}
-                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[38px] h-[38px] rounded-full overflow-hidden border-[2.5px] shadow-lg border-white z-10 bg-white">
+                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full overflow-hidden border-[2.5px] shadow-lg border-white z-10 bg-white">
                       {profile?.profilePhotoUrl ? (
                         <Image
                           src={profile.profilePhotoUrl}
                           alt="Business Logo"
-                          width={38}
-                          height={38}
+                          width={44}
+                          height={44}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -402,7 +402,7 @@ export default function QRKitDetailPage() {
                 <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-0.5 w-1/2">
                   <p className="text-white text-[6px] font-sofia">
                     <span className="text-[#FFFFFF80]">or go to </span>
-                    pay.firespot.co
+                    lite.firespot.co
                   </p>
                   <Image
                     src="/images/world.png"

@@ -20,13 +20,15 @@ import {
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useSocket } from '@/hooks/useSocket'
-import { useRecordSale, useCancelSale } from '@/services/sales/hooks'
+import { useRecordSale, useCancelSale, useSale } from '@/services/sales/hooks'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
 import { useUserProfile } from '@/services/users'
+import { useQueryClient } from '@tanstack/react-query'
+import type { Sale } from '@/services/sales/interface'
 
 interface Props {
-  sale: any
-  onRecordConfirm: (recordedSale: any) => void
+  sale: Sale
+  onRecordConfirm: (recordedSale: Sale | null) => void
 }
 
 export function CollectPaymentDrawer({
@@ -37,7 +39,8 @@ export function CollectPaymentDrawer({
   const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const recordSaleMutation = useRecordSale()
   const cancelSaleMutation = useCancelSale()
-  const { socket } = useSocket()
+  const { socket, isConnected } = useSocket()
+  const queryClient = useQueryClient()
   const { data: profile } = useUserProfile()
   const lastPaymentDeclaredAt = useRef<string | null>(
     initialSale.customerMarkedPaidAt
@@ -46,7 +49,12 @@ export function CollectPaymentDrawer({
   )
   const hasCompletedConfirmation = useRef(false)
 
-  const [sale, setSale] = useState(initialSale)
+  const saleId = String(initialSale._id)
+  const { data: fetchedSale, refetch: refetchSale } = useSale(saleId, {
+    initialData: initialSale,
+    recoveryIntervalMs: isConnected ? 15_000 : 5_000,
+  })
+  const sale = fetchedSale || initialSale
   const [countdown, setCountdown] = useState(59)
   const [step, setStep] = useState<'qr' | 'uploaded' | 'loading'>('qr')
   const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false)
@@ -55,10 +63,7 @@ export function CollectPaymentDrawer({
   >(null)
 
   const activeView = useMemo(() => {
-    if (
-      sale.paymentRail === 'paystack' &&
-      sale.status === 'PENDING'
-    ) {
+    if (sale.paymentRail === 'paystack' && sale.status === 'PENDING') {
       return 'paystack'
     }
     return (
@@ -74,7 +79,7 @@ export function CollectPaymentDrawer({
   }, [overrideView, sale])
 
   const finishConfirmation = useCallback(
-    (recordedSale: any) => {
+    (recordedSale: Sale | null) => {
       if (hasCompletedConfirmation.current) return
       hasCompletedConfirmation.current = true
       onRecordConfirm(recordedSale)
@@ -85,82 +90,72 @@ export function CollectPaymentDrawer({
   useEffect(() => {
     let timer: NodeJS.Timeout
     if (activeView === 'qr') {
-      if (countdown > 0) {
-        timer = setTimeout(() => setCountdown((c) => c - 1), 1000)
-      } else {
-        setCountdown(59)
-      }
+      timer = setTimeout(
+        () => setCountdown((current) => (current > 0 ? current - 1 : 59)),
+        1000,
+      )
     }
     return () => clearTimeout(timer)
   }, [countdown, activeView])
 
   useEffect(() => {
-    if (!socket || !sale?._id) return
+    if (!socket || !saleId) return
 
-    socket.emit('join-sale-room', sale._id)
-
-    const handleReceiptUploaded = (data: any) => {
-      if (data._id === sale._id) {
-        setSale(data)
-        setOverrideView(null)
-      }
+    const syncSale = (data: Sale) => {
+      if (String(data?._id) !== saleId) return false
+      queryClient.setQueryData(['sale', saleId], data)
+      setOverrideView(null)
+      return true
     }
 
-    const handleReceiptDeleted = (data: any) => {
-      if (data._id === sale._id) {
-        setSale(data)
+    const joinSaleRoom = () => {
+      socket.emit('join-sale-room', saleId)
+      void refetchSale()
+    }
+
+    if (socket.connected) joinSaleRoom()
+    socket.on('connect', joinSaleRoom)
+
+    const handleReceiptUploaded = (data: Sale) => {
+      syncSale(data)
+    }
+
+    const handleReceiptDeleted = (data: Sale) => {
+      if (syncSale(data)) {
         setIsReceiptPreviewOpen(false)
-        setOverrideView(null)
       }
     }
 
-    const handlePaymentDeclared = (data: any) => {
-      if (data._id === sale._id) {
+    const handlePaymentDeclared = (data: Sale) => {
+      if (String(data?._id) === saleId) {
         const declaredAt = data.customerMarkedPaidAt
           ? String(data.customerMarkedPaidAt)
           : null
         if (declaredAt && lastPaymentDeclaredAt.current === declaredAt) return
         lastPaymentDeclaredAt.current = declaredAt
-        setSale(data)
-        setOverrideView(null)
+        syncSale(data)
         showNotificationToast({ message: 'Customer says they have paid' })
       }
     }
 
-    const handleSaleConfirmed = (data: any) => {
-      if (data._id === sale._id) {
-        finishConfirmation(data)
-      }
+    const handleSaleConfirmed = (data: Sale) => {
+      syncSale(data)
     }
 
-    const handlePaymentProcessing = (data: any) => {
-      if (data._id === sale._id) {
-        setSale(data)
-        setOverrideView('paystack')
-      }
+    const handlePaymentProcessing = (data: Sale) => {
+      syncSale(data)
     }
 
-    const handleSaleScanned = (data: any) => {
-      if (data._id === sale._id) {
-        setSale(data)
-        setOverrideView(null)
-      }
+    const handleSaleScanned = (data: Sale) => {
+      syncSale(data)
     }
 
-    const handleSaleCopied = (data: any) => {
-      if (data._id === sale._id) {
-        setSale(data)
-        setOverrideView(null)
-      }
+    const handleSaleCopied = (data: Sale) => {
+      syncSale(data)
     }
 
-    const handleSaleCancelled = (data: any) => {
-      if (data._id === sale._id) {
-        closeDrawer()
-        if (data.cancelledBy === 'customer') {
-          showNotificationToast({ message: 'Customer cancelled this payment' })
-        }
-      }
+    const handleSaleCancelled = (data: Sale) => {
+      syncSale(data)
     }
 
     socket.on('receipt.uploaded', handleReceiptUploaded)
@@ -173,6 +168,7 @@ export function CollectPaymentDrawer({
     socket.on('sale.cancelled', handleSaleCancelled)
 
     return () => {
+      socket.off('connect', joinSaleRoom)
       socket.off('receipt.uploaded', handleReceiptUploaded)
       socket.off('receipt.deleted', handleReceiptDeleted)
       socket.off('payment.declared', handlePaymentDeclared)
@@ -182,7 +178,20 @@ export function CollectPaymentDrawer({
       socket.off('sale.copied', handleSaleCopied)
       socket.off('sale.cancelled', handleSaleCancelled)
     }
-  }, [socket, sale, finishConfirmation, closeDrawer])
+  }, [socket, saleId, queryClient, refetchSale])
+
+  useEffect(() => {
+    if (sale.status === 'CONFIRMED') {
+      finishConfirmation(sale)
+      return
+    }
+    if (sale.status === 'CANCELLED') {
+      closeDrawer()
+      if (sale.cancelledBy === 'customer') {
+        showNotificationToast({ message: 'Customer cancelled this payment' })
+      }
+    }
+  }, [sale, finishConfirmation, closeDrawer])
 
   const handleConfirmReceipt = () => {
     setStep('loading')
@@ -190,12 +199,12 @@ export function CollectPaymentDrawer({
       {
         saleId: sale._id,
         payload: {
-          amount: sale.amount,
+          amount: sale.amount || 0,
           description: sale.description,
           paymentMethod: 'Bank Transfer',
           isPaidInFull: true,
-          amountPaid: sale.amount,
-          totalDue: sale.amount,
+          amountPaid: sale.amount || 0,
+          totalDue: sale.amount || 0,
           balanceOwed: 0,
         },
       },
@@ -203,10 +212,11 @@ export function CollectPaymentDrawer({
         onSuccess: (data) => {
           finishConfirmation(data)
         },
-        onError: (err: any) => {
+        onError: (error: unknown) => {
           showNotificationToast({
             message:
-              err?.response?.data?.message || 'Failed to confirm receipt.',
+              (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message || 'Failed to confirm receipt.',
             mode: 'error',
           })
           setStep('qr')
@@ -221,10 +231,11 @@ export function CollectPaymentDrawer({
       onSuccess: () => {
         closeDrawer()
       },
-      onError: (err: any) => {
+      onError: (error: unknown) => {
         showNotificationToast({
           message:
-            err?.response?.data?.message || 'Failed to cancel collect payment.',
+            (error as { response?: { data?: { message?: string } } })?.response
+              ?.data?.message || 'Failed to cancel collect payment.',
           mode: 'error',
         })
         setStep('qr')
@@ -275,8 +286,9 @@ export function CollectPaymentDrawer({
       ? sale.customerId?.profilePhotoUrl
       : undefined
 
+  const saleTimestamp = sale.updatedAt || sale.createdAt
   const formattedPillDate =
-    new Date(sale.updatedAt || sale.createdAt || Date.now()).toLocaleDateString(
+    new Date(saleTimestamp).toLocaleDateString(
       'en-US',
       {
         month: 'short',
@@ -285,7 +297,7 @@ export function CollectPaymentDrawer({
       },
     ) +
     ' . ' +
-    new Date(sale.updatedAt || sale.createdAt || Date.now()).toLocaleTimeString(
+    new Date(saleTimestamp).toLocaleTimeString(
       'en-US',
       {
         hour: 'numeric',
@@ -332,7 +344,7 @@ export function CollectPaymentDrawer({
             </div>
 
             <p className="text-[13px] text-[#00000080] font-medium text-center mt-4">
-              Confirm if the money came in, cancel if it didn't.
+              Confirm if the money came in, cancel if it didn&apos;t.
             </p>
           </div>
 
@@ -444,7 +456,7 @@ export function CollectPaymentDrawer({
                   size={210}
                   centerImageUrl={profile?.profilePhotoUrl}
                   centerImageAlt={profile?.businessName || 'Merchant'}
-                  centerImageSize={64}
+                  centerImageSize={74}
                 />
               </div>
             </div>

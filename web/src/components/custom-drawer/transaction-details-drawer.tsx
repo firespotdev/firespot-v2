@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Share,
   Download,
@@ -23,6 +23,7 @@ import {
   CircularIconButton,
   ClockGradientIcon,
   ClockFillIcon,
+  showNotificationToast,
 } from '../ui'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
@@ -33,21 +34,27 @@ import {
 } from '@/lib/utils/sales'
 
 import { cn, formatCurrency } from '@/lib/utils'
+import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 
 interface TransactionDetailsDrawerProps {
   sale: Sale
   onClose: () => void
   justRecorded?: boolean
   origin?: 'history'
+  autoDownloadReceipt?: boolean
 }
 
 const TransactionDetailsDrawer = ({
   sale,
   justRecorded = false,
   origin,
+  autoDownloadReceipt = false,
 }: TransactionDetailsDrawerProps) => {
   const router = useRouter()
-  const { openDrawer, closeDrawer } = useDrawerStore()
+  const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
+  const receiptRef = useRef<HTMLDivElement>(null)
+  const hasAutoDownloaded = useRef(false)
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const formatDate = (date: string | Date | undefined) => {
     if (!date) return 'N/A'
@@ -106,7 +113,7 @@ const TransactionDetailsDrawer = ({
         progressWindow.bprogress.start()
       }
     } catch {}
-    closeDrawer()
+    closeAllDrawers()
     const params = new URLSearchParams({ id: sale._id })
     if (origin === 'history' && customerId) {
       params.set('customerId', customerId)
@@ -125,6 +132,35 @@ const TransactionDetailsDrawer = ({
       })
       .catch(() => {})
   }
+
+  const handleDownloadReceipt = useCallback(async () => {
+    if (!receiptRef.current || isDownloading) return
+    setIsDownloading(true)
+    try {
+      await downloadElementAsPNG(receiptRef.current, {
+        filename: `firespot-receipt-${sale.reference || sale._id}.png`,
+        scale: 3,
+        backgroundColor: '#FFFFFF',
+      })
+      showNotificationToast({
+        message: 'Receipt downloaded successfully',
+        mode: 'success',
+      })
+    } catch {
+      showNotificationToast({
+        message: 'Failed to download receipt. Please try again.',
+        mode: 'error',
+      })
+    } finally {
+      setIsDownloading(false)
+    }
+  }, [isDownloading, sale._id, sale.reference])
+
+  useEffect(() => {
+    if (!autoDownloadReceipt || hasAutoDownloaded.current) return
+    hasAutoDownloaded.current = true
+    void handleDownloadReceipt()
+  }, [autoDownloadReceipt, handleDownloadReceipt])
 
   const recordedAt = sale.recordedAt || sale.createdAt
   const recordedDate = recordedAt
@@ -151,7 +187,7 @@ const TransactionDetailsDrawer = ({
               onClick={() => {
                 openDrawer({
                   type: 'transaction-options',
-                  props: { sale },
+                  props: { sale, onDownloadReceipt: handleDownloadReceipt },
                 })
               }}
             />
@@ -172,7 +208,7 @@ const TransactionDetailsDrawer = ({
               onClick={() => {
                 openDrawer({
                   type: 'transaction-options',
-                  props: { sale },
+                  props: { sale, onDownloadReceipt: handleDownloadReceipt },
                 })
               }}
             />
@@ -181,7 +217,7 @@ const TransactionDetailsDrawer = ({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="flex flex-col items-center pt-6 px-4">
+        <div ref={receiptRef} className="flex flex-col items-center pt-6 px-4">
           {/* Status Icon Ring */}
           {isOutstanding ? (
             <div className="mb-2 shrink-0 -mt-1">
@@ -255,6 +291,7 @@ const TransactionDetailsDrawer = ({
           {/* Action Buttons */}
           {justRecorded ? (
             <div
+              data-export-exclude
               data-vaul-no-drag
               className="scrollbar-hide mb-6 flex w-full touch-pan-x gap-2 overflow-x-auto px-1"
             >
@@ -298,7 +335,10 @@ const TransactionDetailsDrawer = ({
               </Button>
             </div>
           ) : isOutstanding ? (
-            <div className="flex gap-2 justify-center mb-6 w-full px-1">
+            <div
+              data-export-exclude
+              className="flex gap-2 justify-center mb-6 w-full px-1"
+            >
               <Button
                 variant="outline"
                 className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
@@ -322,7 +362,10 @@ const TransactionDetailsDrawer = ({
               </Button>
             </div>
           ) : (
-            <div className="flex gap-2 justify-center mb-6 w-full">
+            <div
+              data-export-exclude
+              className="flex gap-2 justify-center mb-6 w-full"
+            >
               <Button
                 variant="outline"
                 className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
@@ -334,10 +377,11 @@ const TransactionDetailsDrawer = ({
               <Button
                 variant="outline"
                 className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
-                onClick={() => window.print()}
+                onClick={handleDownloadReceipt}
+                disabled={isDownloading}
               >
                 <Download size={16} className="text-black" />
-                DOWNLOAD RECEIPT
+                {isDownloading ? 'GENERATING…' : 'DOWNLOAD RECEIPT'}
               </Button>
             </div>
           )}
@@ -523,7 +567,9 @@ const TransactionDetailsDrawer = ({
               </span>
               <span className="text-[14px] font-medium text-black">
                 {formatDate(
-                  sale.createdAt || sale.recordedAt || (sale as any).date,
+                  sale.createdAt ||
+                    sale.recordedAt ||
+                    (sale as Sale & { date?: string | Date }).date,
                 )}
               </span>
             </div>

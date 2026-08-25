@@ -4,6 +4,7 @@ import { Image as ImageIcon, Plus, Search, X } from 'lucide-react'
 import { useProductCategories } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import type { DrawerConfig } from '@/services/drawer'
+import { LoaderCircle } from '@/components/ui'
 
 interface ItemsTabProps {
   searchQuery: string
@@ -183,9 +184,13 @@ export function ItemsTab({
                 : 'Frequent searches'}
             </h2>
             {isLoading ? (
-              <p className="py-12 text-center text-sm text-[#6B7280]">
-                Loading products…
-              </p>
+              <div
+                role="status"
+                aria-label="Loading products"
+                className="flex items-center justify-center py-12"
+              >
+                <LoaderCircle />
+              </div>
             ) : visibleProducts.length > 0 ? (
               <div>{visibleProducts.map(renderProduct)}</div>
             ) : (
@@ -201,9 +206,13 @@ export function ItemsTab({
             )}
           </>
         ) : isLoading ? (
-          <p className="py-12 text-center text-sm text-[#6B7280]">
-            Loading products…
-          </p>
+          <div
+            role="status"
+            aria-label="Loading products"
+            className="flex items-center justify-center py-12"
+          >
+            <LoaderCircle />
+          </div>
         ) : products.length > 0 ? (
           <div className="space-y-3 py-3">
             {Object.entries(getGroupedProducts()).map(

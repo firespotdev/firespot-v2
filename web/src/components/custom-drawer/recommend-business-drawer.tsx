@@ -162,12 +162,12 @@ export function RecommendBusinessDrawer({
             )}
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <div className="relative">
-                <div className="flex h-[70px] w-[70px] items-center justify-center overflow-hidden">
+                <div className="flex h-[81px] w-[81px] items-center justify-center overflow-hidden">
                   <Image
                     src="/images/recommend.png"
                     alt="Profile"
-                    width={70}
-                    height={70}
+                    width={81}
+                    height={81}
                     className="h-full w-full object-cover"
                   />
                 </div>
