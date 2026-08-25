@@ -17,6 +17,7 @@ import type { Sale } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
 import {
   EmptyState,
+  GreenSpinner,
   showNotificationToast,
   StatBanner,
   TabSwitch,
@@ -332,7 +333,7 @@ export default function RecentsPage() {
 
           {isLoading ? (
             <div className="flex flex-1 items-center justify-center py-16">
-              <Loader2 className="h-6 w-6 animate-spin text-[#9CA3AF]" />
+              <GreenSpinner size={6} innerBg="#F4F6F8" />
             </div>
           ) : activeSales.length > 0 ? (
             <div className="mt-3 overflow-hidden rounded-[12px] border border-[#F1F1F1] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
@@ -381,7 +382,7 @@ export default function RecentsPage() {
                   className="flex items-center justify-center py-4"
                 >
                   {isFetchingNextPage && (
-                    <Loader2 className="h-5 w-5 animate-spin text-[#9CA3AF]" />
+                    <GreenSpinner size={5} innerBg="#F4F6F8" />
                   )}
                 </div>
               )}

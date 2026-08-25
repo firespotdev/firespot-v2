@@ -632,6 +632,7 @@ export function CustomDrawer() {
               'checkout',
               'checkout-sale',
               'collect-payment',
+              'sale-items',
               'variant-selector',
               'repayment-summary',
               'send-reminder',
