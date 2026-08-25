@@ -17,7 +17,7 @@ import {
 import {
   useIndustries,
   useUpdateProfileBanner,
-  useUpdateProfilePhoto,
+  useUpdateBusinessImage,
 } from '@/services/users'
 
 const DESCRIPTION_MAX_LENGTH = 160
@@ -47,7 +47,7 @@ export function BusinessAboutForm({
 }: BusinessAboutFormProps) {
   const { data: industries = [], isLoading: industriesLoading } =
     useIndustries()
-  const updatePhoto = useUpdateProfilePhoto()
+  const updateBusinessImage = useUpdateBusinessImage()
   const updateBanner = useUpdateProfileBanner()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const bannerInputRef = useRef<HTMLInputElement>(null)
@@ -58,7 +58,7 @@ export function BusinessAboutForm({
     const file = e.target.files?.[0]
     if (!file) return
     setLogoPreview(URL.createObjectURL(file))
-    updatePhoto.mutate(file)
+    updateBusinessImage.mutate(file)
   }
 
   const handleBannerSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,10 +95,10 @@ export function BusinessAboutForm({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={updatePhoto.isPending}
+              disabled={updateBusinessImage.isPending}
               className="bg-[#F1F1F1] rounded-full h-9 px-4 flex items-center gap-2 text-[10px] font-bold tracking-[1px] text-black uppercase disabled:opacity-50"
             >
-              {updatePhoto.isPending ? (
+              {updateBusinessImage.isPending ? (
                 'Uploading...'
               ) : (
                 <>

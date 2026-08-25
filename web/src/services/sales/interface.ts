@@ -21,6 +21,7 @@ export interface SaleItem {
 export interface PublicSaleMerchant {
   businessName?: string;
   merchantSlug?: string;
+  businessImageUrl?: string;
   profilePhotoUrl?: string;
 }
 
@@ -29,6 +30,11 @@ export interface SaleCustomer {
   name?: string;
   businessName?: string;
   phoneNumber?: string;
+  profilePhotoUrl?: string;
+}
+
+export interface SaleCustomerIdentity {
+  _id?: string;
   profilePhotoUrl?: string;
 }
 
@@ -88,7 +94,7 @@ export interface Sale {
   totalDue?: number;
   balanceOwed?: number;
   customerId?: SaleCustomer | string;
-  customerUserId?: string;
+  customerUserId?: SaleCustomerIdentity | string;
   customerName?: string;
   customerPhone?: string;
   payerPaystackEmail?: string;
@@ -124,6 +130,7 @@ export interface CustomerSaleMerchant {
   _id?: string;
   businessName?: string;
   merchantSlug?: string;
+  businessImageUrl?: string;
   profilePhotoUrl?: string;
   businessIndustry?: string;
 }

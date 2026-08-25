@@ -11,6 +11,7 @@ export function resolveSaleMerchant(sale: CustomerSale): {
   id?: string
   businessName?: string
   merchantSlug?: string
+  businessImageUrl?: string
   profilePhotoUrl?: string
   businessIndustry?: string
 } {
@@ -21,6 +22,7 @@ export function resolveSaleMerchant(sale: CustomerSale): {
       id: m._id,
       businessName: m.businessName,
       merchantSlug: m.merchantSlug,
+      businessImageUrl: m.businessImageUrl,
       profilePhotoUrl: m.profilePhotoUrl,
       businessIndustry: m.businessIndustry,
     }

@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from '@/services/auth'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 interface FeedbackPromptProps {
   sale: PublicSale
@@ -163,7 +164,8 @@ export function FeedbackPrompt({
                 />
                 <Avatar
                   src={
-                    sale.merchant?.profilePhotoUrl || merchant.profilePhotoUrl
+                    getBusinessImageUrl(sale.merchant) ||
+                    getBusinessImageUrl(merchant)
                   }
                   alt={merchantName}
                   fallback={merchantName.charAt(0).toUpperCase()}

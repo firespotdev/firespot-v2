@@ -9,6 +9,7 @@ import { useDrawerStore } from '@/services/drawer'
 import { Button } from '@/components/ui/button'
 import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
 import { LoaderCircle } from '../ui'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 interface Props {
   merchant: MerchantProfile
@@ -40,6 +41,7 @@ export function PayCatalogueDrawer({ merchant, onCheckout }: Props) {
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
   const normalizedSearch = search.trim().toLowerCase()
+  const businessImageUrl = getBusinessImageUrl(merchant)
 
   const visibleProducts = useMemo(() => {
     const products = catalogue?.products || []
@@ -115,9 +117,9 @@ export function PayCatalogueDrawer({ merchant, onCheckout }: Props) {
     <div className="flex min-h-0 w-full flex-col bg-white font-satoshi">
       <header className="flex shrink-0 items-center gap-3 border-b border-[#F1F1F1] px-4 py-2">
         <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-[#F1F1F1]">
-          {merchant.profilePhotoUrl ? (
+          {businessImageUrl ? (
             <img
-              src={merchant.profilePhotoUrl}
+              src={businessImageUrl}
               alt=""
               className="h-full w-full object-cover"
             />

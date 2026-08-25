@@ -12,6 +12,7 @@ import { formatAmount, formatSaleTime } from './utils'
 import { useDrawerStore } from '@/services/drawer'
 import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
 import { PaymentCheckoutFooter } from './payment-checkout-footer'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -51,6 +52,7 @@ export function SaleRequestScreen({
   const accountName = account?.accountName || merchant.businessName
   const merchantName =
     sale.merchant?.businessName || merchant.businessName || accountName
+  const businessImageUrl = getBusinessImageUrl(merchant)
 
   return (
     <div className="h-dvh bg-white overflow-hidden">
@@ -79,9 +81,9 @@ export function SaleRequestScreen({
         {/* Request details */}
         <div className="flex-1 min-h-0 overflow-y-auto px-4 flex flex-col items-center justify-center text-center py-6">
           <div className="w-24 h-24 rounded-full bg-[#E9EDF1] border border-[#F1F1F1] overflow-hidden flex items-center justify-center">
-            {merchant.profilePhotoUrl ? (
+            {businessImageUrl ? (
               <Image
-                src={merchant.profilePhotoUrl}
+                src={businessImageUrl}
                 alt={merchant.businessName || 'Merchant'}
                 width={96}
                 height={96}

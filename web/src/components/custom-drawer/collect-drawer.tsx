@@ -25,6 +25,7 @@ import { MerchantAvatar } from '../layout/MerchantAvatar'
 import { useUserProfile } from '@/services/users'
 import { useQueryClient } from '@tanstack/react-query'
 import type { Sale } from '@/services/sales/interface'
+import { getSaleCustomerPhotoUrl } from '@/lib/utils/sales'
 
 interface Props {
   sale: Sale
@@ -281,10 +282,7 @@ export function CollectPaymentDrawer({
   }
 
   const itemCount = sale.items?.length || 0
-  const customerPhotoUrl =
-    typeof sale.customerId === 'object'
-      ? sale.customerId?.profilePhotoUrl
-      : undefined
+  const customerPhotoUrl = getSaleCustomerPhotoUrl(sale)
 
   const saleTimestamp = sale.updatedAt || sale.createdAt
   const formattedPillDate =
@@ -454,7 +452,9 @@ export function CollectPaymentDrawer({
                 <GradientQRCode
                   value={checkoutUrl}
                   size={210}
-                  centerImageUrl={profile?.profilePhotoUrl}
+                  centerImageUrl={
+                    profile?.businessImageUrl || profile?.profilePhotoUrl
+                  }
                   centerImageAlt={profile?.businessName || 'Merchant'}
                   centerImageSize={74}
                 />

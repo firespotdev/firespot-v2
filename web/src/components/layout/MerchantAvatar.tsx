@@ -1,12 +1,14 @@
 'use client'
 
 import Image from 'next/image'
+import { useState } from 'react'
 import { getBankLogo } from '@/lib/utils/bank-registry'
 import { cn } from '@/lib/utils'
 
 interface MerchantAvatarProps {
   bankName?: string
   profilePhotoUrl?: string
+  alt?: string
   size?: number
   className?: string
   style?: React.CSSProperties
@@ -15,6 +17,7 @@ interface MerchantAvatarProps {
 export function MerchantAvatar({
   bankName,
   profilePhotoUrl,
+  alt = 'Profile photo',
   size = 36,
   className,
   style,
@@ -22,6 +25,11 @@ export function MerchantAvatar({
   const avatarSize = size
   const bankLogoSize = Math.max(16, Math.floor(size * 0.45))
   const overlayOffset = Math.max(3, Math.floor(size * 0.08))
+  const [failedPhotoUrl, setFailedPhotoUrl] = useState<string>()
+  const photoUrl =
+    profilePhotoUrl && profilePhotoUrl !== failedPhotoUrl
+      ? profilePhotoUrl
+      : '/images/default_avatar.png'
 
   return (
     <div className={cn('relative shrink-0', className)} style={style}>
@@ -30,11 +38,14 @@ export function MerchantAvatar({
         style={{ width: avatarSize, height: avatarSize }}
       >
         <Image
-          src={profilePhotoUrl || '/images/default_avatar.png'}
-          alt="merchant"
+          src={photoUrl}
+          alt={alt}
           width={avatarSize}
           height={avatarSize}
-          className="object-cover"
+          className="h-full w-full object-cover"
+          onError={() => {
+            if (profilePhotoUrl) setFailedPhotoUrl(profilePhotoUrl)
+          }}
         />
       </div>
       {bankName && (

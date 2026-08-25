@@ -23,7 +23,7 @@ import {
 } from '@/services/insights'
 
 interface MerchantInfo {
-  profilePhotoUrl?: string
+  businessImageUrl?: string
   businessName: string
   bankAccountCount: number
 }
@@ -106,9 +106,9 @@ export function MerchantInfoStat({
     <div className={cn('w-full flex flex-col items-center', className)}>
       <div className="flex flex-col items-center w-full mb-6">
         <div className="relative">
-          {merchantInfo.profilePhotoUrl ? (
+          {merchantInfo.businessImageUrl ? (
             <Image
-              src={merchantInfo.profilePhotoUrl}
+              src={merchantInfo.businessImageUrl}
               alt={merchantInfo.businessName}
               width={96}
               height={96}

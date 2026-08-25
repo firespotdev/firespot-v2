@@ -939,7 +939,8 @@ export default function PaymentPage() {
           props: {
             businessName: merchant.businessName,
             serialNumber,
-            profilePhotoUrl: merchant.profilePhotoUrl,
+            businessImageUrl:
+              merchant.businessImageUrl || merchant.profilePhotoUrl,
           },
         })
       }}

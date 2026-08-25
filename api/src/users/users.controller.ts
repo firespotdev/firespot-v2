@@ -352,6 +352,27 @@ export class UsersController {
     return this.usersService.updateProfilePhoto(req.user.userId, file);
   }
 
+  @Patch("business-image")
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor("businessImage"))
+  @ApiBearerAuth("JWT-auth")
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Update merchant business image" })
+  async updateBusinessImage(
+    @Request() req,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(jpg|jpeg|png|webp)$/ }),
+        ],
+      }),
+    )
+    file: Express.Multer.File,
+  ) {
+    return this.usersService.updateBusinessImage(req.user.userId, file);
+  }
+
   @Patch("banner")
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor("banner"))
@@ -594,6 +615,7 @@ export class UsersController {
           },
         },
         profilePhotoUrl: { type: "string", nullable: true },
+        businessImageUrl: { type: "string", nullable: true },
         merchantReferralCode: { type: "string", example: "FSM-7K9NPQ" },
         referralSource: {
           type: "string",

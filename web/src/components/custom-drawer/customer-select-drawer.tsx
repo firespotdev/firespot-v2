@@ -178,7 +178,10 @@ export function CustomerSelectDrawer({
                 `}
                   >
                     <div className="flex items-center gap-3">
-                      <MerchantAvatar />
+                      <MerchantAvatar
+                        profilePhotoUrl={cust.profilePhotoUrl}
+                        alt={cust.name}
+                      />
                       <div className="flex flex-col text-left">
                         <span className="text-sm font-bold text-black leading-none">
                           {cust.name}

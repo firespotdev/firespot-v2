@@ -2,12 +2,13 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRef } from 'react'
 import {
+  Camera,
   ChevronRight,
   Copy,
   Headphones,
   Maximize2,
-  Settings,
   Share,
   Star,
   X,
@@ -15,24 +16,16 @@ import {
 import { QRCodeSVG } from 'qrcode.react'
 import { logoutEverywhere, useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
-import { useUserProfile } from '@/services/users'
+import { useUpdateProfilePhoto, useUserProfile } from '@/services/users'
 import { MerchantAvatar } from '@/components/layout'
 import { Button, showNotificationToast, VerifiedBadge } from '@/components/ui'
 import {
-  Briefcase,
-  Gift,
-  Instagram,
-  Facebook,
-  UserAdd,
-  Personalcard,
   Setting2,
-  Headphone,
 } from 'iconsax-reactjs'
 import {
   AddressBookIcon,
   CardsThreeIcon,
   StorefrontIcon,
-  TwitterLogoIcon,
   UserCircleGearIcon,
 } from '@phosphor-icons/react'
 
@@ -45,6 +38,8 @@ export function PersonalProfileMenuDrawer({
 }: PersonalProfileMenuDrawerProps) {
   const authUser = useAuthStore((state) => state.user)
   const { data: profile } = useUserProfile()
+  const updateProfilePhoto = useUpdateProfilePhoto()
+  const photoInputRef = useRef<HTMLInputElement>(null)
   const user = profile || authUser
   const { openDrawer } = useDrawerStore()
 
@@ -61,6 +56,42 @@ export function PersonalProfileMenuDrawer({
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'
 
   const qrUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lite.firespot.co'
+
+  const handleProfilePhotoSelect = (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+      showNotificationToast({
+        message: 'Choose a JPG, PNG, or WEBP image',
+        mode: 'error',
+      })
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showNotificationToast({
+        message: 'Profile picture must be smaller than 5MB',
+        mode: 'error',
+      })
+      return
+    }
+
+    updateProfilePhoto.mutate(file, {
+      onSuccess: () =>
+        showNotificationToast({
+          message: 'Profile picture updated',
+          mode: 'success',
+        }),
+      onError: () =>
+        showNotificationToast({
+          message: 'Could not update profile picture. Try again.',
+          mode: 'error',
+        }),
+    })
+  }
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(qrUrl)
@@ -117,6 +148,26 @@ export function PersonalProfileMenuDrawer({
         <div className="flex flex-col items-center pt-5 pb-4 text-center">
           <div className="relative mb-4">
             <MerchantAvatar profilePhotoUrl={user?.profilePhotoUrl} size={96} />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              disabled={updateProfilePhoto.isPending}
+              aria-label="Update profile picture"
+              className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-[#E5E7EB] disabled:opacity-50"
+            >
+              {updateProfilePhoto.isPending ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
+              ) : (
+                <Camera className="h-4 w-4 text-black" />
+              )}
+            </button>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleProfilePhotoSelect}
+              className="hidden"
+            />
           </div>
           {displayName ? (
             <div className="flex items-center gap-1.5 justify-center">
@@ -201,7 +252,7 @@ export function PersonalProfileMenuDrawer({
                     type: 'profile-share',
                     props: {
                       businessName: displayName,
-                      profilePhotoUrl: user?.profilePhotoUrl,
+                      imageUrl: user?.profilePhotoUrl,
                       url: qrUrl,
                     },
                   })

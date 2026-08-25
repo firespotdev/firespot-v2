@@ -130,6 +130,44 @@ export class CloudinaryService {
     });
   }
 
+  async uploadBusinessImage(
+    fileBuffer: Buffer,
+  ): Promise<{ url: string; publicId: string }> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "flare/business-images",
+          resource_type: "image",
+          transformation: [
+            { width: 500, height: 500, crop: "fill", gravity: "auto" },
+            { quality: "auto", fetch_format: "auto" },
+          ],
+        },
+        (error, result) => {
+          if (error) {
+            reject(
+              new HttpException(
+                "Failed to upload business image",
+                HttpStatus.INTERNAL_SERVER_ERROR,
+              ),
+            );
+          }
+          if (result) {
+            resolve({
+              url: result.secure_url,
+              publicId: result.public_id,
+            });
+          }
+        },
+      );
+
+      const readableStream = new Readable();
+      readableStream.push(fileBuffer);
+      readableStream.push(null);
+      readableStream.pipe(uploadStream);
+    });
+  }
+
   async uploadBanner(
     fileBuffer: Buffer,
   ): Promise<{ url: string; publicId: string }> {

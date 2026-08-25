@@ -29,6 +29,7 @@ import { resolveSaleMerchant } from '@/lib/utils/customer-sale'
 import { formatCurrency } from '@/lib/utils'
 import { getSaleDescription } from '@/lib/utils/sales'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 interface ActivityDetailsDrawerProps {
   sale: CustomerSale
@@ -190,9 +191,9 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
         <div ref={receiptRef} className="flex flex-col items-center pt-8 px-4">
           {/* Merchant avatar */}
           <div className="w-20 h-20 rounded-full bg-[#E9EDF1] border border-[#F1F1F1] overflow-hidden flex items-center justify-center shrink-0">
-            {merchant.profilePhotoUrl ? (
+            {getBusinessImageUrl(merchant) ? (
               <Image
-                src={merchant.profilePhotoUrl}
+                src={getBusinessImageUrl(merchant)!}
                 alt={businessName}
                 width={80}
                 height={80}

@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { showNotificationToast } from '@/components/ui'
-import { getInitials } from '@/lib/utils'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -15,7 +14,7 @@ interface ProfileShareDrawerProps {
   businessName: string
   serialNumber?: string
   url?: string
-  profilePhotoUrl?: string
+  imageUrl?: string
   closeDrawer: () => void
 }
 
@@ -23,7 +22,7 @@ export function ProfileShareDrawer({
   businessName,
   serialNumber,
   url,
-  profilePhotoUrl,
+  imageUrl,
   closeDrawer,
 }: ProfileShareDrawerProps) {
   const shareUrl =
@@ -134,9 +133,9 @@ export function ProfileShareDrawer({
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
               <div className="relative h-[81px] w-[81px]">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 shadow-lg border-white bg-white">
-                  {profilePhotoUrl ? (
+                  {imageUrl ? (
                     <Image
-                      src={profilePhotoUrl}
+                      src={imageUrl}
                       alt="Business Logo"
                       width={81}
                       height={81}

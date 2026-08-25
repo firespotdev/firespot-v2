@@ -338,6 +338,14 @@ export class User extends Document {
   @Prop()
   profilePhotoPublicId?: string;
 
+  // Merchant-facing business/logo image. Kept separate from the account
+  // holder's personal profile photo.
+  @Prop()
+  businessImageUrl?: string;
+
+  @Prop()
+  businessImagePublicId?: string;
+
   @Prop()
   profileBannerUrl?: string;
 

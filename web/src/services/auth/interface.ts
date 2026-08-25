@@ -100,6 +100,7 @@ export interface User {
   bankName?: string
   accountNumber?: string
   accountName?: string
+  businessImageUrl?: string
   profilePhotoUrl?: string
   profileBannerUrl?: string
   referralCode?: string

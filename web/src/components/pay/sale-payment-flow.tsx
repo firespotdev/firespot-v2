@@ -393,7 +393,8 @@ export function SalePaymentFlow({
       props: {
         businessName: merchant.businessName,
         serialNumber,
-        profilePhotoUrl: merchant.profilePhotoUrl,
+        businessImageUrl:
+          merchant.businessImageUrl || merchant.profilePhotoUrl,
       },
     })
   }

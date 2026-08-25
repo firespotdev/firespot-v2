@@ -9,6 +9,7 @@ import { formatDate } from '@/lib/utils/constants'
 import {
   getAmountLabel,
   getRecentSaleSummary,
+  getSaleCustomerPhotoUrl,
   getSaleCustomerName,
   getStatusDescription,
   getMerchantStatus,
@@ -64,7 +65,12 @@ export function SaleItem({
       onClick={() => onClick?.(sale)}
     >
       <div className="flex items-center gap-2 min-w-0">
-        <MerchantAvatar bankName={sale.targetBankName} size={36} />
+        <MerchantAvatar
+          bankName={sale.targetBankName}
+          profilePhotoUrl={getSaleCustomerPhotoUrl(sale)}
+          alt={getSaleCustomerName(sale)}
+          size={36}
+        />
         <div className="min-w-0">
           <h4
             className={cn(

@@ -8,6 +8,7 @@ import type { MerchantProfile } from '@/services/qr/interface'
 import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
 import { PaymentCheckoutFooter } from './payment-checkout-footer'
 import { ReceiptBenefitStrip } from './receipt-benefit-strip'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -62,6 +63,7 @@ export function SalePayAmountScreen({
       : ''
   const accountName = account?.accountName || merchant.businessName
   const hasPaystackCollection = Boolean(merchant.hasPaystackCollection)
+  const businessImageUrl = getBusinessImageUrl(merchant)
 
   const handleAction = () => {
     if (amountValue <= 0) {
@@ -107,9 +109,9 @@ export function SalePayAmountScreen({
           {/* Merchant identity */}
           <div className="flex flex-col items-center text-center">
             <div className="w-24 h-24 rounded-full bg-[#E9EDF1] border border-[#F1F1F1] overflow-hidden flex items-center justify-center shadow-[0px_4px_8px_0px_#0000000A]">
-              {merchant.profilePhotoUrl ? (
+              {businessImageUrl ? (
                 <Image
-                  src={merchant.profilePhotoUrl}
+                  src={businessImageUrl}
                   alt={merchant.businessName || 'Merchant'}
                   width={96}
                   height={96}

@@ -14,6 +14,7 @@ import { requestForToken, onForegroundMessage } from '@/lib/firebase'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { userApi } from '@/services/users/userApi'
+import { getSaleCustomerPhotoUrl } from '@/lib/utils/sales'
 
 function formatPaymentTime(timestamp?: string | Date): string {
   const date = timestamp ? new Date(timestamp) : new Date()
@@ -141,6 +142,7 @@ export function GlobalSocket() {
 
       showNewPaymentToast({
         time: formatPaymentTime(sale.createdAt),
+        profilePhotoUrl: getSaleCustomerPhotoUrl(sale),
         // Checkmark takes the merchant into the confirm flow (prefilled amount
         // + description, records onto this existing sale).
         onView: () =>

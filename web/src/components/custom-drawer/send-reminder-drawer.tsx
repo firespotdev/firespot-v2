@@ -13,6 +13,7 @@ import {
 } from '../ui'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
 import { useUserProfile } from '@/services/users'
+import { getSaleCustomerPhotoUrl } from '@/lib/utils/sales'
 
 interface SendReminderDrawerProps {
   sale: Sale
@@ -129,7 +130,11 @@ export function SendReminderDrawer({
             className="flex items-center justify-between"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <MerchantAvatar size={42} />
+              <MerchantAvatar
+                profilePhotoUrl={getSaleCustomerPhotoUrl(sale)}
+                alt={customerName}
+                size={42}
+              />
               <div className="min-w-0">
                 <h4 className="text-[13px] font-bold text-[#111827]">
                   {customerName}

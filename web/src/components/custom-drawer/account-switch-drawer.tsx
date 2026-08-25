@@ -19,6 +19,7 @@ import {
 import { useAuthStore } from '@/services/auth'
 import { useUserProfile } from '@/services/users'
 import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 interface AccountSwitchDrawerProps {
   closeDrawer: () => void
@@ -42,6 +43,7 @@ export function AccountSwitchDrawer({
   const isMerchant =
     (profile?.role ?? authUser?.role) === 'merchant' || Boolean(businessName)
   const profilePhotoUrl = profile?.profilePhotoUrl
+  const businessImageUrl = getBusinessImageUrl(profile)
 
   // Rating, payment count, and location have no backend yet — show honest
   // starter values in the designed layout until those features land.
@@ -144,13 +146,23 @@ export function AccountSwitchDrawer({
         {isMerchant && businessName && (
           <ActionListItem
             icon={
-              <span className="w-9 h-9 rounded-full bg-[#CED7E1] flex items-center justify-center">
-                <Image
-                  src="/icons/store_solid.svg"
-                  alt=""
-                  width={22}
-                  height={22}
-                />
+              <span className="w-9 h-9 rounded-full bg-[#CED7E1] flex items-center justify-center overflow-hidden">
+                {businessImageUrl ? (
+                  <Image
+                    src={businessImageUrl}
+                    alt={businessName}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src="/icons/store_solid.svg"
+                    alt=""
+                    width={22}
+                    height={22}
+                  />
+                )}
               </span>
             }
             title={

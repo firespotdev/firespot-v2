@@ -60,6 +60,11 @@ const CUSTOMER_COLLECTION_UNAVAILABLE_MESSAGE =
   'Payment failed. Please try another payment method'
 const DAILY_LIMIT_ALERT_WINDOW_MS = 24 * 60 * 60 * 1000
 
+const saleCustomerPopulate = () => [
+  { path: 'customerId' },
+  { path: 'customerUserId', select: 'profilePhotoUrl' },
+]
+
 @Injectable()
 export class SalesService {
   private readonly logger = new Logger(SalesService.name)
@@ -834,6 +839,8 @@ export class SalesService {
 
     await sale.save()
 
+    await sale.populate(saleCustomerPopulate())
+
     // Emit event to merchant room
     this.eventsGateway.server.to(merchantId).emit('sale.pending', sale)
     return sale
@@ -904,6 +911,7 @@ export class SalesService {
         cancelSaleOnFailure: true,
       })
 
+      await sale.populate(saleCustomerPopulate())
       this.eventsGateway.server.to(merchantId).emit('sale.pending', sale)
       return initialized
     } catch (error) {
@@ -1559,7 +1567,7 @@ export class SalesService {
     })
 
     await sale.save()
-    return sale.populate('customerId')
+    return sale.populate(saleCustomerPopulate())
   }
 
   async getSales(merchantId: string, query: SalesQueryDto) {
@@ -1666,7 +1674,7 @@ export class SalesService {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
-        .populate('customerId')
+        .populate(saleCustomerPopulate())
         .exec(),
       this.saleModel.countDocuments(filter).exec(),
     ])
@@ -1696,7 +1704,10 @@ export class SalesService {
         _id: saleId,
         serialNumber: serialNumber.trim().toUpperCase(),
       })
-      .populate('merchantId', 'businessName merchantSlug profilePhotoUrl')
+      .populate(
+        'merchantId',
+        'businessName merchantSlug businessImageUrl profilePhotoUrl',
+      )
       .exec()
 
     if (!sale) {
@@ -1738,7 +1749,8 @@ export class SalesService {
         ? {
             businessName: merchant.businessName,
             merchantSlug: merchant.merchantSlug,
-            profilePhotoUrl: merchant.profilePhotoUrl,
+            businessImageUrl:
+              merchant.businessImageUrl || merchant.profilePhotoUrl,
           }
         : null,
     }
@@ -1748,7 +1760,7 @@ export class SalesService {
     const merchantObjectId = new Types.ObjectId(merchantId)
     const sale = await this.saleModel
       .findOne({ _id: saleId, merchantId: merchantObjectId })
-      .populate('customerId')
+      .populate(saleCustomerPopulate())
       .exec()
 
     if (!sale) {
@@ -2505,7 +2517,7 @@ export class SalesService {
       return []
     }
 
-    return this.saleModel
+    const sales = await this.saleModel
       .find({
         customerUserId: new Types.ObjectId(userId),
         status: 'CONFIRMED',
@@ -2513,9 +2525,27 @@ export class SalesService {
       .sort({ createdAt: -1 })
       .populate(
         'merchantId',
-        'businessName profilePhotoUrl merchantSlug businessIndustry',
+        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry',
       )
       .exec()
+
+    return sales.map((sale) => {
+      const value = sale.toObject() as any
+      const merchant = value.merchantId
+      if (!merchant || typeof merchant !== 'object') return value
+
+      return {
+        ...value,
+        merchantId: {
+          _id: merchant._id,
+          businessName: merchant.businessName,
+          merchantSlug: merchant.merchantSlug,
+          businessImageUrl:
+            merchant.businessImageUrl || merchant.profilePhotoUrl,
+          businessIndustry: merchant.businessIndustry,
+        },
+      }
+    })
   }
 
   /**
@@ -2695,7 +2725,7 @@ export class SalesService {
         isArchived: { $ne: true },
       })
       .sort({ createdAt: 1, dueDate: 1 })
-      .populate('customerId')
+      .populate(saleCustomerPopulate())
       .exec()
   }
 
@@ -2848,7 +2878,7 @@ export class SalesService {
       }
 
       await sale.save()
-      await sale.populate('customerId')
+      await sale.populate(saleCustomerPopulate())
       updatedSales.push(sale)
 
       remainingRepayment = this.roundMoney(remainingRepayment - allocated)

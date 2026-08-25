@@ -241,9 +241,11 @@ export default function QRKitDetailPage() {
 
                     {/* Business Logo Overlay*/}
                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11 h-11 rounded-full overflow-hidden border-[2.5px] shadow-lg border-white z-10 bg-white">
-                      {profile?.profilePhotoUrl ? (
+                      {profile?.businessImageUrl || profile?.profilePhotoUrl ? (
                         <Image
-                          src={profile.profilePhotoUrl}
+                          src={
+                            profile.businessImageUrl || profile.profilePhotoUrl!
+                          }
                           alt="Business Logo"
                           width={44}
                           height={44}

@@ -10,6 +10,7 @@ import {
   saleActivitySubtitle,
 } from '@/lib/utils/customer-sale'
 import { formatCurrency } from '@/lib/utils'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 interface ActivityRowProps {
   sale: CustomerSale
@@ -30,7 +31,11 @@ export function ActivityRow({ sale, onOpen }: ActivityRowProps) {
       onClick={() => onOpen(sale)}
       className="w-full flex items-center gap-3 text-left"
     >
-      <MerchantAvatar profilePhotoUrl={merchant.profilePhotoUrl} size={48} />
+      <MerchantAvatar
+        profilePhotoUrl={getBusinessImageUrl(merchant)}
+        alt={businessName}
+        size={48}
+      />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1">

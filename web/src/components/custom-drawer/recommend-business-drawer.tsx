@@ -17,7 +17,6 @@ const GRADIENT_END = '#D72483'
 
 interface RecommendBusinessDrawerProps {
   businessName: string
-  profilePhotoUrl?: string
   referralCode?: string
   closeDrawer: () => void
 }
@@ -45,8 +44,7 @@ export function RecommendBusinessDrawer({
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: codeData, isLoading: isCodeLoading } =
     useMerchantReferralCode(!initialReferralCode)
-  const { data: referral, isLoading: isSummaryLoading } =
-    useMerchantReferralSummary()
+  const { data: referral } = useMerchantReferralSummary()
   const referralCode =
     initialReferralCode || codeData?.referralCode || referral?.referralCode
   const canRefer = Boolean(referralCode)

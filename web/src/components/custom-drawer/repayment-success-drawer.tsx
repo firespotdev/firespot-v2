@@ -1,15 +1,16 @@
 'use client'
 
-import { Check, Clock, Receipt, X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { Button, ClockGradientIcon, StatBanner } from '@/components/ui'
 import { useRouter } from '@bprogress/next/app'
 import { useSalesStats } from '@/services/sales/hooks'
+import type { Sale } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
 import { formatCurrency } from '@/lib/utils'
 
 interface RepaymentSuccessDrawerProps {
-  sale: any
-  reminderSale?: any
+  sale: Sale
+  reminderSale?: Sale
   effectiveAmount: number
   customerName: string
   isFullRepayment: boolean
@@ -63,6 +64,15 @@ export function RepaymentSuccessDrawer({
     router.push('/recents')
   }
 
+  const handleViewDetails = () => {
+    closeAllDrawers()
+    router.replace(returnTo || '/recents')
+    openDrawer({
+      type: 'transaction-details',
+      props: { sale: reminderSale || sale },
+    })
+  }
+
   return (
     <div className="h-dvh w-full bg-[#f4f6f8] flex flex-col font-satoshi justify-between overflow-hidden relative">
       <div className="flex justify-end p-4 shrink-0">
@@ -110,13 +120,7 @@ export function RepaymentSuccessDrawer({
 
         {/* Details Pill Button */}
         <button
-          onClick={() => {
-            closeAllDrawers()
-            openDrawer({
-              type: 'transaction-details',
-              props: { sale },
-            })
-          }}
+          onClick={handleViewDetails}
           className="inline-flex items-center gap-2 px-3.5 py-2.5 border border-[#0000000A] shadow-[0px_2px_4px_0px_#0000000A] rounded-full bg-[#0000000A] text-[10px] font-bold text-black uppercase tracking-[1px] transition-colors cursor-pointer mb-2"
         >
           <svg

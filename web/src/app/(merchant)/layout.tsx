@@ -24,6 +24,14 @@ export default function MerchantLayout({
   const onboardingCompleted = useAuthStore((s) => s.onboardingCompleted)
   const logout = useAuthStore((s) => s.logout)
 
+  const hasValidSession =
+    isAuthenticated && !!token && !isTokenExpired(token)
+  const canRenderMerchant =
+    ready &&
+    hasValidSession &&
+    onboardingCompleted &&
+    user?.role === 'merchant'
+
   useEffect(() => {
     if (!ready) return
     if (!isAuthenticated || !token || isTokenExpired(token)) {
@@ -49,7 +57,7 @@ export default function MerchantLayout({
     logout,
   ])
 
-  if (!ready) {
+  if (!canRenderMerchant) {
     return <div className="h-dvh bg-[#F4F6F8]" />
   }
 

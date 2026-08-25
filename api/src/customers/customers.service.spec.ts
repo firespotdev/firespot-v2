@@ -5,6 +5,7 @@ describe("CustomersService", () => {
     const identity = {
       _id: "507f1f77bcf86cd799439015",
       fullPhoneNumber: "+2348031234567",
+      profilePhotoUrl: "https://example.com/ada.jpg",
     };
     const relationship = {
       _id: "507f1f77bcf86cd799439014",
@@ -34,7 +35,10 @@ describe("CustomersService", () => {
         relationship.name,
         "08031234567",
       ),
-    ).resolves.toBe(relationship);
+    ).resolves.toEqual({
+      ...relationship,
+      profilePhotoUrl: identity.profilePhotoUrl,
+    });
     expect(accountLinkingService.resolveOrCreateUserByPhone).toHaveBeenCalledWith(
       "08031234567",
     );

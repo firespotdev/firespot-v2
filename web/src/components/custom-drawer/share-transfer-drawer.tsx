@@ -4,7 +4,7 @@ import { Copy, X } from 'lucide-react'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
-import { showNotificationToast, TagFooter } from '@/components/ui'
+import { showNotificationToast } from '@/components/ui'
 import { getInitials } from '@/lib/utils'
 import { useRef, useEffect } from 'react'
 
@@ -14,14 +14,14 @@ const GRADIENT_END = '#D72483'
 interface ShareTransferDrawerProps {
   businessName: string
   serialNumber: string
-  profilePhotoUrl?: string
+  businessImageUrl?: string
   closeDrawer: () => void
 }
 
 export function ShareTransferDrawer({
   businessName,
   serialNumber,
-  profilePhotoUrl,
+  businessImageUrl,
   closeDrawer,
 }: ShareTransferDrawerProps) {
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/pay/${serialNumber}`
@@ -127,9 +127,9 @@ export function ShareTransferDrawer({
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
               <div className="relative h-[81px] w-[81px]">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 shadow-lg border-white bg-white">
-                  {profilePhotoUrl ? (
+                  {businessImageUrl ? (
                     <Image
-                      src={profilePhotoUrl}
+                      src={businessImageUrl}
                       alt="Business Logo"
                       width={81}
                       height={81}

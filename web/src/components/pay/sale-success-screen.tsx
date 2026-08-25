@@ -9,6 +9,7 @@ import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatConfirmationDate } from './utils'
 import { FeedbackPrompt } from './feedback-prompt'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 interface SaleSuccessScreenProps {
   sale: PublicSale
@@ -27,6 +28,8 @@ export function SaleSuccessScreen({
 
   const merchantName =
     sale.merchant?.businessName || merchant.businessName || 'Your vendor'
+  const businessImageUrl =
+    getBusinessImageUrl(sale.merchant) || getBusinessImageUrl(merchant)
   const confirmedAt = formatConfirmationDate(sale.recordedAt || sale.createdAt)
 
   const handleViewReceipt = () => {
@@ -105,12 +108,9 @@ export function SaleSuccessScreen({
           <div className="mt-6 w-full max-w-[390px] overflow-hidden rounded-[12px] border border-[#F1F1F1] bg-white text-left shadow-[0px_4px_8px_0px_#0000000A]">
             <div className="flex items-center gap-3 p-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F1F1F1] bg-[#E9EDF1]">
-                {sale.merchant?.profilePhotoUrl || merchant.profilePhotoUrl ? (
+                {businessImageUrl ? (
                   <Image
-                    src={
-                      sale.merchant?.profilePhotoUrl ||
-                      merchant.profilePhotoUrl!
-                    }
+                    src={businessImageUrl}
                     alt={merchantName}
                     width={36}
                     height={36}

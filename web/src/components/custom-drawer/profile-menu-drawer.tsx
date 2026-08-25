@@ -24,6 +24,7 @@ import { TierIcon } from '@/components/merchant/tier-icon'
 import { showNotificationToast, Switch } from '@/components/ui'
 import { usePreference } from '@/hooks/usePreference'
 import { cn } from '@/lib/utils'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
 import { ReactNode, useState } from 'react'
 import {
   ArrowCircleDown2,
@@ -454,10 +455,6 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
     pathname?.startsWith('/saved') ||
     pathname?.startsWith('/search')
 
-  if (isPersonalSurface) {
-    return <PersonalProfileMenuDrawer closeDrawer={closeDrawer} />
-  }
-
   const { data: profile } = useUserProfile()
   const audience: SidebarAudience =
     profile?.role === 'customer' ? 'personal' : 'merchant'
@@ -486,6 +483,11 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
     profile?.businessName ||
     [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') ||
     'Your Business'
+  const businessImageUrl = getBusinessImageUrl(profile)
+
+  if (isPersonalSurface) {
+    return <PersonalProfileMenuDrawer closeDrawer={closeDrawer} />
+  }
 
   const handleBankAccountsClick = () => {
     closeDrawer()
@@ -533,7 +535,6 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
   const handleRecommendBusiness = () => {
     const recommendBusinessProps = {
       businessName,
-      profilePhotoUrl: profile?.profilePhotoUrl,
       referralCode: profile?.merchantReferralCode || undefined,
     }
 
@@ -573,9 +574,9 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           className="mb-3 flex w-full items-center gap-3 rounded-[12px] bg-white p-3 shadow-[0px_4px_8px_0px_#0000000A]"
         >
           <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#CED7E1]">
-            {profile?.profilePhotoUrl ? (
+            {businessImageUrl ? (
               <Image
-                src={profile.profilePhotoUrl}
+                src={businessImageUrl}
                 alt="Profile"
                 width={48}
                 height={48}
@@ -631,7 +632,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                     type: 'profile-share',
                     props: {
                       businessName,
-                      profilePhotoUrl: profile?.profilePhotoUrl,
+                      imageUrl: businessImageUrl,
                       serialNumber: qrKitsData?.data?.[0]?.serialNumber,
                     },
                   })
@@ -667,8 +668,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                   marginSize={0}
                   fgColor="url(#qr-gradient)"
                   imageSettings={{
-                    src:
-                      profile?.profilePhotoUrl || '/images/default_avatar.png',
+                    src: businessImageUrl || '/icons/store_solid.svg',
                     x: undefined,
                     y: undefined,
                     height: 23,
@@ -679,9 +679,9 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="relative">
                     <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-[#CED7E1] shadow-sm">
-                      {profile?.profilePhotoUrl ? (
+                      {businessImageUrl ? (
                         <Image
-                          src={profile.profilePhotoUrl}
+                          src={businessImageUrl}
                           alt="Profile"
                           width={25}
                           height={25}

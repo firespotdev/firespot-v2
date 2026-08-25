@@ -273,7 +273,9 @@ export default function CustomerDetailPage({
                 icon={
                   <OverlappingAvatars
                     primaryPhotoUrl={customer.profilePhotoUrl}
-                    secondaryPhotoUrl={user?.profilePhotoUrl}
+                    secondaryPhotoUrl={
+                      user?.businessImageUrl || user?.profilePhotoUrl
+                    }
                     bankName={user?.bankName}
                   />
                 }
@@ -293,7 +295,9 @@ export default function CustomerDetailPage({
                 icon={
                   <OverlappingAvatars
                     primaryPhotoUrl={customer.profilePhotoUrl}
-                    secondaryPhotoUrl={user?.profilePhotoUrl}
+                    secondaryPhotoUrl={
+                      user?.businessImageUrl || user?.profilePhotoUrl
+                    }
                     bankName={user?.bankName}
                   />
                 }

@@ -205,7 +205,8 @@ export default function RecentsPage() {
       type: 'profile-share',
       props: {
         businessName: profile?.businessName || 'Your Business',
-        profilePhotoUrl: profile?.profilePhotoUrl,
+        imageUrl:
+          profile?.businessImageUrl || profile?.profilePhotoUrl,
         serialNumber: firstKit.serialNumber,
       },
     })

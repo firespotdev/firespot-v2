@@ -477,6 +477,28 @@ export class UsersService {
     };
   }
 
+  async updateBusinessImage(userId: string, file: Express.Multer.File) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (user.businessImagePublicId) {
+      await this.cloudinaryService.deleteImage(user.businessImagePublicId);
+    }
+
+    const upload = await this.cloudinaryService.uploadBusinessImage(file.buffer);
+    user.businessImageUrl = upload.url;
+    user.businessImagePublicId = upload.publicId;
+    await user.save();
+
+    return {
+      message: "Business image updated successfully",
+      businessImageUrl: user.businessImageUrl,
+    };
+  }
+
   async getUserProfile(userId: string) {
     const user = await this.userModel
       .findById(userId)
@@ -784,7 +806,7 @@ export class UsersService {
       id: merchant._id,
       businessName: merchant.businessName,
       merchantSlug: merchant.merchantSlug,
-      profilePhotoUrl: merchant.profilePhotoUrl,
+      businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
       businessIndustry: merchant.businessIndustry,
     };
   }
@@ -794,7 +816,7 @@ export class UsersService {
       .findById(userId)
       .populate(
         "favoriteMerchants",
-        "businessName merchantSlug profilePhotoUrl businessIndustry",
+        "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry",
       )
       .exec();
     if (!user) {
@@ -865,6 +887,7 @@ export class UsersService {
       referralSource: user.referralSource || null,
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],
+      businessImageUrl: user.businessImageUrl,
       profilePhotoUrl: user.profilePhotoUrl,
       profileBannerUrl: user.profileBannerUrl,
       // Merchant plan + verification state (drives the badge and upgrade UI)

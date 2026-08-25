@@ -33,7 +33,11 @@ export function TransactionOptionsDrawer({
   onDownloadReceipt,
 }: TransactionOptionsDrawerProps) {
   const router = useRouter()
-  const { openDrawer, closeDrawer: storeCloseDrawer } = useDrawerStore()
+  const {
+    openDrawer,
+    closeDrawer: storeCloseDrawer,
+    closeAllDrawers,
+  } = useDrawerStore()
 
   const merchantStatus = getMerchantStatus(sale)
   const isPaidCollected =
@@ -85,8 +89,23 @@ export function TransactionOptionsDrawer({
               }
               title="Record repayment"
               onClick={() => {
-                closeDrawer()
-                router.push(`/record-repayment?id=${sale._id}`)
+                closeAllDrawers()
+
+                const params = new URLSearchParams({ id: sale._id })
+                const customerId =
+                  typeof sale.customerId === 'string'
+                    ? sale.customerId
+                    : sale.customerId?._id
+
+                if (customerId) {
+                  params.set('customerId', customerId)
+                  params.set(
+                    'returnTo',
+                    `/outstanding?customerId=${customerId}`,
+                  )
+                }
+
+                router.push(`/record-repayment?${params.toString()}`)
               }}
             />
             <ActionListItem

@@ -5,13 +5,16 @@ import { useSearchParams } from 'next/navigation'
 import { ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { useUserProfile, useUpdateProfilePhoto } from '@/services/users'
+import { useUserProfile, useUpdateBusinessImage } from '@/services/users'
 import { Button } from '@/components/ui/button'
 import { LoaderCircle, VerifiedBadge } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
-import { useSalesStats, useSales } from '@/services/sales/hooks'
+import {
+  useOutstandingSummary,
+  useSalesStats,
+} from '@/services/sales/hooks'
 import Link from 'next/link'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
@@ -37,9 +40,9 @@ export default function ProfilePage() {
     mode: 'collected',
   })
   const { data: recordedStats } = useSalesStats({ ...filter, mode: 'recorded' })
-  const { data: owingSales } = useSales({ status: 'OWING', limit: 1 })
-  const owingCount = owingSales?.meta?.total ?? 0
-  const updateProfilePhoto = useUpdateProfilePhoto()
+  const { data: outstandingSummary } = useOutstandingSummary()
+  const owingCount = outstandingSummary?.customers?.length ?? 0
+  const updateBusinessImage = useUpdateBusinessImage()
   const hasQRKits = (qrKitsData?.data?.length ?? 0) > 0
   const [photoError, setPhotoError] = useState<string | null>(null)
   const [photoSuccess, setPhotoSuccess] = useState(false)
@@ -93,14 +96,14 @@ export default function ProfilePage() {
     }
 
     // Upload the file
-    updateProfilePhoto.mutate(file, {
+    updateBusinessImage.mutate(file, {
       onSuccess: () => {
         setPhotoSuccess(true)
       },
       onError: (error: unknown) => {
         const response = error as { response?: { data?: { message?: string } } }
         const message =
-          response.response?.data?.message || 'Failed to upload photo'
+          response.response?.data?.message || 'Failed to upload business image'
         setPhotoError(message)
       },
     })
@@ -116,7 +119,8 @@ export default function ProfilePage() {
         props: {
           businessName: profile?.businessName || 'Your Business',
           serialNumber: qrKitsData.data[0].serialNumber,
-          profilePhotoUrl: profile?.profilePhotoUrl,
+          imageUrl:
+            profile?.businessImageUrl || profile?.profilePhotoUrl,
         },
       })
     } else {
@@ -166,13 +170,14 @@ export default function ProfilePage() {
           {sortedBankAccounts.length > 0 && (
             <MerchantInfoStat
               merchantInfo={{
-                profilePhotoUrl: profile?.profilePhotoUrl,
+                businessImageUrl:
+                  profile?.businessImageUrl || profile?.profilePhotoUrl,
                 businessName: 'Your online Shop on firespot',
                 bankAccountCount: sortedBankAccounts.length,
               }}
               showCameraButton={true}
               onCameraClick={handleCameraClick}
-              isUploadingPhoto={updateProfilePhoto.isPending}
+              isUploadingPhoto={updateBusinessImage.isPending}
               todaySalesAmount={salesStats?.todaySalesAmount ?? 0}
               collectedAmount={collectedStats?.todaySalesAmount ?? 0}
               recordedAmount={recordedStats?.todaySalesAmount ?? 0}
@@ -214,17 +219,17 @@ export default function ProfilePage() {
             />
           )}
 
-          {/* Photo error message */}
+          {/* Business image error message */}
           {photoError && (
             <p className="text-xs text-red-500 mt-2 text-center">
               {photoError}
             </p>
           )}
 
-          {/* Photo success message */}
+          {/* Business image success message */}
           {photoSuccess && (
             <p className="text-xs text-green-600 mt-2 text-center">
-              Photo updated successfully!
+              Business image updated successfully!
             </p>
           )}
 

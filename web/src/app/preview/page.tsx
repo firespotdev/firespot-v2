@@ -140,7 +140,8 @@ export default function PreviewPage() {
             <MerchantCardCarousel
               bankAccounts={sortedBankAccounts}
               merchantInfo={{
-                profilePhotoUrl: profile.profilePhotoUrl,
+                profilePhotoUrl:
+                  profile.businessImageUrl || profile.profilePhotoUrl,
                 businessName: profile.businessName || '',
                 bankAccountCount: profile.bankAccounts?.length || 0,
               }}

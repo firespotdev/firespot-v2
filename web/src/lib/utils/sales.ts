@@ -123,3 +123,20 @@ export const getSaleCustomerName = (sale: Sale) => {
     ? 'Repeat customer'
     : 'New customer'
 }
+
+export const getSaleCustomerPhotoUrl = (sale?: Sale | null) => {
+  if (!sale) return undefined
+
+  if (typeof sale.customerId === 'object' && sale.customerId?.profilePhotoUrl) {
+    return sale.customerId.profilePhotoUrl
+  }
+
+  if (
+    typeof sale.customerUserId === 'object' &&
+    sale.customerUserId?.profilePhotoUrl
+  ) {
+    return sale.customerUserId.profilePhotoUrl
+  }
+
+  return undefined
+}

@@ -113,17 +113,23 @@ export function showNotificationToast({
  */
 export function showNewPaymentToast({
   time,
+  profilePhotoUrl,
   onView,
   duration = 8000,
 }: {
   time: string
+  profilePhotoUrl?: string
   onView: () => void
   duration?: number
 }) {
   return toast.custom(
     (id) => (
       <div className="w-full flex items-center gap-3 bg-white rounded-[12px] py-3 px-4 shadow-[0px_4px_16px_rgba(0,0,0,0.12)]">
-        <MerchantAvatar size={36} />
+        <MerchantAvatar
+          profilePhotoUrl={profilePhotoUrl}
+          alt="Customer"
+          size={36}
+        />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-black leading-tight truncate">
             New payment from customer

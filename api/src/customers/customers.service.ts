@@ -26,6 +26,22 @@ export class CustomersService {
     private accountLinkingService: AccountLinkingService,
   ) {}
 
+  private toCustomerResponse(customer: any, identity?: any) {
+    const value =
+      typeof customer?.toObject === "function" ? customer.toObject() : customer;
+    const populatedIdentity =
+      identity ??
+      (value?.userId && typeof value.userId === "object"
+        ? value.userId
+        : undefined);
+
+    return {
+      ...value,
+      userId: populatedIdentity?._id ?? value?.userId,
+      profilePhotoUrl: populatedIdentity?.profilePhotoUrl,
+    };
+  }
+
   async create(
     merchantId: string,
     name: string,
@@ -59,7 +75,7 @@ export class CustomersService {
       )
       .exec();
 
-    return relationship;
+    return this.toCustomerResponse(relationship, identity);
   }
 
   async findOrCreateForUser(
@@ -102,24 +118,28 @@ export class CustomersService {
       .exec();
   }
 
-  async findAll(merchantId: string): Promise<MerchantCustomer[]> {
-    return this.customerModel
+  async findAll(merchantId: string) {
+    const customers = await this.customerModel
       .find({ merchantId: new Types.ObjectId(merchantId) })
       .sort({ name: 1 })
+      .populate("userId", "profilePhotoUrl")
       .exec();
+
+    return customers.map((customer) => this.toCustomerResponse(customer));
   }
 
-  async findOne(id: string, merchantId: string): Promise<MerchantCustomer> {
+  async findOne(id: string, merchantId: string) {
     const customer = await this.customerModel
       .findOne({
         _id: new Types.ObjectId(id),
         merchantId: new Types.ObjectId(merchantId),
       })
+      .populate("userId", "profilePhotoUrl")
       .exec();
     if (!customer) {
       throw new NotFoundException("Customer not found");
     }
-    return customer;
+    return this.toCustomerResponse(customer);
   }
 
   async getCustomerDetails(id: string, merchantId: string) {

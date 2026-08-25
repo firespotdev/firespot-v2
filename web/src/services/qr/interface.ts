@@ -17,6 +17,7 @@ export interface QRKit {
         businessName?: string
         merchantSlug?: string
         bankAccounts?: unknown[]
+        businessImageUrl?: string
         profilePhotoUrl?: string
       }
   agentId?:
@@ -91,6 +92,7 @@ export interface MerchantProfile {
     accountName: string
     isPrimary: boolean
   }[]
+  businessImageUrl?: string
   profilePhotoUrl?: string
   hasDetailedReceipts?: boolean
   hasPaystackCollection?: boolean

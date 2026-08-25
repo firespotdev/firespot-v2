@@ -45,6 +45,11 @@ export interface UpdateProfilePhotoResponse {
   profilePhotoUrl: string
 }
 
+export interface UpdateBusinessImageResponse {
+  message: string
+  businessImageUrl: string
+}
+
 export interface UpdateProfileBannerResponse {
   message: string
   profileBannerUrl: string
