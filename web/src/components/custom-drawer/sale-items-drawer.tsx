@@ -16,7 +16,7 @@ export function SaleItemsDrawer({ items = [] }: { items: SaleItem[] }) {
 
   return (
     <div className="flex max-h-[80dvh] w-full flex-col bg-white font-satoshi">
-      <header className="flex shrink-0 items-center justify-between border-b border-[#F1F1F1] px-4 py-3">
+      <header className="flex shrink-0 items-center justify-between border-b border-[#F1F1F1] px-4 py-2">
         <span className="h-9 w-9" aria-hidden="true" />
         <h2 className="text-[16px] font-bold text-black">
           Items ({itemCount})

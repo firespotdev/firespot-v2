@@ -654,19 +654,20 @@ function ActivatePageContent() {
                       background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                     }}
                   >
-                    <div className="bg-white p-4 rounded-[1.2rem] relative">
+                    <div className="relative rounded-[10px] bg-white p-4">
                       {brandedSvg ? (
                         <div
                           dangerouslySetInnerHTML={{ __html: brandedSvg }}
-                          className="h-40 w-40 [&>svg]:h-full [&>svg]:w-full"
+                          className="h-40 w-40 overflow-hidden rounded-[6px] [&>svg]:h-full [&>svg]:w-full"
                         />
                       ) : (
-                        <div className="h-40 w-40 flex items-center justify-center">
+                        <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-[6px]">
                           <QRCodeSVG
                             value="https://lite.firespot.co"
                             size={180}
                             level="H"
                             includeMargin={false}
+                            className="h-full w-full"
                           />
                         </div>
                       )}

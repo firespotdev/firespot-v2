@@ -219,11 +219,11 @@ export default function QRKitDetailPage() {
                     background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                   }}
                 >
-                  <div className="bg-white p-1 rounded-[0.6rem] relative">
+                  <div className="relative rounded-[10px] bg-white p-1">
                     {brandedSvg ? (
                       <div
                         dangerouslySetInnerHTML={{ __html: brandedSvg }}
-                        className="h-48 w-48 [&>svg]:h-full [&>svg]:w-full"
+                        className="h-48 w-48 overflow-hidden rounded-[6px] [&>svg]:h-full [&>svg]:w-full"
                       />
                     ) : qrKit.qrCodeSvgUrl ? (
                       <Image
@@ -231,7 +231,7 @@ export default function QRKitDetailPage() {
                         alt="QR Code"
                         width={192}
                         height={192}
-                        className="h-48 w-48"
+                        className="h-48 w-48 overflow-hidden rounded-[6px]"
                       />
                     ) : (
                       <div className="h-48 w-48 bg-gray-100 flex items-center justify-center rounded-lg">

@@ -452,6 +452,7 @@ export function CollectPaymentDrawer({
                 <GradientQRCode
                   value={checkoutUrl}
                   size={210}
+                  className="overflow-hidden rounded-[10px]"
                   centerImageUrl={
                     profile?.businessImageUrl || profile?.profilePhotoUrl
                   }

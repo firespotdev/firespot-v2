@@ -142,14 +142,16 @@ export function RecommendBusinessDrawer({
               </defs>
             </svg>
             {canRefer ? (
-              <QRCodeSVG
-                value={recommendUrl}
-                size={280}
-                level="H"
-                marginSize={0}
-                fgColor="url(#recommend-business-qr-gradient)"
-                className="h-auto w-full rounded-[14px]"
-              />
+              <div className="overflow-hidden rounded-[14px]">
+                <QRCodeSVG
+                  value={recommendUrl}
+                  size={280}
+                  level="H"
+                  marginSize={0}
+                  fgColor="url(#recommend-business-qr-gradient)"
+                  className="h-auto w-full"
+                />
+              </div>
             ) : (
               <div
                 className={cn(

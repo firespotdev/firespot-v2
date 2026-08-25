@@ -660,7 +660,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                   </linearGradient>
                 </defs>
               </svg>
-              <div className="relative rounded-[10px] bg-white">
+              <div className="relative overflow-hidden rounded-[3px] bg-white">
                 <QRCodeSVG
                   value={shareUrl}
                   size={112}

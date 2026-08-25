@@ -282,7 +282,7 @@ export function PersonalProfileMenuDrawer({
                   </linearGradient>
                 </defs>
               </svg>
-              <div className="relative rounded-[10px] bg-white">
+              <div className="relative overflow-hidden rounded-[3px] bg-white">
                 <QRCodeSVG
                   value={qrUrl}
                   size={112}
