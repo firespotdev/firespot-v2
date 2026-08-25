@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { X, Check, FileText, type LucideIcon } from 'lucide-react'
+import { X, Check, FileText, Loader2, type LucideIcon } from 'lucide-react'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
 import { Button } from './button'
 
@@ -107,61 +107,114 @@ export function showNotificationToast({
   )
 }
 
-/**
- * Rich toast for a customer-initiated payment. Tapping the check opens the
- * merchant's existing review flow; the X dismisses the toast.
- */
+interface NewPaymentToastContentProps {
+  message: string
+  time: string
+  profilePhotoUrl?: string
+  toastId: string | number
+  onConfirm: () => Promise<void>
+  onArchive: () => Promise<void>
+}
+
+function NewPaymentToastContent({
+  message,
+  time,
+  profilePhotoUrl,
+  toastId,
+  onConfirm,
+  onArchive,
+}: NewPaymentToastContentProps) {
+  const [pendingAction, setPendingAction] = useState<
+    'confirm' | 'archive' | null
+  >(null)
+
+  const runAction = async (
+    action: 'confirm' | 'archive',
+    callback: () => Promise<void>,
+  ) => {
+    if (pendingAction) return
+    setPendingAction(action)
+    try {
+      await callback()
+      toast.dismiss(toastId)
+    } catch {
+      setPendingAction(null)
+    }
+  }
+
+  return (
+    <div className="w-full flex items-center gap-3 bg-white rounded-[12px] py-3 px-4 shadow-[0px_4px_16px_rgba(0,0,0,0.12)]">
+      <MerchantAvatar
+        profilePhotoUrl={profilePhotoUrl}
+        alt="Customer"
+        size={36}
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-medium text-black leading-tight truncate">
+          {message}
+        </p>
+        <p className="text-[13px] text-[#00000066] font-medium mt-0.5">
+          {time}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => void runAction('archive', onArchive)}
+        disabled={Boolean(pendingAction)}
+        aria-label="Archive payment"
+        className="w-10 h-10 rounded-full bg-[#0000000A] border border-[#0000000A] flex items-center justify-center shrink-0 disabled:opacity-50"
+      >
+        {pendingAction === 'archive' ? (
+          <Loader2 size={20} className="animate-spin" />
+        ) : (
+          <X size={20} color="black" />
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => void runAction('confirm', onConfirm)}
+        disabled={Boolean(pendingAction)}
+        aria-label="Confirm payment"
+        className="w-10 h-10 rounded-full bg-[#24C166] border border-[#0000000A] flex items-center justify-center shrink-0 disabled:opacity-50"
+      >
+        {pendingAction === 'confirm' ? (
+          <Loader2 size={20} className="animate-spin text-white" />
+        ) : (
+          <Check size={20} color="white" strokeWidth={2.5} />
+        )}
+      </button>
+    </div>
+  )
+}
+
+/** Rich toast whose X archives and whose checkmark confirms the pending sale. */
 export function showNewPaymentToast({
   message = 'New payment from customer',
   time,
   profilePhotoUrl,
-  onView,
+  onConfirm,
+  onArchive,
   duration = 8000,
   toastId,
 }: {
   message?: string
   time: string
   profilePhotoUrl?: string
-  onView: () => void
+  onConfirm: () => Promise<void>
+  onArchive: () => Promise<void>
   duration?: number
   toastId?: string | number
 }) {
   return toast.custom(
     (id) => (
-      <div className="w-full flex items-center gap-3 bg-white rounded-[12px] py-3 px-4 shadow-[0px_4px_16px_rgba(0,0,0,0.12)]">
-        <MerchantAvatar
-          profilePhotoUrl={profilePhotoUrl}
-          alt="Customer"
-          size={36}
-        />
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-black leading-tight truncate">
-            {message}
-          </p>
-          <p className="text-[13px] text-[#00000066] font-medium mt-0.5">
-            {time}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => toast.dismiss(id)}
-          aria-label="Dismiss"
-          className="w-10 h-10 rounded-full bg-[#0000000A] border border-[#0000000A] flex items-center justify-center shrink-0"
-        >
-          <X size={20} color="black" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            onView()
-            toast.dismiss(id)
-          }}
-          aria-label="Review payment"
-          className="w-10 h-10 rounded-full bg-[#24C166] border border-[#0000000A] flex items-center justify-center shrink-0"
-        >
-          <Check size={20} color="white" strokeWidth={2.5} />
-        </button>
-      </div>
+      <NewPaymentToastContent
+        message={message}
+        time={time}
+        profilePhotoUrl={profilePhotoUrl}
+        toastId={id}
+        onConfirm={onConfirm}
+        onArchive={onArchive}
+      />
     ),
     {
       id: toastId,

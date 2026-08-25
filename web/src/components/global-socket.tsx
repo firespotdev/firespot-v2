@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useSocket } from '@/hooks/useSocket'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -15,6 +15,7 @@ import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { userApi } from '@/services/users/userApi'
 import { getSaleCustomerPhotoUrl } from '@/lib/utils/sales'
+import { useArchiveSale, useConfirmSale } from '@/services/sales/hooks'
 
 function formatPaymentTime(timestamp?: string | Date): string {
   const date = timestamp ? new Date(timestamp) : new Date()
@@ -38,6 +39,48 @@ export function GlobalSocket() {
   const soundEnabledRef = useRef(soundEnabled)
   const confirmedSaleIdsRef = useRef(new Set<string>())
   const paystackConfirmationMutedUntilRef = useRef(0)
+  const { mutate: confirmSale } = useConfirmSale()
+  const { mutate: archiveSale } = useArchiveSale()
+
+  const confirmPendingSale = useCallback(
+    (saleId: string) =>
+      new Promise<void>((resolve, reject) => {
+        confirmSale(saleId, {
+          onSuccess: () => resolve(),
+          onError: (error: unknown) => {
+            showNotificationToast({
+              message:
+                (error as { response?: { data?: { message?: string } } })
+                  ?.response?.data?.message ||
+                'Failed to confirm payment. Please try again.',
+              mode: 'error',
+            })
+            reject(error)
+          },
+        })
+      }),
+    [confirmSale],
+  )
+
+  const archivePendingSale = useCallback(
+    (saleId: string) =>
+      new Promise<void>((resolve, reject) => {
+        archiveSale(saleId, {
+          onSuccess: () => resolve(),
+          onError: (error: unknown) => {
+            showNotificationToast({
+              message:
+                (error as { response?: { data?: { message?: string } } })
+                  ?.response?.data?.message ||
+                'Failed to archive payment. Please try again.',
+              mode: 'error',
+            })
+            reject(error)
+          },
+        })
+      }),
+    [archiveSale],
+  )
 
   // Sync ref with state
   useEffect(() => {
@@ -71,11 +114,8 @@ export function GlobalSocket() {
             showNewPaymentToast({
               time: formatPaymentTime(),
               toastId: `pending-sale-${saleId}`,
-              onView: () =>
-                useDrawerStore.getState().openDrawer({
-                  type: 'record-sale',
-                  props: { confirmId: saleId },
-                }),
+              onConfirm: () => confirmPendingSale(saleId),
+              onArchive: () => archivePendingSale(saleId),
             })
           }
           queryClient.invalidateQueries({ queryKey: ['sales'] })
@@ -99,7 +139,12 @@ export function GlobalSocket() {
     })
 
     return () => unsubscribe?.()
-  }, [queryClient, user?.role])
+  }, [
+    archivePendingSale,
+    confirmPendingSale,
+    queryClient,
+    user?.role,
+  ])
 
   useEffect(() => {
     if (!socket || user?.role !== 'merchant') return
@@ -163,13 +208,8 @@ export function GlobalSocket() {
         time: formatPaymentTime(sale.createdAt),
         profilePhotoUrl: getSaleCustomerPhotoUrl(sale),
         toastId: sale._id ? `pending-sale-${sale._id}` : undefined,
-        // Checkmark takes the merchant into the confirm flow (prefilled amount
-        // + description, records onto this existing sale).
-        onView: () =>
-          useDrawerStore.getState().openDrawer({
-            type: 'record-sale',
-            props: { confirmId: sale._id },
-          }),
+        onConfirm: () => confirmPendingSale(sale._id),
+        onArchive: () => archivePendingSale(sale._id),
       })
 
       invalidateSales()
@@ -198,11 +238,8 @@ export function GlobalSocket() {
         time: formatPaymentTime(sale.customerMarkedPaidAt || sale.updatedAt),
         profilePhotoUrl: getSaleCustomerPhotoUrl(sale),
         toastId: sale._id ? `pending-sale-${sale._id}` : undefined,
-        onView: () =>
-          useDrawerStore.getState().openDrawer({
-            type: 'record-sale',
-            props: { confirmId: sale._id },
-          }),
+        onConfirm: () => confirmPendingSale(sale._id),
+        onArchive: () => archivePendingSale(sale._id),
       })
       invalidateSales()
     }
@@ -285,7 +322,13 @@ export function GlobalSocket() {
       socket.off('payment.processing', handlePaymentProcessing)
       socket.off('sale.confirmed', handleSaleConfirmed)
     }
-  }, [socket, queryClient, user?.role])
+  }, [
+    archivePendingSale,
+    confirmPendingSale,
+    socket,
+    queryClient,
+    user?.role,
+  ])
 
   return null
 }
