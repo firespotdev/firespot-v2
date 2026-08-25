@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   Archive,
@@ -25,6 +24,7 @@ import { useArchiveCustomerOutstandingSales } from '@/services/sales/hooks'
 import type { Sale } from '@/services/sales/interface'
 import { formatCurrency } from '@/lib/utils'
 import { getSaleSubject } from '@/lib/utils/sales'
+import { MerchantAvatar } from '@/components/layout'
 
 interface CustomerDebtListProps {
   customerId: string
@@ -173,15 +173,12 @@ export function CustomerDebtList({
 
       <div className="scrollbar-hide flex-1 overflow-y-auto">
         <section className="flex flex-col items-center px-3 pt-9 text-center">
-          <div className="h-24 w-24 rounded-full shadow-[0px_3px_2px_0px_#00000005]">
-            <Image
-              src={customerAvatar || '/images/default_avatar.png'}
-              alt={customerName}
-              width={96}
-              height={96}
-              className="h-full w-full object-cover"
-            />
-          </div>
+          <MerchantAvatar
+            profilePhotoUrl={customerAvatar}
+            alt={customerName}
+            size={96}
+            className="rounded-full shadow-[0px_3px_2px_0px_#00000005]"
+          />
           <h1 className="mt-4 text-[32px] font-bold -tracking-[0.4px] text-black">
             {customerName}
           </h1>

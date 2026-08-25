@@ -20,6 +20,7 @@ import {
 } from '@/components/ui'
 import { Keypad } from '@/components/sales/Keypad'
 import { useSafeBack } from '@/hooks/use-safe-back'
+import type { Sale } from '@/services/sales/interface'
 
 function RecordRepaymentContent() {
   const router = useRouter()
@@ -94,7 +95,7 @@ function RecordRepaymentContent() {
 
   const totalCustomerDebt = useMemo(() => {
     if (customerOutstandingSales.length > 0) {
-      return customerOutstandingSales.reduce((sum: number, s: any) => {
+      return customerOutstandingSales.reduce((sum, s) => {
         const bal =
           s?.balanceOwed ??
           (s?.amount ? Math.max(0, s.amount - (s.amountPaid || 0)) : 0)
@@ -245,11 +246,13 @@ function RecordRepaymentContent() {
         result?.waterfall?.totalRemainingBalance ??
         Math.max(0, balanceOwed - amountToRecord)
       const isFull = remainingDebt <= 0
-      const affectedSales = Array.isArray(result?.waterfall?.affectedSales)
+      const affectedSales: Sale[] = Array.isArray(
+        result?.waterfall?.affectedSales,
+      )
         ? result.waterfall.affectedSales
         : []
       const updatedSale =
-        affectedSales.find((item: any) => item?._id === saleId) ||
+        affectedSales.find((item) => item?._id === saleId) ||
         affectedSales[0] ||
         result ||
         sale
@@ -264,6 +267,9 @@ function RecordRepaymentContent() {
             customerName: updatedSale.customerName || customerName,
           }
         : undefined
+      const latestRepayment = updatedSale?.repayments?.[
+        Math.max(0, (updatedSale.repayments?.length || 1) - 1)
+      ]
 
       openDrawer({
         type: 'repayment-success',
@@ -272,6 +278,8 @@ function RecordRepaymentContent() {
           reminderSale,
           effectiveAmount: amountToRecord,
           customerName,
+          paymentMethod: methodToUse,
+          recordedAt: latestRepayment?.recordedAt || new Date().toISOString(),
           isFullRepayment: isFull,
           remainingBalance: remainingDebt,
           returnTo: repaymentReturnTo || undefined,
@@ -284,9 +292,11 @@ function RecordRepaymentContent() {
           },
         },
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       showNotificationToast({
-        message: error?.response?.data?.message || 'Failed to record repayment',
+        message:
+          (error as { response?: { data?: { message?: string } } })?.response
+            ?.data?.message || 'Failed to record repayment',
       })
     }
   }

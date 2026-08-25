@@ -61,7 +61,26 @@ export function GlobalSocket() {
   useEffect(() => {
     const unsubscribe = onForegroundMessage(async (payload) => {
       if (!payload?.notification) return
-      if (payload.data?.type === 'sale.pending' && user?.role !== 'merchant') {
+      if (payload.data?.type === 'sale.pending') {
+        // Foreground pending sales use the same rich eight-second X/checkmark
+        // prompt as the socket path. A shared toast id prevents the push and
+        // socket deliveries from placing duplicate notifications on screen.
+        if (user?.role === 'merchant') {
+          const saleId = payload.data?.saleId
+          if (saleId) {
+            showNewPaymentToast({
+              time: formatPaymentTime(),
+              toastId: `pending-sale-${saleId}`,
+              onView: () =>
+                useDrawerStore.getState().openDrawer({
+                  type: 'record-sale',
+                  props: { confirmId: saleId },
+                }),
+            })
+          }
+          queryClient.invalidateQueries({ queryKey: ['sales'] })
+          queryClient.invalidateQueries({ queryKey: ['sales-stats'] })
+        }
         return
       }
       // Use the SW registration to show a real OS-level notification
@@ -143,6 +162,7 @@ export function GlobalSocket() {
       showNewPaymentToast({
         time: formatPaymentTime(sale.createdAt),
         profilePhotoUrl: getSaleCustomerPhotoUrl(sale),
+        toastId: sale._id ? `pending-sale-${sale._id}` : undefined,
         // Checkmark takes the merchant into the confirm flow (prefilled amount
         // + description, records onto this existing sale).
         onView: () =>

@@ -23,6 +23,7 @@ import {
   CircularIconButton,
   ClockGradientIcon,
   ClockFillIcon,
+  LoaderCircle,
   showNotificationToast,
 } from '../ui'
 import { format } from 'date-fns'
@@ -35,6 +36,7 @@ import {
 
 import { cn, formatCurrency } from '@/lib/utils'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
+import { useReceiptPNGShare } from '@/hooks/use-receipt-png-share'
 
 interface TransactionDetailsDrawerProps {
   sale: Sale
@@ -122,16 +124,17 @@ const TransactionDetailsDrawer = ({
     router.push(`/record-repayment?${params.toString()}`)
   }
 
-  const handleShareReceipt = () => {
-    if (!navigator.share) return
-    void navigator
-      .share({
-        title: 'Firespot Receipt',
-        text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDate(sale.createdAt)}`,
-        url: window.location.href,
-      })
-      .catch(() => {})
-  }
+  const {
+    shareReceipt: handleShareReceipt,
+    isPreparingReceipt,
+    isSharingReceipt,
+    isReceiptReady,
+  } = useReceiptPNGShare({
+    receiptRef,
+    cacheKey: `${sale._id}:${sale.updatedAt || sale.recordedAt || sale.createdAt}`,
+    filename: `firespot-receipt-${sale.reference || sale._id}.png`,
+    text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDate(sale.createdAt)}`,
+  })
 
   const handleDownloadReceipt = useCallback(async () => {
     if (!receiptRef.current || isDownloading) return
@@ -187,7 +190,12 @@ const TransactionDetailsDrawer = ({
               onClick={() => {
                 openDrawer({
                   type: 'transaction-options',
-                  props: { sale, onDownloadReceipt: handleDownloadReceipt },
+                  props: {
+                    sale,
+                    onShareReceipt: handleShareReceipt,
+                    onDownloadReceipt: handleDownloadReceipt,
+                    isReceiptShareReady: isReceiptReady,
+                  },
                 })
               }}
             />
@@ -208,7 +216,12 @@ const TransactionDetailsDrawer = ({
               onClick={() => {
                 openDrawer({
                   type: 'transaction-options',
-                  props: { sale, onDownloadReceipt: handleDownloadReceipt },
+                  props: {
+                    sale,
+                    onShareReceipt: handleShareReceipt,
+                    onDownloadReceipt: handleDownloadReceipt,
+                    isReceiptShareReady: isReceiptReady,
+                  },
                 })
               }}
             />
@@ -216,7 +229,21 @@ const TransactionDetailsDrawer = ({
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="relative flex-1 overflow-y-auto"
+        aria-busy={!isOutstanding && isPreparingReceipt}
+      >
+        {!isOutstanding && isPreparingReceipt && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center bg-white"
+            role="status"
+            aria-label="Loading transaction details"
+          >
+            <div className="h-10 w-10 shrink-0">
+              <LoaderCircle innerBg="#FFFFFF" />
+            </div>
+          </div>
+        )}
         <div ref={receiptRef} className="flex flex-col items-center pt-6 px-4">
           {/* Status Icon Ring */}
           {isOutstanding ? (
@@ -301,9 +328,16 @@ const TransactionDetailsDrawer = ({
                 onClick={
                   isOutstanding ? handleRecordRepayment : handleShareReceipt
                 }
+                disabled={
+                  !isOutstanding && (isPreparingReceipt || isSharingReceipt)
+                }
               >
                 {isOutstanding ? <PlusCircle size={16} /> : <Share size={16} />}
-                {isOutstanding ? 'RECORD REPAYMENT' : 'SHARE RECEIPT'}
+                {isOutstanding
+                  ? 'RECORD REPAYMENT'
+                  : isSharingReceipt
+                    ? 'SHARING…'
+                    : 'SHARE RECEIPT'}
               </Button>
               <Button
                 variant="outline"
@@ -370,9 +404,10 @@ const TransactionDetailsDrawer = ({
                 variant="outline"
                 className="w-fit rounded-full h-9 bg-[#F1F1F1] border border-[#0000000A] px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5 shadow-[0px_2px_4px_0px_#0000000A]"
                 onClick={handleShareReceipt}
+                disabled={isPreparingReceipt || isSharingReceipt}
               >
                 <Share size={16} className="text-black" />
-                SHARE RECEIPT
+                {isSharingReceipt ? 'SHARING…' : 'SHARE RECEIPT'}
               </Button>
               <Button
                 variant="outline"

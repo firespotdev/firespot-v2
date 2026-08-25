@@ -179,10 +179,11 @@ export function SaleWaitingScreen({
     markPaid.mutate(
       { saleId: sale.id, serialNumber },
       {
-        onError: (error: any) => {
+        onError: (error: unknown) => {
           showNotificationToast({
             message:
-              error?.response?.data?.message ||
+              (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message ||
               'Could not notify the merchant. Please try again.',
             mode: 'error',
           })
@@ -218,7 +219,9 @@ export function SaleWaitingScreen({
         </header>
 
         <div className="flex-1 overflow-y-auto px-4 flex flex-col justify-center items-center">
-          <GreenSpinner size={16} innerBg="#f4f6f8" />
+          <div className="h-16 w-16 shrink-0">
+            <GreenSpinner size={16} innerBg="#f4f6f8" />
+          </div>
 
           <h1 className="font-bold text-[20px] text-black -tracking-[0.4px] text-center mt-6">
             {title}

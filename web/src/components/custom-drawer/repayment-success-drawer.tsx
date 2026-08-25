@@ -7,12 +7,15 @@ import { useSalesStats } from '@/services/sales/hooks'
 import type { Sale } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
 import { formatCurrency } from '@/lib/utils'
+import { format } from 'date-fns'
 
 interface RepaymentSuccessDrawerProps {
   sale: Sale
   reminderSale?: Sale
   effectiveAmount: number
   customerName: string
+  paymentMethod: string
+  recordedAt: string | Date
   isFullRepayment: boolean
   remainingBalance: number
   returnTo?: string
@@ -24,6 +27,8 @@ export function RepaymentSuccessDrawer({
   reminderSale,
   effectiveAmount,
   customerName,
+  paymentMethod,
+  recordedAt,
   isFullRepayment,
   remainingBalance,
   returnTo,
@@ -64,14 +69,16 @@ export function RepaymentSuccessDrawer({
     router.push('/recents')
   }
 
-  const handleViewDetails = () => {
-    closeAllDrawers()
-    router.replace(returnTo || '/recents')
-    openDrawer({
-      type: 'transaction-details',
-      props: { sale: reminderSale || sale },
-    })
-  }
+  const repaymentDate = (() => {
+    try {
+      return format(
+        new Date(recordedAt),
+        "EEEE do 'of' MMMM, yyyy 'at' h:mm a",
+      )
+    } catch {
+      return 'the recorded time'
+    }
+  })()
 
   return (
     <div className="h-dvh w-full bg-[#f4f6f8] flex flex-col font-satoshi justify-between overflow-hidden relative">
@@ -103,8 +110,8 @@ export function RepaymentSuccessDrawer({
         {/* Subtitle */}
         <p className="text-[14px] text-[#00000080] font-medium text-center mb-6 leading-relaxed">
           {isFullRepayment
-            ? `${customerName} has cleared her NGN ${formatCurrency(sale?.amount || effectiveAmount)} balance.`
-            : `NGN ${formatCurrency(effectiveAmount)} received • NGN ${formatCurrency(remainingBalance)} still owed by ${customerName}`}
+            ? `${paymentMethod} repayment of NGN ${formatCurrency(effectiveAmount)} recorded on ${repaymentDate}. ${customerName} has cleared the outstanding balance.`
+            : `${paymentMethod} repayment of NGN ${formatCurrency(effectiveAmount)} recorded on ${repaymentDate}. NGN ${formatCurrency(remainingBalance)} still owed by ${customerName}.`}
         </p>
 
         {/* Sales Stats Banner */}
@@ -118,44 +125,6 @@ export function RepaymentSuccessDrawer({
           />
         </div>
 
-        {/* Details Pill Button */}
-        <button
-          onClick={handleViewDetails}
-          className="inline-flex items-center gap-2 px-3.5 py-2.5 border border-[#0000000A] shadow-[0px_2px_4px_0px_#0000000A] rounded-full bg-[#0000000A] text-[10px] font-bold text-black uppercase tracking-[1px] transition-colors cursor-pointer mb-2"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-          >
-            <path
-              d="M22 6v2.42C22 10 21 11 19.42 11H16V4.01C16 2.9 16.91 2 18.02 2c1.09.01 2.09.45 2.81 1.17C21.55 3.9 22 4.9 22 6Z"
-              stroke="#000000"
-              strokeWidth="1.5"
-              strokeMiterlimit="10"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            ></path>
-            <path
-              d="M2 7v14c0 .83.94 1.3 1.6.8l1.71-1.28c.4-.3.96-.26 1.32.1l1.66 1.67c.39.39 1.03.39 1.42 0l1.68-1.68c.35-.35.91-.39 1.3-.09l1.71 1.28c.66.49 1.6.02 1.6-.8V4c0-1.1.9-2 2-2H6C3 2 2 3.79 2 6v1Z"
-              stroke="#000000"
-              strokeWidth="1.5"
-              strokeMiterlimit="10"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            ></path>
-            <path
-              d="M6.25 10h5.5"
-              stroke="#000000"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            ></path>
-          </svg>
-          <span>DETAILS</span>
-        </button>
       </div>
 
       {/* Bottom CTA Buttons */}

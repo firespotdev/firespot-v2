@@ -10,6 +10,12 @@ interface DownloadElementOptions {
   pageMarginMm?: number
 }
 
+interface SharePNGOptions {
+  filename?: string
+  title?: string
+  text?: string
+}
+
 const shouldIncludeNode = (node: HTMLElement) =>
   !node.hasAttribute?.('data-export-exclude')
 
@@ -41,15 +47,46 @@ export async function waitForElementAssets(
   await nextPaint()
 }
 
+function sanitizeFilename(filename: string) {
+  return filename.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+}
+
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = filename.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
+  link.download = sanitizeFilename(filename)
   document.body.appendChild(link)
   link.click()
   link.remove()
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+export async function sharePNGBlob(
+  blob: Blob,
+  options: SharePNGOptions = {},
+): Promise<'shared' | 'downloaded'> {
+  const filename = sanitizeFilename(
+    options.filename || 'firespot-receipt.png',
+  )
+  const file = new File([blob], filename, { type: 'image/png' })
+  const shareData: ShareData = {
+    files: [file],
+    title: options.title,
+    text: options.text,
+  }
+
+  if (
+    typeof navigator.share === 'function' &&
+    typeof navigator.canShare === 'function' &&
+    navigator.canShare(shareData)
+  ) {
+    await navigator.share(shareData)
+    return 'shared'
+  }
+
+  triggerDownload(blob, filename)
+  return 'downloaded'
 }
 
 export async function renderElementAsPNG(

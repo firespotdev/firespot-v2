@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { Share, Download, Copy, Check } from 'lucide-react'
-import { Button, TagFooter, CircularIconButton } from '../ui'
+import { Button, TagFooter, CircularIconButton, LoaderCircle } from '../ui'
 import { format } from 'date-fns'
 import { showNotificationToast } from '@/components/ui'
 import type { PublicSale } from '@/services/sales/interface'
@@ -10,6 +10,7 @@ import type { MerchantProfile } from '@/services/qr/interface'
 import { formatCurrency } from '@/lib/utils'
 import { getSaleDescription } from '@/lib/utils/sales'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
+import { useReceiptPNGShare } from '@/hooks/use-receipt-png-share'
 
 interface SaleReceiptDrawerProps {
   sale: PublicSale
@@ -24,7 +25,6 @@ export function SaleReceiptDrawer({
 }: SaleReceiptDrawerProps) {
   const receiptRef = useRef<HTMLDivElement>(null)
   const [isDownloading, setIsDownloading] = useState(false)
-  if (!sale) return null
 
   const formatDate = (date: string | Date | undefined) => {
     if (!date) return 'N/A'
@@ -38,20 +38,15 @@ export function SaleReceiptDrawer({
   const merchantName =
     sale.merchant?.businessName || merchant.businessName || 'Merchant'
   const paidTo = sale.targetBankName || merchantName
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator
-        .share({
-          title: 'Firespot Receipt',
-          text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} to ${merchantName} on ${formatDate(
-            sale.recordedAt || sale.createdAt,
-          )}`,
-          url: window.location.href,
-        })
-        .catch(() => {})
-    }
-  }
+  const { shareReceipt, isPreparingReceipt, isSharingReceipt } =
+    useReceiptPNGShare({
+      receiptRef,
+      cacheKey: `${sale.id}:${sale.recordedAt || sale.createdAt}`,
+      filename: `firespot-receipt-${sale.reference || sale.id}.png`,
+      text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} to ${merchantName} on ${formatDate(
+        sale.recordedAt || sale.createdAt,
+      )}`,
+    })
 
   const handleDownload = async () => {
     if (!receiptRef.current || isDownloading) return
@@ -85,7 +80,21 @@ export function SaleReceiptDrawer({
         <span className="w-7 h-7 shrink-0" />
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="relative flex-1 overflow-y-auto"
+        aria-busy={isPreparingReceipt}
+      >
+        {isPreparingReceipt && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center bg-white"
+            role="status"
+            aria-label="Loading transaction details"
+          >
+            <div className="h-10 w-10 shrink-0">
+              <LoaderCircle innerBg="#FFFFFF" />
+            </div>
+          </div>
+        )}
         <div ref={receiptRef} className="flex flex-col items-center pt-8 px-4">
           {/* Status Icon Ring */}
           <div className="w-16 h-16 rounded-full border-4 border-[#24C166] flex items-center justify-center mb-4 bg-white shrink-0">
@@ -112,10 +121,11 @@ export function SaleReceiptDrawer({
             <Button
               variant="outline"
               className="w-fit rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 transition-colors flex items-center justify-center gap-1.5"
-              onClick={handleShare}
+              onClick={shareReceipt}
+              disabled={isPreparingReceipt || isSharingReceipt}
             >
               <Share size={16} className="text-black" />
-              SHARE RECEIPT
+              {isSharingReceipt ? 'SHARING…' : 'SHARE RECEIPT'}
             </Button>
             <Button
               variant="outline"

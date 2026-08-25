@@ -116,11 +116,13 @@ export function showNewPaymentToast({
   profilePhotoUrl,
   onView,
   duration = 8000,
+  toastId,
 }: {
   time: string
   profilePhotoUrl?: string
   onView: () => void
   duration?: number
+  toastId?: string | number
 }) {
   return toast.custom(
     (id) => (
@@ -160,6 +162,7 @@ export function showNewPaymentToast({
       </div>
     ),
     {
+      id: toastId,
       duration,
       unstyled: true,
       className: 'w-full max-w-[420px] mx-auto',

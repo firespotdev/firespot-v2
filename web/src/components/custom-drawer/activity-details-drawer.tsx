@@ -16,6 +16,7 @@ import {
   Button,
   TagFooter,
   CircularIconButton,
+  LoaderCircle,
   showNotificationToast,
 } from '../ui'
 import { useDrawerStore } from '@/services/drawer'
@@ -30,6 +31,7 @@ import { formatCurrency } from '@/lib/utils'
 import { getSaleDescription } from '@/lib/utils/sales'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
+import { useReceiptPNGShare } from '@/hooks/use-receipt-png-share'
 
 interface ActivityDetailsDrawerProps {
   sale: CustomerSale
@@ -99,16 +101,17 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
   const viaLabel =
     (sale.source && VIA_LABELS[sale.source]) || sale.qrKitName || 'Firespot'
   const reference = sale.reference || sale._id?.substring(0, 10).toUpperCase()
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Firespot Receipt',
-        text: `Payment of NGN ${formatCurrency(amount)} to ${businessName}`,
-        url: window.location.href,
-      })
-    }
-  }
+  const {
+    shareReceipt,
+    isPreparingReceipt,
+    isSharingReceipt,
+    isReceiptReady,
+  } = useReceiptPNGShare({
+    receiptRef,
+    cacheKey: `${sale._id}:${sale.updatedAt || sale.recordedAt || sale.createdAt}`,
+    filename: `firespot-receipt-${reference || sale._id}.png`,
+    text: `Payment of NGN ${formatCurrency(amount)} to ${businessName}`,
+  })
 
   const handlePayAgain = () => {
     if (sale.serialNumber) {
@@ -181,13 +184,32 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
           onClick={() =>
             openDrawer({
               type: 'activity-options',
-              props: { sale, onDownloadReceipt: handleDownloadReceipt },
+              props: {
+                sale,
+                onShareReceipt: shareReceipt,
+                onDownloadReceipt: handleDownloadReceipt,
+                isReceiptShareReady: isReceiptReady,
+              },
             })
           }
         />
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="relative flex-1 overflow-y-auto"
+        aria-busy={isPreparingReceipt}
+      >
+        {isPreparingReceipt && (
+          <div
+            className="absolute inset-0 z-10 flex items-center justify-center bg-white"
+            role="status"
+            aria-label="Loading transaction details"
+          >
+            <div className="h-10 w-10 shrink-0">
+              <LoaderCircle innerBg="#FFFFFF" />
+            </div>
+          </div>
+        )}
         <div ref={receiptRef} className="flex flex-col items-center pt-8 px-4">
           {/* Merchant avatar */}
           <div className="w-20 h-20 rounded-full bg-[#E9EDF1] border border-[#F1F1F1] overflow-hidden flex items-center justify-center shrink-0">
@@ -224,11 +246,12 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
           >
             <Button
               variant="outline"
-              onClick={handleShare}
+              onClick={shareReceipt}
+              disabled={isPreparingReceipt || isSharingReceipt}
               className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
             >
               <Share size={16} className="text-black" />
-              SHARE RECEIPT
+              {isSharingReceipt ? 'SHARING…' : 'SHARE RECEIPT'}
             </Button>
             <Button
               variant="outline"

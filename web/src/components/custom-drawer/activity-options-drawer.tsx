@@ -31,12 +31,16 @@ import {
 interface ActivityOptionsDrawerProps {
   sale: CustomerSale
   closeDrawer: () => void
+  onShareReceipt?: () => Promise<void> | void
   onDownloadReceipt?: () => Promise<void> | void
+  isReceiptShareReady?: boolean
 }
 
 export function ActivityOptionsDrawer({
   sale,
+  onShareReceipt,
   onDownloadReceipt,
+  isReceiptShareReady = false,
 }: ActivityOptionsDrawerProps) {
   const router = useRouter()
   const { closeDrawer: storeCloseDrawer, closeAllDrawers } = useDrawerStore()
@@ -91,11 +95,10 @@ export function ActivityOptionsDrawer({
     }
   }
 
-  const handleShareReceipt = () => {
+  const handleShareReceipt = async () => {
+    if (!onShareReceipt || !isReceiptShareReady) return
+    await onShareReceipt()
     close()
-    if (navigator.share) {
-      navigator.share({ title: 'Firespot Receipt', url: window.location.href })
-    }
   }
 
   return (
@@ -154,6 +157,7 @@ export function ActivityOptionsDrawer({
             icon={<ExportIcon size={24} className="text-[#111827] " />}
             title="Share receipt"
             onClick={handleShareReceipt}
+            disabled={!onShareReceipt || !isReceiptShareReady}
           />
           <ActionListItem
             icon={<DownloadSimpleIcon size={24} className="text-[#111827] " />}

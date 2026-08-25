@@ -24,13 +24,17 @@ import {
 interface TransactionOptionsDrawerProps {
   sale: Sale
   closeDrawer: () => void
+  onShareReceipt?: () => Promise<void> | void
   onDownloadReceipt?: () => Promise<void> | void
+  isReceiptShareReady?: boolean
 }
 
 export function TransactionOptionsDrawer({
   sale,
   closeDrawer,
+  onShareReceipt,
   onDownloadReceipt,
+  isReceiptShareReady = false,
 }: TransactionOptionsDrawerProps) {
   const router = useRouter()
   const {
@@ -129,14 +133,11 @@ export function TransactionOptionsDrawer({
                 <Share size={24} className="text-[#111827] stroke-[2.2px]" />
               }
               title="Share receipt"
-              onClick={() => {
+              disabled={!onShareReceipt || !isReceiptShareReady}
+              onClick={async () => {
+                if (!onShareReceipt || !isReceiptShareReady) return
+                await onShareReceipt()
                 closeDrawer()
-                if (navigator.share) {
-                  navigator.share({
-                    title: 'Firespot Receipt',
-                    url: window.location.href,
-                  })
-                }
               }}
             />
             <ActionListItem

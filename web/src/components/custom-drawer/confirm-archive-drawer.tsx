@@ -31,7 +31,7 @@ export function ConfirmArchiveDrawer({
           props: { sale: updated },
         })
       },
-      onError: (err) => {
+      onError: () => {
         setIsArchiving(false)
         alert('Failed to archive sale')
       },
@@ -65,13 +65,7 @@ export function ConfirmArchiveDrawer({
         <div className="flex gap-3">
           <Button
             disabled={isArchiving}
-            onClick={() => {
-              closeDrawer()
-              openDrawer({
-                type: 'transaction-options',
-                props: { sale },
-              })
-            }}
+            onClick={closeDrawer}
             variant="outline"
             className="flex-1 h-12 rounded-full font-bold"
           >
