@@ -282,7 +282,7 @@ export function PayCatalogueDrawer({ merchant, onCheckout }: Props) {
       <footer className="flex shrink-0 items-center gap-3 border-t border-[#F1F1F1] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button
           type="button"
-          onClick={onCheckout}
+          onClick={() => onCheckout()}
           disabled={cartItems.length === 0}
           className="min-w-0 flex-1 text-left disabled:cursor-not-allowed"
         >
@@ -296,7 +296,7 @@ export function PayCatalogueDrawer({ merchant, onCheckout }: Props) {
         </button>
         <Button
           type="button"
-          onClick={onCheckout}
+          onClick={() => onCheckout()}
           disabled={cartItems.length === 0}
           className="h-11 w-auto px-6"
         >

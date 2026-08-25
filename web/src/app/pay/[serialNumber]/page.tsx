@@ -59,6 +59,7 @@ export default function PaymentPage() {
   const clearPurchase = usePurchaseCartStore((state) => state.clear)
   const resetPurchase = usePurchaseCartStore((state) => state.reset)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
+  const [isEnteringWaiting, setIsEnteringWaiting] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const createPendingSale = useCreatePendingSale()
   const createPaystackCollectSale = useCreatePaystackCollectSale()
@@ -235,6 +236,7 @@ export default function PaymentPage() {
   }
 
   if (
+    (isEnteringWaiting && !saleId) ||
     isRecoveringActiveSale ||
     isLoading ||
     (saleId &&
@@ -778,14 +780,14 @@ export default function PaymentPage() {
   // Payer enters an amount, copies the account, and hands off to the shared
   // waiting/confirmation flow via ?saleId (the pending sale we just created).
   const handlePayAmountCopy = (amount: number, description: string) => {
-    if (!bankAccount || createPendingSale.isPending) return
+    if (!bankAccount || createPendingSale.isPending) return Promise.resolve()
 
     const { accountNumber, bankName } = bankAccount
-    navigator.clipboard.writeText(accountNumber)
-    showNotificationToast({
-      message: 'Account number copied',
-      mode: 'success',
-      duration: 2000,
+    void navigator.clipboard.writeText(accountNumber).catch(() => {
+      showNotificationToast({
+        message: 'Could not copy the account number. Copy it on the next screen.',
+        mode: 'error',
+      })
     })
 
     let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
@@ -802,68 +804,74 @@ export default function PaymentPage() {
       [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
       undefined
 
-    createPendingSale.mutate(
-      {
-        merchantId: merchant.id,
-        amount,
-        description,
-        customerFingerprint: fingerprint,
-        customerName: payerName,
-        source: window.location.search.includes('shared=true')
-          ? 'Link shared'
-          : 'QR scan',
-        targetBankName: bankName,
-        serialNumber,
-        items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
-      },
-      {
-        onSuccess: (sale: { _id?: string }) => {
-          const newSaleId = sale?._id
-          if (!newSaleId) {
+    return new Promise<void>((resolve) => {
+      createPendingSale.mutate(
+        {
+          merchantId: merchant.id,
+          amount,
+          description,
+          customerFingerprint: fingerprint,
+          customerName: payerName,
+          source: window.location.search.includes('shared=true')
+            ? 'Link shared'
+            : 'QR scan',
+          targetBankName: bankName,
+          serialNumber,
+          items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
+        },
+        {
+          onSuccess: (sale: { _id?: string }) => {
+            const newSaleId = sale?._id
+            if (!newSaleId) {
+              showNotificationToast({
+                message: 'Failed to start payment. Please try again.',
+                mode: 'error',
+              })
+              resolve()
+              return
+            }
+
+            const continueToWaiting = () => {
+              recordCopy.mutate({ serialNumber, accountNumber, bankName })
+              // Mark copied so the flow resumes at "waiting", then hand off.
+              recordSaleCopy.mutate(
+                {
+                  saleId: newSaleId,
+                  serialNumber,
+                  targetBankName: bankName,
+                  targetAccountNumber: accountNumber,
+                },
+                {
+                  onSettled: () => {
+                    setIsEnteringWaiting(true)
+                    router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
+                    closeAllDrawers()
+                    clearPurchase()
+                    resolve()
+                  },
+                },
+              )
+            }
+
+            if (authUser?.id) {
+              claimSalePayer.mutate(
+                { saleId: newSaleId },
+                { onSettled: continueToWaiting },
+              )
+            } else {
+              continueToWaiting()
+            }
+          },
+          onError: () => {
             showNotificationToast({
               message: 'Failed to start payment. Please try again.',
               mode: 'error',
             })
-            return
-          }
-
-          const continueToWaiting = () => {
-            closeAllDrawers()
-            clearPurchase()
-            recordCopy.mutate({ serialNumber, accountNumber, bankName })
-            // Mark copied so the flow resumes at "waiting", then hand off.
-            recordSaleCopy.mutate(
-              {
-                saleId: newSaleId,
-                serialNumber,
-                targetBankName: bankName,
-                targetAccountNumber: accountNumber,
-              },
-              {
-                onSettled: () => {
-                  router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
-                },
-              },
-            )
-          }
-
-          if (authUser?.id) {
-            claimSalePayer.mutate(
-              { saleId: newSaleId },
-              { onSettled: continueToWaiting },
-            )
-          } else {
-            continueToWaiting()
-          }
+            resolve()
+          },
         },
-        onError: () => {
-          showNotificationToast({
-            message: 'Failed to start payment. Please try again.',
-            mode: 'error',
-          })
-        },
-      },
-    )
+      )
+    })
   }
 
   function openCurrentPurchase(
@@ -911,9 +919,9 @@ export default function PaymentPage() {
       merchant?.hasPaystackCollection &&
       usePurchaseCartStore.getState().selectedRail === 'multiple'
     ) {
-      handlePayInstantly(total, description)
+      return handlePayInstantly(total, description)
     } else {
-      handlePayAmountCopy(total, description)
+      return handlePayAmountCopy(total, description)
     }
   }
 

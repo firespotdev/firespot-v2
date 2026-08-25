@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Image as ImageIcon, Minus, Plus, Trash2, X } from 'lucide-react'
 import type { MerchantProfile } from '@/services/qr/interface'
 import type { PaymentRail } from './rail-picker-drawer'
@@ -19,7 +20,7 @@ interface Props {
   selectedRail: PaymentRail
   isSubmitting?: boolean
   onChangePaymentMethod: () => void
-  onPay: () => void
+  onPay: () => void | Promise<void>
 }
 
 const money = (value: number) =>
@@ -40,7 +41,9 @@ export function PayCurrentPurchaseDrawer({
   const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const items = usePurchaseCartStore((state) => state.items)
   const onUpdateQuantity = usePurchaseCartStore((state) => state.updateQuantity)
+  const [isPaying, setIsPaying] = useState(false)
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const isPaymentPending = isSubmitting || isPaying
   const isInstant =
     Boolean(merchant.hasPaystackCollection) && selectedRail === 'multiple'
   const singlePaystackChannel =
@@ -52,6 +55,16 @@ export function PayCurrentPurchaseDrawer({
     : account
       ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
       : 'Transfer directly to bank account'
+
+  const handlePay = async () => {
+    if (isPaymentPending) return
+    setIsPaying(true)
+    try {
+      await onPay()
+    } finally {
+      setIsPaying(false)
+    }
+  }
 
   return (
     <div className="flex max-h-[80dvh] min-h-0 w-full flex-col bg-white">
@@ -185,11 +198,17 @@ export function PayCurrentPurchaseDrawer({
         </div>
         <Button
           type="button"
-          onClick={onPay}
-          disabled={items.length === 0 || isSubmitting}
+          onClick={handlePay}
+          disabled={items.length === 0 || isPaymentPending}
           className="mt-4"
         >
-          {isSubmitting ? <Spinner /> : `Pay NGN ${money(total)}`}
+          {isPaymentPending ? (
+            <Spinner />
+          ) : isInstant ? (
+            `Pay NGN ${money(total)}`
+          ) : (
+            'Copy account number'
+          )}
         </Button>
       </footer>
     </div>

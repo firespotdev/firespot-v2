@@ -193,9 +193,16 @@ export function GlobalSocket() {
         invalidateSales()
         return
       }
-      showNotificationToast({
+      showNewPaymentToast({
         message: 'Customer says they have paid',
-        duration: 3000,
+        time: formatPaymentTime(sale.customerMarkedPaidAt || sale.updatedAt),
+        profilePhotoUrl: getSaleCustomerPhotoUrl(sale),
+        toastId: sale._id ? `pending-sale-${sale._id}` : undefined,
+        onView: () =>
+          useDrawerStore.getState().openDrawer({
+            type: 'record-sale',
+            props: { confirmId: sale._id },
+          }),
       })
       invalidateSales()
     }

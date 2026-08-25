@@ -109,15 +109,17 @@ export function showNotificationToast({
 
 /**
  * Rich toast for a customer-initiated payment. Tapping the check opens the
- * merchant's collect drawer (its confirm view); the X dismisses the toast.
+ * merchant's existing review flow; the X dismisses the toast.
  */
 export function showNewPaymentToast({
+  message = 'New payment from customer',
   time,
   profilePhotoUrl,
   onView,
   duration = 8000,
   toastId,
 }: {
+  message?: string
   time: string
   profilePhotoUrl?: string
   onView: () => void
@@ -134,7 +136,7 @@ export function showNewPaymentToast({
         />
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-black leading-tight truncate">
-            New payment from customer
+            {message}
           </p>
           <p className="text-[13px] text-[#00000066] font-medium mt-0.5">
             {time}
