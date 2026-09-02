@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Image from 'next/image'
 import { useRouter } from '@bprogress/next/app'
 import {
@@ -17,6 +18,7 @@ import {
   VerifiedBadge,
 } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
+import { useCustomerHistory } from '@/services/sales/hooks'
 import { useUserProfile } from '@/services/users'
 import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
@@ -34,6 +36,11 @@ export function AccountSwitchDrawer({
   const router = useRouter()
   const authUser = useAuthStore((state) => state.user)
   const { data: profile } = useUserProfile()
+  const {
+    data: customerHistory,
+    isLoading: isHistoryLoading,
+    isError: isHistoryError,
+  } = useCustomerHistory()
 
   const firstName = profile?.firstName ?? authUser?.firstName
   const lastName = profile?.lastName ?? authUser?.lastName
@@ -45,9 +52,42 @@ export function AccountSwitchDrawer({
   const profilePhotoUrl = profile?.profilePhotoUrl
   const businessImageUrl = getBusinessImageUrl(profile)
 
-  // Rating, payment count, and location have no backend yet — show honest
-  // starter values in the designed layout until those features land.
-  const ratingLine = '☆ 4.74 · 🔥 1.2k payments in 5 months'
+  const paymentSummary = useMemo(() => {
+    const paymentDates = (customerHistory || [])
+      .map((sale) => new Date(sale.recordedAt || sale.createdAt))
+      .filter((date) => !Number.isNaN(date.getTime()))
+
+    if (!paymentDates.length) {
+      return { count: customerHistory?.length || 0, months: 0 }
+    }
+
+    const firstPaymentDate = paymentDates.reduce((earliest, date) =>
+      date < earliest ? date : earliest,
+    )
+    const now = new Date()
+    const monthsSinceFirst =
+      (now.getFullYear() - firstPaymentDate.getFullYear()) * 12 +
+      now.getMonth() -
+      firstPaymentDate.getMonth()
+
+    return {
+      count: customerHistory?.length || 0,
+      months: Math.max(1, monthsSinceFirst),
+    }
+  }, [customerHistory])
+
+  // Rating and location are not backed for the personal profile yet.
+  const paymentCount =
+    isHistoryLoading || isHistoryError
+      ? '—'
+      : paymentSummary.count.toLocaleString('en-NG')
+  const paymentPeriod =
+    isHistoryLoading || isHistoryError
+      ? '—'
+      : paymentSummary.months === 1
+        ? '1 month'
+        : `${paymentSummary.months} months`
+  const ratingLine = `☆ 4.74 · 🔥 ${paymentCount} payments in ${paymentPeriod}`
   const locationLine = 'No location set'
 
   const handleSwitchToPersonal = () => {

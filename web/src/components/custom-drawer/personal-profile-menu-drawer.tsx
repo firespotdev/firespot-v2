@@ -2,32 +2,23 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import {
   Camera,
   ChevronRight,
   Copy,
-  Headphones,
   Maximize2,
   Share,
-  Star,
   X,
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { logoutEverywhere, useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
+import { useCustomerHistory } from '@/services/sales/hooks'
 import { useUpdateProfilePhoto, useUserProfile } from '@/services/users'
 import { MerchantAvatar } from '@/components/layout'
 import { Button, showNotificationToast, VerifiedBadge } from '@/components/ui'
-import {
-  Setting2,
-} from 'iconsax-reactjs'
-import {
-  AddressBookIcon,
-  CardsThreeIcon,
-  StorefrontIcon,
-  UserCircleGearIcon,
-} from '@phosphor-icons/react'
+import { AddressBookIcon, StorefrontIcon } from '@phosphor-icons/react'
 
 interface PersonalProfileMenuDrawerProps {
   closeDrawer: () => void
@@ -38,10 +29,32 @@ export function PersonalProfileMenuDrawer({
 }: PersonalProfileMenuDrawerProps) {
   const authUser = useAuthStore((state) => state.user)
   const { data: profile } = useUserProfile()
+  const {
+    data: customerHistory,
+    isLoading: isHistoryLoading,
+    isError: isHistoryError,
+  } = useCustomerHistory()
   const updateProfilePhoto = useUpdateProfilePhoto()
   const photoInputRef = useRef<HTMLInputElement>(null)
   const user = profile || authUser
   const { openDrawer } = useDrawerStore()
+
+  const placesVisited = useMemo(() => {
+    const merchantIds = (customerHistory || [])
+      .map((sale) =>
+        typeof sale.merchantId === 'string'
+          ? sale.merchantId
+          : sale.merchantId?._id,
+      )
+      .filter((merchantId): merchantId is string => Boolean(merchantId))
+
+    return new Set(merchantIds).size
+  }, [customerHistory])
+
+  const purchasesValue =
+    isHistoryLoading || isHistoryError ? '—' : customerHistory?.length ?? 0
+  const placesVisitedValue =
+    isHistoryLoading || isHistoryError ? '—' : placesVisited
 
   const handleLogout = () => {
     closeDrawer()
@@ -60,7 +73,11 @@ export function PersonalProfileMenuDrawer({
     event.target.value = ''
     if (!file) return
 
-    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+    if (
+      !['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(
+        file.type,
+      )
+    ) {
       showNotificationToast({
         message: 'Choose a JPG, PNG, or WEBP image',
         mode: 'error',
@@ -174,7 +191,7 @@ export function PersonalProfileMenuDrawer({
             </div>
           ) : null}
           <Link
-            href="/profile"
+            href="#"
             onClick={closeDrawer}
             className="mt-1 text-sm font-semibold text-[#00000080] hover:text-black flex items-center gap-1 transition-colors"
           >
@@ -183,13 +200,14 @@ export function PersonalProfileMenuDrawer({
           </Link>
 
           {/* Metrics Row */}
-          <div className="mt-4 w-full grid grid-cols-3 divide-x divide-[#0000001A] py-1.5">
+          <div className="mx-auto mt-4 grid w-full max-w-[280px] grid-cols-2 divide-x divide-[#0000001A] py-1.5">
             <div className="flex flex-col items-center">
-              <span className="text-[16px] font-bold text-black">1.2k</span>
+              <span className="text-[16px] font-bold text-black">{purchasesValue}</span>
               <span className="text-[13px] font-medium text-[#111827]">
                 Purchases
               </span>
             </div>
+            {/*
             <div className="flex flex-col items-center">
               <div className="flex items-center gap-1">
                 <Star size={14} className="fill-[#FDB022] text-[#FDB022]" />
@@ -199,8 +217,9 @@ export function PersonalProfileMenuDrawer({
                 Rewards earned
               </span>
             </div>
+            */}
             <div className="flex flex-col items-center">
-              <span className="text-[16px] font-bold text-black">33</span>
+              <span className="text-[16px] font-bold text-black">{placesVisitedValue}</span>
               <span className="text-[13px] font-medium text-[#111827]">
                 Places visited
               </span>
@@ -360,7 +379,8 @@ export function PersonalProfileMenuDrawer({
           </Link>
         </div>
 
-        <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
+        {/*TODO*/}
+        {/* <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
           <Link
             href="/profile"
             onClick={closeDrawer}
@@ -388,9 +408,9 @@ export function PersonalProfileMenuDrawer({
             </div>
             <ChevronRight size={18} className="text-[#C7C7CC]" />
           </Link>
-        </div>
+        </div> */}
 
-        <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
+        {/* <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
           <Link
             href="/profile"
             onClick={closeDrawer}
@@ -418,12 +438,12 @@ export function PersonalProfileMenuDrawer({
             </div>
             <ChevronRight size={18} className="text-[#C7C7CC]" />
           </Link>
-        </div>
+        </div> */}
 
         {/* Section I: System Links & Sign Out */}
         <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
           <Link
-            href="/about"
+            href="#"
             onClick={closeDrawer}
             className="flex min-h-13 w-full items-center justify-between gap-3 px-4 py-3 border-b border-[#F4F6F8]"
           >

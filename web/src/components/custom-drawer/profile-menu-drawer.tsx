@@ -90,17 +90,17 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
           openDrawer({ type: 'record-sale' })
         },
       },
-      {
-        label: 'New expense',
-        icon: (
-          <Image
-            src="/icons/send-square.svg"
-            height={24}
-            width={24}
-            alt="send-square"
-          />
-        ),
-      },
+      // {
+      //   label: 'New expense',
+      //   icon: (
+      //     <Image
+      //       src="/icons/send-square.svg"
+      //       height={24}
+      //       width={24}
+      //       alt="send-square"
+      //     />
+      //   ),
+      // },
       { label: 'History', icon: <Clock size={24} />, href: '/history' },
       {
         label: 'Payouts',
@@ -111,22 +111,22 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
   },
   {
     items: [
-      {
-        label: 'Orders',
-        icon: <BagTick size={24} />,
-        proGateLabel: 'Available in',
-      },
-      {
-        label: 'Bookings',
-        icon: <CalendarTick size={24} />,
-        proGateLabel: 'Available in',
-      },
+      // {
+      //   label: 'Orders',
+      //   icon: <BagTick size={24} />,
+      //   proGateLabel: 'Available in',
+      // },
+      // {
+      //   label: 'Bookings',
+      //   icon: <CalendarTick size={24} />,
+      //   proGateLabel: 'Available in',
+      // },
       {
         label: 'Customers',
         icon: <Profile2User size={24} />,
         href: '/customers',
       },
-      { label: 'Messages', icon: <MessageSearch size={24} /> },
+      // { label: 'Messages', icon: <MessageSearch size={24} /> },
       {
         label: 'Feedback',
         icon: (
@@ -140,22 +140,22 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
         href: '/feedback',
         proGateLabel: 'Available in',
       },
-      {
-        label: 'Events',
-        icon: <Calendar1 size={24} />,
-        proGateLabel: 'Available in',
-      },
-      { label: 'Posts', icon: <MonitorArrowUpIcon size={24} /> },
+      // {
+      //   label: 'Events',
+      //   icon: <Calendar1 size={24} />,
+      //   proGateLabel: 'Available in',
+      // },
+      // { label: 'Posts', icon: <MonitorArrowUpIcon size={24} /> },
     ],
   },
   {
     items: [
       { label: 'Insights', icon: <Graph size={24} />, href: '/insights' },
-      {
-        label: 'Sales Boost',
-        icon: <TrendUpIcon size={24} />,
-        proGateLabel: 'Get started with',
-      },
+      // {
+      //   label: 'Sales Boost',
+      //   icon: <TrendUpIcon size={24} />,
+      //   proGateLabel: 'Get started with',
+      // },
     ],
   },
 ]
@@ -384,16 +384,16 @@ function ManageBusinessDropdown({
       href: '/products',
       proGateLabel: 'Available in',
     },
-    {
-      label: 'Services',
-      icon: <Briefcase size={24} />,
-      proGateLabel: 'Available in',
-    },
-    {
-      label: 'Suppliers',
-      icon: <BoxAdd size={24} />,
-      proGateLabel: 'Available in',
-    },
+    // {
+    //   label: 'Services',
+    //   icon: <Briefcase size={24} />,
+    //   proGateLabel: 'Available in',
+    // },
+    // {
+    //   label: 'Suppliers',
+    //   icon: <BoxAdd size={24} />,
+    //   proGateLabel: 'Available in',
+    // },
     {
       label: 'Locations',
       icon: <Location size={24} />,
@@ -406,14 +406,14 @@ function ManageBusinessDropdown({
       href: '/settings/fulfillment',
       proGateLabel: 'Available in',
     },
-    {
-      label: 'Employees',
-      icon: <People size={24} />,
-    },
-    {
-      label: 'Charges & Taxes',
-      icon: <PercentageSquare size={24} />,
-    },
+    // {
+    //   label: 'Employees',
+    //   icon: <People size={24} />,
+    // },
+    // {
+    //   label: 'Charges & Taxes',
+    //   icon: <PercentageSquare size={24} />,
+    // },
     {
       label: 'Business Profile',
       icon: <Shop size={24} />,
@@ -711,10 +711,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
         </div>
 
         {merchantDataEnabled && (
-          <MerchantQuickActionsList
-            onNavigate={closeDrawer}
-            className="mb-3"
-          />
+          <MerchantQuickActionsList onNavigate={closeDrawer} className="mb-3" />
         )}
 
         <div className="space-y-3">
@@ -765,12 +762,12 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
               </div>
             </Link>
 
-            <MenuRow
+            {/* <MenuRow
               label="Talk to support"
               icon={<DeviceMessage size={24} />}
               closeDrawer={closeDrawer}
               hasProAccess={hasProAccess}
-            />
+            /> */}
             <MenuRow
               label="Manage business"
               icon={<Shop size={24} />}
@@ -786,12 +783,12 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                 onBankAccountsClick={handleBankAccountsClick}
               />
             )}
-            <MenuRow
+            {/* <MenuRow
               label="Register your business"
               icon={<DocumentText size="24" />}
               closeDrawer={closeDrawer}
               hasProAccess={hasProAccess}
-            />
+            /> */}
             <MenuRow
               label="Recommend to a business"
               icon={<GiftIcon size={24} />}
@@ -816,7 +813,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
           </div>
 
           {/* Existing About Firespot row retained. */}
-          <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
+          {/* <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
             <button
               type="button"
               className="flex min-h-13 w-full items-center justify-between gap-3 px-4 py-3"
@@ -835,7 +832,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
               </div>
               <ChevronRight className="h-4 w-4 text-[#BDBDBD]" />
             </button>
-          </div>
+          </div> */}
 
           <div className="mb-7 overflow-hidden rounded-[12px] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
             <button
