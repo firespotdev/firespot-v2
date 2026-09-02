@@ -95,6 +95,9 @@ export const authApi = {
 export async function logoutEverywhere(): Promise<void> {
   await authApi.logout()
   useAuthStore.getState().logout()
+  if (typeof window !== 'undefined') {
+    window.location.replace('/')
+  }
 }
 
 // Hooks

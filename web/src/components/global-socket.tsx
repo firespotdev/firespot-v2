@@ -11,7 +11,7 @@ import {
 import { usePreference } from '@/hooks/usePreference'
 import { Sale } from '@/services/sales/interface'
 import { requestForToken, onForegroundMessage } from '@/lib/firebase'
-import { useAuthStore } from '@/services/auth'
+import { useAuthReady, useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { userApi } from '@/services/users/userApi'
 import { getSaleCustomerPhotoUrl } from '@/lib/utils/sales'
@@ -35,6 +35,7 @@ export function GlobalSocket() {
   const { socket } = useSocket()
   const queryClient = useQueryClient()
   const { isAuthenticated, user } = useAuthStore()
+  const authReady = useAuthReady()
   const [soundEnabled] = usePreference('soundEnabled', true)
   const soundEnabledRef = useRef(soundEnabled)
   const confirmedSaleIdsRef = useRef(new Set<string>())
@@ -89,7 +90,7 @@ export function GlobalSocket() {
 
   // Register for push notifications on login
   useEffect(() => {
-    if (isAuthenticated && typeof window !== 'undefined') {
+    if (authReady && isAuthenticated && typeof window !== 'undefined') {
       const registerPush = async () => {
         const token = await requestForToken()
         if (token) {
@@ -98,7 +99,7 @@ export function GlobalSocket() {
       }
       registerPush()
     }
-  }, [isAuthenticated, user?.id])
+  }, [authReady, isAuthenticated, user?.id])
 
   // Foreground push message listener — persistent, fires for every message
   useEffect(() => {

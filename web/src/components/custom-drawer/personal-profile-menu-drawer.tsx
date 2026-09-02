@@ -43,13 +43,9 @@ export function PersonalProfileMenuDrawer({
   const user = profile || authUser
   const { openDrawer } = useDrawerStore()
 
-  const handleLogout = async () => {
-    try {
-      closeDrawer()
-      await logoutEverywhere()
-    } catch {
-      // fallback
-    }
+  const handleLogout = () => {
+    closeDrawer()
+    void logoutEverywhere()
   }
 
   const displayName =

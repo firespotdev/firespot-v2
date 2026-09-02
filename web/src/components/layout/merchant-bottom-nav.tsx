@@ -35,7 +35,7 @@ const ITEMS: MerchantNavItem[] = [
 
 // The nav only shows on the pages it can navigate to. Add Search and Messages
 // here once those destinations exist.
-const VISIBLE_ROUTES = ['/profile', '/history', '/']
+const VISIBLE_ROUTES = ['/profile', '/']
 
 type MerchantBottomNavVariant = 'light' | 'dark'
 

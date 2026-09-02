@@ -289,7 +289,7 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          {isSignedIn ? (
+          {isSignedIn && user?.role !== 'merchant' ? (
             <div className="flex justify-center pb-28">
               <Link
                 href="/activity"
@@ -299,7 +299,7 @@ export default function ScannerPage() {
                 Recent
               </Link>
             </div>
-          ) : (
+          ) : !isSignedIn ? (
             <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
               <CTACarousel>
                 <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
@@ -350,7 +350,7 @@ export default function ScannerPage() {
                 </div>
               </CTACarousel>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

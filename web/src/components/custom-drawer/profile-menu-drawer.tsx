@@ -501,9 +501,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
   const handleSignOut = () => {
     closeDrawer()
-    logoutEverywhere().finally(() => {
-      window.location.href = '/'
-    })
+    void logoutEverywhere()
   }
 
   const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${qrKitsData?.data?.[0]?.serialNumber || 'profile'}`

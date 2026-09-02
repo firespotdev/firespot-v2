@@ -984,6 +984,36 @@ describe("SalesService amount invariants", () => {
       );
     });
 
+    it("searches sale customer and bank fields", async () => {
+      const find = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          skip: jest.fn().mockReturnValue({
+            limit: jest.fn().mockReturnValue({
+              populate: jest.fn().mockReturnValue({
+                exec: jest.fn().mockResolvedValue([]),
+              }),
+            }),
+          }),
+        }),
+      });
+      const countDocuments = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(0),
+      });
+      const service = createService({ find, countDocuments });
+
+      await service.getSales(merchantId, { search: "Ada" });
+
+      expect(find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          $or: expect.arrayContaining([
+            { customerName: { $regex: "Ada", $options: "i" } },
+            { targetBankName: { $regex: "Ada", $options: "i" } },
+            { sourceBankName: { $regex: "Ada", $options: "i" } },
+          ]),
+        }),
+      );
+    });
+
     it("returns the amount and count of pending sales", async () => {
       const aggregate = jest.fn().mockReturnValue({
         exec: jest.fn().mockResolvedValue([{ count: 2, amount: 1500 }]),

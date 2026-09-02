@@ -1655,6 +1655,9 @@ export class SalesService {
       filter.$or = [
         { description: { $regex: search, $options: 'i' } },
         { paymentMethod: { $regex: search, $options: 'i' } },
+        { customerName: { $regex: search, $options: 'i' } },
+        { targetBankName: { $regex: search, $options: 'i' } },
+        { sourceBankName: { $regex: search, $options: 'i' } },
       ]
     }
 
