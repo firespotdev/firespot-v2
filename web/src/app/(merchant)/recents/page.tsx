@@ -1,7 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeft, Check, Loader2, Plus, Share2, X } from 'lucide-react'
+import {
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  Loader2,
+  Plus,
+  Share2,
+  X,
+} from 'lucide-react'
 import Link from 'next/link'
 import {
   useArchiveSale,
@@ -56,7 +64,8 @@ export default function RecentsPage() {
   const pendingSales = flatten(pendingQuery)
   const confirmedSales = flatten(confirmedQuery)
 
-  const activeQuery = activeTab === 'unconfirmed' ? pendingQuery : confirmedQuery
+  const activeQuery =
+    activeTab === 'unconfirmed' ? pendingQuery : confirmedQuery
   const activeSales =
     activeTab === 'unconfirmed' ? pendingSales : confirmedSales
   const isLoading = activeQuery.isLoading
@@ -69,6 +78,7 @@ export default function RecentsPage() {
     activeTab === 'unconfirmed'
       ? stats?.pendingSalesAmount || 0
       : stats?.todaySalesAmount || 0
+  const confirmedTodayCount = stats?.todaySalesCount ?? 0
 
   const showConfirmAllTooltip =
     activeTab === 'unconfirmed' &&
@@ -206,8 +216,7 @@ export default function RecentsPage() {
       type: 'profile-share',
       props: {
         businessName: profile?.businessName || 'Your Business',
-        imageUrl:
-          profile?.businessImageUrl || profile?.profilePhotoUrl,
+        imageUrl: profile?.businessImageUrl || profile?.profilePhotoUrl,
         serialNumber: firstKit.serialNumber,
       },
     })
@@ -310,8 +319,29 @@ export default function RecentsPage() {
             ) : undefined
           }
           splitLayout
-          className="mb-6"
+          className="mb-3"
         />
+
+        {profile?.planTier && confirmedTodayCount > 0 && (
+          <Link
+            href="/history?mode=recorded"
+            className="mb-6 flex items-center gap-3 rounded-[8px] border border-[#24C16633] bg-[#DFF0E9] p-2 text-[#33A061]"
+          >
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#24C166] text-white">
+              <Check size={10} strokeWidth={3} />
+            </span>
+            <span className="flex-1 text-[13px] font-medium leading-[125%]">
+              {confirmedTodayCount} transaction
+              {confirmedTodayCount === 1 ? '' : 's'} recorded as sales.
+            </span>
+            <ChevronRight
+              className="shrink-0"
+              color="#24C166"
+              size={16}
+              strokeWidth={2}
+            />
+          </Link>
+        )}
 
         <section className="flex flex-1 flex-col">
           {!isLoading && activeSales.length > 0 && (

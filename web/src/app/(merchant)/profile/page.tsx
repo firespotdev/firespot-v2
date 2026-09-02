@@ -11,10 +11,7 @@ import { LoaderCircle, VerifiedBadge } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
-import {
-  useOutstandingSummary,
-  useSalesStats,
-} from '@/services/sales/hooks'
+import { useOutstandingSummary, useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
@@ -119,8 +116,7 @@ export default function ProfilePage() {
         props: {
           businessName: profile?.businessName || 'Your Business',
           serialNumber: qrKitsData.data[0].serialNumber,
-          imageUrl:
-            profile?.businessImageUrl || profile?.profilePhotoUrl,
+          imageUrl: profile?.businessImageUrl || profile?.profilePhotoUrl,
         },
       })
     } else {
@@ -142,12 +138,9 @@ export default function ProfilePage() {
     <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
         <PageHeader
-          title={profile?.businessName || 'Your business'}
-          subtitle="Owner · Main Address"
-          titleAdornment={
-            // Effective level: null while lapsed, so the badge hides itself.
-            <VerifiedBadge level={profile?.effectiveVerificationLevel} />
-          }
+          title={'Main Address'}
+          subtitle="Owner"
+          titleAdornment={null}
           showDropdown
           onLogoClick={() => openDrawer({ type: 'profile-menu' })}
           onTitleClick={() =>
@@ -172,8 +165,9 @@ export default function ProfilePage() {
               merchantInfo={{
                 businessImageUrl:
                   profile?.businessImageUrl || profile?.profilePhotoUrl,
-                businessName: 'Your online Shop on firespot',
+                businessName: profile?.businessName || 'My Business',
                 bankAccountCount: sortedBankAccounts.length,
+                effectiveVerificationLevel: profile?.effectiveVerificationLevel,
               }}
               showCameraButton={true}
               onCameraClick={handleCameraClick}
@@ -341,7 +335,6 @@ export default function ProfilePage() {
             })()}
           </div>
         </div>
-
       </div>
     </div>
   )

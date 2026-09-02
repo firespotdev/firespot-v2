@@ -355,7 +355,7 @@ function HistoryContent() {
               </div>
               <input
                 type="text"
-                placeholder="Search by customer name or bank"
+                placeholder="Search"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-9 pl-11 pr-4 bg-[#E6E8EB99] border border-[#EBEBEB] rounded-full text-sm font-medium placeholder:text-[#00000066] focus:outline-none focus:ring-1 focus:ring-[#0075FF]"
@@ -402,7 +402,14 @@ function HistoryContent() {
             </div>
 
             {/* Summary Card */}
-            <div className="border-2 border-[#0000000A] rounded-[12px] w-full mb-4">
+            <div
+              className={cn(
+                'w-full overflow-hidden rounded-[12px] border-2 mb-4',
+                profile?.planTier
+                  ? 'border-[#C5EEDB] bg-[#E0F5EA]'
+                  : 'border-[#0000000A]',
+              )}
+            >
               <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
                 <div>
                   <button
@@ -480,14 +487,29 @@ function HistoryContent() {
                 </div>
               </div>
 
-              <div className="flex items-center bg-[#f4f4f4] p-3 gap-2 rounded-[12px]">
-                <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
-                <p className="text-xs text-[#00000066] font-medium">
-                  You will not receive a payout for these transactions.
-                  <br />
-                  Sales are recorded for accounting purposes only.
-                </p>
-              </div>
+              {profile?.planTier ? (
+                <div className="flex items-center gap-2 rounded-b-[12px] bg-[#24C1661A] p-3 text-[#33A061]">
+                  <AlertCircle
+                    className="mt-0.5 shrink-0"
+                    size={18}
+                    strokeWidth={2.5}
+                    color="#33A061"
+                  />
+                  <p className="text-xs font-medium leading-[125%]">
+                    Sales are automatically recorded. Payouts may vary after
+                    processing fees have been deducted.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-[12px] bg-[#f4f4f4] p-3">
+                  <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
+                  <p className="text-xs font-medium text-[#00000066]">
+                    You will not receive a payout for these transactions.
+                    <br />
+                    Sales are recorded for accounting purposes only.
+                  </p>
+                </div>
+              )}
             </div>
 
             {openCapsule && dropdownPosition && typeof document !== 'undefined'

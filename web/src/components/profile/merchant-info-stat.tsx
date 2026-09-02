@@ -21,11 +21,13 @@ import {
   DATE_RANGE_LABELS,
   type DateRangePreset,
 } from '@/services/insights'
+import { VerifiedBadge } from '../ui'
 
 interface MerchantInfo {
   businessImageUrl?: string
   businessName: string
   bankAccountCount: number
+  effectiveVerificationLevel?: 'PRO' | 'PROMAX' | null
 }
 
 interface MerchantInfoStatProps {
@@ -153,11 +155,17 @@ export function MerchantInfoStat({
           <h1 className="font-bold text-xl text-black -tracking-[0.4px] leading-none">
             {merchantInfo.businessName}
           </h1>
-          <ArrowUpRight
-            size={16}
-            className="text-[#6B7280] mt-1"
-            strokeWidth={2}
+          <VerifiedBadge
+            className="mt-1"
+            level={merchantInfo?.effectiveVerificationLevel}
           />
+          <div className="bg-[#D9D9D9] rounded-[4px] w-4 h-4 flex justify-center items-center mt-1">
+            <ArrowUpRight
+              size={12}
+              className="text-[#6B7280]"
+              strokeWidth={2}
+            />
+          </div>
         </Link>
 
         {qrKitStatus ? (

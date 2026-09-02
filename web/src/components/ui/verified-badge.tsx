@@ -30,7 +30,12 @@ export function VerifiedBadge({
       className={cn('inline-flex items-center gap-1 shrink-0', className)}
       title={label}
     >
-      <BadgeCheck className="w-4 h-4" style={{ color }} fill={color} stroke="#fff" />
+      <BadgeCheck
+        className="w-5 h-5"
+        style={{ color }}
+        fill={color}
+        stroke="#fff"
+      />
       {showLabel && (
         <span className="text-xs font-medium" style={{ color }}>
           {label}
