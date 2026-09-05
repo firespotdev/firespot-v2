@@ -38,7 +38,7 @@ import { MerchantReferralsService } from "../merchant-referrals/merchant-referra
 const OTP_RATE_LIMIT_WINDOW_MINUTES = 60; // 1 hour window
 const OTP_MAX_REQUESTS_PER_WINDOW = 5; // Max 5 OTP requests per hour
 const OTP_COOLDOWN_SECONDS = 60; // 60 seconds between OTP requests
-const OTP_MAX_FAILED_ATTEMPTS = 5; // Failed verifications before lockout
+const OTP_MAX_FAILED_ATTEMPTS = 3; // Failed verifications before lockout
 const OTP_LOCKOUT_MINUTES = 15; // Verification lockout duration
 const REFRESH_TOKEN_TTL_DAYS = 30; // Refresh cookie lifetime
 
@@ -135,6 +135,7 @@ export class AuthService {
       otpExpiryMinutes,
       otpLength,
       `Your Firespot OTP is {{pin}}. Valid for ${otpExpiryMinutes} minutes. Do not share this code with anyone.`,
+      OTP_MAX_FAILED_ATTEMPTS,
     );
 
     // Calculate expiry time
@@ -228,6 +229,7 @@ export class AuthService {
       otpExpiryMinutes,
       otpLength,
       `Your Firespot OTP is {{pin}}. Valid for ${otpExpiryMinutes} minutes. Do not share this code with anyone.`,
+      OTP_MAX_FAILED_ATTEMPTS,
     );
 
     // Calculate expiry time
@@ -318,6 +320,7 @@ export class AuthService {
       otpExpiryMinutes,
       otpLength,
       `Your Firespot OTP is {{pin}}. Valid for ${otpExpiryMinutes} minutes. Do not share this code with anyone.`,
+      OTP_MAX_FAILED_ATTEMPTS,
     );
 
     const otpExpiresAt = new Date(Date.now() + otpExpiryMinutes * 60 * 1000);
