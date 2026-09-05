@@ -66,6 +66,8 @@ import { ArchiveProductDrawer } from './archive-product-drawer'
 import { ProductOptionEditorDrawer } from './product-option-editor-drawer'
 import { PayCatalogueDrawer } from './pay-catalogue-drawer'
 import { PayCurrentPurchaseDrawer } from './pay-current-purchase-drawer'
+import { PostComposerDrawer } from '@/components/posts/post-composer-drawer'
+import { PostProductPickerDrawer } from '@/components/posts/post-product-picker-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -445,6 +447,23 @@ const DRAWER_CONFIG: Record<
     noHeader: true,
     direction: 'bottom',
     contentClassName: 'overflow-hidden bg-white',
+  },
+  'post-composer': {
+    title: 'Posts',
+    Content: PostComposerDrawer,
+    noHeader: true,
+    fullScreen: true,
+    hideHandle: true,
+    dismissible: false,
+    contentClassName:
+      'h-dvh bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
+  },
+  'post-product-select': {
+    title: 'Select items',
+    Content: PostProductPickerDrawer,
+    noHeader: true,
+    dismissible: false,
+    contentClassName: 'h-[80dvh] overflow-hidden bg-white',
   },
   custom: {
     title: '',

@@ -4,6 +4,8 @@ import { ProductsApi, type CreateProductPayload } from './productsApi'
 const invalidateCatalogue = (client: ReturnType<typeof useQueryClient>) => {
   client.invalidateQueries({ queryKey: ['products'] })
   client.invalidateQueries({ queryKey: ['product-categories'] })
+  client.invalidateQueries({ queryKey: ['posts'] })
+  client.invalidateQueries({ queryKey: ['posts-feed'] })
 }
 export const useProducts = (params?: { search?: string; categoryId?: string; archived?: boolean }) => useQuery({ queryKey: ['products', params], queryFn: () => ProductsApi.getProducts(params) })
 export const useProductCategories = (search?: string) => useQuery({ queryKey: ['product-categories', search], queryFn: () => ProductsApi.getCategories(search) })

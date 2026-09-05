@@ -29,6 +29,7 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { MerchantReferralsModule } from './merchant-referrals/merchant-referrals.module';
 import { PayoutsModule } from './payouts/payouts.module';
 import { PaymentCasesModule } from './payment-cases/payment-cases.module';
+import { PostsModule } from './posts/posts.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { PaymentCasesModule } from './payment-cases/payment-cases.module';
     MerchantReferralsModule,
     PayoutsModule,
     PaymentCasesModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [

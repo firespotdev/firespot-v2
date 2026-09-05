@@ -52,6 +52,8 @@ export type DrawerContentType =
   | 'product-option-editor'
   | 'pay-catalogue'
   | 'pay-current-purchase'
+  | 'post-composer'
+  | 'post-product-select'
 
 
 
