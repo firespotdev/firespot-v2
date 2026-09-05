@@ -230,14 +230,17 @@ export default function ProfilePage() {
           {/* Stats Section - Link to Insights, Recents, and Owing */}
           <div className="grid grid-cols-4 gap-2 w-full text-center">
             {/* Sales */}
-            <div className="flex flex-col items-center">
+            <Link
+              href="/history?status=ALL"
+              className="flex flex-col items-center"
+            >
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 {salesStats?.todaySalesCount ?? 0}
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 Sales
               </span>
-            </div>
+            </Link>
 
             {/* Orders */}
             <div className="flex flex-col items-center">

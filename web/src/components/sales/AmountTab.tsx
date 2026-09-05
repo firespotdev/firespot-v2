@@ -1,12 +1,18 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import { PencilLine, Plus } from 'lucide-react'
 import { Keypad } from './Keypad'
+import {
+  ArrowUpLeftIcon,
+  ClockCounterClockwiseIcon,
+} from '@phosphor-icons/react'
 
 interface AmountTabProps {
   amount: string
   description: string
   setDescription: (desc: string) => void
+  recentDescriptions?: string[]
   formatDisplayAmount: (val: string) => string
   addCustomAmountToCart: () => void
   handleKeyPress: (key: string) => void
@@ -17,11 +23,21 @@ export function AmountTab({
   amount,
   description,
   setDescription,
+  recentDescriptions = [],
   formatDisplayAmount,
   addCustomAmountToCart,
   handleKeyPress,
   showAddButton = true,
 }: AmountTabProps) {
+  const [showDescriptions, setShowDescriptions] = useState(false)
+  const filteredDescriptions = useMemo(() => {
+    const query = description.trim().toLocaleLowerCase()
+    if (!query) return recentDescriptions
+    return recentDescriptions.filter((item) =>
+      item.toLocaleLowerCase().includes(query),
+    )
+  }, [description, recentDescriptions])
+
   return (
     <div className="flex-1 flex flex-col justify-between overflow-hidden">
       <div className="flex-1 flex flex-col justify-center items-center px-4">
@@ -61,27 +77,65 @@ export function AmountTab({
       </div>
 
       <div className="w-full flex flex-col pb-20 bg-white">
-        <div className="px-3 py-2 w-full mx-auto">
-          <div className="relative flex items-center justify-center w-full rounded-[10px] border border-[#E5E7EB] px-4 py-3 transition-colors overflow-hidden focus-within:border-gray-400">
-            {description === '' && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <PencilLine
-                  size={16}
-                  color="#9CA3AF"
-                  className="mr-1.5"
-                />
-                <span className="text-[14px] font-medium leading-[120%] text-[#9CA3AF]">
-                  What&apos;s this payment for?
-                </span>
-              </div>
-            )}
+        <div
+          className="p-3 w-full mx-auto"
+          onFocusCapture={() => setShowDescriptions(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setShowDescriptions(false)
+            }
+          }}
+        >
+          <div className="relative flex items-center justify-center w-full rounded-[10px] border border-[#E5E7EB] px-4 py-3 transition-colors focus-within:border-[#0075FF] focus-within:ring-2 focus-within:ring-[#0075FF]/30">
+            <PencilLine size={17} className="mr-2 shrink-0 text-[#9CA3AF]" />
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-center text-[15px] font-medium text-black focus:outline-none bg-transparent relative z-10"
+              placeholder="What’s this payment for?"
+              autoComplete="off"
+              role="combobox"
+              aria-label="Payment description"
+              aria-autocomplete="list"
+              aria-expanded={
+                showDescriptions && filteredDescriptions.length > 0
+              }
+              aria-controls="recent-payment-descriptions"
+              className="min-w-0 flex-1 bg-transparent text-center text-[15px] font-medium text-black placeholder:text-[#9CA3AF] focus:outline-none"
             />
           </div>
+
+          {showDescriptions && filteredDescriptions.length > 0 && (
+            <ul
+              id="recent-payment-descriptions"
+              aria-label="Recent payment descriptions"
+              className="max-h-48 overflow-y-auto pt-3"
+            >
+              {filteredDescriptions.map((item) => (
+                <li key={item}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setDescription(item)
+                      setShowDescriptions(false)
+                    }}
+                    className="flex w-full items-center gap-3 px-1.5 py-3 text-left focus-visible:outline-none"
+                  >
+                    <ClockCounterClockwiseIcon size={24} color="#6B7280" />
+                    <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-black">
+                      {item}
+                    </span>
+                    <ArrowUpLeftIcon
+                      size={24}
+                      strokeWidth={3}
+                      color="#0075FF"
+                    />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
 
         {/* Keypad */}
