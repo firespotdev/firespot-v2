@@ -7,11 +7,7 @@ import { CircleCheck } from 'lucide-react'
 import {
   Label,
   Input,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
+  SearchableBankSelect,
   Button,
   PhoneInput,
   Spinner,
@@ -173,28 +169,13 @@ export function SignupForm({
           </div>
           <div>
             <Label>Receiving bank</Label>
-            <Select
+            <SearchableBankSelect
+              banks={banks}
               value={selectedBankCode}
               onValueChange={handleBankSelectChange}
               disabled={banksLoading}
-            >
-              <SelectTrigger className="font-medium">
-                <SelectValue
-                  placeholder={
-                    banksLoading ? 'Loading banks...' : 'Select a bank'
-                  }
-                >
-                  {selectedBankName || 'Select a bank'}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {banks.map((bank) => (
-                  <SelectItem key={bank.code} value={bank.code}>
-                    {bank.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder={banksLoading ? 'Loading banks...' : 'Select a bank'}
+            />
           </div>
           <div>
             <Label>Account number</Label>

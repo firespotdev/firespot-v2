@@ -106,7 +106,6 @@ export default function QRKitDetailPage() {
   const effectiveTier = planCatalog?.current.effectiveTier
   const canCollectFeedback =
     effectiveTier === 'PRO' || effectiveTier === 'PROMAX'
-  const displayId = qrKit.serialNumber.slice(-8)
 
   const handleFeedbackToggle = (collectFeedback: boolean) => {
     updateQRKit.mutate(
@@ -538,7 +537,7 @@ export default function QRKitDetailPage() {
                 </span>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-black">
-                    FS-{displayId}
+                    {qrKit.serialNumber}
                   </span>
                   <button
                     type="button"

@@ -2362,6 +2362,16 @@ export class SalesService {
       )
     }
 
+    if (
+      sale.isCollection ||
+      sale.paymentRail === 'paystack' ||
+      sale.paystackReference
+    ) {
+      throw new UnprocessableEntityException(
+        'Sales processed via Paystack cannot be edited',
+      )
+    }
+
     if (sale.hasBeenEdited) {
       throw new UnprocessableEntityException(
         'This sale has already been edited once',

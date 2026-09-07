@@ -9,10 +9,10 @@ import {
   MoreVertical,
   Archive,
   Check,
+  Clock,
   PlusCircle,
   Bell,
   ChevronRight,
-  Loader2,
   MoreHorizontal,
 } from 'lucide-react'
 import { useRouter } from '@bprogress/next/app'
@@ -521,7 +521,7 @@ const TransactionDetailsDrawer = ({
                       )}
                     >
                       {isUnconfirmed ? (
-                        <Loader2 className="w-2.5 h-2.5 text-white stroke-[3px] animate-spin" />
+                        <Clock className="w-2.5 h-2.5 text-white stroke-[3px]" />
                       ) : (
                         <Check className="w-2.5 h-2.5 text-white stroke-[3.5px]" />
                       )}

@@ -71,7 +71,11 @@ export class QRKitsService {
       }
     }
 
-    return { status: 'available' as const, serialNumber: qrKit.serialNumber }
+    return {
+      status: 'available' as const,
+      serialNumber: qrKit.serialNumber,
+      reservedForMerchantId: qrKit.reservedForMerchantId?.toString(),
+    }
   }
 
   async getQRKitBySerial(
@@ -212,8 +216,14 @@ export class QRKitsService {
 
     const reference = `qrkit_${qrKit.serialNumber}_${generateReference('', 10)}`
 
+    const isReservedForThisMerchant = Boolean(
+      qrKit.reservedForMerchantId &&
+      qrKit.reservedForMerchantId.toString() === userId,
+    )
+
     const hasEntitlement =
-      !!user.availableKitEntitlements && user.availableKitEntitlements > 0
+      (!!user.availableKitEntitlements && user.availableKitEntitlements > 0) ||
+      isReservedForThisMerchant
 
     // Free activation, either because it's free for everyone or because this
     // merchant pre-paid via an order. No Paystack round trip in either case.
@@ -653,6 +663,10 @@ export class QRKitsService {
     if (existingReservations.length === quantity) {
       return existingReservations.map((kit) => kit._id as Types.ObjectId)
     }
+
+    user.availableKitEntitlements =
+      (user.availableKitEntitlements || 0) + quantity
+    await user.save()
 
     if (existingReservations.length > 0) {
       await this.qrKitModel.updateMany(
