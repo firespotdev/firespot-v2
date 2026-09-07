@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { toast } from 'sonner'
 import {
   HouseIcon,
   MagnifyingGlassIcon,
@@ -10,6 +9,7 @@ import {
   ClockCounterClockwiseIcon,
   ChatsCircleIcon,
 } from '@phosphor-icons/react'
+import { showNotificationToast } from '@/components/ui'
 
 const NAV_ITEMS = [
   { key: 'home', Icon: HouseIcon, href: '/home', label: 'Home' },
@@ -66,7 +66,7 @@ interface BottomNavProps {
 }
 
 function comingSoon() {
-  toast('Coming soon')
+  showNotificationToast({ message: 'Coming soon' })
 }
 
 export function BottomNav({ variant = 'light' }: BottomNavProps) {

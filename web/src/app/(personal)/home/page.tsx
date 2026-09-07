@@ -2,8 +2,6 @@
 
 import { Suspense, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { useRouter } from '@bprogress/next/app'
-import { toast } from 'sonner'
 import {
   Plus,
   Search,
@@ -21,6 +19,7 @@ import {
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { showNotificationToast } from '@/components/ui'
 
 const QUICK_ACTIONS = [
   { label: 'Shops', Icon: Store },
@@ -41,28 +40,25 @@ const FILTER_PILLS = [
 ]
 
 function comingSoon() {
-  toast('Coming soon')
+  showNotificationToast({ message: 'Coming soon' })
 }
 
 function HomePageContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const hasOpenedBusinessIntro = useRef(false)
+  const isHandlingIntro = useRef(false)
   const user = useAuthStore((state) => state.user)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   useEffect(() => {
-    if (
-      searchParams.get('businessIntro') !== '1' ||
-      hasOpenedBusinessIntro.current
-    ) {
-      return
+    const isIntro = searchParams.get('businessIntro') === '1'
+    if (isIntro && !isHandlingIntro.current) {
+      isHandlingIntro.current = true
+      openDrawer({ type: 'business-intro' })
+      window.history.replaceState(null, '', window.location.pathname)
+    } else if (!isIntro) {
+      isHandlingIntro.current = false
     }
-
-    hasOpenedBusinessIntro.current = true
-    openDrawer({ type: 'business-intro' })
-    router.replace('/home', { scroll: false })
-  }, [openDrawer, router, searchParams])
+  }, [openDrawer, searchParams])
 
   // Auth + onboarding are enforced by the (personal) route-group layout.
 
