@@ -8,7 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ClockCounterClockwiseIcon } from '@phosphor-icons/react'
 import { CTACarousel } from '@/components/ui/cta-carousel'
-import { BottomNav, MerchantBottomNav } from '@/components/layout'
+import { BottomNav } from '@/components/layout'
 import { useAuthStore, useAuthReady } from '@/services/auth'
 import { hasPersonalIdentity, isTokenExpired } from '@/lib/utils/auth-redirect'
 
@@ -26,6 +26,7 @@ export default function ScannerPage() {
   const token = useAuthStore((state) => state.token)
   const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
   const user = useAuthStore((state) => state.user)
+  const activeProfileMode = useAuthStore((state) => state.activeProfileMode)
   const logout = useAuthStore((state) => state.logout)
   const authReady = useAuthReady()
 
@@ -33,6 +34,11 @@ export default function ScannerPage() {
   // shortcut + bottom nav; logged-out visitors keep the login CTAs.
   const isSignedIn =
     authReady && isAuthenticated && !!token && !isTokenExpired(token)
+  const canUseScanner =
+    authReady &&
+    (!isSignedIn ||
+      user?.role !== 'merchant' ||
+      activeProfileMode === 'personal')
 
   useEffect(() => {
     // Wait for the bootstrap refresh so a returning user with a valid refresh
@@ -43,12 +49,10 @@ export default function ScannerPage() {
         logout()
         return
       }
-      // The scanner is a neutral surface both personal users and merchants
-      // (acting in personal mode via the bottom nav) can use. Merchants get
-      // routed to their business profile once at login time by
-      // getPostAuthDestination — not here — so switching to personal mode and
-      // tapping Scan isn't bounced back to /profile. Only unfinished
-      // onboarding still redirects.
+      if (user?.role === 'merchant' && activeProfileMode !== 'personal') {
+        router.replace('/profile')
+        return
+      }
       if (!onboardingCompleted) {
         router.replace('/onboarding')
         return
@@ -57,7 +61,16 @@ export default function ScannerPage() {
         router.replace('/onboarding?redirect=/')
       }
     }
-  }, [authReady, isAuthenticated, token, onboardingCompleted, user, router, logout])
+  }, [
+    authReady,
+    isAuthenticated,
+    token,
+    onboardingCompleted,
+    user,
+    activeProfileMode,
+    router,
+    logout,
+  ])
 
   // Preserve dynamic-sale parameters from Firespot payment URLs. Raw serial
   // numbers remain supported for physical/static QR kits.
@@ -115,6 +128,8 @@ export default function ScannerPage() {
   )
 
   useEffect(() => {
+    if (!canUseScanner) return
+
     // Check browser capability
     const isBrowserSupported =
       typeof window !== 'undefined' &&
@@ -214,7 +229,7 @@ export default function ScannerPage() {
         videoRef.current.srcObject = null
       }
     }
-  }, [getPaymentDestination, handleScanResult])
+  }, [canUseScanner, getPaymentDestination, handleScanResult])
 
   const toggleFlash = async () => {
     if (!streamRef.current) return
@@ -232,6 +247,10 @@ export default function ScannerPage() {
     } catch (err) {
       console.error('Flash toggle failed:', err)
     }
+  }
+
+  if (!canUseScanner) {
+    return <div className="h-dvh bg-black" />
   }
 
   return (
@@ -289,7 +308,7 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          {isSignedIn && user?.role !== 'merchant' ? (
+          {isSignedIn ? (
             <div className="flex justify-center pb-28">
               <Link
                 href="/activity"
@@ -354,13 +373,7 @@ export default function ScannerPage() {
         </div>
       </div>
 
-      {isSignedIn && (
-        user?.role === 'merchant' ? (
-          <MerchantBottomNav variant="dark" />
-        ) : (
-          <BottomNav variant="dark" />
-        )
-      )}
+      {isSignedIn && <BottomNav variant="dark" />}
     </div>
   )
 }

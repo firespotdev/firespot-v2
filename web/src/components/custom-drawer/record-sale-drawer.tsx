@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from '@bprogress/next/app'
 import { ChevronRight, X } from 'lucide-react'
 import { TabSwitch } from '@/components/ui'
 import { usePlanCatalog } from '@/services/merchant-plans'
-import { useSale } from '@/services/sales/hooks'
+import { useSale, useSales } from '@/services/sales/hooks'
 import { useProducts } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import { useDrawerStore } from '@/services/drawer'
@@ -50,6 +50,18 @@ export function RecordSaleDrawer({
   const { data: editSaleData } = useSale(
     saleMode.kind === 'create' ? undefined : saleMode.id,
   )
+  const { data: recentSalesData } = useSales({ limit: 5 })
+  const recentDescriptions = useMemo(() => {
+    const seen = new Set<string>()
+
+    return (recentSalesData?.data ?? []).flatMap((sale) => {
+      const description = sale.description?.trim()
+      const key = description?.toLocaleLowerCase()
+      if (!description || !key || seen.has(key)) return []
+      seen.add(key)
+      return [description]
+    })
+  }, [recentSalesData?.data])
 
   const [activeCategory, setActiveCategory] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -188,6 +200,7 @@ export function RecordSaleDrawer({
           amount={cart.amount}
           description={cart.description}
           setDescription={cart.setDescription}
+          recentDescriptions={recentDescriptions}
           formatDisplayAmount={formatDisplayAmount}
           addCustomAmountToCart={cart.addCustomAmountToCart}
           handleKeyPress={cart.handleKeyPress}

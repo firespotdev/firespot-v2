@@ -35,6 +35,9 @@ export function AccountSwitchDrawer({
 }: AccountSwitchDrawerProps) {
   const router = useRouter()
   const authUser = useAuthStore((state) => state.user)
+  const setActiveProfileMode = useAuthStore(
+    (state) => state.setActiveProfileMode,
+  )
   const { data: profile } = useUserProfile()
   const {
     data: customerHistory,
@@ -96,11 +99,13 @@ export function AccountSwitchDrawer({
       router.push('/onboarding?redirect=/home')
       return
     }
+    setActiveProfileMode('personal')
     router.push('/home')
   }
 
   const handleSwitchToStore = () => {
     closeDrawer()
+    setActiveProfileMode('merchant')
     router.push('/profile')
   }
 

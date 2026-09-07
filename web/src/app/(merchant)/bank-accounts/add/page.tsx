@@ -6,11 +6,7 @@ import { CircleCheck } from 'lucide-react'
 import {
   Label,
   Input,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
+  SearchableBankSelect,
   Button,
   Spinner,
 } from '@/components/ui'
@@ -154,28 +150,13 @@ export default function AddBankAccountPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label>Receiving bank</Label>
-              <Select
+              <SearchableBankSelect
+                banks={banks}
                 value={selectedBankCode}
                 onValueChange={handleBankSelectChange}
                 disabled={banksLoading}
-              >
-                <SelectTrigger className="font-medium">
-                  <SelectValue
-                    placeholder={
-                      banksLoading ? 'Loading banks...' : 'Select bank'
-                    }
-                  >
-                    {selectedBankName || 'Select bank'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {banks.map((bank) => (
-                    <SelectItem key={bank.code} value={bank.code}>
-                      {bank.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder={banksLoading ? 'Loading banks...' : 'Select bank'}
+              />
             </div>
 
             <div>

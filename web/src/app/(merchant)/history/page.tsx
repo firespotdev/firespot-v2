@@ -32,7 +32,7 @@ import { LoadingPage } from '@/components/layout/LoadingPage'
 import { useSafeBack } from '@/hooks/use-safe-back'
 import { ChartPieSliceIcon, ScrollIcon } from '@phosphor-icons/react'
 
-type HistoryMode = 'collected' | 'recorded'
+type HistoryMode = 'all' | 'collected' | 'recorded'
 type FilterId = 'mode' | 'status' | 'method' | 'qrKit' | 'location'
 
 const getDateGroupLabel = (dateStr: string | Date) => {
@@ -49,8 +49,9 @@ function HistoryContent() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchParams = useSearchParams()
   const initialStatus = searchParams.get('status')?.toUpperCase() || 'ALL'
+  const modeParam = searchParams.get('mode')?.toLowerCase()
   const initialMode: HistoryMode =
-    searchParams.get('mode') === 'recorded' ? 'recorded' : 'collected'
+    modeParam === 'recorded' || modeParam === 'collected' ? modeParam : 'all'
 
   const [selectedMode, setSelectedMode] = useState<HistoryMode>(initialMode)
 
@@ -121,7 +122,7 @@ function HistoryContent() {
   }, [selectedStatus])
 
   const { data: salesData, isLoading } = useSales({
-    mode: selectedMode,
+    mode: selectedMode === 'all' ? undefined : selectedMode,
     status: apiStatusParam,
     paymentMethod: selectedMethod,
     qrKitName: selectedQrKit,
@@ -132,7 +133,7 @@ function HistoryContent() {
 
   const { data: salesStats, isLoading: isLoadingStats } = useSalesStats({
     ...dateFilter,
-    mode: selectedMode,
+    mode: selectedMode === 'all' ? undefined : selectedMode,
     paymentMethod: selectedMethod,
     qrKitName: selectedQrKit,
     location: selectedLocation,
@@ -207,8 +208,8 @@ function HistoryContent() {
     {
       id: 'mode',
       label: selectedMode.toUpperCase(),
-      isActive: true,
-      options: ['RECORDED', 'COLLECTED'],
+      isActive: selectedMode !== 'all',
+      options: ['ALL', 'RECORDED', 'COLLECTED'],
       value: selectedMode.toUpperCase(),
       onChange: (value) => setSelectedMode(value.toLowerCase() as HistoryMode),
     },
@@ -405,7 +406,7 @@ function HistoryContent() {
             <div
               className={cn(
                 'w-full overflow-hidden rounded-[12px] border-2 mb-4',
-                profile?.planTier
+                selectedMode === 'collected'
                   ? 'border-[#C5EEDB] bg-[#E0F5EA]'
                   : 'border-[#0000000A]',
               )}
@@ -487,7 +488,7 @@ function HistoryContent() {
                 </div>
               </div>
 
-              {profile?.planTier ? (
+              {selectedMode === 'collected' ? (
                 <div className="flex items-center gap-2 rounded-b-[12px] bg-[#24C1661A] p-3 text-[#33A061]">
                   <AlertCircle
                     className="mt-0.5 shrink-0"
@@ -498,6 +499,15 @@ function HistoryContent() {
                   <p className="text-xs font-medium leading-[125%]">
                     Sales are automatically recorded. Payouts may vary after
                     processing fees have been deducted.
+                  </p>
+                </div>
+              ) : selectedMode === 'recorded' ? (
+                <div className="flex items-center gap-2 rounded-[12px] bg-[#f4f4f4] p-3">
+                  <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
+                  <p className="text-xs font-medium text-[#00000066]">
+                    You will not receive a payout for these transactions.
+                    <br />
+                    Sales are recorded for accounting purposes only.
                   </p>
                 </div>
               ) : (

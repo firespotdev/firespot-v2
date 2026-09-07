@@ -5,7 +5,6 @@ import {
   Download,
   PencilLine,
   Share,
-  RotateCcw,
   PlusCircle,
   Bell,
 } from 'lucide-react'
@@ -50,6 +49,12 @@ export function TransactionOptionsDrawer({
       sale.source === 'Link shared') &&
     merchantStatus === 'Paid'
 
+  const isCollected = Boolean(
+    sale.isCollection ||
+      sale.paymentRail === 'paystack' ||
+      (sale.reference && sale.reference.startsWith('COL-')),
+  )
+
   const isConfirmed = sale.status === 'CONFIRMED' || !sale.status
   const isOutstanding =
     merchantStatus === 'Owing' ||
@@ -63,7 +68,8 @@ export function TransactionOptionsDrawer({
   const openedAt = Date.now()
   const isEditWindowOpen =
     !sale.hasBeenEdited && openedAt - creationDate <= 24 * 60 * 60 * 1000
-  const isEditable = isConfirmed && isEditWindowOpen && !isArchived
+  const isEditable =
+    isConfirmed && isEditWindowOpen && !isArchived && !isCollected
 
   return (
     <div className="flex flex-col h-full font-satoshi">
@@ -161,71 +167,53 @@ export function TransactionOptionsDrawer({
           </ActionList>
         )}
 
-        {/* Card 2: Edit & Archive/Refund Actions */}
+        {/* Card 2: Edit & Archive Actions */}
         <ActionList>
-          <ActionListItem
-            icon={
-              <PencilLine
-                size={24}
-                className={
-                  isEditable
-                    ? 'text-[#111827] stroke-[2.2px]'
-                    : 'text-gray-200 stroke-[2.2px]'
-                }
-              />
-            }
-            title="Edit sale"
-            disabled={!isEditable}
-            onClick={() => {
-              closeDrawer()
-              openDrawer({
-                type: 'record-sale',
-                props: { editId: sale._id, isEditMode: true },
-              })
-            }}
-          />
-          {isPaidCollected ? (
+          {!isCollected && (
             <ActionListItem
               icon={
-                <RotateCcw
-                  size={24}
-                  className="text-[#FF3B30] stroke-[2.2px]"
-                />
-              }
-              title="Refund sale"
-              danger
-              onClick={() => {
-                storeCloseDrawer('transaction-options')
-                showNotificationToast({
-                  message:
-                    'Refund feature initiated for this collected payment',
-                })
-              }}
-            />
-          ) : (
-            <ActionListItem
-              icon={
-                <Archive
+                <PencilLine
                   size={24}
                   className={
-                    isArchived
-                      ? 'text-red-200 stroke-[2.2px]'
-                      : 'text-[#FF3B30] stroke-[2.2px]'
+                    isEditable
+                      ? 'text-[#111827] stroke-[2.2px]'
+                      : 'text-gray-200 stroke-[2.2px]'
                   }
                 />
               }
-              title="Archive sale"
-              danger
-              disabled={isArchived}
+              title="Edit sale"
+              disabled={!isEditable}
               onClick={() => {
-                storeCloseDrawer('transaction-options')
+                closeDrawer()
                 openDrawer({
-                  type: 'confirm-archive',
-                  props: { sale },
+                  type: 'record-sale',
+                  props: { editId: sale._id, isEditMode: true },
                 })
               }}
             />
           )}
+          <ActionListItem
+            icon={
+              <Archive
+                size={24}
+                className={
+                  isArchived
+                    ? 'text-red-200 stroke-[2.2px]'
+                    : 'text-[#FF3B30] stroke-[2.2px]'
+                }
+              />
+            }
+            title="Archive sale"
+            danger
+            disabled={isArchived}
+            onClick={() => {
+              storeCloseDrawer('transaction-options')
+              openDrawer({
+                type: 'confirm-archive',
+                props: { sale },
+              })
+            }}
+          />
         </ActionList>
       </div>
       <TagFooter />

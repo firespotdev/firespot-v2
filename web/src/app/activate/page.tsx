@@ -88,12 +88,20 @@ function ActivatePageContent() {
   const generateDigitalQRKit = useGenerateDigitalQRKit()
   const { pricing } = useQRKitPricing()
 
+  const isSerialReservedForUser = Boolean(
+    checkSerial.data?.status === 'available' &&
+      checkSerial.data?.reservedForMerchantId &&
+      checkSerial.data.reservedForMerchantId ===
+        (user?.id || (user as { _id?: string })?._id),
+  )
+
   // Free either because activation is priced at zero, or because this merchant
-  // pre-paid via an order and holds an entitlement. The server decides for
+  // pre-paid via an order and holds an entitlement or reservation. The server decides for
   // real; this only picks the copy.
   const isActivationFree =
     pricing.activationAmount === 0 ||
-    !!(user?.availableKitEntitlements && user.availableKitEntitlements > 0)
+    !!(user?.availableKitEntitlements && user.availableKitEntitlements > 0) ||
+    isSerialReservedForUser
 
   // QR code branding
   const qrCodeRef = useRef<HTMLDivElement>(null)

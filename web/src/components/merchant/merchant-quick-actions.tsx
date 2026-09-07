@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { format, subDays } from 'date-fns'
 import { ChevronRight, History } from 'lucide-react'
@@ -11,7 +11,6 @@ import { useSetupShopCta } from '@/components/merchant/setup-shop-cta'
 import { cn } from '@/lib/utils'
 import { useMerchantInsights } from '@/services/insights'
 import { useOutstandingSummary, useSalesStats } from '@/services/sales/hooks'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 export interface MerchantQuickAction {
   id: 'setup' | 'report' | 'recent' | 'outstanding'
@@ -138,12 +137,13 @@ export function MerchantQuickActionsList({
   const actions = useMerchantQuickActions()
 
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-3 mt-8', className)}>
       {actions.map((action) => (
         <MerchantQuickActionCard
           key={action.id}
           action={action}
           onNavigate={onNavigate}
+          className="-mt-5.5"
         />
       ))}
     </div>
@@ -156,64 +156,83 @@ export function MerchantQuickActionStack({
   className?: string
 }) {
   const actions = useMerchantQuickActions()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const report = actions.find((action) => action.id === 'report') ?? actions[0]
   const layers = actions
     .filter((action) => action.id !== report?.id)
     .slice(0, 3)
 
+  useEffect(() => {
+    if (!isExpanded) return
+
+    const timer = setTimeout(() => {
+      setIsExpanded(false)
+    }, 4000)
+
+    return () => clearTimeout(timer)
+  }, [isExpanded])
+
   if (!report) return null
 
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        aria-label="View merchant quick actions"
-        className={cn('relative w-full pb-5', className)}
-      >
-        {layers.map((action, index) => (
-          <span
+  if (isExpanded) {
+    const expandedActions = [...actions].sort(
+      (a, b) =>
+        ['outstanding', 'recent', 'setup', 'report'].indexOf(a.id) -
+        ['outstanding', 'recent', 'setup', 'report'].indexOf(b.id),
+    )
+
+    return (
+      <div className={cn('space-y-0 w-full', className)}>
+        {expandedActions.map((action, index) => (
+          <MerchantQuickActionCard
             key={action.id}
-            className="absolute h-[66px] rounded-[16px] border-[3px] border-[#FFFFFF99] shadow-[0px_4px_8px_0px_#0000000A]"
-            style={{
-              left: `${(index + 1) * 6}px`,
-              right: `${(index + 1) * 6}px`,
-              top: `${(index + 1) * 7}px`,
-              zIndex: layers.length - index,
-              background: action.gradient,
-            }}
+            action={action}
+            onNavigate={() => setIsExpanded(false)}
+            className={cn(index > 0 && '-mt-3')}
           />
         ))}
-        <span
-          className="relative z-10 flex w-full items-center gap-3 overflow-hidden rounded-[12px] border-[3px] border-[#FFFFFF99] p-3 shadow-[0px_4px_8px_0px_#0000000A]"
-          style={{ background: report.gradient }}
-        >
-          <span className="absolute -bottom-4 left-5 flex h-[60px] w-[48px] -rotate-[9deg] items-start pt-[3%] justify-center rounded-[12px] border border-white/40 bg-white/20 shadow-[0px_4px_8px_0px_#00000014]">
-            {report.icon}
-          </span>
-          <span className="min-w-0 flex-1 pl-[78px] text-left">
-            <span className="block truncate text-sm font-bold text-white">
-              {report.title}
-            </span>
-            <span className="block truncate text-[13px] font-medium text-white/90">
-              {report.subtitle}
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-white" />
-        </span>
-      </button>
+      </div>
+    )
+  }
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent
-          showCloseButton={false}
-          overlayClassName="bg-black/20 backdrop-blur-[6px]"
-          className="w-full max-w-125 gap-0 border-0 bg-transparent p-4 shadow-none"
-        >
-          <DialogTitle className="sr-only">Merchant quick actions</DialogTitle>
-          <MerchantQuickActionsList onNavigate={() => setIsOpen(false)} />
-        </DialogContent>
-      </Dialog>
-    </>
+  return (
+    <button
+      type="button"
+      onClick={() => setIsExpanded(true)}
+      aria-label="Expand merchant quick actions"
+      aria-expanded={false}
+      className={cn('relative w-full pb-5', className)}
+    >
+      {layers.map((action, index) => (
+        <span
+          key={action.id}
+          className="absolute h-[66px] rounded-[16px] border-[3px] border-[#FFFFFF99] shadow-[0px_4px_8px_0px_#0000000A]"
+          style={{
+            left: `${(index + 1) * 6}px`,
+            right: `${(index + 1) * 6}px`,
+            top: `${(index + 1) * 7}px`,
+            zIndex: layers.length - index,
+            background: action.gradient,
+          }}
+        />
+      ))}
+      <span
+        className="relative z-10 flex w-full items-center gap-3 overflow-hidden rounded-[12px] border-[3px] border-[#FFFFFF99] p-3 shadow-[0px_4px_8px_0px_#0000000A]"
+        style={{ background: report.gradient }}
+      >
+        <span className="absolute -bottom-4 left-5 flex h-[60px] w-[48px] -rotate-[9deg] items-start pt-[3%] justify-center rounded-[12px] border border-white/40 bg-white/20 shadow-[0px_4px_8px_0px_#00000014]">
+          {report.icon}
+        </span>
+        <span className="min-w-0 flex-1 pl-[78px] text-left">
+          <span className="block truncate text-sm font-bold text-white">
+            {report.title}
+          </span>
+          <span className="block truncate text-[13px] font-medium text-white/90">
+            {report.subtitle}
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-white" />
+      </span>
+    </button>
   )
 }

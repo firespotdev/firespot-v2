@@ -23,6 +23,7 @@ export default function MerchantLayout({
   const user = useAuthStore((s) => s.user)
   const onboardingCompleted = useAuthStore((s) => s.onboardingCompleted)
   const logout = useAuthStore((s) => s.logout)
+  const setActiveProfileMode = useAuthStore((s) => s.setActiveProfileMode)
 
   const hasValidSession =
     isAuthenticated && !!token && !isTokenExpired(token)
@@ -46,7 +47,9 @@ export default function MerchantLayout({
     // Personal-only accounts have no business to manage here.
     if (user?.role !== 'merchant') {
       router.replace('/home')
+      return
     }
+    setActiveProfileMode('merchant')
   }, [
     ready,
     isAuthenticated,
@@ -55,6 +58,7 @@ export default function MerchantLayout({
     onboardingCompleted,
     router,
     logout,
+    setActiveProfileMode,
   ])
 
   if (!canRenderMerchant) {

@@ -78,6 +78,9 @@ export const useCreateManualSale = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };
@@ -169,6 +172,9 @@ export const useRecordSale = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };

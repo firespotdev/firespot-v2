@@ -181,7 +181,7 @@ export function MerchantInfoStat({
 
       {quickActions}
 
-      <div className="border-2 border-[#000000]/8 bg-white rounded-[12px] w-full">
+      <div className="border-2 border-[#000000]/8 bg-white rounded-[12px] w-full mb-6">
         <div className="px-4 py-3 flex justify-between items-center border-b-2 border-[#F4F6F8]">
           <div>
             <button

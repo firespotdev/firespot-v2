@@ -31,6 +31,7 @@ export interface QRKitActivationResponse {
 export interface SerialCheckResponse {
   status: 'available' | 'already_bound' | 'not_found'
   serialNumber: string
+  reservedForMerchantId?: string
 }
 
 export interface PaymentVerificationResponse {

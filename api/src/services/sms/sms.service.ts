@@ -89,6 +89,7 @@ export class SmsService {
     otpExpiryMinutes: number,
     otpLength: number,
     messageTemplate: string,
+    pinAttempts = 3,
   ): Promise<string> {
     const formattedPhone = this.formatPhoneNumber(phoneNumber);
     const mockOtp = this.isMockMode();
@@ -122,7 +123,7 @@ export class SmsService {
           to: formattedPhone,
           from: "N-Alert", // Termii requires specific senders for OTP sometimes, keeping consistent with AuthService
           channel: "dnd",
-          pin_attempts: 1,
+          pin_attempts: pinAttempts,
           pin_time_to_live: otpExpiryMinutes,
           pin_length: otpLength,
           pin_placeholder: pinPlaceholder,
@@ -180,7 +181,10 @@ export class SmsService {
         response.data.verified === "True" || response.data.verified === true;
       return isVerified;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 400) {
+      if (
+        axios.isAxiosError(error) &&
+        (error.response?.status === 400 || error.response?.status === 422)
+      ) {
         return false;
       }
       this.handleTermiiError(error, "OTP verification");

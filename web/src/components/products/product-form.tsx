@@ -37,7 +37,10 @@ const parseCurrency = (value: string) =>
   Number(value.replace(/[^0-9.]/g, '').replace(/\.(?=.*\.)/g, '')) || 0
 const formatPriceInput = (input: HTMLInputElement) => {
   const rawValue = input.value.replace(/,/g, '')
-  const rawCaret = Math.max(0, input.selectionStart ?? rawValue.length)
+  const rawCaret = Math.max(
+    0,
+    input.value.slice(0, input.selectionStart ?? 0).replace(/,/g, '').length,
+  )
   const decimalIndex = rawValue.indexOf('.')
   const hasDecimal = decimalIndex !== -1
   const wholeRaw = (hasDecimal ? rawValue.slice(0, decimalIndex) : rawValue)

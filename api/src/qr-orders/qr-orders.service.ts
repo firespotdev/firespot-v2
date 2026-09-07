@@ -33,7 +33,6 @@ export class QROrdersService {
 
     return {
       ...pricing,
-      kitPrice: 0,
       maxKitsPerOrder: Math.min(
         100,
         Math.max(1, Math.floor(pricing.maxKitsPerOrder)),
@@ -76,9 +75,7 @@ export class QROrdersService {
 
     const email = `${user.fullPhoneNumber.replace('+', '')}@firespot.co`
 
-    // Merchants generate the QR kit for free. A physical order only pays for
-    // delivery of the already-owned QR kit.
-    const subtotal = 0
+    const subtotal = pricing.kitPrice * dto.quantity
     const totalAmount = subtotal + pricing.deliveryFee
 
     // Create DB Record

@@ -8,6 +8,7 @@ interface AuthState {
   token: string | null
   isAuthenticated: boolean
   onboardingCompleted: boolean
+  activeProfileMode: 'merchant' | 'personal'
   /**
    * The `lastLoginAt` the upgrade prompt was dismissed for. Comparing against
    * the current user's `lastLoginAt` keeps the prompt hidden across reloads but
@@ -20,6 +21,7 @@ interface AuthState {
   setAccessToken: (token: string) => void
   setOnboardingCompleted: (completed: boolean) => void
   dismissPlanPrompt: (lastLoginAt: string) => void
+  setActiveProfileMode: (mode: 'merchant' | 'personal') => void
   logout: () => void
 }
 
@@ -30,10 +32,17 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       onboardingCompleted: false,
+      activeProfileMode: 'merchant',
       planPromptDismissedForLogin: null,
       setAuth: (user, token, onboardingCompleted = true) => {
         localStorage.setItem('token', token)
-        set({ user, token, isAuthenticated: true, onboardingCompleted })
+        set({
+          user,
+          token,
+          isAuthenticated: true,
+          onboardingCompleted,
+          activeProfileMode: user.role === 'merchant' ? 'merchant' : 'personal',
+        })
       },
       setUser: (user) => set({ user }),
       updateUser: (user) => set({ user }),
@@ -47,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
         set({ onboardingCompleted: completed }),
       dismissPlanPrompt: (lastLoginAt) =>
         set({ planPromptDismissedForLogin: lastLoginAt }),
+      setActiveProfileMode: (activeProfileMode) => set({ activeProfileMode }),
       logout: () => {
         localStorage.removeItem('token')
         set({
@@ -54,6 +64,7 @@ export const useAuthStore = create<AuthState>()(
           token: null,
           isAuthenticated: false,
           onboardingCompleted: false,
+          activeProfileMode: 'merchant',
           planPromptDismissedForLogin: null,
         })
       },
