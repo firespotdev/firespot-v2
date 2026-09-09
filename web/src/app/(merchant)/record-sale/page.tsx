@@ -33,7 +33,7 @@ function RecordSaleRedirect() {
     if (hasOpened.current) return
     hasOpened.current = true
 
-    router.replace('/recents')
+    router.replace('/sales')
     openDrawer({
       type: 'record-sale',
       props: {

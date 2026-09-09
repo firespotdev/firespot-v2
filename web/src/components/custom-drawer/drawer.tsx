@@ -66,6 +66,9 @@ import { ArchiveProductDrawer } from './archive-product-drawer'
 import { ProductOptionEditorDrawer } from './product-option-editor-drawer'
 import { PayCatalogueDrawer } from './pay-catalogue-drawer'
 import { PayCurrentPurchaseDrawer } from './pay-current-purchase-drawer'
+import { UnconfirmedDetailsDrawer } from './unconfirmed-details-drawer'
+import { PaymentMethodsActiveDrawer } from './payment-methods-active-drawer'
+import { MultiplePaymentOptionsDrawer } from './multiple-payment-options-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -73,7 +76,7 @@ const DRAWER_CONFIG: Record<
   {
     title: string
     direction?: DrawerDirection
-    HeaderLeft?: React.ComponentType
+    HeaderLeft?: React.ComponentType<any>
     Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
@@ -446,6 +449,30 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     contentClassName: 'overflow-hidden bg-white',
   },
+  'unconfirmed-details': {
+    title: '',
+    Content: UnconfirmedDetailsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: false,
+    contentClassName: 'bg-white',
+  },
+  'payment-methods-active': {
+    title: '',
+    Content: PaymentMethodsActiveDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: false,
+    contentClassName: 'bg-[#F4F6F8]',
+  },
+  'multiple-payment-options': {
+    title: '',
+    Content: MultiplePaymentOptionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: false,
+    contentClassName: 'bg-[#F4F6F8]',
+  },
   custom: {
     title: '',
     Content: () => null,
@@ -569,7 +596,7 @@ export function CustomDrawer() {
                 {/* Header */}
                 <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
                   <div className="w-9 h-9 flex items-center justify-center">
-                    {HeaderLeft && <HeaderLeft />}
+                    {HeaderLeft && <HeaderLeft {...(config.props || {})} />}
                   </div>
 
                   <DrawerTitle className="font-bold text-base text-black">
@@ -648,6 +675,7 @@ export function CustomDrawer() {
               'archive-product',
               'pay-catalogue',
               'pay-current-purchase',
+              'unconfirmed-details',
             ].includes(config.type)
               ? 'bg-white'
               : 'bg-[#f5f6f8]'
@@ -664,7 +692,7 @@ export function CustomDrawer() {
               {/* Header */}
               <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
                 <div className="w-9 h-9 flex items-center justify-center">
-                  {HeaderLeft && <HeaderLeft />}
+                  {HeaderLeft && <HeaderLeft {...(config.props || {})} />}
                 </div>
 
                 <DrawerTitle className="font-bold text-base text-black">

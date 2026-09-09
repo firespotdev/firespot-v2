@@ -34,6 +34,7 @@ export interface ActionListItemProps {
   trailing?: React.ReactNode
   danger?: boolean
   disabled?: boolean
+  as?: 'button' | 'div'
   onClick?: (e: React.MouseEvent<HTMLElement>) => void
   href?: string
   className?: string
@@ -49,6 +50,7 @@ export function ActionListItem({
   ),
   danger = false,
   disabled = false,
+  as = 'button',
   onClick,
   href,
   className,
@@ -89,6 +91,14 @@ export function ActionListItem({
       <Link href={href} onClick={onClick} className={baseClasses}>
         {content}
       </Link>
+    )
+  }
+
+  if (as === 'div') {
+    return (
+      <div onClick={onClick} className={baseClasses}>
+        {content}
+      </div>
     )
   }
 

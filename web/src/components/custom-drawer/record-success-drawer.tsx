@@ -202,7 +202,7 @@ const RecordSuccessDrawer = ({
               }
               closeAllDrawers()
               if (statsData?.pendingSalesCount! > 0) {
-                router.push('/recents')
+                router.push('/sales')
               } else {
                 router.push('/profile')
               }
@@ -402,7 +402,7 @@ const RecordSuccessDrawer = ({
                 }
                 closeAllDrawers()
                 if (statsData?.pendingSalesCount! > 0) {
-                  router.push('/recents')
+                  router.push('/sales')
                 } else {
                   router.push('/profile')
                 }

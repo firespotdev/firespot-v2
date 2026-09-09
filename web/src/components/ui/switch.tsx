@@ -5,6 +5,8 @@ interface SwitchProps {
   onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
   className?: string
+  variant?: 'blue' | 'green'
+  activeColor?: string
 }
 
 export function Switch({
@@ -12,22 +14,27 @@ export function Switch({
   onCheckedChange,
   disabled = false,
   className = '',
+  variant = 'blue',
+  activeColor,
 }: SwitchProps) {
+  const activeBg =
+    activeColor || (variant === 'green' ? 'bg-[#24C166]' : 'bg-[#26B2FF]')
+
   return (
     <div
       role="switch"
       aria-checked={checked}
       tabIndex={disabled ? -1 : 0}
       onClick={(e) => {
-        if (disabled) return;
-        e.stopPropagation();
-        onCheckedChange?.(!checked);
+        if (disabled) return
+        e.stopPropagation()
+        onCheckedChange?.(!checked)
       }}
       onKeyDown={(e) => {
-        if (disabled) return;
+        if (disabled) return
         if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          onCheckedChange?.(!checked);
+          e.preventDefault()
+          onCheckedChange?.(!checked)
         }
       }}
       className={`
@@ -35,7 +42,7 @@ export function Switch({
         transition-colors duration-200 ease-in-out
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
         disabled:cursor-not-allowed disabled:opacity-50
-        ${checked ? 'bg-[#26B2FF]' : 'bg-[#E5E5E5]'}
+        ${checked ? activeBg : 'bg-[#E5E5E5]'}
         ${className}
       `}
     >

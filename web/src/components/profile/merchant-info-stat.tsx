@@ -41,6 +41,10 @@ interface MerchantInfoStatProps {
   todaySalesAmount?: number
   collectedAmount?: number
   recordedAmount?: number
+  confirmedAmount?: number
+  unconfirmedAmount?: number
+  confirmedCount?: number
+  unconfirmedCount?: number
   salesCount?: number
   ordersCount?: number
   owingCount?: number
@@ -68,6 +72,11 @@ export function MerchantInfoStat({
   todaySalesAmount = 0,
   collectedAmount = 0,
   recordedAmount = 0,
+  confirmedAmount,
+  unconfirmedAmount,
+  confirmedCount,
+  unconfirmedCount,
+  salesCount = 0,
   isAmountHidden = false,
   onToggleVisibility,
   currentFilter,
@@ -226,36 +235,42 @@ export function MerchantInfoStat({
 
         <div className="grid grid-cols-2 divide-x divide-[#F1F1F1] text-left">
           <Link
-            href="/history?mode=collected"
+            href="/sales?tab=confirmed"
             className="px-4 py-3 transition-colors group"
           >
             <div className="flex items-center gap-1">
               <span className="text-[#00000066] text-xs font-medium">
-                Collected
+                Confirmed{' '}
+                {confirmedCount && confirmedCount > 0
+                  ? `(${confirmedCount})`
+                  : ''}
               </span>{' '}
               <ChevronRight size={12} strokeWidth={2} color="#00000066" />
             </div>
             <h4 className="font-bold text-[14px] text-black leading-none mt-2">
               {isAmountHidden
                 ? '₦ ••••••••'
-                : `₦ ${formatCurrency(collectedAmount)}`}
+                : `₦ ${formatCurrency(confirmedAmount ?? todaySalesAmount ?? collectedAmount)}`}
             </h4>
           </Link>
 
           <Link
-            href="/history?mode=recorded"
+            href="/sales?tab=unconfirmed"
             className="px-4 py-3.5 transition-colors group"
           >
             <div className="flex items-center gap-1">
               <span className="text-[#00000066] text-xs font-medium">
-                Recorded
+                Unconfirmed{' '}
+                {unconfirmedCount && unconfirmedCount > 0
+                  ? `(${unconfirmedCount})`
+                  : ''}
               </span>{' '}
               <ChevronRight size={12} strokeWidth={2} color="#00000066" />
             </div>
-            <h4 className="font-bold text-[14px] text-[#00000066] leading-none mt-2">
+            <h4 className="font-bold text-[14px] text-[#BB8123] leading-none mt-2">
               {isAmountHidden
                 ? '₦ ••••••••'
-                : `₦ ${formatCurrency(recordedAmount)}`}
+                : `₦ ${formatCurrency(unconfirmedAmount ?? recordedAmount)}`}
             </h4>
           </Link>
         </div>

@@ -70,7 +70,7 @@ export function useMerchantQuickActions(): MerchantQuickAction[] {
       id: 'recent',
       title: 'Recent sales',
       subtitle: `${pendingSalesCount} unconfirmed ${pendingSalesCount === 1 ? 'sale' : 'sales'}`,
-      href: '/recents',
+      href: '/sales',
       gradient: 'linear-gradient(92.42deg, #6B4200 0%, #BB8123 100%)',
       icon: <History className="h-6 w-6 text-white" />,
     })

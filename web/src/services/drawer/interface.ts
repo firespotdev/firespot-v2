@@ -52,6 +52,9 @@ export type DrawerContentType =
   | 'product-option-editor'
   | 'pay-catalogue'
   | 'pay-current-purchase'
+  | 'unconfirmed-details'
+  | 'payment-methods-active'
+  | 'multiple-payment-options'
 
 
 

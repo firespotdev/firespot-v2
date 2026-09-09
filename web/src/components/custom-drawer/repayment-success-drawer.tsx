@@ -45,7 +45,7 @@ export function RepaymentSuccessDrawer({
     if (onDismiss) {
       onDismiss()
     } else {
-      router.push('/recents')
+      router.push('/sales')
     }
   }
 
@@ -66,7 +66,7 @@ export function RepaymentSuccessDrawer({
       router.replace(returnTo)
       return
     }
-    router.push('/recents')
+    router.push('/sales')
   }
 
   const repaymentDate = (() => {

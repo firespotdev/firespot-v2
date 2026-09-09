@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, CirclePlus } from 'lucide-react'
+import { Plus, CirclePlus, ChevronRight, ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -22,17 +22,28 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSetPrimaryBankAccount } from '@/services/users'
-import { showNotificationToast, TagFooter, BankLogo } from '@/components/ui'
+import { useSetPrimaryBankAccount, useUserProfile } from '@/services/users'
+import { showNotificationToast, TagFooter, BankLogo, Switch } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { BankAccount } from '@/services/users'
 
 interface SortableBankItemProps {
   account: BankAccount
   isFirst: boolean
+  showSwitch?: boolean
+  isEnabled?: boolean
+  onToggleEnabled?: (accountNumber: string, enabled: boolean) => void
+  showChevron?: boolean
 }
 
-function SortableBankItem({ account, isFirst }: SortableBankItemProps) {
+function SortableBankItem({
+  account,
+  isFirst,
+  showSwitch,
+  isEnabled = true,
+  onToggleEnabled,
+  showChevron,
+}: SortableBankItemProps) {
   const {
     attributes,
     listeners,
@@ -59,6 +70,16 @@ function SortableBankItem({ account, isFirst }: SortableBankItemProps) {
         isDragging ? 'bg-gray-50' : ''
       }`}
     >
+      {showSwitch && (
+        <Image
+          src="/icons/bars.svg"
+          alt="Drag handle"
+          width={16}
+          height={16}
+          className="w-4 h-4 mr-0.5 opacity-60"
+        />
+      )}
+
       <BankLogo
         bankName={account.bankName}
         size={36}
@@ -74,26 +95,51 @@ function SortableBankItem({ account, isFirst }: SortableBankItemProps) {
         )}
       </div>
 
-      <Image
-        src="/icons/bars.svg"
-        alt="Drag handle"
-        width={16}
-        height={16}
-        className="w-4 h-4"
-      />
+      {showSwitch ? (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Switch
+            checked={isEnabled}
+            onCheckedChange={(checked) =>
+              onToggleEnabled?.(account.accountNumber, checked)
+            }
+          />
+        </div>
+      ) : showChevron ? (
+        <ChevronRight className="w-5 h-5 text-[#9CA3AF]" />
+      ) : (
+        <Image
+          src="/icons/bars.svg"
+          alt="Drag handle"
+          width={16}
+          height={16}
+          className="w-4 h-4"
+        />
+      )}
     </div>
   )
 }
 
 interface BankDrawerProps {
-  bankAccounts: BankAccount[]
+  bankAccounts?: BankAccount[]
+  showSwitch?: boolean
+  showChevron?: boolean
+  isCustomer?: boolean
+  fromActiveMethods?: boolean
 }
 
-export function BankDrawer({ bankAccounts }: BankDrawerProps) {
-  const closeDrawer = useDrawerStore((state) => state.closeDrawer)
+export function BankDrawer({
+  bankAccounts: initialAccounts,
+  showSwitch,
+  showChevron,
+  isCustomer,
+  fromActiveMethods,
+}: BankDrawerProps) {
+  const { closeDrawer, closeAllDrawers } = useDrawerStore()
   const setPrimaryBankAccount = useSetPrimaryBankAccount()
+  const { data: profile } = useUserProfile()
 
   const [accounts, setAccounts] = useState<BankAccount[]>([])
+  const [disabledAccounts, setDisabledAccounts] = useState<Record<string, boolean>>({})
 
   // Configure sensors for both mouse/touch
   const sensors = useSensors(
@@ -113,17 +159,25 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
     }),
   )
 
-  // Sync accounts from props
+  // Sync accounts from props or profile
   useEffect(() => {
-    if (bankAccounts) {
-      const sorted = [...bankAccounts].sort((a, b) => {
+    const list = initialAccounts || profile?.bankAccounts
+    if (list) {
+      const sorted = [...list].sort((a, b) => {
         if (a.isPrimary) return -1
         if (b.isPrimary) return 1
         return 0
       })
       setAccounts(sorted)
     }
-  }, [bankAccounts])
+  }, [initialAccounts, profile?.bankAccounts])
+
+  const handleToggleEnabled = (accountNumber: string, enabled: boolean) => {
+    setDisabledAccounts((prev) => ({
+      ...prev,
+      [accountNumber]: !enabled,
+    }))
+  }
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
@@ -194,13 +248,17 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
                     key={account.accountNumber}
                     account={account}
                     isFirst={index === 0}
+                    showSwitch={showSwitch}
+                    isEnabled={!disabledAccounts[account.accountNumber]}
+                    onToggleEnabled={handleToggleEnabled}
+                    showChevron={showChevron || isCustomer}
                   />
                 ))}
               </SortableContext>
             </DndContext>
             <Link
               href="/bank-accounts/add"
-              onClick={closeDrawer}
+              onClick={() => closeAllDrawers()}
               className="flex items-center gap-3 px-4 py-3"
             >
               <CirclePlus
@@ -222,13 +280,35 @@ export function BankDrawer({ bankAccounts }: BankDrawerProps) {
   )
 }
 
-export function BankDrawerHeaderLeft() {
-  const closeDrawer = useDrawerStore((state) => state.closeDrawer)
+interface BankDrawerHeaderLeftProps {
+  fromActiveMethods?: boolean
+}
+
+export function BankDrawerHeaderLeft({
+  fromActiveMethods,
+}: BankDrawerHeaderLeftProps) {
+  const { closeDrawer, openDrawer, closeAllDrawers } = useDrawerStore()
+
+  if (fromActiveMethods) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          closeDrawer('bank-accounts')
+          openDrawer({ type: 'payment-methods-active' })
+        }}
+        aria-label="Back"
+        className="w-9 h-9 flex items-center justify-center text-black"
+      >
+        <ArrowLeft size={22} strokeWidth={2.2} />
+      </button>
+    )
+  }
 
   return (
     <Link
       href="/bank-accounts/add"
-      onClick={closeDrawer}
+      onClick={() => closeAllDrawers()}
       className="w-9 h-9 flex items-center justify-center"
     >
       <Plus className="w-6 h-6 text-black" />
