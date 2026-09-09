@@ -245,6 +245,32 @@ export class Sale extends Document {
   @Prop()
   capReservationLastCheckedAt?: Date;
 
+  @Prop({
+    type: {
+      authorizationCode: { type: String, select: false },
+      brand: String,
+      last4: String,
+      expMonth: String,
+      expYear: String,
+      bank: String,
+      cardType: String,
+      reusable: Boolean,
+      signature: String,
+    },
+    _id: false,
+  })
+  paystackAuthorizationDetails?: {
+    authorizationCode?: string;
+    brand?: string;
+    last4?: string;
+    expMonth?: string;
+    expYear?: string;
+    bank?: string;
+    cardType?: string;
+    reusable?: boolean;
+    signature?: string;
+  };
+
   createdAt?: Date;
   updatedAt?: Date;
 }

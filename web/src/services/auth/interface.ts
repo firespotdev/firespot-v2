@@ -116,8 +116,23 @@ export interface User {
   effectiveVerificationLevel?: 'PRO' | 'PROMAX' | null
   planCurrentPeriodEnd?: string | null
   planGraceUntil?: string | null
+  effectiveTier?: 'LITE' | 'PRO' | 'PROMAX' | null
+  canCollect?: boolean
+  collectBlockedReason?: 'no_plan' | 'kyc_incomplete' | null
   hasPayoutAccount?: boolean
+  savedCardsCheckoutEnabled?: boolean
   isLapsed?: boolean
+  savedCards?: Array<{
+    id: string
+    brand: string
+    last4: string
+    expMonth?: string
+    expYear?: string
+    bank?: string
+    cardType?: string
+    createdAt?: string
+    lastUsedAt?: string
+  }>
   /**
    * Set on each OTP verification. The upgrade prompt keys its dismissal to
    * this so it stays hidden across reloads but re-surfaces on the next login.

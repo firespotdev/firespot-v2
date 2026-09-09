@@ -3,9 +3,13 @@ import { SalesService } from './sales.service'
 
 jest.mock('nanoid', () => ({ nanoid: () => 'TEST1234' }))
 
-const query = <T>(value: T) => ({
-  exec: jest.fn().mockResolvedValue(value),
-})
+const query = <T>(value: T) => {
+  const q: any = {
+    exec: jest.fn().mockResolvedValue(value),
+  }
+  q.select = jest.fn(() => q)
+  return q
+}
 
 const sortedQuery = <T>(value: T) => ({
   sort: jest.fn(() => query(value)),
@@ -47,15 +51,18 @@ function makeService(overrides: Record<string, any> = {}) {
   const referrals = {
     evaluateReferredMerchant: jest.fn().mockResolvedValue(undefined),
   }
-  const paymentAttemptModel = {
-    findOne: jest.fn(() => query(null)),
-    findOneAndUpdate: jest.fn(),
-    updateOne: jest.fn(),
-    ...overrides.paymentAttemptModel,
-  }
+  const defaultAttemptInstance = { save: jest.fn().mockResolvedValue(true) }
+  const attemptConstructor = jest.fn(() => defaultAttemptInstance) as any
+  attemptConstructor.findOne = jest.fn(() => query(null))
+  attemptConstructor.findOneAndUpdate = jest.fn()
+  attemptConstructor.updateOne = jest.fn()
+  const paymentAttemptModel = typeof overrides.paymentAttemptModel === 'function'
+    ? overrides.paymentAttemptModel
+    : Object.assign(attemptConstructor, overrides.paymentAttemptModel)
   const paystackService = {
     initializeTransaction: jest.fn(),
     verifyTransaction: jest.fn(),
+    chargeAuthorization: jest.fn(),
     ...overrides.paystackService,
   }
   const smsService = {
@@ -327,6 +334,10 @@ describe('SalesService Paystack collection integrity', () => {
       ...pending,
       status: 'CONFIRMED',
       capReservationStatus: 'confirmed',
+      paystackAuthorizationDetails: {
+        authorizationCode: 'AUTH_PRIVATE',
+        reusable: true,
+      },
       save: jest.fn().mockResolvedValue(undefined),
     }
     const { service, saleModel, dailyUsageModel, referrals, server } =
@@ -371,7 +382,10 @@ describe('SalesService Paystack collection integrity', () => {
       { $inc: { reservedAmount: -5000 } },
     )
     expect(referrals.evaluateReferredMerchant).toHaveBeenCalledTimes(1)
-    expect(server.emit).toHaveBeenCalledWith('sale.confirmed', confirmed)
+    expect(server.emit).toHaveBeenCalledWith(
+      'sale.confirmed',
+      expect.not.objectContaining({ paystackAuthorizationDetails: expect.anything() }),
+    )
   })
 
   it('allows only one concurrent daily-cap reservation to win', async () => {
@@ -544,5 +558,365 @@ describe('SalesService Paystack collection integrity', () => {
     ).rejects.toThrow(
       'Paystack payments are recorded automatically after Paystack confirms receipt of funds.',
     )
+  })
+
+  describe('personal customer saved cards (Paystack tokenization)', () => {
+    it('saves a reusable card from a confirmed Paystack card sale', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const sale = {
+        _id: saleId,
+        customerUserId: userId,
+        status: 'CONFIRMED',
+        paymentRail: 'paystack',
+        channel: 'card',
+        paystackAuthorizationDetails: {
+          authorizationCode: 'AUTH_TEST123',
+          brand: 'visa',
+          last4: '4081',
+          bank: 'Test Bank',
+          reusable: true,
+          signature: 'SIG_CARD_1',
+        },
+        save: jest.fn().mockResolvedValue(true),
+      }
+      const user = {
+        _id: userId,
+        savedCards: [],
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      const { service } = makeService({
+        saleModel: { findById: jest.fn(() => query(sale)) },
+        userModel: { findById: jest.fn(() => query(user)) },
+      })
+
+      const result = await service.saveCardFromSale(
+        saleId.toString(),
+        userId.toString(),
+      )
+
+      expect(result.success).toBe(true)
+      expect(result.card?.last4).toBe('4081')
+      expect(user.savedCards).toHaveLength(1)
+      expect(user.save).toHaveBeenCalled()
+    })
+
+    it('rejects saving a card if reusable is false', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const sale = {
+        _id: saleId,
+        customerUserId: userId,
+        status: 'CONFIRMED',
+        paystackAuthorizationDetails: {
+          authorizationCode: 'AUTH_ONE_TIME',
+          reusable: false,
+        },
+      }
+
+      const { service } = makeService({
+        saleModel: { findById: jest.fn(() => query(sale)) },
+      })
+
+      await expect(
+        service.saveCardFromSale(saleId.toString(), userId.toString()),
+      ).rejects.toThrow('No reusable card was used for this payment')
+    })
+
+    it('charges a saved card via chargeAuthorization with subaccount and bearer: subaccount', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const cardId = new Types.ObjectId()
+      const merchantId = new Types.ObjectId()
+
+      const sale = {
+        _id: saleId,
+        merchantId,
+        customerUserId: userId,
+        amount: 5000,
+        status: 'PENDING',
+        serialNumber: 'FS-TEST',
+        reference: 'FS-REF',
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      const merchant = {
+        _id: merchantId,
+        planTier: 'PRO',
+        planStatus: 'verified',
+        paystackSubaccountCode: 'ACCT_MERCHANT_1',
+        bankAccounts: [{ isPrimary: true }],
+      }
+
+      const user = {
+        _id: userId,
+        fullPhoneNumber: '+2348011112222',
+        firstName: 'Test',
+        lastName: 'Customer',
+        savedCards: [
+          {
+            _id: cardId,
+            authorizationCode: 'AUTH_TEST123',
+            brand: 'visa',
+            last4: '4081',
+            reusable: true,
+          },
+        ],
+      }
+
+      const attempt = {
+        _id: new Types.ObjectId(),
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      const paymentAttemptModel = jest.fn(() => attempt) as any
+      paymentAttemptModel.findOne = jest.fn(() => query(null))
+      paymentAttemptModel.findOneAndUpdate = jest.fn()
+
+      const { service, paystackService, userModel } = makeService({
+        saleModel: {
+          findById: jest.fn(() => query(sale)),
+          findOneAndUpdate: jest.fn(() => query(sale)),
+          updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+        },
+        userModel: {
+          findById: jest.fn((id) => {
+            if (String(id) === String(merchantId)) return query(merchant)
+            if (String(id) === String(userId)) return query(user)
+            return query(null)
+          }),
+        },
+        paymentAttemptModel,
+        paystackService: {
+          chargeAuthorization: jest.fn().mockResolvedValue({
+            success: true,
+            reference: 'COL-CHARGE-1',
+          }),
+          verifyTransaction: jest.fn().mockResolvedValue({
+            status: 'success',
+            amount: 500000,
+            channel: 'card',
+            currency: 'NGN',
+            domain: 'test',
+          }),
+        },
+      })
+
+      jest.spyOn(service as any, 'reservePaystackDailyCap').mockResolvedValue('2026-09-09')
+      jest.spyOn(service, 'confirmPaystackSale').mockResolvedValue({
+        ...sale,
+        status: 'CONFIRMED',
+      } as any)
+
+      const result = await service.payWithSavedCard(
+        saleId.toString(),
+        { cardId: cardId.toString() },
+        userId.toString(),
+      )
+
+      expect(result.status).toBe('CONFIRMED')
+      expect(paystackService.chargeAuthorization).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authorizationCode: 'AUTH_TEST123',
+          amount: 500000,
+          subaccount: 'ACCT_MERCHANT_1',
+          bearer: 'subaccount',
+        }),
+      )
+      expect(userModel.updateOne).toHaveBeenCalledWith(
+        { _id: userId },
+        { $set: { 'savedCards.$[card].lastUsedAt': expect.any(Date) } },
+        { arrayFilters: [{ 'card._id': cardId }] },
+      )
+    })
+
+    it('rejects saving a card from a sale owned by another customer', async () => {
+      const saleId = new Types.ObjectId()
+      const ownerId = new Types.ObjectId()
+      const attackerId = new Types.ObjectId()
+      const sale = {
+        _id: saleId,
+        status: 'CONFIRMED',
+        customerUserId: ownerId,
+        paystackAuthorizationDetails: {
+          authorizationCode: 'AUTH_OWNER',
+          reusable: true,
+        },
+      }
+      const { service, userModel } = makeService({
+        saleModel: { findById: jest.fn(() => query(sale)) },
+      })
+
+      await expect(
+        service.saveCardFromSale(
+          saleId.toString(),
+          attackerId.toString(),
+          'attacker-browser',
+        ),
+      ).rejects.toThrow('This payment belongs to another customer')
+      expect(userModel.findById).not.toHaveBeenCalled()
+    })
+
+    it('claims a guest card payment only with its matching fingerprint', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const sale = {
+        _id: saleId,
+        status: 'CONFIRMED',
+        customerFingerprint: 'guest-browser',
+        paystackAuthorizationDetails: {
+          authorizationCode: 'AUTH_GUEST',
+          reusable: true,
+        },
+      }
+      const user = {
+        _id: userId,
+        savedCards: [],
+        save: jest.fn().mockResolvedValue(true),
+      }
+      const saleModel = {
+        findById: jest.fn(() => query(sale)),
+        findOneAndUpdate: jest.fn(() => query({ ...sale, customerUserId: userId })),
+      }
+      const { service } = makeService({
+        saleModel,
+        userModel: { findById: jest.fn(() => query(user)) },
+      })
+
+      await expect(
+        service.saveCardFromSale(
+          saleId.toString(),
+          userId.toString(),
+          'guest-browser',
+        ),
+      ).resolves.toEqual(expect.objectContaining({ success: true }))
+      expect(saleModel.findOneAndUpdate).toHaveBeenCalled()
+    })
+
+    it('rejects a guest card save from a different browser fingerprint', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const sale = {
+        _id: saleId,
+        status: 'CONFIRMED',
+        customerFingerprint: 'payer-browser',
+        paystackAuthorizationDetails: {
+          authorizationCode: 'AUTH_GUEST',
+          reusable: true,
+        },
+      }
+      const { service, saleModel, userModel } = makeService({
+        saleModel: { findById: jest.fn(() => query(sale)) },
+      })
+
+      await expect(
+        service.saveCardFromSale(
+          saleId.toString(),
+          userId.toString(),
+          'different-browser',
+        ),
+      ).rejects.toThrow('This payment belongs to another customer')
+      expect(saleModel.findOneAndUpdate).not.toHaveBeenCalled()
+      expect(userModel.findById).not.toHaveBeenCalled()
+    })
+
+    it('blocks saved-card checkout when the merchant has opted out', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const merchantId = new Types.ObjectId()
+      const cardId = new Types.ObjectId()
+      const sale = {
+        _id: saleId,
+        merchantId,
+        customerUserId: userId,
+        status: 'PENDING',
+        amount: 5000,
+      }
+      const customer = {
+        _id: userId,
+        savedCards: [
+          {
+            _id: cardId,
+            authorizationCode: 'AUTH_TEST123',
+            reusable: true,
+          },
+        ],
+      }
+      const merchant = {
+        _id: merchantId,
+        planTier: 'PRO',
+        planStatus: 'verified',
+        paystackSubaccountCode: 'ACCT_MERCHANT_1',
+        savedCardsCheckoutEnabled: false,
+      }
+      const { service, paystackService } = makeService({
+        saleModel: { findById: jest.fn(() => query(sale)) },
+        userModel: {
+          findById: jest.fn((id) =>
+            query(String(id) === String(userId) ? customer : merchant),
+          ),
+        },
+      })
+
+      await expect(
+        service.payWithSavedCard(
+          saleId.toString(),
+          { cardId: cardId.toString() },
+          userId.toString(),
+        ),
+      ).rejects.toThrow('Saved-card checkout is not available')
+      expect(paystackService.chargeAuthorization).not.toHaveBeenCalled()
+    })
+
+    it('does not issue another charge when an attempt already owns the sale', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const merchantId = new Types.ObjectId()
+      const cardId = new Types.ObjectId()
+      const sale = {
+        _id: saleId,
+        merchantId,
+        customerUserId: userId,
+        status: 'PENDING',
+        amount: 5000,
+      }
+      const customer = {
+        _id: userId,
+        savedCards: [
+          {
+            _id: cardId,
+            authorizationCode: 'AUTH_TEST123',
+            reusable: true,
+          },
+        ],
+      }
+      const merchant = {
+        _id: merchantId,
+        planTier: 'PRO',
+        planStatus: 'verified',
+        paystackSubaccountCode: 'ACCT_MERCHANT_1',
+      }
+      const { service, paystackService } = makeService({
+        saleModel: {
+          findById: jest.fn(() => query(sale)),
+          findOneAndUpdate: jest.fn(() => query(null)),
+        },
+        userModel: {
+          findById: jest.fn((id) =>
+            query(String(id) === String(userId) ? customer : merchant),
+          ),
+        },
+      })
+
+      await expect(
+        service.payWithSavedCard(
+          saleId.toString(),
+          { cardId: cardId.toString() },
+          userId.toString(),
+        ),
+      ).rejects.toThrow('This payment is already being processed')
+      expect(paystackService.chargeAuthorization).not.toHaveBeenCalled()
+    })
   })
 })

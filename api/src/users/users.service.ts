@@ -1,4 +1,4 @@
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import { Injectable, HttpException, HttpStatus, ForbiddenException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
@@ -10,6 +10,7 @@ import { CloudinaryService } from "./services/cloudinary.service";
 import { MerchantReferralsService } from "../merchant-referrals/merchant-referrals.service";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { UpdatePaymentSettingsDto } from "./dto/update-payment-settings.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
 import { customAlphabet } from "nanoid";
 
@@ -79,6 +80,34 @@ export class UsersService {
     return {
       message: "Profile updated successfully",
       user: this.sanitizeUser(user),
+    };
+  }
+
+  async updatePaymentSettings(userId: string, dto: UpdatePaymentSettingsDto) {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (dto.savedCardsCheckoutEnabled) {
+      const { canCollect, reason } = getCollectEligibility(user);
+      if (!canCollect) {
+        throw new ForbiddenException({
+          message:
+            reason === "kyc_incomplete"
+              ? "Finish verifying your identity to enable saved-card checkout."
+              : "Upgrade to a Firespot Business plan to enable saved-card checkout.",
+          reason,
+        });
+      }
+    }
+
+    user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
+    await user.save();
+
+    return {
+      message: "Payment settings updated",
+      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled,
     };
   }
 
@@ -913,10 +942,68 @@ export class UsersService {
       canCollect: getCollectEligibility(user).canCollect,
       collectBlockedReason: getCollectEligibility(user).reason,
       hasPayoutAccount: Boolean(user.paystackSubaccountCode),
+      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
+      savedCards: [...(user.savedCards || [])]
+        .sort(
+          (a, b) =>
+            (b.lastUsedAt || b.createdAt || new Date(0)).getTime() -
+            (a.lastUsedAt || a.createdAt || new Date(0)).getTime(),
+        )
+        .map((c) => ({
+          id: String(c._id),
+          brand: c.brand || "card",
+          last4: c.last4 || "••••",
+          expMonth: c.expMonth,
+          expYear: c.expYear,
+          bank: c.bank,
+          cardType: c.cardType,
+          createdAt: c.createdAt,
+          lastUsedAt: c.lastUsedAt,
+        })),
       // Used by the client to re-surface the upgrade prompt once per login
       lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  async getSavedCards(userId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    return [...(user.savedCards || [])]
+      .sort(
+        (a, b) =>
+          (b.lastUsedAt || b.createdAt || new Date(0)).getTime() -
+          (a.lastUsedAt || a.createdAt || new Date(0)).getTime(),
+      )
+      .map((c) => ({
+        id: String(c._id),
+        brand: c.brand || "card",
+        last4: c.last4 || "••••",
+        expMonth: c.expMonth,
+        expYear: c.expYear,
+        bank: c.bank,
+        cardType: c.cardType,
+        createdAt: c.createdAt,
+        lastUsedAt: c.lastUsedAt,
+      }));
+  }
+
+  async deleteSavedCard(userId: string, cardId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    const countBefore = user.savedCards?.length || 0;
+    user.savedCards = (user.savedCards || []).filter(
+      (c) => String(c._id) !== cardId,
+    );
+    if ((user.savedCards?.length || 0) === countBefore) {
+      throw new HttpException("Card not found", HttpStatus.NOT_FOUND);
+    }
+    await user.save();
+    return { success: true, message: "Card removed successfully" };
   }
 }

@@ -6,6 +6,7 @@ import { Plus, Share, X } from 'lucide-react'
 import { showNotificationToast } from '@/components/ui'
 import type { MerchantProfile } from '@/services/qr/interface'
 import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
+import type { SavedCard } from '@/services/sales/interface'
 import { PaymentCheckoutFooter } from './payment-checkout-footer'
 import { ReceiptBenefitStrip } from './receipt-benefit-strip'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
@@ -28,6 +29,7 @@ interface SalePayAmountScreenProps {
   onShare: () => void
   onClose: () => void
   isSubmitting?: boolean
+  savedCard?: SavedCard
 }
 
 function formatInt(value: number): string {
@@ -48,6 +50,7 @@ export function SalePayAmountScreen({
   onShare,
   onClose,
   isSubmitting = false,
+  savedCard,
 }: SalePayAmountScreenProps) {
   const [amountDigits, setAmountDigits] = useState('')
   const [description, setDescription] = useState('')
@@ -74,7 +77,10 @@ export function SalePayAmountScreen({
       return
     }
 
-    if (hasPaystackCollection && selectedRail === 'multiple') {
+    if (
+      hasPaystackCollection &&
+      (selectedRail === 'multiple' || selectedRail === 'saved')
+    ) {
       onPayInstantly(amountValue, description.trim())
     } else {
       onCopy(amountValue, description.trim())
@@ -211,6 +217,7 @@ export function SalePayAmountScreen({
           onAction={handleAction}
           onChangeAccount={onChangeAccount}
           onChangePaymentMethod={onChangePaymentMethod}
+          savedCard={savedCard}
           isSubmitting={isSubmitting}
         />
       </div>

@@ -469,3 +469,61 @@ export const useRecordCopy = () => {
     },
   });
 };
+
+export const useSaveCardFromSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      customerFingerprint,
+    }: {
+      saleId: string;
+      customerFingerprint?: string;
+    }) => SalesApi.saveCardFromSale(saleId, customerFingerprint),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+    },
+  });
+};
+
+export const usePayWithSavedCard = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      cardId,
+      customerFingerprint,
+    }: {
+      saleId: string;
+      cardId: string;
+      customerFingerprint?: string;
+    }) => SalesApi.payWithSavedCard(saleId, { cardId, customerFingerprint }),
+    onSuccess: (data, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['saved-cards'] });
+    },
+  });
+};
+
+export const useCustomerSavedCards = (enabled = true) => {
+  return useQuery({
+    queryKey: ['saved-cards'],
+    queryFn: () => SalesApi.getSavedCards(),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useDeleteSavedCard = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (cardId: string) => SalesApi.deleteSavedCard(cardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+    },
+  });
+};

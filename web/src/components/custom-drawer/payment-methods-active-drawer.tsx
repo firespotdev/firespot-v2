@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X, Plus, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
+import { useRouter } from '@bprogress/next/app'
 import {
   ActionList,
   ActionListItem,
@@ -11,29 +12,101 @@ import {
   showNotificationToast,
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
-import { useUserProfile } from '@/services/users'
+import {
+  useUpdatePaymentSettings,
+  useUserProfile,
+} from '@/services/users'
 import { useUserQRKits } from '@/services/qr'
 import { Card, Scan } from 'iconsax-reactjs'
 import { BankIcon } from '@phosphor-icons/react'
+import { cn } from '@/lib/utils'
+
+const GRADIENT_TEXT_CLASS =
+  'bg-linear-to-br from-[#FB5012] to-[#D72483] bg-clip-text text-transparent'
+
+function PlanBadge({ label }: { label: string }) {
+  return (
+    <span className="rounded-[4px] bg-[#9CA3AF] px-1 py-0.5 text-[11px] font-bold leading-none text-white">
+      {label}
+    </span>
+  )
+}
+
+function ProGradientBadge({ label }: { label: string }) {
+  return (
+    <span className="rounded-[4px] bg-linear-to-br from-[#FB5012] to-[#D72483] px-1 py-0.5 text-[11px] font-bold leading-none text-white shadow-xs">
+      {label}
+    </span>
+  )
+}
 
 export function PaymentMethodsActiveDrawer() {
+  const router = useRouter()
   const { data: profile } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
   const { closeDrawer, openDrawer } = useDrawerStore()
 
   const [cashCardActive, setCashCardActive] = useState(true)
-  const [savedCardsActive, setSavedCardsActive] = useState(true)
+  const updatePaymentSettings = useUpdatePaymentSettings()
   const [multipleOptionsActive, setMultipleOptionsActive] = useState(false)
   const [bankAccountsActive, setBankAccountsActive] = useState(true)
 
   const bankAccountCount = profile?.bankAccounts?.length ?? 3
   const qrKitCount = qrKitsData?.data?.length ?? 3
 
+  const effectiveTier = profile?.effectiveTier
+  const hasPlan = Boolean(effectiveTier)
+  const isOnLite = effectiveTier === 'LITE'
+  const canCollect = profile?.canCollect ?? false
+  const isProOrAbove = effectiveTier === 'PRO' || effectiveTier === 'PROMAX'
+  const isKycIncomplete = profile?.collectBlockedReason === 'kyc_incomplete'
+
+  const availableOptionsCount = !hasPlan ? 0 : isOnLite ? 1 : 4
+  const savedCardsActive = canCollect && profile?.savedCardsCheckoutEnabled !== false
+
+  const handleSavedCardsChange = (enabled: boolean) => {
+    if (!canCollect) return
+    updatePaymentSettings.mutate(enabled, {
+      onError: () => {
+        showNotificationToast({
+          message: 'Could not update saved-card checkout. Please try again.',
+          mode: 'error',
+        })
+      },
+    })
+  }
+
+  const handleSavedCardsRowClick = () => {
+    if (canCollect) return
+    closeDrawer('payment-methods-active')
+    if (isKycIncomplete) {
+      openDrawer({ type: 'verify-identity' })
+    } else {
+      router.push('/plans?tier=LITE')
+    }
+  }
+
+  const handleMultipleOptionsRowClick = () => {
+    closeDrawer('payment-methods-active')
+    if (!isProOrAbove) {
+      if (!hasPlan) {
+        router.push('/plans?tier=LITE')
+      } else {
+        router.push('/plans?tier=PRO')
+      }
+    } else {
+      openDrawer({
+        type: 'multiple-payment-options',
+        props: { fromActiveMethods: true },
+      })
+    }
+  }
+
   // Total active payment methods count
   const activeCount =
     (cashCardActive ? 1 : 0) +
     (savedCardsActive ? 1 : 0) +
-    (multipleOptionsActive ? 1 : 0) +
+    (isProOrAbove && multipleOptionsActive ? 1 : 0) +
     (bankAccountsActive ? 1 : 0)
 
   const handleAddCustomMethod = () => {
@@ -134,6 +207,7 @@ export function PaymentMethodsActiveDrawer() {
           {/* Row 2: Firespot Customer-saved cards */}
           <ActionListItem
             as="div"
+            onClick={!canCollect ? handleSavedCardsRowClick : undefined}
             icon={
               <div className="w-9 h-9 rounded-[10px] bg-[#26B2FF] flex items-center justify-center text-white shadow-sm shrink-0">
                 <Card size={24} strokeWidth={2} />
@@ -145,29 +219,39 @@ export function PaymentMethodsActiveDrawer() {
               </span>
             }
             subtitle={
-              <span className="font-medium text-xs text-[#64748B]">
-                Fast and easy way to pay you
-              </span>
+              !canCollect ? (
+                isKycIncomplete ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-[#9CA3AF]">
+                    <PlanBadge label="Verify KYC" />
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-[#9CA3AF]">
+                    Available in
+                    <PlanBadge label="LITE" />
+                  </span>
+                )
+              ) : (
+                <span className="font-medium text-xs text-[#64748B]">
+                  Fast and easy way to pay you
+                </span>
+              )
             }
             trailing={
-              <Switch
-                checked={savedCardsActive}
-                onCheckedChange={setSavedCardsActive}
-              />
+              <div onClick={(e) => !canCollect && e.stopPropagation()}>
+                <Switch
+                  checked={savedCardsActive}
+                  disabled={!canCollect || updatePaymentSettings.isPending}
+                  onCheckedChange={canCollect ? handleSavedCardsChange : undefined}
+                />
+              </div>
             }
-            className="p-3"
+            className={!canCollect ? 'cursor-pointer p-3' : 'p-3'}
           />
 
           {/* Row 3: Multiple payment options */}
           <ActionListItem
             as="div"
-            onClick={() => {
-              closeDrawer('payment-methods-active')
-              openDrawer({
-                type: 'multiple-payment-options',
-                props: { fromActiveMethods: true },
-              })
-            }}
+            onClick={handleMultipleOptionsRowClick}
             className="cursor-pointer p-3"
             icon={
               <Image
@@ -184,15 +268,36 @@ export function PaymentMethodsActiveDrawer() {
               </span>
             }
             subtitle={
-              <span className="font-medium text-xs text-[#64748B]">
-                Confirmed instantly · 4 available
-              </span>
+              isProOrAbove ? (
+                <span className="font-medium text-xs text-[#64748B]">
+                  Confirmed instantly
+                  {availableOptionsCount >= 1
+                    ? ` · ${availableOptionsCount} available`
+                    : ''}
+                </span>
+              ) : !hasPlan ? (
+                <span className="inline-flex items-center gap-1 text-xs font-bold text-[#9CA3AF]">
+                  Available in
+                  <PlanBadge label="LITE" />
+                </span>
+              ) : (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 text-xs font-bold',
+                    GRADIENT_TEXT_CLASS,
+                  )}
+                >
+                  More with
+                  <ProGradientBadge label="PRO" />
+                </span>
+              )
             }
             trailing={
               <div onClick={(e) => e.stopPropagation()}>
                 <Switch
-                  checked={multipleOptionsActive}
-                  onCheckedChange={setMultipleOptionsActive}
+                  checked={isProOrAbove && multipleOptionsActive}
+                  disabled={!isProOrAbove}
+                  onCheckedChange={isProOrAbove ? setMultipleOptionsActive : undefined}
                 />
               </div>
             }

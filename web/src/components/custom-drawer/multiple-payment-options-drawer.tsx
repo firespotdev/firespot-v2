@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { ArrowLeft, X, Hash } from 'lucide-react'
+import { useRouter } from '@bprogress/next/app'
 import { ActionList, ActionListItem, Switch, TagFooter } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
+import { useUserProfile } from '@/services/users'
 import { BankIcon, CreditCardIcon } from '@phosphor-icons/react'
 import { Card } from 'iconsax-reactjs'
 
@@ -14,7 +16,14 @@ interface MultiplePaymentOptionsDrawerProps {
 export function MultiplePaymentOptionsDrawer({
   fromActiveMethods,
 }: MultiplePaymentOptionsDrawerProps) {
+  const router = useRouter()
   const { closeDrawer, openDrawer, closeAllDrawers } = useDrawerStore()
+  const { data: profile } = useUserProfile()
+
+  const effectiveTier = profile?.effectiveTier
+  const hasPlan = Boolean(effectiveTier)
+  const isProOrAbove =
+    effectiveTier === 'PRO' || effectiveTier === 'PROMAX'
 
   const [bankTransfer, setBankTransfer] = useState(true)
   const [directDebit, setDirectDebit] = useState(true)
@@ -59,6 +68,40 @@ export function MultiplePaymentOptionsDrawer({
         </button>
       </header>
 
+      {!isProOrAbove && (
+        <div className="mb-3 rounded-[12px] bg-white p-3.5 shadow-[0px_4px_8px_0px_#0000000A] flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            {!hasPlan ? (
+              <span className="rounded-[4px] bg-[#9CA3AF] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
+                Available in LITE
+              </span>
+            ) : (
+              <span className="rounded-[4px] bg-linear-to-br from-[#FB5012] to-[#D72483] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-xs">
+                More with PRO
+              </span>
+            )}
+            <span className="text-[14px] font-bold text-black">
+              {!hasPlan ? 'Available in Firespot Lite' : 'More with Firespot Pro'}
+            </span>
+          </div>
+          <p className="text-xs text-[#64748B]">
+            {!hasPlan
+              ? 'Upgrade to Firespot Lite to start collecting payments automatically.'
+              : 'Upgrade to Pro to enable instant automated bank transfers, direct debit, USSD, and cards.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              closeAllDrawers()
+              router.push(!hasPlan ? '/plans?tier=LITE' : '/plans?tier=PRO')
+            }}
+            className="mt-1 w-full rounded-[10px] bg-black py-2 text-center text-xs font-bold text-white transition-opacity active:opacity-80 cursor-pointer"
+          >
+            {!hasPlan ? 'Get started with Lite' : 'Upgrade to Pro'}
+          </button>
+        </div>
+      )}
+
       {/* ActionList Card */}
       <ActionList rounded="12">
         {/* Row 1: Bank Transfer */}
@@ -80,7 +123,11 @@ export function MultiplePaymentOptionsDrawer({
             </span>
           }
           trailing={
-            <Switch checked={bankTransfer} onCheckedChange={setBankTransfer} />
+            <Switch
+              checked={isProOrAbove && bankTransfer}
+              disabled={!isProOrAbove}
+              onCheckedChange={setBankTransfer}
+            />
           }
           className="p-3"
         />
@@ -104,7 +151,11 @@ export function MultiplePaymentOptionsDrawer({
             </span>
           }
           trailing={
-            <Switch checked={directDebit} onCheckedChange={setDirectDebit} />
+            <Switch
+              checked={isProOrAbove && directDebit}
+              disabled={!isProOrAbove}
+              onCheckedChange={setDirectDebit}
+            />
           }
           className="p-3"
         />
@@ -123,7 +174,13 @@ export function MultiplePaymentOptionsDrawer({
               Confirmed instantly, no waiting or delay
             </span>
           }
-          trailing={<Switch checked={ussd1} onCheckedChange={setUssd1} />}
+          trailing={
+            <Switch
+              checked={isProOrAbove && ussd1}
+              disabled={!isProOrAbove}
+              onCheckedChange={setUssd1}
+            />
+          }
           className="p-3"
         />
 
@@ -141,7 +198,13 @@ export function MultiplePaymentOptionsDrawer({
               Debit and credit cards accepted
             </span>
           }
-          trailing={<Switch checked={card} onCheckedChange={setCard} />}
+          trailing={
+            <Switch
+              checked={isProOrAbove && card}
+              disabled={!isProOrAbove}
+              onCheckedChange={setCard}
+            />
+          }
           className="p-3"
         />
       </ActionList>

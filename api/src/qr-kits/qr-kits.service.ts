@@ -88,7 +88,7 @@ export class QRKitsService {
       .findOne({ serialNumber: serialNumber.toUpperCase() })
       .populate(
         'merchantId',
-        'businessName bankAccounts businessImageUrl profilePhotoUrl merchantSlug paystackSubaccountCode planTier planStatus planGraceUntil cancelAtPeriodEnd planCurrentPeriodEnd kycCompletedAt',
+        'businessName bankAccounts businessImageUrl profilePhotoUrl merchantSlug paystackSubaccountCode savedCardsCheckoutEnabled planTier planStatus planGraceUntil cancelAtPeriodEnd planCurrentPeriodEnd kycCompletedAt',
       )
 
     if (!qrKit) {
@@ -158,6 +158,8 @@ export class QRKitsService {
       hasDetailedReceipts: Boolean(getEffectiveTier(merchant)),
       hasPaystackCollection,
       paystackCollectionChannels,
+      savedCardsCheckoutEnabled:
+        merchant.savedCardsCheckoutEnabled !== false,
     }
   }
 

@@ -59,6 +59,9 @@ interface VerifyTransactionResponse {
       bank?: string;
       card_type?: string;
       reusable?: boolean;
+      exp_month?: string;
+      exp_year?: string;
+      signature?: string;
     };
   };
 }
@@ -370,6 +373,9 @@ export class PaystackService {
       bank?: string;
       cardType?: string;
       reusable?: boolean;
+      expMonth?: string;
+      expYear?: string;
+      signature?: string;
     };
   }> {
     try {
@@ -407,6 +413,9 @@ export class PaystackService {
                 bank: d.authorization.bank,
                 cardType: d.authorization.card_type,
                 reusable: d.authorization.reusable,
+                expMonth: d.authorization.exp_month,
+                expYear: d.authorization.exp_year,
+                signature: d.authorization.signature,
               }
             : undefined,
         };
@@ -699,6 +708,8 @@ export class PaystackService {
     authorizationCode: string;
     reference?: string;
     metadata?: Record<string, any>;
+    subaccount?: string;
+    bearer?: "subaccount" | "account";
   }): Promise<{ success: boolean; reference?: string; message?: string }> {
     try {
       const response = await axios.post(
@@ -709,6 +720,8 @@ export class PaystackService {
           authorization_code: params.authorizationCode,
           reference: params.reference,
           metadata: params.metadata,
+          subaccount: params.subaccount,
+          bearer: params.bearer,
         },
         {
           headers: {

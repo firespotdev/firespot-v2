@@ -97,4 +97,5 @@ export interface MerchantProfile {
   hasDetailedReceipts?: boolean
   hasPaystackCollection?: boolean
   paystackCollectionChannels?: string[]
+  savedCardsCheckoutEnabled?: boolean
 }

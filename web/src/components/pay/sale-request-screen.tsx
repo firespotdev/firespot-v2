@@ -7,6 +7,7 @@ import {
   X,
 } from 'lucide-react'
 import type { PublicSale } from '@/services/sales/interface'
+import type { SavedCard } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatAmount, formatSaleTime } from './utils'
 import { useDrawerStore } from '@/services/drawer'
@@ -29,6 +30,7 @@ interface SaleRequestScreenProps {
   onClose: () => void
   hasPaystackCollection?: boolean
   isSubmitting?: boolean
+  savedCard?: SavedCard
 }
 
 export function SaleRequestScreen({
@@ -44,6 +46,7 @@ export function SaleRequestScreen({
   onClose,
   hasPaystackCollection = false,
   isSubmitting = false,
+  savedCard,
 }: SaleRequestScreenProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
@@ -152,9 +155,14 @@ export function SaleRequestScreen({
           account={account}
           selectedRail={selectedRail}
           qrType="dynamic"
-          onAction={selectedRail === 'multiple' ? onPayInstantly : onCopy}
+          onAction={
+            selectedRail === 'multiple' || selectedRail === 'saved'
+              ? onPayInstantly
+              : onCopy
+          }
           onChangeAccount={onChangeAccount}
           onChangePaymentMethod={onChangePaymentMethod}
+          savedCard={savedCard}
           isSubmitting={isSubmitting}
         />
       </div>

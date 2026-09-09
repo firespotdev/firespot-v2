@@ -22,6 +22,8 @@ import {
   useRecordCopy,
   useClaimSalePayer,
   usePublicSale,
+  useCustomerSavedCards,
+  usePayWithSavedCard,
 } from '@/services/sales/hooks'
 import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
 import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
@@ -34,6 +36,7 @@ import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
+import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -75,6 +78,10 @@ export default function PaymentPage() {
   const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const authUser = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
+  const savedCards = customerCards || authUser?.savedCards || []
+  const defaultSavedCard = savedCards[0]
+  const payWithSavedCard = usePayWithSavedCard()
   const customerExitPath = isAuthenticated ? '/home' : '/'
   const isReturningFromPaystack =
     Boolean(saleId) && searchParams.get('payment') === 'paystack-return'
@@ -90,6 +97,12 @@ export default function PaymentPage() {
   }, [recordSaleScan, saleId])
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
+  const hasSavedCards = Boolean(
+    isAuthenticated &&
+      merchant?.hasPaystackCollection &&
+      merchant.savedCardsCheckoutEnabled !== false &&
+      savedCards.length > 0,
+  )
   // Dynamic QR sale (public, limited view). A failed or cancelled dynamic sale
   // ends the flow; it must never fall back into static-payment mode.
   const {
@@ -655,7 +668,7 @@ export default function PaymentPage() {
       type: 'rail-picker',
       direction: 'bottom',
       props: {
-        hasSavedCards: false,
+        hasSavedCards,
         selectedRail: usePurchaseCartStore.getState().selectedRail,
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
@@ -755,7 +768,77 @@ export default function PaymentPage() {
       return
     }
 
-    if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
+    if (
+      createPaystackCollectSale.isPending ||
+      createPendingSale.isPending ||
+      payWithSavedCard.isPending ||
+      isRedirectingToPaystack
+    )
+      return
+
+    if (selectedRail === 'saved') {
+      const cardToUse = defaultSavedCard
+      if (!cardToUse) {
+        showNotificationToast({
+          message: 'No saved card found. Please choose another payment method.',
+          mode: 'error',
+        })
+        return
+      }
+
+      if (!merchant) return
+
+      closeAllDrawers()
+      createPendingSale.mutate(
+        {
+          merchantId: merchant.id,
+          customerFingerprint: getCustomerFingerprint(),
+          serialNumber,
+          amount,
+          description,
+          targetBankName: bankAccount?.bankName,
+          items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
+        },
+        {
+          onSuccess: (pendingSale) => {
+            clearPurchase()
+            payWithSavedCard.mutate(
+              {
+                saleId: pendingSale._id,
+                cardId: cardToUse.id,
+              },
+              {
+                onSuccess: () => {
+                  router.push(`/pay/${serialNumber}?saleId=${pendingSale._id}`)
+                },
+                onError: (err: unknown) => {
+                  const msg =
+                    (err as { response?: { data?: { message?: string } } })
+                      ?.response?.data?.message ||
+                    'Payment failed. Please try again.'
+                  showNotificationToast({
+                    message: msg,
+                    mode: 'error',
+                  })
+                },
+              },
+            )
+          },
+          onError: (err: unknown) => {
+            const msg =
+              (err as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message ||
+              'Failed to start payment. Please try again.'
+            showNotificationToast({
+              message: msg,
+              mode: 'error',
+            })
+          },
+        },
+      )
+      return
+    }
+
     if (paystackChannels.length === 0) {
       showNotificationToast({
         message: 'No instant payment method is currently available.',
@@ -888,6 +971,7 @@ export default function PaymentPage() {
         merchant,
         account: currentAccount,
         selectedRail: rail,
+        savedCard: rail === 'saved' ? defaultSavedCard : undefined,
         onChangePaymentMethod: handleOpenPaymentMethodDrawer,
         onPay: handlePurchasePay,
       },
@@ -918,7 +1002,9 @@ export default function PaymentPage() {
       .join(', ')
     if (
       merchant?.hasPaystackCollection &&
-      usePurchaseCartStore.getState().selectedRail === 'multiple'
+      ['multiple', 'saved'].includes(
+        usePurchaseCartStore.getState().selectedRail,
+      )
     ) {
       return handlePayInstantly(total, description)
     } else {
@@ -957,8 +1043,10 @@ export default function PaymentPage() {
       isSubmitting={
         createPendingSale.isPending ||
         createPaystackCollectSale.isPending ||
+        payWithSavedCard.isPending ||
         recordSaleCopy.isPending
       }
+      savedCard={selectedRail === 'saved' ? defaultSavedCard : undefined}
     />
   )
 }

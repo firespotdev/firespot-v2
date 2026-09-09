@@ -26,6 +26,10 @@ import {
   InitializePaystackSaleDto,
   ReconcilePaystackSaleDto,
 } from './dto/initialize-paystack-sale.dto';
+import {
+  PayWithSavedCardDto,
+  SaveCardFromSaleDto,
+} from './dto/pay-with-saved-card.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
@@ -86,6 +90,38 @@ export class SalesController {
       saleId,
       dto,
       (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Save debit card used for a confirmed Paystack sale' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/save-card')
+  async saveCardFromSale(
+    @Param('id') saleId: string,
+    @Body() dto: SaveCardFromSaleDto,
+    @GetUser() user: User,
+  ) {
+    return this.salesService.saveCardFromSale(
+      saleId,
+      (user as any).userId,
+      dto.customerFingerprint,
+    );
+  }
+
+  @ApiOperation({ summary: 'Pay for a sale using a customer saved card in 1-tap' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/pay-saved-card')
+  async payWithSavedCard(
+    @Param('id') saleId: string,
+    @Body() dto: PayWithSavedCardDto,
+    @GetUser() user: User,
+  ) {
+    return this.salesService.payWithSavedCard(
+      saleId,
+      dto,
+      (user as any).userId,
     );
   }
 

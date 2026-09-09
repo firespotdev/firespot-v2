@@ -1,18 +1,43 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight, CreditCard, Landmark } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 import { BankLogo } from '@/components/ui/bank-logo'
 import { Button, Spinner, TagFooter } from '@/components/ui'
 import { cn, maskAccountNumber } from '@/lib/utils'
 import { getPaystackOptionLabel } from '@/lib/utils/paystack-channels'
 import type { MerchantProfile } from '@/services/qr/interface'
 import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
+import type { SavedCard } from '@/services/sales/interface'
 import Image from 'next/image'
 import { Cards } from 'iconsax-reactjs'
 import { BankIcon } from '@phosphor-icons/react'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
+
+const CARD_BRAND_IMAGES: Record<string, string> = {
+  visa: '/images/visa.png',
+  mastercard: '/images/mastercard.png',
+  verve: '/images/verve.png',
+  amex: '/images/amex.png',
+}
+
+export function SavedCardIcon({ brand }: { brand?: string }) {
+  const image = brand ? CARD_BRAND_IMAGES[brand.toLowerCase()] : undefined
+  if (!image) return <PaymentRailIcon rail="saved" />
+
+  return (
+    <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-white p-1 ring-1 ring-[#E7E9EC]">
+      <Image
+        src={image}
+        alt=""
+        width={28}
+        height={20}
+        className="object-contain"
+      />
+    </span>
+  )
+}
 
 export function PaymentRailIcon({
   rail,
@@ -96,6 +121,7 @@ export function PaymentCheckoutFooter({
   onAction,
   onChangeAccount,
   onChangePaymentMethod,
+  savedCard,
   isSubmitting = false,
 }: {
   merchant: MerchantProfile
@@ -105,24 +131,33 @@ export function PaymentCheckoutFooter({
   onAction: () => void
   onChangeAccount: () => void
   onChangePaymentMethod: () => void
+  savedCard?: SavedCard
   isSubmitting?: boolean
 }) {
   const hasPaystack = Boolean(merchant.hasPaystackCollection)
-  const isInstant = hasPaystack && selectedRail === 'multiple'
+  const isInstant =
+    hasPaystack && (selectedRail === 'multiple' || selectedRail === 'saved')
   const singlePaystackChannel =
     merchant.paystackCollectionChannels?.length === 1
       ? merchant.paystackCollectionChannels[0]
       : undefined
-  const methodLabel = isInstant
-    ? getPaystackOptionLabel(merchant.paystackCollectionChannels)
-    : account
-      ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
-      : 'Transfer directly to bank account'
+  const methodLabel =
+    selectedRail === 'saved'
+      ? savedCard
+        ? `${savedCard.brand.toUpperCase()} •••• ${savedCard.last4}`
+        : 'Saved debit card'
+      : isInstant
+        ? getPaystackOptionLabel(merchant.paystackCollectionChannels)
+        : account
+          ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
+          : 'Transfer directly to bank account'
 
   return (
     <section className="shrink-0 rounded-t-[12px] border-t border-[#E7E9EC] bg-white p-4 shadow-[0_-1px_1px_0px_rgba(0,0,0,0.08)]">
       <div className="flex min-w-0 items-center gap-3">
-        {isInstant ? (
+        {selectedRail === 'saved' ? (
+          <SavedCardIcon brand={savedCard?.brand} />
+        ) : isInstant ? (
           <PaymentRailIcon rail="multiple" channel={singlePaystackChannel} />
         ) : account ? (
           <BankLogo
