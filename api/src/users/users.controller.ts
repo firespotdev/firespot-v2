@@ -31,6 +31,7 @@ import { AddBankAccountDto } from "./dto/add-bank-account.dto";
 import { BUSINESS_INDUSTRIES } from "./constants/business-industries";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { UpdatePaymentSettingsDto } from "./dto/update-payment-settings.dto";
 import { UpdateMerchantSlugDto } from "./dto/update-merchant-slug.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
@@ -475,6 +476,17 @@ export class UsersController {
     return this.usersService.updateProfile(req.user.userId, dto);
   }
 
+  @Patch("me/payment-settings")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Update merchant payment settings" })
+  async updatePaymentSettings(
+    @Request() req,
+    @Body() dto: UpdatePaymentSettingsDto,
+  ) {
+    return this.usersService.updatePaymentSettings(req.user.userId, dto);
+  }
+
   // ---- Shop setup ----
 
   @Get("me/shop-setup")
@@ -807,5 +819,51 @@ export class UsersController {
     @Body() dto: UpdateQRKitDto,
   ) {
     return this.usersService.updateUserQRKit(req.user.userId, id, dto);
+  }
+
+  @Get("me/saved-cards")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Get saved cards",
+    description: "Retrieves tokenized cards saved by the customer for 1-tap checkout.",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "List of saved cards retrieved successfully",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized",
+  })
+  async getSavedCards(@Request() req) {
+    return this.usersService.getSavedCards(req.user.userId);
+  }
+
+  @Delete("me/saved-cards/:cardId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Delete saved card",
+    description: "Removes a tokenized card from the customer's account.",
+  })
+  @ApiParam({
+    name: "cardId",
+    description: "The unique ID of the saved card",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Card removed successfully",
+  })
+  @ApiResponse({
+    status: 401,
+    description: "Unauthorized",
+  })
+  @ApiResponse({
+    status: 404,
+    description: "Card not found",
+  })
+  async deleteSavedCard(@Request() req, @Param("cardId") cardId: string) {
+    return this.usersService.deleteSavedCard(req.user.userId, cardId);
   }
 }

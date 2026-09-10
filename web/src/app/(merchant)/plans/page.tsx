@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import {
   ArrowUpRight,
   Check,
@@ -64,10 +65,17 @@ function priceSubtitle(
 }
 
 function PlansContent() {
+  const searchParams = useSearchParams()
+  const requestedTier = searchParams.get('tier')?.toUpperCase() as PlanTier | undefined
+  const initialTier: PlanTier =
+    requestedTier === 'PRO' || requestedTier === 'PROMAX' || requestedTier === 'LITE'
+      ? requestedTier
+      : 'LITE'
+
   const handleBack = useSafeBack('/profile')
   const { data, isLoading } = usePlanCatalog()
   const openDrawer = useDrawerStore((s) => s.openDrawer)
-  const [activeTier, setActiveTier] = useState<PlanTier>('LITE')
+  const [activeTier, setActiveTier] = useState<PlanTier>(initialTier)
   const [interval, setInterval] = useState<BillingInterval>('monthly')
   const [freqOpen, setFreqOpen] = useState(false)
   const [carouselApi, setCarouselApi] = useState<CarouselApi>()
@@ -93,7 +101,15 @@ function PlansContent() {
   }, [isOnYearly])
 
   useEffect(() => {
-    if (!carouselApi) return
+    if (!carouselApi || !plans.length) return
+
+    if (requestedTier) {
+      const targetIndex = plans.findIndex((p) => p.tier === requestedTier)
+      if (targetIndex >= 0 && carouselApi.selectedScrollSnap() !== targetIndex) {
+        carouselApi.scrollTo(targetIndex, true)
+        setActiveTier(requestedTier)
+      }
+    }
 
     const syncTierFromCarousel = () => {
       const selectedPlan = plans[carouselApi.selectedScrollSnap()]
@@ -108,7 +124,7 @@ function PlansContent() {
       carouselApi.off('select', syncTierFromCarousel)
       carouselApi.off('reInit', syncTierFromCarousel)
     }
-  }, [carouselApi, plans])
+  }, [carouselApi, plans, requestedTier])
   const holdsThisTier = current?.planTier === activeTier
   // Switching billing cycle on the tier you already hold is a plan change,
   // not a repurchase — the old subscription is superseded server-side.

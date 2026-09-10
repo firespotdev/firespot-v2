@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { isAxiosError } from 'axios'
 import { showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import {
@@ -166,7 +167,7 @@ export function useSaleCheckoutFlow({
     }
   }
 
-  const submitConfirmedSale = (
+  const submitConfirmedSale = async (
     paymentMethod: string,
     installmentType: 'full' | 'part',
     paidVal: number,
@@ -175,20 +176,6 @@ export function useSaleCheckoutFlow({
     totalVal: number,
     dueDateVal?: string,
   ) => {
-    collapseToSheet()
-    openDrawer({
-      type: 'record-success',
-      props: {
-        successDetails: null,
-        status: 'saving',
-        errorMessage: '',
-        setStep,
-        setAmount: cart.setAmount,
-        setDescription: cart.setDescription,
-        onRecordAnother: resetSaleState,
-      },
-    })
-
     const payload = buildSalePayload(
       paymentMethod,
       installmentType,
@@ -199,50 +186,43 @@ export function useSaleCheckoutFlow({
       dueDateVal,
     )
 
-    if (saleMode.kind === 'confirm') {
-      // Confirm the existing customer-initiated pending sale in place
-      // (updates it to CONFIRMED) instead of creating a new record.
-      recordSaleMutation.mutate(
-        { saleId: saleMode.id, payload },
-        {
-          onSuccess: (data) => {
-            onSaleModeSettled()
-            openRecordedSaleDetails(data)
-          },
-          onError: (error: any) =>
-            openRecordFailure(
-              error?.response?.data?.message || 'Failed to confirm payment.',
-            ),
-        },
-      )
-      return
-    }
+    try {
+      if (saleMode.kind === 'confirm') {
+        // Confirm the existing customer-initiated pending sale in place
+        // (updates it to CONFIRMED) instead of creating a new record.
+        const data = await recordSaleMutation.mutateAsync({
+          saleId: saleMode.id,
+          payload,
+        })
+        onSaleModeSettled()
+        openRecordedSaleDetails(data)
+        return
+      }
 
-    if (saleMode.kind === 'edit') {
-      editSaleMutation.mutate(
-        { saleId: saleMode.id, payload },
-        {
-          onSuccess: (data) => {
-            onSaleModeSettled()
-            openRecordedSaleDetails({ ...data, isEdit: true })
-          },
-          onError: (error: any) =>
-            openRecordFailure(
-              error?.response?.data?.message ||
-                'Failed to update transaction.',
-            ),
-        },
-      )
-      return
-    }
+      if (saleMode.kind === 'edit') {
+        const data = await editSaleMutation.mutateAsync({
+          saleId: saleMode.id,
+          payload,
+        })
+        onSaleModeSettled()
+        openRecordedSaleDetails({ ...data, isEdit: true })
+        return
+      }
 
-    createManualSaleMutation.mutate(payload, {
-      onSuccess: (data) => openRecordedSaleDetails(data),
-      onError: (error: any) =>
-        openRecordFailure(
-          error?.response?.data?.message || 'Failed to record transaction.',
-        ),
-    })
+      const data = await createManualSaleMutation.mutateAsync(payload)
+      openRecordedSaleDetails(data)
+    } catch (error: unknown) {
+      const fallbackMessage =
+        saleMode.kind === 'confirm'
+          ? 'Failed to confirm payment.'
+          : saleMode.kind === 'edit'
+            ? 'Failed to update transaction.'
+            : 'Failed to record transaction.'
+      const apiMessage = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : undefined
+      openRecordFailure(apiMessage || fallbackMessage)
+    }
   }
 
   const updateCartQtyAndSyncDrawer = (
@@ -507,6 +487,7 @@ export function useSaleCheckoutFlow({
 
     openDrawer({
       type: 'checkout-sale',
+      dismissible: mode === 'preview',
       props: {
         cartItems: itemsList,
         onClear: () => {
@@ -612,7 +593,7 @@ export function useSaleCheckoutFlow({
             return submitCollectSale(itemsList, totVal)
           }
 
-          submitConfirmedSale(
+          return submitConfirmedSale(
             method,
             instType,
             amountPaidVal,

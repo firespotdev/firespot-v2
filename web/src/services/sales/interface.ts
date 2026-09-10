@@ -67,6 +67,25 @@ export interface PublicSale {
   description?: string;
   serialNumber?: string;
   merchant: PublicSaleMerchant | null;
+  canSaveCard?: boolean;
+  cardDetails?: {
+    brand?: string;
+    last4?: string;
+    bank?: string;
+    cardType?: string;
+  };
+}
+
+export interface SavedCard {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth?: string;
+  expYear?: string;
+  bank?: string;
+  cardType?: string;
+  createdAt?: string;
+  lastUsedAt?: string;
 }
 
 export interface Sale {

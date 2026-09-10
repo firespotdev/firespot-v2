@@ -11,7 +11,6 @@ import {
   MoreHorizontal,
 } from 'lucide-react'
 import { useRouter } from '@bprogress/next/app'
-import { format } from 'date-fns'
 import {
   Button,
   TagFooter,
@@ -28,6 +27,7 @@ import {
 } from '@/services/favorites'
 import { resolveSaleMerchant } from '@/lib/utils/customer-sale'
 import { formatCurrency } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils/date-time'
 import { getSaleDescription } from '@/lib/utils/sales'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
@@ -90,12 +90,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
 
   const formattedDate = useMemo(() => {
     const raw = sale.recordedAt || sale.createdAt
-    if (!raw) return 'N/A'
-    try {
-      return format(new Date(raw), 'MMMM do, yyyy . h:mm a')
-    } catch {
-      return String(raw)
-    }
+    return formatDateTime(raw, { ordinalDay: true, fallback: 'N/A' })
   }, [sale])
 
   const viaLabel =

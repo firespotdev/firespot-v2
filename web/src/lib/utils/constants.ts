@@ -1,4 +1,3 @@
-import { format } from 'date-fns'
 const formatAmountInWords = (amount: number): string => {
   const ones = [
     '',
@@ -78,13 +77,4 @@ const formatAmountInWords = (amount: number): string => {
   return `${nairaWords} Naira ${koboWords} Kobo`
 }
 
-const formatDate = (dateString?: string | Date): string => {
-  if (!dateString) return ''
-  try {
-    return format(new Date(dateString), "MMM d, yyyy '.' h:mm a")
-  } catch (e) {
-    return String(dateString)
-  }
-}
-
-export { formatAmountInWords, formatDate }
+export { formatAmountInWords }

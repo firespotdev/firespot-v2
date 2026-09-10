@@ -4,7 +4,8 @@ import { useRef, useState } from 'react'
 import { X, Check, Download } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { formatAmountInWords, formatDate } from '@/lib/utils/constants'
+import { formatAmountInWords } from '@/lib/utils/constants'
+import { formatDateTime } from '@/lib/utils/date-time'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 import { showNotificationToast } from '@/components/ui'
 
@@ -89,7 +90,7 @@ export function ReceiptDrawer({
                 Receipt
               </p>
               <p className="text-[8px] font-medium text-[#4C5563]">
-                {formatDate(date)}
+                {formatDateTime(date)}
               </p>
             </div>
           </div>

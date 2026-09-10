@@ -18,6 +18,7 @@ import {
   VerifiedBadge,
 } from '@/components/ui'
 import { useAuthStore } from '@/services/auth'
+import { useDrawerStore } from '@/services/drawer'
 import { useCustomerHistory } from '@/services/sales/hooks'
 import { useUserProfile } from '@/services/users'
 import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
@@ -34,6 +35,7 @@ export function AccountSwitchDrawer({
   mode = 'merchant',
 }: AccountSwitchDrawerProps) {
   const router = useRouter()
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
   const authUser = useAuthStore((state) => state.user)
   const setActiveProfileMode = useAuthStore(
     (state) => state.setActiveProfileMode,
@@ -116,7 +118,7 @@ export function AccountSwitchDrawer({
   const handleAddShop = () => {
     if (!isMerchant) {
       closeDrawer()
-      router.push('/home?businessIntro=1')
+      openDrawer({ type: 'business-intro' })
       return
     }
     showNotificationToast({ message: 'Coming soon', duration: 2000 })

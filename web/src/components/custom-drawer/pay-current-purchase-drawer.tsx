@@ -4,8 +4,12 @@ import { useState } from 'react'
 import { Image as ImageIcon, Minus, Plus, Trash2, X } from 'lucide-react'
 import type { MerchantProfile } from '@/services/qr/interface'
 import type { PaymentRail } from './rail-picker-drawer'
+import type { SavedCard } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
-import { PaymentRailIcon } from '@/components/pay/payment-checkout-footer'
+import {
+  PaymentRailIcon,
+  SavedCardIcon,
+} from '@/components/pay/payment-checkout-footer'
 import { getPaystackOptionLabel } from '@/lib/utils/paystack-channels'
 import { maskAccountNumber } from '@/lib/utils'
 import { BankLogo } from '@/components/ui/bank-logo'
@@ -18,6 +22,7 @@ interface Props {
   merchant: MerchantProfile
   account?: BankAccount
   selectedRail: PaymentRail
+  savedCard?: SavedCard
   isSubmitting?: boolean
   onChangePaymentMethod: () => void
   onPay: () => void | Promise<void>
@@ -33,6 +38,7 @@ export function PayCurrentPurchaseDrawer({
   merchant,
   account,
   selectedRail,
+  savedCard,
   isSubmitting = false,
   onChangePaymentMethod,
   onPay,
@@ -45,16 +51,20 @@ export function PayCurrentPurchaseDrawer({
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const isPaymentPending = isSubmitting || isPaying
   const isInstant =
-    Boolean(merchant.hasPaystackCollection) && selectedRail === 'multiple'
+    Boolean(merchant.hasPaystackCollection) &&
+    (selectedRail === 'multiple' || selectedRail === 'saved')
   const singlePaystackChannel =
     merchant.paystackCollectionChannels?.length === 1
       ? merchant.paystackCollectionChannels[0]
       : undefined
-  const paymentMethodLabel = isInstant
-    ? getPaystackOptionLabel(merchant.paystackCollectionChannels)
-    : account
-      ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
-      : 'Transfer directly to bank account'
+  const paymentMethodLabel =
+    selectedRail === 'saved' && savedCard
+      ? `${savedCard.brand.toUpperCase()} •••• ${savedCard.last4}`
+      : isInstant
+        ? getPaystackOptionLabel(merchant.paystackCollectionChannels)
+        : account
+          ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
+          : 'Transfer directly to bank account'
 
   const handlePay = async () => {
     if (isPaymentPending) return
@@ -173,7 +183,9 @@ export function PayCurrentPurchaseDrawer({
 
       <footer className="shrink-0 border-t border-[#F1F1F1] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex min-w-0 items-center gap-3">
-          {isInstant ? (
+          {selectedRail === 'saved' ? (
+            <SavedCardIcon brand={savedCard?.brand} />
+          ) : isInstant ? (
             <PaymentRailIcon rail="multiple" channel={singlePaystackChannel} />
           ) : account ? (
             <BankLogo

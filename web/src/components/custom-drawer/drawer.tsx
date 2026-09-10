@@ -25,6 +25,7 @@ import { RecommendBusinessDrawer } from './recommend-business-drawer'
 import { RecommendBusinessSmsDrawer } from './recommend-business-sms-drawer'
 import { ReceiptDrawer } from './receipt-drawer'
 import { DateRangeFilterDrawer } from './date-range-filter-drawer'
+import { GetStatementDrawer } from './get-statement-drawer'
 import { PaymentMethodDrawer } from './payment-method-drawer'
 import { RecordSuccessDrawer } from './record-success-drawer'
 import { ObtainKitDrawer } from './obtain-kit-drawer'
@@ -66,6 +67,9 @@ import { ArchiveProductDrawer } from './archive-product-drawer'
 import { ProductOptionEditorDrawer } from './product-option-editor-drawer'
 import { PayCatalogueDrawer } from './pay-catalogue-drawer'
 import { PayCurrentPurchaseDrawer } from './pay-current-purchase-drawer'
+import { UnconfirmedDetailsDrawer } from './unconfirmed-details-drawer'
+import { PaymentMethodsActiveDrawer } from './payment-methods-active-drawer'
+import { MultiplePaymentOptionsDrawer } from './multiple-payment-options-drawer'
 import { PostComposerDrawer } from '@/components/posts/post-composer-drawer'
 import { PostProductPickerDrawer } from '@/components/posts/post-product-picker-drawer'
 
@@ -75,7 +79,7 @@ const DRAWER_CONFIG: Record<
   {
     title: string
     direction?: DrawerDirection
-    HeaderLeft?: React.ComponentType
+    HeaderLeft?: React.ComponentType<{ fromActiveMethods?: boolean }>
     Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
@@ -120,6 +124,7 @@ const DRAWER_CONFIG: Record<
     Content: ShareTransferDrawer,
     fullScreen: true,
     noHeader: true,
+    dismissible: true,
   },
   'profile-share': {
     title: '',
@@ -127,6 +132,7 @@ const DRAWER_CONFIG: Record<
     Content: ProfileShareDrawer,
     fullScreen: true,
     noHeader: true,
+    dismissible: true,
   },
   'recommend-business': {
     title: '',
@@ -165,6 +171,14 @@ const DRAWER_CONFIG: Record<
     title: 'Filter',
     direction: 'bottom',
     Content: DateRangeFilterDrawer,
+  },
+  'get-statement': {
+    title: '',
+    direction: 'bottom',
+    Content: GetStatementDrawer,
+    noHeader: true,
+    hideHandle: true,
+    dismissible: true,
   },
   'customer-sort': {
     title: 'Sort by',
@@ -448,6 +462,31 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     contentClassName: 'overflow-hidden bg-white',
   },
+  'unconfirmed-details': {
+    title: '',
+    Content: UnconfirmedDetailsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: false,
+    contentClassName:
+      'overflow-hidden bg-white data-[vaul-drawer-direction=bottom]:max-h-[93dvh]',
+  },
+  'payment-methods-active': {
+    title: '',
+    Content: PaymentMethodsActiveDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: false,
+    contentClassName: 'bg-[#F4F6F8]',
+  },
+  'multiple-payment-options': {
+    title: '',
+    Content: MultiplePaymentOptionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: false,
+    contentClassName: 'bg-[#F4F6F8]',
+  },
   'post-composer': {
     title: 'Posts',
     Content: PostComposerDrawer,
@@ -508,11 +547,12 @@ export function CustomDrawer() {
       fullScreen,
       noHeader,
       hideHandle,
-      dismissible = false,
+      dismissible: defaultDismissible = false,
       contentClassName,
       animateOnClose,
     } = drawerConfig
     const drawerDirection = config.direction || direction || 'bottom'
+    const dismissible = config.dismissible ?? defaultDismissible
     const isOpen = exitingConfig !== config
 
     const handleClose = () => {
@@ -588,7 +628,7 @@ export function CustomDrawer() {
                 {/* Header */}
                 <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
                   <div className="w-9 h-9 flex items-center justify-center">
-                    {HeaderLeft && <HeaderLeft />}
+                    {HeaderLeft && <HeaderLeft {...(config.props || {})} />}
                   </div>
 
                   <DrawerTitle className="font-bold text-base text-black">
@@ -667,6 +707,7 @@ export function CustomDrawer() {
               'archive-product',
               'pay-catalogue',
               'pay-current-purchase',
+              'unconfirmed-details',
             ].includes(config.type)
               ? 'bg-white'
               : 'bg-[#f5f6f8]'
@@ -683,7 +724,7 @@ export function CustomDrawer() {
               {/* Header */}
               <DrawerHeader className="flex flex-row items-center justify-between py-1.5 px-4">
                 <div className="w-9 h-9 flex items-center justify-center">
-                  {HeaderLeft && <HeaderLeft />}
+                  {HeaderLeft && <HeaderLeft {...(config.props || {})} />}
                 </div>
 
                 <DrawerTitle className="font-bold text-base text-black">

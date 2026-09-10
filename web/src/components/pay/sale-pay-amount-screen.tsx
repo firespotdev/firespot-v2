@@ -6,6 +6,7 @@ import { Plus, Share, X } from 'lucide-react'
 import { showNotificationToast } from '@/components/ui'
 import type { MerchantProfile } from '@/services/qr/interface'
 import type { PaymentRail } from '../custom-drawer/rail-picker-drawer'
+import type { SavedCard } from '@/services/sales/interface'
 import { PaymentCheckoutFooter } from './payment-checkout-footer'
 import { ReceiptBenefitStrip } from './receipt-benefit-strip'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
@@ -28,6 +29,7 @@ interface SalePayAmountScreenProps {
   onShare: () => void
   onClose: () => void
   isSubmitting?: boolean
+  savedCard?: SavedCard
 }
 
 function formatInt(value: number): string {
@@ -48,6 +50,7 @@ export function SalePayAmountScreen({
   onShare,
   onClose,
   isSubmitting = false,
+  savedCard,
 }: SalePayAmountScreenProps) {
   const [amountDigits, setAmountDigits] = useState('')
   const [description, setDescription] = useState('')
@@ -74,7 +77,10 @@ export function SalePayAmountScreen({
       return
     }
 
-    if (hasPaystackCollection && selectedRail === 'multiple') {
+    if (
+      hasPaystackCollection &&
+      (selectedRail === 'multiple' || selectedRail === 'saved')
+    ) {
       onPayInstantly(amountValue, description.trim())
     } else {
       onCopy(amountValue, description.trim())
@@ -82,7 +88,7 @@ export function SalePayAmountScreen({
   }
 
   return (
-    <div className="h-dvh bg-white overflow-hidden">
+    <div className="h-dvh bg-linear-to-br from-[#ffffff] to-[#f2f4f6] overflow-hidden">
       <div className="max-w-125 mx-auto h-full flex flex-col bg-[#F4F6F8]">
         {/* Header */}
         <header className="flex items-center justify-between px-4 py-2 shrink-0">
@@ -126,7 +132,7 @@ export function SalePayAmountScreen({
                 />
               )}
             </div>
-            <h2 className="font-bold text-[20px] text-black -tracking-[0.4px] mt-4 uppercase">
+            <h2 className="font-bold text-[20px] text-black -tracking-[0.4px] mt-4 uppercase leading-[120%]">
               {accountName}
             </h2>
             <p className="text-sm text-[#00000080] font-medium mt-1">
@@ -211,6 +217,7 @@ export function SalePayAmountScreen({
           onAction={handleAction}
           onChangeAccount={onChangeAccount}
           onChangePaymentMethod={onChangePaymentMethod}
+          savedCard={savedCard}
           isSubmitting={isSubmitting}
         />
       </div>

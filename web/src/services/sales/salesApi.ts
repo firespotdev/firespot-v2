@@ -6,6 +6,7 @@ import {
   CustomerSale,
   PublicSale,
   Sale,
+  SaleItem,
   SalesStats,
   SalesResponse,
 } from './interface';
@@ -20,7 +21,7 @@ export interface CreatePendingSalePayload {
   serialNumber?: string;
   amount?: number;
   description?: string;
-  items?: any[];
+  items?: SaleItem[];
   customerId?: string;
 }
 
@@ -34,7 +35,7 @@ export interface RecordSalePayload {
   totalDue?: number;
   balanceOwed?: number;
   customerId?: string;
-  items?: any[];
+  items?: SaleItem[];
   dueDate?: string;
 }
 
@@ -51,7 +52,7 @@ export interface CreatePaystackCollectPayload {
   channel?: string;
   customerFingerprint?: string;
   customerName?: string;
-  items?: any[];
+  items?: SaleItem[];
 }
 
 export interface CreatePaystackCollectResponse {
@@ -127,6 +128,25 @@ export const SalesApi = {
     return data;
   },
 
+  getStatementSales: async (
+    startDate: string,
+    endDate: string,
+  ): Promise<Sale[]> => {
+    const params = { startDate, endDate, limit: '0' };
+    const [current, archived] = await Promise.all([
+      SalesApi.getSales(params),
+      SalesApi.getSales({ ...params, status: 'ARCHIVED' }),
+    ]);
+    const salesById = new Map(
+      [...current.data, ...archived.data].map((sale) => [sale._id, sale]),
+    );
+
+    return Array.from(salesById.values()).sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  },
+
   getSale: async (id: string): Promise<Sale> => {
     const { data } = await apiClient.get(`/sales/${id}`);
     return data;
@@ -154,6 +174,16 @@ export const SalesApi = {
 
   confirmSale: async (saleId: string): Promise<Sale> => {
     const { data } = await apiClient.patch(`/sales/${saleId}/confirm`);
+    return data;
+  },
+
+  updateSaleCustomer: async (
+    saleId: string,
+    customerId: string,
+  ): Promise<Sale> => {
+    const { data } = await apiClient.patch(`/sales/${saleId}/customer`, {
+      customerId,
+    });
     return data;
   },
 
@@ -198,7 +228,14 @@ export const SalesApi = {
       paymentMethod?: string;
       customerId?: string;
     },
-  ): Promise<any> => {
+  ): Promise<
+    Sale & {
+      waterfall?: {
+        totalRemainingBalance: number;
+        affectedSales: Sale[];
+      };
+    }
+  > => {
     const { data } = await apiClient.post(
       `/sales/${saleId}/repayment`,
       payload,
@@ -330,6 +367,62 @@ export const SalesApi = {
     }>;
   }> => {
     const { data } = await apiClient.get('/sales/outstanding/summary');
+    return data;
+  },
+
+  saveCardFromSale: async (
+    saleId: string,
+    customerFingerprint?: string,
+  ): Promise<{
+    success: boolean;
+    message: string;
+    card?: {
+      id: string;
+      brand: string;
+      last4: string;
+      bank?: string;
+      expMonth?: string;
+      expYear?: string;
+    };
+  }> => {
+    const { data } = await apiClient.post(`/sales/${saleId}/save-card`, {
+      customerFingerprint,
+    });
+    return data;
+  },
+
+  payWithSavedCard: async (
+    saleId: string,
+    payload: { cardId: string; customerFingerprint?: string },
+  ): Promise<{ success: true; saleId: string; status: string }> => {
+    const { data } = await apiClient.post(
+      `/sales/${saleId}/pay-saved-card`,
+      payload,
+    );
+    return data;
+  },
+
+  getSavedCards: async (): Promise<
+    Array<{
+      id: string;
+      brand: string;
+      last4: string;
+      expMonth?: string;
+      expYear?: string;
+      bank?: string;
+      cardType?: string;
+      createdAt?: string;
+      lastUsedAt?: string;
+    }>
+  > => {
+    const { data } = await apiClient.get('/users/me/saved-cards');
+    return data;
+  },
+
+  deleteSavedCard: async (
+    cardId: string,
+  ): Promise<{ success: boolean; message: string }> => {
+    const { data } = await apiClient.delete(`/users/me/saved-cards/${cardId}`);
     return data;
   },
 };

@@ -33,7 +33,7 @@ export function MerchantAvatar({
 
   return (
     <div className={cn('relative shrink-0', className)} style={style}>
-      <div 
+      <div
         className="rounded-full flex items-center justify-center overflow-hidden transition-transform bg-gray-100"
         style={{ width: avatarSize, height: avatarSize }}
       >
@@ -49,12 +49,12 @@ export function MerchantAvatar({
         />
       </div>
       {bankName && (
-        <div 
+        <div
           className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-[4.4px] border border-white bg-white shadow-sm flex items-center justify-center overflow-hidden"
-          style={{ 
-            width: bankLogoSize, 
+          style={{
+            width: bankLogoSize,
             height: bankLogoSize,
-            bottom: overlayOffset 
+            bottom: overlayOffset,
           }}
         >
           <Image

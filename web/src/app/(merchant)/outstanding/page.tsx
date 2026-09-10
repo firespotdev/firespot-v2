@@ -123,10 +123,11 @@ function OutstandingPageContent() {
       const isPaidInFullAtOnce =
         sale.amountPaid === sale.amount && !hasRepaymentsLater
 
-      return (
-        sale.status === 'CONFIRMED' &&
-        balance <= 0 &&
-        !isPaidInFullAtOnce
+      return Boolean(
+        hasRepaymentsLater ||
+          (sale.status === 'CONFIRMED' &&
+            balance <= 0 &&
+            !isPaidInFullAtOnce),
       )
     })
   }, [customerSales])

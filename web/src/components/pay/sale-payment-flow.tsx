@@ -17,6 +17,8 @@ import { useCancelSaleAsCustomer } from '@/services/sales/hooks'
 import {
   useInitializeExistingPaystackSale,
   useReconcilePaystackSale,
+  useCustomerSavedCards,
+  usePayWithSavedCard,
 } from '@/services/sales/hooks'
 import { useAuthStore } from '@/services/auth'
 import { LoadingPage } from '@/components/layout/LoadingPage'
@@ -81,7 +83,19 @@ export function SalePaymentFlow({
     cancelPaystackRedirect,
   } = usePaystackRedirectState()
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const authUser = useAuthStore((state) => state.user)
   const customerExitPath = isAuthenticated ? '/home' : '/'
+
+  const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
+  const savedCards = customerCards || authUser?.savedCards || []
+  const hasSavedCards = Boolean(
+    isAuthenticated &&
+      merchant.hasPaystackCollection &&
+      merchant.savedCardsCheckoutEnabled !== false &&
+      savedCards.length > 0,
+  )
+  const defaultSavedCard = savedCards[0]
+  const payWithSavedCard = usePayWithSavedCard()
 
   // sortBankAccounts widens the type; the data is the merchant's own accounts
   const sortedBankAccounts = sortBankAccounts(
@@ -298,7 +312,47 @@ export function SalePaymentFlow({
   }
 
   const handlePayInstantly = () => {
-    if (initializePaystack.isPending || isRedirectingToPaystack) return
+    if (
+      initializePaystack.isPending ||
+      isRedirectingToPaystack ||
+      payWithSavedCard.isPending
+    )
+      return
+
+    if (selectedRail === 'saved') {
+      const cardToUse = defaultSavedCard
+      if (!cardToUse) {
+        showNotificationToast({
+          message: 'No saved card found. Please choose another payment method.',
+          mode: 'error',
+        })
+        return
+      }
+
+      payWithSavedCard.mutate(
+        {
+          saleId: sale.id,
+          cardId: cardToUse.id,
+          customerFingerprint: getCustomerFingerprint(),
+        },
+        {
+          onSuccess: () => {
+            invalidateSale()
+          },
+          onError: (err: unknown) => {
+            const msg =
+              (err as { response?: { data?: { message?: string } } })?.response
+                ?.data?.message || 'Payment failed. Please try again.'
+            showNotificationToast({
+              message: msg,
+              mode: 'error',
+            })
+          },
+        },
+      )
+      return
+    }
+
     if (paystackChannels.length === 0) {
       showNotificationToast({
         message: 'No instant payment method is currently available.',
@@ -326,7 +380,7 @@ export function SalePaymentFlow({
       type: 'rail-picker',
       direction: 'bottom',
       props: {
-        hasSavedCards: false,
+        hasSavedCards,
         selectedRail,
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
@@ -462,7 +516,10 @@ export function SalePaymentFlow({
       onShare={handleShare}
       onClose={handleClose}
       hasPaystackCollection={merchant.hasPaystackCollection}
-      isSubmitting={initializePaystack.isPending}
+      savedCard={selectedRail === 'saved' ? defaultSavedCard : undefined}
+      isSubmitting={
+        initializePaystack.isPending || payWithSavedCard.isPending
+      }
     />
   )
 }

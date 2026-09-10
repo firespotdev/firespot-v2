@@ -586,9 +586,52 @@ export class User extends Document {
     reusable?: boolean;
   };
 
+  @Prop({ default: true })
+  savedCardsCheckoutEnabled?: boolean;
+
+  /**
+   * Personal customer-saved cards tokenized via Paystack.
+   * Enables customers to pay merchants in one tap without re-entering numbers.
+   * Keyed per customer, completely separate from merchant plan billing.
+   */
+  @Prop({
+    type: [
+      {
+        authorizationCode: { type: String, required: true, select: false },
+        brand: String,
+        last4: String,
+        expMonth: String,
+        expYear: String,
+        bank: String,
+        cardType: String,
+        reusable: { type: Boolean, default: true },
+        signature: String,
+        createdAt: { type: Date, default: Date.now },
+        lastUsedAt: Date,
+      },
+    ],
+    default: [],
+  })
+  savedCards?: SavedCard[];
+
   // Timestamps (automatically added by Mongoose)
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface SavedCard {
+  _id?: Types.ObjectId;
+  authorizationCode: string;
+  brand?: string;
+  last4?: string;
+  expMonth?: string;
+  expYear?: string;
+  bank?: string;
+  cardType?: string;
+  reusable?: boolean;
+  signature?: string;
+  createdAt?: Date;
+  lastUsedAt?: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

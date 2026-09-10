@@ -1,6 +1,12 @@
 import { generateReference } from './reference'
 
 describe('payment references', () => {
+  it('generates sale IDs with the SL prefix and 12-character suffix', () => {
+    const reference = generateReference('SL-', 12)
+
+    expect(reference).toMatch(/^SL-[A-Z0-9]{12}$/)
+  })
+
   it('generates fixed-length alphanumeric references', () => {
     const reference = generateReference('COL-', 12)
 

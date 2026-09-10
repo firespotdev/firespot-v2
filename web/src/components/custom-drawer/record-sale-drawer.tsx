@@ -252,9 +252,9 @@ export function RecordSaleDrawer({
             type="button"
             disabled={!hasSaleValue}
             onClick={handleRecordTapped}
-            className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 ${
+            className={`h-12 px-5 rounded-full font-bold text-sm transition-all duration-200 ${
               hasSaleValue
-                ? 'bg-[#F4F6F8] text-black border border-[#E9EBED] hover:bg-gray-100 active:bg-gray-250'
+                ? 'bg-[#F1F1F1] text-black border border-[#E9EBED] hover:bg-gray-100 active:bg-gray-250'
                 : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'
             }`}
           >
@@ -267,7 +267,7 @@ export function RecordSaleDrawer({
               type="button"
               disabled={!hasSaleValue}
               onClick={onCollect}
-              className={`h-11 px-5 rounded-full font-bold text-sm transition-all duration-200 flex items-center gap-1.5 ${
+              className={`h-12 px-5 rounded-full font-bold text-sm transition-all duration-200 flex items-center gap-1.5 ${
                 hasSaleValue
                   ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'
                   : 'bg-[#F4F6F8] text-[#8E8E93] cursor-not-allowed'

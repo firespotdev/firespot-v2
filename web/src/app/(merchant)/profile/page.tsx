@@ -175,6 +175,10 @@ export default function ProfilePage() {
               todaySalesAmount={salesStats?.todaySalesAmount ?? 0}
               collectedAmount={collectedStats?.todaySalesAmount ?? 0}
               recordedAmount={recordedStats?.todaySalesAmount ?? 0}
+              confirmedAmount={salesStats?.todaySalesAmount ?? 0}
+              unconfirmedAmount={salesStats?.pendingSalesAmount ?? 0}
+              confirmedCount={salesStats?.todaySalesCount ?? 0}
+              unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
               salesCount={salesStats?.todaySalesCount ?? 0}
               ordersCount={0}
               owingCount={owingCount}
@@ -194,9 +198,12 @@ export default function ProfilePage() {
                     <ChevronRight className="w-4 h-4 text-[#747576]" />
                   </Button>
                 ) : (
-                  <Link
-                    href="/qr-kits"
-                    className="mt-1 text-sm text-[#24C166] font-medium flex items-center gap-1"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      openDrawer({ type: 'payment-methods-active' })
+                    }
+                    className="mt-1 text-sm text-[#24C166] font-medium flex items-center gap-1 cursor-pointer"
                   >
                     <Image
                       src="/icons/ping.svg"
@@ -205,9 +212,9 @@ export default function ProfilePage() {
                       height={16}
                       className="animate-pulse"
                     />
-                    Your QR kit is active
+                    4 payment methods active
                     <ChevronRight className="w-4 h-4 text-[#24C166] mt-[1%]" />
-                  </Link>
+                  </button>
                 )
               }
             />
@@ -227,115 +234,53 @@ export default function ProfilePage() {
             </p>
           )}
 
-          {/* Stats Section - Link to Insights, Recents, and Owing */}
+          {/* Stats Section - Inquiries, Bookings, New orders, Owing */}
           <div className="grid grid-cols-4 gap-2 w-full text-center">
-            {/* Sales */}
-            <Link
-              href="/history?status=ALL"
-              className="flex flex-col items-center"
-            >
-              <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
-                {salesStats?.todaySalesCount ?? 0}
-              </span>
-              <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
-                Sales
-              </span>
-            </Link>
-
-            {/* Orders */}
+            {/* Inquiries */}
             <div className="flex flex-col items-center">
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 0
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
-                Orders
+                Inquiries
               </span>
             </div>
 
-            {/* Unconfirmed */}
-            {(() => {
-              const unconfirmedCount = salesStats?.pendingSalesCount ?? 0
-              const active = unconfirmedCount >= 1
-              const gradientStyle = active
-                ? {
-                    background:
-                      'linear-gradient(135deg, #F5B041 0%, #BB8123 100%)',
-                    WebkitBackgroundClip: 'text' as const,
-                    WebkitTextFillColor: 'transparent' as const,
-                  }
-                : undefined
-              return (
-                <Link
-                  href="/recents"
-                  className="flex flex-col items-center group"
-                >
-                  <span
-                    className={`text-xl font-bold leading-none -tracking-[0.4px] ${
-                      active ? '' : 'text-black'
-                    }`}
-                    style={gradientStyle}
-                  >
-                    {unconfirmedCount}
-                  </span>
-                  <div className="flex items-center gap-0.5 mt-1.5 group-hover:opacity-80 transition-opacity">
-                    <span
-                      className={`text-[13px] font-medium ${
-                        active ? '' : 'text-[#00000080]'
-                      }`}
-                      style={gradientStyle}
-                    >
-                      Unconfirmed
-                    </span>
-                    <ChevronRight
-                      size={11}
-                      color={active ? '#BB8123' : '#00000080'}
-                    />
-                  </div>
-                </Link>
-              )
-            })()}
+            {/* Bookings */}
+            <div className="flex flex-col items-center">
+              <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
+                0
+              </span>
+              <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
+                Bookings
+              </span>
+            </div>
+
+            {/* New orders */}
+            <div className="flex flex-col items-center">
+              <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
+                0
+              </span>
+              <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
+                New orders
+              </span>
+            </div>
 
             {/* Owing */}
-            {(() => {
-              const active = owingCount >= 1
-              const gradientStyle = active
-                ? {
-                    background:
-                      'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
-                    WebkitBackgroundClip: 'text' as const,
-                    WebkitTextFillColor: 'transparent' as const,
-                  }
-                : undefined
-              return (
-                <Link
-                  href="/outstanding"
-                  className="flex flex-col items-center group"
-                >
-                  <span
-                    className={`text-xl font-bold leading-none -tracking-[0.4px] ${
-                      active ? '' : 'text-black'
-                    }`}
-                    style={gradientStyle}
-                  >
-                    {owingCount}
-                  </span>
-                  <div className="flex items-center gap-0.5 mt-1.5 transition-opacity">
-                    <span
-                      className={`text-[13px] font-medium ${
-                        active ? '' : 'text-[#00000080]'
-                      }`}
-                      style={gradientStyle}
-                    >
-                      Owing
-                    </span>
-                    <ChevronRight
-                      size={11}
-                      color={active ? '#D72483' : '#00000080'}
-                    />
-                  </div>
-                </Link>
-              )
-            })()}
+            <Link
+              href="/outstanding"
+              className="flex flex-col items-center group"
+            >
+              <span className="text-xl font-bold leading-none -tracking-[0.4px] text-[#E23B4E]">
+                {owingCount}
+              </span>
+              <div className="flex items-center gap-0.5 mt-1.5 transition-opacity">
+                <span className="text-[13px] font-medium text-[#E23B4E]">
+                  Owing
+                </span>
+                <ChevronRight size={11} color="#E23B4E" />
+              </div>
+            </Link>
           </div>
         </div>
       </div>

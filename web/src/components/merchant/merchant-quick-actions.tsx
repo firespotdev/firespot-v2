@@ -56,21 +56,31 @@ export function useMerchantQuickActions(): MerchantQuickAction[] {
     })
   }
 
-  actions.push({
-    id: 'report',
-    title: `${format(yesterday, 'EEEE')} report`,
-    subtitle: `${insights?.traffic.totalCustomers ?? 0} customers visited yesterday`,
-    href: '/insights',
-    gradient: 'linear-gradient(91.94deg, #0075FF 1.65%, #26B2FF 100%)',
-    icon: <Graph size={24} color="white" />,
-  })
+  const hasReportData = Boolean(
+    insights &&
+      (insights.traffic.totalCustomers > 0 ||
+        insights.qrKitScans.totalScans > 0 ||
+        insights.accountCopies.totalCopies > 0 ||
+        insights.paymentMethods.totalSales > 0),
+  )
+
+  if (hasReportData) {
+    actions.push({
+      id: 'report',
+      title: `${format(yesterday, 'EEEE')} report`,
+      subtitle: `${insights?.traffic.totalCustomers ?? 0} customers visited yesterday`,
+      href: '/insights',
+      gradient: 'linear-gradient(91.94deg, #0075FF 1.65%, #26B2FF 100%)',
+      icon: <Graph size={24} color="white" />,
+    })
+  }
 
   if (pendingSalesCount > 0) {
     actions.push({
       id: 'recent',
       title: 'Recent sales',
       subtitle: `${pendingSalesCount} unconfirmed ${pendingSalesCount === 1 ? 'sale' : 'sales'}`,
-      href: '/recents',
+      href: '/sales',
       gradient: 'linear-gradient(92.42deg, #6B4200 0%, #BB8123 100%)',
       icon: <History className="h-6 w-6 text-white" />,
     })

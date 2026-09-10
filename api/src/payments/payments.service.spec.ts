@@ -189,9 +189,9 @@ describe('PaymentsService.handleWebhook', () => {
     await service.handleWebhook(PAYLOADS.chargeSuccess, 'sig', rawBody)
     await service.handleWebhook(PAYLOADS.chargeSuccess, 'sig', rawBody)
 
-    const firstFilter = webhookEventModel.updateOne.mock.calls[0][0]
-    const secondFilter = webhookEventModel.updateOne.mock.calls[1][0]
-    expect(firstFilter.eventKey).toBe(secondFilter.eventKey)
+    const firstFilter = (webhookEventModel.updateOne as any).mock.calls[0][0]
+    const secondFilter = (webhookEventModel.updateOne as any).mock.calls[1][0]
+    expect(firstFilter?.eventKey).toBe(secondFilter?.eventKey)
   })
 
   it('does not acknowledge when durable storage fails', async () => {

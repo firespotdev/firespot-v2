@@ -44,6 +44,19 @@ export const userApi = {
     return response.data
   },
 
+  updatePaymentSettings: async (
+    savedCardsCheckoutEnabled: boolean,
+  ): Promise<{
+    message: string
+    savedCardsCheckoutEnabled: boolean
+  }> => {
+    const response = await apiClient.patch(
+      '/users/me/payment-settings',
+      { savedCardsCheckoutEnabled },
+    )
+    return response.data
+  },
+
   checkSerialNumber: async (
     serialNumber: string,
   ): Promise<SerialCheckResponse> => {
@@ -178,6 +191,27 @@ export function useUserProfile() {
   return useQuery({
     queryKey: ['user', 'profile'],
     queryFn: userApi.getProfile,
+  })
+}
+
+export function useUpdatePaymentSettings() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.updatePaymentSettings,
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ['user', 'profile'],
+        (profile: UserProfile | undefined) =>
+          profile
+            ? {
+                ...profile,
+                savedCardsCheckoutEnabled:
+                  data.savedCardsCheckoutEnabled,
+              }
+            : profile,
+      )
+    },
   })
 }
 

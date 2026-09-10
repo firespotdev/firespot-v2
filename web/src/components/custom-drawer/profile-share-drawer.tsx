@@ -76,6 +76,7 @@ export function ProfileShareDrawer({
       mode: 'success',
       duration: 30000,
     })
+    closeDrawer()
   }
 
   const handleShare = async () => {

@@ -36,6 +36,7 @@ import {
 
 import { cn, formatCurrency } from '@/lib/utils'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
+import { formatDateTime } from '@/lib/utils/date-time'
 import { useReceiptPNGShare } from '@/hooks/use-receipt-png-share'
 
 interface TransactionDetailsDrawerProps {
@@ -57,15 +58,6 @@ const TransactionDetailsDrawer = ({
   const receiptRef = useRef<HTMLDivElement>(null)
   const hasAutoDownloaded = useRef(false)
   const [isDownloading, setIsDownloading] = useState(false)
-
-  const formatDate = (date: string | Date | undefined) => {
-    if (!date) return 'N/A'
-    try {
-      return format(new Date(date), 'MMMM do, yyyy . h:mm a')
-    } catch {
-      return String(date)
-    }
-  }
 
   const merchantStatus = getMerchantStatus(sale)
   const isOutstanding = merchantStatus === 'Owing'
@@ -133,7 +125,7 @@ const TransactionDetailsDrawer = ({
     receiptRef,
     cacheKey: `${sale._id}:${sale.updatedAt || sale.recordedAt || sale.createdAt}`,
     filename: `firespot-receipt-${sale.reference || sale._id}.png`,
-    text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDate(sale.createdAt)}`,
+    text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} on ${formatDateTime(sale.createdAt, { ordinalDay: true, fallback: 'N/A' })}`,
   })
 
   const handleDownloadReceipt = useCallback(async () => {
@@ -601,10 +593,11 @@ const TransactionDetailsDrawer = ({
                 Date and time
               </span>
               <span className="text-[14px] font-medium text-black">
-                {formatDate(
+                {formatDateTime(
                   sale.createdAt ||
                     sale.recordedAt ||
                     (sale as Sale & { date?: string | Date }).date,
+                  { ordinalDay: true, fallback: 'N/A' },
                 )}
               </span>
             </div>

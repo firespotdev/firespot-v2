@@ -12,6 +12,7 @@ export type DrawerContentType =
   | 'active-hours-booking'
   | 'receipt'
   | 'date-range-filter'
+  | 'get-statement'
   | 'custom'
   | 'payment-method'
   | 'record-success'
@@ -52,10 +53,11 @@ export type DrawerContentType =
   | 'product-option-editor'
   | 'pay-catalogue'
   | 'pay-current-purchase'
+  | 'unconfirmed-details'
+  | 'payment-methods-active'
+  | 'multiple-payment-options'
   | 'post-composer'
   | 'post-product-select'
-
-
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 
@@ -63,6 +65,7 @@ export interface DrawerConfig {
   type: DrawerContentType
   props?: Record<string, unknown>
   direction?: DrawerDirection
+  dismissible?: boolean
 }
 
 export interface DrawerState {
