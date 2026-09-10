@@ -16,6 +16,7 @@ import {
   showNotificationToast,
 } from '@/components/ui'
 import {
+  useCreateCategories,
   useCreateProduct,
   useProductCategories,
   useUpdateProduct,
@@ -51,7 +52,10 @@ const formatPriceInput = (input: HTMLInputElement) => {
 
   const whole = Number(wholeRaw || '0').toLocaleString('en-NG')
   const fractionRaw = hasDecimal
-    ? rawValue.slice(decimalIndex + 1).replace(/\D/g, '').slice(0, 2)
+    ? rawValue
+        .slice(decimalIndex + 1)
+        .replace(/\D/g, '')
+        .slice(0, 2)
     : ''
   const value = `${whole}.${fractionRaw.padEnd(2, '0')}`
 
@@ -117,6 +121,7 @@ export function ProductForm({
   onSaved: () => void
 }) {
   const categories = useProductCategories()
+  const createCategories = useCreateCategories()
   const create = useCreateProduct()
   const update = useUpdateProduct()
   const { openDrawer } = useDrawerStore()
@@ -132,6 +137,22 @@ export function ProductForm({
       ? product.categoryId
       : product?.categoryId?._id || initialCategoryId || '',
   )
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+
+  const handleCategoryChange = (val: string) => {
+    if (val === '__new__') {
+      setIsCreatingCategory(true)
+      setCategoryId('')
+    } else {
+      setCategoryId(val)
+    }
+  }
+
+  const handleCancelNewCategory = () => {
+    setIsCreatingCategory(false)
+    setNewCategoryName('')
+  }
   const [price, setPrice] = useState(product ? money(product.price) : '0.00')
   const [options, setOptions] = useState<ProductOption[]>(
     product?.options || [],
@@ -236,14 +257,22 @@ export function ProductForm({
   const save = async () => {
     if (isSubmitting) return
     const basePrice = parseCurrency(price)
+    const effectiveCategoryName = newCategoryName.trim()
+    const hasCategory = isCreatingCategory
+      ? Boolean(effectiveCategoryName)
+      : Boolean(categoryId)
+
     if (
       !name.trim() ||
-      !categoryId ||
+      !hasCategory ||
       !Number.isFinite(basePrice) ||
       basePrice < 0
     ) {
       showNotificationToast({
-        message: 'Add a name, category, and valid price.',
+        message:
+          isCreatingCategory && !effectiveCategoryName
+            ? 'Enter a category name.'
+            : 'Add a name, category, and valid price.',
       })
       return
     }
@@ -258,10 +287,30 @@ export function ProductForm({
       }))
       .filter((option) => option.name && option.values.length)
     try {
+      let resolvedCategoryId = categoryId
+
+      if (isCreatingCategory) {
+        const existing = categories.data?.categories?.find(
+          (c) =>
+            c.name.trim().toLowerCase() === effectiveCategoryName.toLowerCase(),
+        )
+        if (existing) {
+          resolvedCategoryId = existing._id
+        } else {
+          const created = await createCategories.mutateAsync([
+            effectiveCategoryName,
+          ])
+          if (!created?.[0]?._id) {
+            throw new Error('Failed to create category')
+          }
+          resolvedCategoryId = created[0]._id
+        }
+      }
+
       const payload = {
         name: name.trim(),
         description: description.trim() || undefined,
-        categoryId,
+        categoryId: resolvedCategoryId,
         price: basePrice,
         options: cleanOptions,
         variantPriceOverrides: effectiveOverrides,
@@ -271,18 +320,27 @@ export function ProductForm({
         ? update.mutateAsync({ id: product._id, payload, image })
         : create.mutateAsync({ payload, image }))
       await queryClient.invalidateQueries({ queryKey: ['products'] })
+      await queryClient.invalidateQueries({ queryKey: ['product-categories'] })
       showNotificationToast({
         message: product ? 'Product updated' : 'Product added',
         mode: 'success',
       })
       onSaved()
-    } catch {
-      showNotificationToast({ message: 'Could not save product. Try again.' })
+    } catch (error: any) {
+      showNotificationToast({
+        message:
+          error?.response?.data?.message ||
+          'Could not save product. Try again.',
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
-  const saving = isSubmitting || create.isPending || update.isPending
+  const saving =
+    isSubmitting ||
+    create.isPending ||
+    update.isPending ||
+    createCategories.isPending
   return (
     <div className="h-full min-h-0 bg-white">
       <div className="mx-auto flex h-full min-h-0 max-w-125 flex-col">
@@ -369,18 +427,45 @@ export function ProductForm({
             </div>
             <div>
               <Label>Category</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select one" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.data?.categories.map((category) => (
-                    <SelectItem key={category._id} value={category._id}>
-                      {category.name}
+              {isCreatingCategory ? (
+                <div className="relative">
+                  <Input
+                    autoFocus
+                    value={newCategoryName}
+                    onChange={(event) => setNewCategoryName(event.target.value)}
+                    placeholder="Enter category name"
+                    className="pr-28 text-[15px]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCancelNewCategory}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#6B7280] hover:text-black"
+                  >
+                    {categories.data?.categories?.length
+                      ? 'Select existing'
+                      : 'Cancel'}
+                  </button>
+                </div>
+              ) : (
+                <Select value={categoryId} onValueChange={handleCategoryChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select one" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.data?.categories?.map((category) => (
+                      <SelectItem key={category._id} value={category._id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem
+                      value="__new__"
+                      className="font-medium text-[#0075FF]"
+                    >
+                      + New category
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div>
               <Label>Price</Label>

@@ -129,6 +129,7 @@ const DRAWER_CONFIG: Record<
     Content: ProfileShareDrawer,
     fullScreen: true,
     noHeader: true,
+    dismissible: true,
   },
   'recommend-business': {
     title: '',
@@ -457,7 +458,7 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     fullScreen: false,
     contentClassName:
-      'bg-white data-[vaul-drawer-direction=bottom]:max-h-[93dvh]',
+      'overflow-hidden bg-white data-[vaul-drawer-direction=bottom]:max-h-[93dvh]',
   },
   'payment-methods-active': {
     title: '',

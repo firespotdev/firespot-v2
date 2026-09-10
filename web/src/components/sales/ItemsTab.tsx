@@ -4,7 +4,7 @@ import { Image as ImageIcon, Plus, Search, X } from 'lucide-react'
 import { useProductCategories } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import type { DrawerConfig } from '@/services/drawer'
-import { LoaderCircle } from '@/components/ui'
+import { Button, EmptyState, Input, LoaderCircle } from '@/components/ui'
 
 interface ItemsTabProps {
   searchQuery: string
@@ -115,6 +115,15 @@ export function ItemsTab({
     />
   )
 
+  const categories = catalogue?.categories || []
+  const hasCategories = categories.length > 0
+  const isCategoryEmpty = activeCategory !== 'All' && products.length === 0
+  const showCategoryFilter =
+    !isSearchActive &&
+    !isLoading &&
+    hasCategories &&
+    (products.length > 0 || isCategoryEmpty)
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
       <div className="px-3 pt-2">
@@ -123,13 +132,13 @@ export function ItemsTab({
             size={16}
             className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#6B7280]"
           />
-          <input
+          <Input
             type="text"
             value={searchQuery}
             onFocus={() => setIsSearchActive(true)}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Search products"
-            className="h-9 w-full rounded-[30px] border-2 border-[#F1F1F1] bg-white pl-11 pr-11 text-sm font-medium outline-none placeholder:text-[#00000066] focus:border-[#0075FF] focus:ring-2 focus:ring-[#0075FF]/20"
+            className="h-9 w-full rounded-[30px] bg-white pl-11 pr-11 text-sm font-medium placeholder:text-[#00000066] focus:border-ring focus:ring-ring/50 focus:ring-[3px]"
           />
           {isSearchActive && (
             <button
@@ -144,11 +153,11 @@ export function ItemsTab({
         </div>
       </div>
 
-      {!isSearchActive && (
+      {showCategoryFilter && (
         <div className="scrollbar-hide flex shrink-0 gap-2 overflow-x-auto border-b border-[#F1F1F1] px-3 py-3">
           {[
             { id: 'All', name: 'All' },
-            ...(catalogue?.categories || []).map((category) => ({
+            ...categories.map((category) => ({
               id: category._id,
               name: category.name,
             })),
@@ -169,7 +178,7 @@ export function ItemsTab({
         </div>
       )}
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-24">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 pb-24">
         {isSearchActive ? (
           <>
             <h2
@@ -187,19 +196,19 @@ export function ItemsTab({
               <div
                 role="status"
                 aria-label="Loading products"
-                className="flex items-center justify-center py-12"
+                className="my-auto flex items-center justify-center py-12"
               >
                 <LoaderCircle />
               </div>
             ) : visibleProducts.length > 0 ? (
               <div>{visibleProducts.map(renderProduct)}</div>
             ) : (
-              <div className="flex min-h-64 flex-col items-center justify-center text-center">
-                <Search size={32} className="text-[#9CA3AF]" />
+              <div className="my-auto flex min-h-64 flex-col items-center justify-center text-center">
+                <div className="text-[48px] mb-3">🔍</div>
                 <h3 className="mt-4 text-[16px] font-bold">
                   No products found
                 </h3>
-                <p className="mt-1 max-w-60 text-sm text-[#6B7280]">
+                <p className="mt-1 max-w-60 text-sm text-[#6B7280] font-medium">
                   Try another product name or keyword.
                 </p>
               </div>
@@ -209,39 +218,56 @@ export function ItemsTab({
           <div
             role="status"
             aria-label="Loading products"
-            className="flex items-center justify-center py-12"
+            className="my-auto flex items-center justify-center py-12"
           >
             <LoaderCircle />
           </div>
         ) : products.length > 0 ? (
           <div className="space-y-3 py-3">
             {Object.entries(getGroupedProducts()).map(
-              ([categoryName, categoryProducts]) => (
-                <section key={categoryName}>
-                  <h2 className="mb-2 text-[16px] font-bold capitalize">
-                    {categoryName}
-                  </h2>
-                  <div className="border-b border-[#F1F1F1] pb-3">
-                    {categoryProducts.map(renderProduct)}
-                  </div>
-                </section>
-              ),
+              ([categoryName, categoryProducts], index, entries) => {
+                const hasNextCategory = index < entries.length - 1
+                return (
+                  <section key={categoryName}>
+                    <h2 className="mb-2 text-[16px] font-bold capitalize">
+                      {categoryName}
+                    </h2>
+                    <div
+                      className={
+                        hasNextCategory ? 'border-b border-[#F1F1F1] pb-3' : ''
+                      }
+                    >
+                      {categoryProducts.map(renderProduct)}
+                    </div>
+                  </section>
+                )
+              },
             )}
           </div>
         ) : (
-          <div className="flex min-h-80 flex-col items-center justify-center text-center">
-            <ImageIcon size={36} className="text-[#9CA3AF]" />
-            <h3 className="mt-4 text-[16px] font-bold">No products yet</h3>
-            <p className="mt-1 max-w-60 text-sm text-[#6B7280]">
-              Add products to your catalogue before recording itemised sales.
-            </p>
-            <button
-              type="button"
-              onClick={() => openDrawer({ type: 'add-product' })}
-              className="mt-5 flex h-10 items-center gap-2 rounded-full bg-black px-5 text-xs font-bold text-white"
-            >
-              <Plus size={16} /> ADD PRODUCT
-            </button>
+          <div className="my-auto flex w-full flex-col items-center justify-center py-6 text-center">
+            <EmptyState
+              emoji={<span className="mb-6 text-[56px]">📦</span>}
+              title={
+                isCategoryEmpty
+                  ? 'No products in this category'
+                  : 'No products yet'
+              }
+              details={
+                isCategoryEmpty
+                  ? 'Add products to this category or choose another category above.'
+                  : 'Add products to your catalogue before recording itemised sales.'
+              }
+              cta={
+                <Button
+                  type="button"
+                  onClick={() => openDrawer({ type: 'add-product' })}
+                  className="mt-6 h-9 w-fit px-4 text-[10px] tracking-[1px]"
+                >
+                  <Plus size={16} /> ADD PRODUCT
+                </Button>
+              }
+            />
           </div>
         )}
       </div>
