@@ -2,11 +2,30 @@
 
 import { useState } from 'react'
 import { useRouter } from '@bprogress/next/app'
-import { ChevronRight, Search } from 'lucide-react'
-import { LoaderCircle, StatusBadge, EmptyState } from '@/components/ui'
+import { ChevronRight, Search, X } from 'lucide-react'
+import { ScrollIcon } from '@phosphor-icons/react'
+import { Sort } from 'iconsax-reactjs'
+import {
+  EmptyState,
+  Input,
+  LoaderCircle,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  StatusBadge,
+} from '@/components/ui'
 import { usePayouts, type SettlementItem } from '@/services/payouts'
-import { BackButton } from '@/components/ui/back-button'
 import { useSafeBack } from '@/hooks/use-safe-back'
+
+const payoutStatuses = [
+  'All',
+  'Incoming',
+  'Processing',
+  'Paid',
+  'Failed',
+] as const
+
+type PayoutStatusFilter = (typeof payoutStatuses)[number]
 
 function formatNaira(amount: number): string {
   return amount.toLocaleString('en-NG', {
@@ -19,11 +38,13 @@ export default function PayoutsPage() {
   const router = useRouter()
   const handleBack = useSafeBack('/profile')
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<PayoutStatusFilter>('All')
+  const [isFilterOpen, setIsFilterOpen] = useState(false)
   const { data: payoutsData, isLoading, isError } = usePayouts()
 
   if (isLoading) {
     return (
-      <div className="flex h-dvh items-center justify-center bg-[#F5F6F8]">
+      <div className="flex h-dvh items-center justify-center bg-[#F4F6F8]">
         <LoaderCircle />
       </div>
     )
@@ -34,54 +55,99 @@ export default function PayoutsPage() {
   const hasSubaccount = payoutsData?.hasSubaccount ?? true
   const unavailableReason = payoutsData?.unavailableReason
 
-  // Filter settlements by reference number or search query
+  // Filter settlements by reference number and status.
   const filteredSettlements = settlements.filter((s) => {
-    if (!searchQuery.trim()) return true
-    const q = searchQuery.toLowerCase()
-    return (
-      s.id.toString().includes(q) ||
-      s.amount.toString().includes(q) ||
-      s.settlementDate.toLowerCase().includes(q)
-    )
+    const q = searchQuery.trim().toLowerCase()
+    const matchesReference = !q || s.id.toString().includes(q)
+    const matchesStatus = statusFilter === 'All' || s.status === statusFilter
+
+    return matchesReference && matchesStatus
   })
 
   // Group settlements by month
-  const monthGroups = filteredSettlements.reduce<Record<string, SettlementItem[]>>(
-    (groups, item) => {
-      const monthKey = item.monthGroup || 'Earlier'
-      if (!groups[monthKey]) {
-        groups[monthKey] = []
-      }
-      groups[monthKey].push(item)
-      return groups
-    },
-    {},
-  )
+  const monthGroups = filteredSettlements.reduce<
+    Record<string, SettlementItem[]>
+  >((groups, item) => {
+    const monthKey = item.monthGroup || 'Earlier'
+    if (!groups[monthKey]) {
+      groups[monthKey] = []
+    }
+    groups[monthKey].push(item)
+    return groups
+  }, {})
 
   return (
-    <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
+    <div className="min-h-dvh bg-[#F4F6F8] font-satoshi">
       <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-3 pb-8">
         {/* Header */}
-        <header className="flex items-center justify-between py-3.5">
-          <BackButton onClick={handleBack} className="-m-2.5" />
-          <h1 className="text-[20px] font-bold -tracking-[0.4px] text-black">
+        <header className="flex items-center justify-between py-2.5">
+          <span
+            className="flex p-1 items-center justify-center"
+            aria-hidden="true"
+          >
+            <ScrollIcon size={24} weight="fill" color="#4B5563" />
+          </span>
+          <h1 className="text-base font-bold leading-none text-black">
             Payouts
           </h1>
-          <span className="h-6 w-6" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Close payouts"
+            className="flex p-1 items-center justify-center"
+          >
+            <X size={24} strokeWidth={2} />
+          </button>
         </header>
 
-        {/* Search */}
-        <div className="py-2 flex gap-2">
-          <label className="flex h-9 flex-1 items-center gap-2 rounded-full bg-[#E6E8EB99] px-4">
-            <Search size={16} className="shrink-0 text-[#9B9B9B]" />
-            <input
-              type="search"
+        {/* Search and filter */}
+        <div className="-mx-1 flex items-center gap-2 p-1 py-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#00000066]" />
+            <Input
+              type="text"
+              aria-label="Search payouts by reference number"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search settlement number"
-              className="min-w-0 flex-1 text-base font-medium text-black outline-none placeholder:text-[#00000066]"
+              placeholder="Search reference number"
+              className="h-9 w-full rounded-full border-none bg-[#E6E8EB99] pl-10 pr-4 text-sm font-medium text-black shadow-none placeholder:font-medium placeholder:text-[#00000066] focus-visible:border-ring"
             />
-          </label>
+          </div>
+          <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label="Filter payouts by status"
+                aria-expanded={isFilterOpen}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E6E8EB99] transition-colors"
+              >
+                <Sort size={20} color="black" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              overlay={false}
+              className="w-40 rounded-[12px] border border-[#E6E8EB] bg-white p-1 shadow-md"
+            >
+              {payoutStatuses.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(status)
+                    setIsFilterOpen(false)
+                  }}
+                  className={`flex w-full rounded-lg px-3 py-2 text-left text-xs font-bold uppercase tracking-[1px] transition-colors ${
+                    statusFilter === status
+                      ? 'bg-[#E6E8EB99] text-black'
+                      : 'text-[#00000099] hover:bg-[#F4F6F8]'
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
         </div>
 
         {isError && (

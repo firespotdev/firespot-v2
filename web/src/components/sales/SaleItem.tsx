@@ -5,7 +5,7 @@ import { SwipeableItem } from '@/components/recents/SwipeableItem'
 import { MerchantAvatar } from '@/components/layout/MerchantAvatar'
 import { Sale } from '@/services/sales/interface'
 import { cn } from '@/lib/utils'
-import { formatDateTime } from '@/lib/utils/date-time'
+import { formatDate, formatDateTime } from '@/lib/utils/date-time'
 import {
   getAmountLabel,
   getRecentSaleSummary,
@@ -66,7 +66,7 @@ export function SaleItem({
       )}
       onClick={() => onClick?.(sale)}
     >
-      <div className="flex flex-1 items-center gap-2 min-w-0 overflow-hidden">
+      <div className="flex flex-1 items-center gap-2 min-w-0">
         <MerchantAvatar
           bankName={sale.targetBankName}
           profilePhotoUrl={getSaleCustomerPhotoUrl(sale)}
@@ -88,10 +88,16 @@ export function SaleItem({
           <p
             className={cn(
               'text-[#6B7280] font-medium tracking-tight',
-              isRecent ? 'text-[12px]' : 'text-[11px] uppercase',
+              isRecent
+                ? 'text-[12px]'
+                : variant === 'history'
+                  ? 'text-[11px]'
+                  : 'text-[11px] uppercase',
             )}
           >
-            {formatDateTime(sale.recordedAt || sale.createdAt)}
+            {variant === 'history'
+              ? formatDate(sale.recordedAt || sale.createdAt)
+              : formatDateTime(sale.recordedAt || sale.createdAt)}
           </p>
         </div>
       </div>

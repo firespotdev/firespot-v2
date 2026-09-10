@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import {
   Search,
   ChevronDown,
+  ChevronRight,
   Eye,
   EyeOff,
   AlertCircle,
@@ -20,6 +21,7 @@ import { useSales, useSalesStats } from '@/services/sales/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import { useUserProfile } from '@/services/users'
 import { useUserQRKits } from '@/services/qr'
+import { usePlanCatalog } from '@/services/merchant-plans'
 import {
   type InsightsQuery,
   DATE_RANGE_LABELS,
@@ -31,6 +33,7 @@ import { SaleItem } from '@/components/sales/SaleItem'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 import { useSafeBack } from '@/hooks/use-safe-back'
 import { ChartPieSliceIcon, ScrollIcon } from '@phosphor-icons/react'
+import { Input } from '@/components/ui'
 
 type HistoryMode = 'all' | 'collected' | 'recorded'
 type FilterId = 'mode' | 'status' | 'method' | 'qrKit' | 'location'
@@ -77,7 +80,11 @@ function HistoryContent() {
   // Fetch QR kits for the Qr kit dropdown options
   const { data: qrKitsData } = useUserQRKits()
   const { data: profile } = useUserProfile()
+  const { data: planCatalog } = usePlanCatalog()
   const qrKits = qrKitsData?.data || []
+  const canViewCollected = planCatalog?.current?.canCollect === true
+  const activeMode =
+    selectedMode === 'collected' && !canViewCollected ? 'all' : selectedMode
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -122,7 +129,7 @@ function HistoryContent() {
   }, [selectedStatus])
 
   const { data: salesData, isLoading } = useSales({
-    mode: selectedMode === 'all' ? undefined : selectedMode,
+    mode: activeMode === 'all' ? undefined : activeMode,
     status: apiStatusParam,
     paymentMethod: selectedMethod,
     qrKitName: selectedQrKit,
@@ -133,11 +140,27 @@ function HistoryContent() {
 
   const { data: salesStats, isLoading: isLoadingStats } = useSalesStats({
     ...dateFilter,
-    mode: selectedMode === 'all' ? undefined : selectedMode,
+    mode: activeMode === 'all' ? undefined : activeMode,
     paymentMethod: selectedMethod,
     qrKitName: selectedQrKit,
     location: selectedLocation,
   })
+  const statsFilters = {
+    ...dateFilter,
+    paymentMethod: selectedMethod,
+    qrKitName: selectedQrKit,
+    location: selectedLocation,
+  }
+  const { data: collectedStats, isLoading: isLoadingCollectedStats } =
+    useSalesStats(
+      { ...statsFilters, mode: 'collected' },
+      { enabled: activeMode === 'all' },
+    )
+  const { data: recordedStats, isLoading: isLoadingRecordedStats } =
+    useSalesStats(
+      { ...statsFilters, mode: 'recorded' },
+      { enabled: activeMode === 'all' },
+    )
 
   const sales: Sale[] = useMemo(() => salesData?.data ?? [], [salesData?.data])
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
@@ -196,6 +219,30 @@ function HistoryContent() {
     })
   }
 
+  const resetSecondaryFilters = (except?: Exclude<FilterId, 'mode'>) => {
+    if (except !== 'status') setSelectedStatus('ALL')
+    if (except !== 'method') setSelectedMethod('ALL')
+    if (except !== 'qrKit') setSelectedQrKit('ALL')
+    if (except !== 'location') setSelectedLocation('ALL')
+  }
+
+  const handleModeChange = (value: string) => {
+    if (value === 'COLLECTED' && !canViewCollected) return
+    setSelectedMode(value.toLowerCase() as HistoryMode)
+    resetSecondaryFilters()
+  }
+
+  const handleSecondaryFilterChange = (
+    id: Exclude<FilterId, 'mode'>,
+    value: string,
+  ) => {
+    resetSecondaryFilters(id)
+    if (id === 'status') setSelectedStatus(value)
+    if (id === 'method') setSelectedMethod(value)
+    if (id === 'qrKit') setSelectedQrKit(value)
+    if (id === 'location') setSelectedLocation(value)
+  }
+
   const filterCapsules: Array<{
     id: FilterId
     label: string
@@ -207,11 +254,13 @@ function HistoryContent() {
   }> = [
     {
       id: 'mode',
-      label: selectedMode.toUpperCase(),
-      isActive: selectedMode !== 'all',
-      options: ['ALL', 'RECORDED', 'COLLECTED'],
-      value: selectedMode.toUpperCase(),
-      onChange: (value) => setSelectedMode(value.toLowerCase() as HistoryMode),
+      label: activeMode.toUpperCase(),
+      isActive: activeMode !== 'all',
+      options: canViewCollected
+        ? ['ALL', 'RECORDED', 'COLLECTED']
+        : ['ALL', 'RECORDED'],
+      value: activeMode.toUpperCase(),
+      onChange: handleModeChange,
     },
     {
       id: 'status',
@@ -219,7 +268,7 @@ function HistoryContent() {
       isActive: selectedStatus !== 'ALL',
       options: ['ALL', 'PAID', 'OWING', 'UNCONFIRMED', 'ARCHIVED'],
       value: selectedStatus,
-      onChange: setSelectedStatus,
+      onChange: (value) => handleSecondaryFilterChange('status', value),
     },
     {
       id: 'method',
@@ -227,7 +276,7 @@ function HistoryContent() {
       isActive: selectedMethod !== 'ALL',
       options: ['ALL', 'Bank Transfer', 'Cash', 'POS', 'Other'],
       value: selectedMethod,
-      onChange: setSelectedMethod,
+      onChange: (value) => handleSecondaryFilterChange('method', value),
     },
     {
       id: 'qrKit',
@@ -235,7 +284,7 @@ function HistoryContent() {
       isActive: selectedQrKit !== 'ALL',
       options: ['ALL', ...qrKits.map((kit) => kit.name || kit.serialNumber)],
       value: selectedQrKit,
-      onChange: setSelectedQrKit,
+      onChange: (value) => handleSecondaryFilterChange('qrKit', value),
     },
     {
       id: 'location',
@@ -243,7 +292,7 @@ function HistoryContent() {
       isActive: selectedLocation !== 'ALL',
       options: ['ALL'],
       value: selectedLocation,
-      onChange: setSelectedLocation,
+      onChange: (value) => handleSecondaryFilterChange('location', value),
       disabled: true,
     },
   ]
@@ -303,7 +352,12 @@ function HistoryContent() {
       )}
 
       <header className="shrink-0 bg-[#F4F6F8] flex items-center justify-between py-2 px-4 z-30">
-        <button className="flex p-1.5 items-center justify-center">
+        <button
+          type="button"
+          onClick={() => openDrawer({ type: 'get-statement' })}
+          aria-label="Get statement"
+          className="flex p-1.5 items-center justify-center"
+        >
           <ScrollIcon size={24} weight="fill" color="black" strokeWidth={2} />
         </button>
         <h1 className="text-base font-bold leading-none text-black">History</h1>
@@ -350,21 +404,26 @@ function HistoryContent() {
         ) : (
           <>
             {/* Search Bar */}
-            <div className="relative mb-1.5">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
+            <div className="relative -mx-1 mb-1.5 p-1">
+              <div className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2">
                 <Search size={16} color="#00000033" strokeWidth={2} />
               </div>
-              <input
+              <Input
                 type="text"
-                placeholder="Search"
+                aria-label="Search sales"
+                placeholder={
+                  activeMode === 'collected'
+                    ? 'Search'
+                    : 'Search by customer name or bank'
+                }
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-9 pl-11 pr-4 bg-[#E6E8EB99] border border-[#EBEBEB] rounded-full text-sm font-medium placeholder:text-[#00000066] focus:outline-none focus:ring-1 focus:ring-[#0075FF]"
+                className="h-9 rounded-full border-[#EBEBEB] bg-[#E6E8EB99] pl-11 pr-4 text-sm font-medium shadow-none placeholder:font-medium placeholder:text-[#00000066]"
               />
             </div>
 
             {/* Dropdown Filters capsule layout (Sticky under header) */}
-            <div className="sticky top-0 bg-[#F4F6F8] py-2.5 mb-1.5 z-20 -mx-4 px-4">
+            <div className="sticky top-0 bg-[#F4F6F8] py-2.5 mb-3.5 z-20 -mx-4 px-4">
               <div className="flex gap-2 overflow-x-auto scrollbar-hide">
                 {filterCapsules.map((capsule) => {
                   const isOpen = openDropdown === capsule.id
@@ -380,8 +439,8 @@ function HistoryContent() {
                         aria-expanded={isOpen}
                         onClick={() => handleDropdownToggle(capsule.id)}
                         className={cn(
-                          'px-4 h-9 rounded-full text-[10px] font-bold whitespace-nowrap flex items-center gap-1 transition-all',
-                          capsule.isActive || isOpen
+                          'px-4 h-9 rounded-full text-[10px] font-bold tracking-[1px] uppercase whitespace-nowrap flex items-center gap-1 transition-all',
+                          capsule.id === 'mode' || capsule.isActive || isOpen
                             ? 'bg-[#E5E7EB99] text-[#111827] border border-black'
                             : 'bg-[#E5E7EB99] text-[#111827]',
                           capsule.disabled && 'opacity-50 cursor-not-allowed',
@@ -405,13 +464,19 @@ function HistoryContent() {
             {/* Summary Card */}
             <div
               className={cn(
-                'w-full overflow-hidden rounded-[12px] border-2 mb-4',
-                selectedMode === 'collected'
+                'w-full overflow-hidden rounded-[12px] border-2 mb-3',
+                activeMode === 'collected'
                   ? 'border-[#C5EEDB] bg-[#E0F5EA]'
-                  : 'border-[#0000000A]',
+                  : 'border-[#EAEAEA]',
               )}
             >
-              <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
+              <div
+                className={cn(
+                  'px-4 py-3 bg-white flex justify-between items-center',
+                  activeMode !== 'all' &&
+                    'relative z-10 rounded-b-[12px] shadow-[0px_4px_8px_0px_#0000000A]',
+                )}
+              >
                 <div>
                   <button
                     type="button"
@@ -428,13 +493,15 @@ function HistoryContent() {
                     }}
                   >
                     <span className="text-[#00000066] text-xs font-medium">
-                      {dateFilter.preset === 'custom' &&
-                      dateFilter.startDate &&
-                      dateFilter.endDate
-                        ? `${format(new Date(dateFilter.startDate), 'MMM d')} - ${format(new Date(dateFilter.endDate), 'MMM d')}`
-                        : DATE_RANGE_LABELS[
-                            dateFilter.preset as DateRangePreset
-                          ] || 'Today'}
+                      {activeMode === 'all' && dateFilter.preset === 'today'
+                        ? `Today’s sales (${salesStats?.todaySalesCount ?? 0})`
+                        : dateFilter.preset === 'custom' &&
+                            dateFilter.startDate &&
+                            dateFilter.endDate
+                          ? `${format(new Date(dateFilter.startDate), 'MMM d')} - ${format(new Date(dateFilter.endDate), 'MMM d')}`
+                          : DATE_RANGE_LABELS[
+                              dateFilter.preset as DateRangePreset
+                            ] || 'Today'}
                     </span>{' '}
                     <ChevronDown size={14} strokeWidth={2} color="#00000066" />
                   </button>
@@ -481,46 +548,145 @@ function HistoryContent() {
                     type="button"
                     onClick={() => openDrawer({ type: 'record-sale' })}
                     aria-label="Create new sale"
-                    className="flex justify-center items-center p-2.5 rounded-full bg-[#26B2FF]"
+                    className={cn(
+                      'flex justify-center items-center p-2.5 rounded-full',
+                      activeMode === 'all'
+                        ? 'bg-black'
+                        : activeMode === 'collected'
+                          ? 'bg-[#24C166]'
+                          : 'bg-[#26B2FF]',
+                    )}
                   >
                     <Plus size={24} strokeWidth={2} color="#ffffff" />
                   </button>
                 </div>
               </div>
 
-              {selectedMode === 'collected' ? (
+              {activeMode === 'all' && (
+                <div className="grid grid-cols-2 border-y-2 border-[#EAEAEA] bg-white rounded-b-[12px] shadow-[0px_4px_8px_0px_#0000000A]">
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('COLLECTED')}
+                    disabled={!canViewCollected}
+                    className="px-4 py-3.5 text-left disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <span className="flex items-center gap-1 text-xs font-medium text-[#00000066]">
+                      Collected{' '}
+                      {collectedStats &&
+                        collectedStats?.todaySalesCount > 0 &&
+                        `(${collectedStats?.todaySalesCount})`}
+                      <ChevronRight size={12} strokeWidth={2} />
+                    </span>
+                    {isLoadingCollectedStats ? (
+                      <span className="mt-2 block h-3.5 w-20 animate-pulse rounded bg-gray-200" />
+                    ) : (
+                      <span className="mt-2 block text-[14px] font-bold leading-none text-black">
+                        {isAmountHidden
+                          ? '₦ ••••••'
+                          : `₦ ${formatCurrency(collectedStats?.todaySalesAmount ?? 0)}`}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('RECORDED')}
+                    className="border-l-2 border-[#EAEAEA] px-4 py-3.5 text-left"
+                  >
+                    <span className="flex items-center gap-1 text-xs font-medium text-[#00000066]">
+                      Recorded{' '}
+                      {recordedStats &&
+                        recordedStats?.todaySalesCount > 0 &&
+                        `(${recordedStats?.todaySalesCount})`}
+                      <ChevronRight size={12} strokeWidth={2} />
+                    </span>
+                    {isLoadingRecordedStats ? (
+                      <span className="mt-2 block h-3.5 w-20 animate-pulse rounded bg-gray-200" />
+                    ) : (
+                      <span className="mt-2 block text-[14px] font-bold leading-none text-[#6B7280]">
+                        {isAmountHidden
+                          ? '₦ ••••••'
+                          : `₦ ${formatCurrency(recordedStats?.todaySalesAmount ?? 0)}`}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {activeMode === 'collected' ? (
                 <div className="flex items-center gap-2 rounded-b-[12px] bg-[#24C1661A] p-3 text-[#33A061]">
                   <AlertCircle
-                    className="mt-0.5 shrink-0"
+                    className="shrink-0"
                     size={18}
-                    strokeWidth={2.5}
+                    strokeWidth={2}
                     color="#33A061"
                   />
                   <p className="text-xs font-medium leading-[125%]">
-                    Sales are automatically recorded. Payouts may vary after
-                    processing fees have been deducted.
+                    Collected sales are automatically recorded. Payouts may vary
+                    after processing fees have been deducted.
                   </p>
                 </div>
-              ) : selectedMode === 'recorded' ? (
-                <div className="flex items-center gap-2 rounded-[12px] bg-[#f4f4f4] p-3">
-                  <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
-                  <p className="text-xs font-medium text-[#00000066]">
-                    You will not receive a payout for these transactions.
-                    <br />
-                    Sales are recorded for accounting purposes only.
+              ) : activeMode === 'recorded' ? (
+                <div className="flex items-center gap-2 rounded-b-[12px] bg-[#f4f4f4] p-3">
+                  <AlertCircle
+                    size={18}
+                    strokeWidth={2}
+                    color="#00000066"
+                    className="shrink-0"
+                  />
+                  <p className="text-xs font-medium leading-[125%] text-[#00000066]">
+                    You will not receive a payout for these transactions. Sales
+                    are recorded for accounting purposes only.
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded-[12px] bg-[#f4f4f4] p-3">
-                  <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
-                  <p className="text-xs font-medium text-[#00000066]">
-                    You will not receive a payout for these transactions.
-                    <br />
-                    Sales are recorded for accounting purposes only.
+                <div className="flex items-center gap-2 rounded-b-[12px] bg-[#f4f4f4] p-3">
+                  <AlertCircle
+                    className="shrink-0"
+                    size={18}
+                    strokeWidth={2}
+                    color="#00000066"
+                  />
+                  <p className="text-xs font-medium leading-[125%] text-[#00000066]">
+                    You will only receive payouts for sales collected through
+                    Firespot&apos;s payment processor. Recorded sales are for
+                    accounting purposes only.
                   </p>
                 </div>
               )}
             </div>
+
+            {activeMode !== 'recorded' && (
+              <Link
+                href="/payouts"
+                className="mb-6 flex h-9 w-full items-center justify-center gap-2 rounded-full bg-[#E5E7EB] text-[10px] font-bold tracking-[1px] text-black"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path
+                    d="M15 22.75H9C3.57 22.75 1.25 20.43 1.25 15V9C1.25 3.57 3.57 1.25 9 1.25H15C20.43 1.25 22.75 3.57 22.75 9V15C22.75 20.43 20.43 22.75 15 22.75ZM9 2.75C4.39 2.75 2.75 4.39 2.75 9V15C2.75 19.61 4.39 21.25 9 21.25H15C19.61 21.25 21.25 19.61 21.25 15V9C21.25 4.39 19.61 2.75 15 2.75H9Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M14.8298 12.6804C14.4198 12.6804 14.0798 12.3404 14.0798 11.9304V8.44043H10.5898C10.1798 8.44043 9.83984 8.10043 9.83984 7.69043C9.83984 7.28043 10.1798 6.94043 10.5898 6.94043H14.8298C15.2398 6.94043 15.5798 7.28043 15.5798 7.69043V11.9304C15.5798 12.3404 15.2398 12.6804 14.8298 12.6804Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M9.16986 14.0901C8.97986 14.0901 8.78986 14.0201 8.63986 13.8701C8.34986 13.5801 8.34986 13.1001 8.63986 12.8101L14.2999 7.15012C14.5899 6.86012 15.0699 6.86012 15.3599 7.15012C15.6499 7.44012 15.6499 7.92013 15.3599 8.21013L9.69986 13.8701C9.55986 14.0201 9.35986 14.0901 9.16986 14.0901Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M12 18.2302C9.88995 18.2302 7.76995 17.8902 5.75995 17.2202C5.36995 17.0902 5.15995 16.6602 5.28995 16.2702C5.41995 15.8802 5.84996 15.6602 6.23996 15.8002C9.95996 17.0402 14.05 17.0402 17.77 15.8002C18.16 15.6702 18.59 15.8802 18.72 16.2702C18.85 16.6602 18.64 17.0902 18.25 17.2202C16.23 17.9002 14.11 18.2302 12 18.2302Z"
+                    fill="currentColor"
+                  />
+                </svg>
+                VIEW PAYOUTS
+              </Link>
+            )}
 
             {openCapsule && dropdownPosition && typeof document !== 'undefined'
               ? createPortal(
@@ -540,7 +706,7 @@ function HistoryContent() {
                           closeDropdown()
                         }}
                         className={cn(
-                          'w-full text-left px-3 py-2 text-[11px] font-medium hover:bg-[#F4F6F8] transition-colors',
+                          'w-full text-left px-3 py-2 text-[11px] font-medium uppercase hover:bg-[#F4F6F8] transition-colors',
                           openCapsule.value === opt
                             ? 'text-black font-bold bg-[#F4F6F8]'
                             : 'text-[#6B7280]',

@@ -51,7 +51,7 @@ function sanitizeFilename(filename: string) {
   return filename.replace(/[<>:"/\\|?*\u0000-\u001F]/g, '-')
 }
 
-function triggerDownload(blob: Blob, filename: string) {
+export function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -85,7 +85,7 @@ export async function sharePNGBlob(
     return 'shared'
   }
 
-  triggerDownload(blob, filename)
+  downloadBlob(blob, filename)
   return 'downloaded'
 }
 
@@ -115,7 +115,7 @@ export async function downloadElementAsPNG(
   options: DownloadElementOptions = {},
 ): Promise<void> {
   const blob = await renderElementAsPNG(element, options)
-  triggerDownload(blob, options.filename || 'firespot-receipt.png')
+  downloadBlob(blob, options.filename || 'firespot-receipt.png')
 }
 
 /** Downloads the displayed element proportionally on a centered A4 page. */

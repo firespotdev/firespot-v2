@@ -24,3 +24,17 @@ export function formatDateTime(
     return String(value)
   }
 }
+
+export function formatDate(
+  value?: string | Date,
+  { fallback = '' }: Pick<FormatDateTimeOptions, 'fallback'> = {},
+): string {
+  if (!value) return fallback
+
+  try {
+    const date = value instanceof Date ? value : new Date(value)
+    return `${shortMonthFormatter.format(date)} ${format(date, 'd, yyyy')}`
+  } catch {
+    return String(value)
+  }
+}

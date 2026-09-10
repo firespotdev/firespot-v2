@@ -12,6 +12,7 @@ export type DrawerContentType =
   | 'active-hours-booking'
   | 'receipt'
   | 'date-range-filter'
+  | 'get-statement'
   | 'custom'
   | 'payment-method'
   | 'record-success'

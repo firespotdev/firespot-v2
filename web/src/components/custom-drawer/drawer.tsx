@@ -25,6 +25,7 @@ import { RecommendBusinessDrawer } from './recommend-business-drawer'
 import { RecommendBusinessSmsDrawer } from './recommend-business-sms-drawer'
 import { ReceiptDrawer } from './receipt-drawer'
 import { DateRangeFilterDrawer } from './date-range-filter-drawer'
+import { GetStatementDrawer } from './get-statement-drawer'
 import { PaymentMethodDrawer } from './payment-method-drawer'
 import { RecordSuccessDrawer } from './record-success-drawer'
 import { ObtainKitDrawer } from './obtain-kit-drawer'
@@ -76,7 +77,7 @@ const DRAWER_CONFIG: Record<
   {
     title: string
     direction?: DrawerDirection
-    HeaderLeft?: React.ComponentType<any>
+    HeaderLeft?: React.ComponentType<{ fromActiveMethods?: boolean }>
     Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
@@ -168,6 +169,14 @@ const DRAWER_CONFIG: Record<
     title: 'Filter',
     direction: 'bottom',
     Content: DateRangeFilterDrawer,
+  },
+  'get-statement': {
+    title: '',
+    direction: 'bottom',
+    Content: GetStatementDrawer,
+    noHeader: true,
+    hideHandle: true,
+    dismissible: true,
   },
   'customer-sort': {
     title: 'Sort by',

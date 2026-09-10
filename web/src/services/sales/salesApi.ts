@@ -128,6 +128,25 @@ export const SalesApi = {
     return data;
   },
 
+  getStatementSales: async (
+    startDate: string,
+    endDate: string,
+  ): Promise<Sale[]> => {
+    const params = { startDate, endDate, limit: '0' };
+    const [current, archived] = await Promise.all([
+      SalesApi.getSales(params),
+      SalesApi.getSales({ ...params, status: 'ARCHIVED' }),
+    ]);
+    const salesById = new Map(
+      [...current.data, ...archived.data].map((sale) => [sale._id, sale]),
+    );
+
+    return Array.from(salesById.values()).sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  },
+
   getSale: async (id: string): Promise<Sale> => {
     const { data } = await apiClient.get(`/sales/${id}`);
     return data;

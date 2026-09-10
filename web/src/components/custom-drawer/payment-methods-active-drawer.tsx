@@ -12,10 +12,7 @@ import {
   showNotificationToast,
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
-import {
-  useUpdatePaymentSettings,
-  useUserProfile,
-} from '@/services/users'
+import { useUpdatePaymentSettings, useUserProfile } from '@/services/users'
 import { useUserQRKits } from '@/services/qr'
 import { Card, Scan } from 'iconsax-reactjs'
 import { BankIcon } from '@phosphor-icons/react'
@@ -62,7 +59,8 @@ export function PaymentMethodsActiveDrawer() {
   const isKycIncomplete = profile?.collectBlockedReason === 'kyc_incomplete'
 
   const availableOptionsCount = !hasPlan ? 0 : isOnLite ? 1 : 4
-  const savedCardsActive = canCollect && profile?.savedCardsCheckoutEnabled !== false
+  const savedCardsActive =
+    canCollect && profile?.savedCardsCheckoutEnabled !== false
 
   const handleSavedCardsChange = (enabled: boolean) => {
     if (!canCollect) return
@@ -241,7 +239,9 @@ export function PaymentMethodsActiveDrawer() {
                 <Switch
                   checked={savedCardsActive}
                   disabled={!canCollect || updatePaymentSettings.isPending}
-                  onCheckedChange={canCollect ? handleSavedCardsChange : undefined}
+                  onCheckedChange={
+                    canCollect ? handleSavedCardsChange : undefined
+                  }
                 />
               </div>
             }
@@ -297,7 +297,9 @@ export function PaymentMethodsActiveDrawer() {
                 <Switch
                   checked={isProOrAbove && multipleOptionsActive}
                   disabled={!isProOrAbove}
-                  onCheckedChange={isProOrAbove ? setMultipleOptionsActive : undefined}
+                  onCheckedChange={
+                    isProOrAbove ? setMultipleOptionsActive : undefined
+                  }
                 />
               </div>
             }
@@ -338,25 +340,6 @@ export function PaymentMethodsActiveDrawer() {
                 />
               </div>
             }
-          />
-
-          {/* Row 5: Add custom payment method */}
-          <ActionListItem
-            icon={
-              <div className="w-9 h-9 rounded-full bg-transparent flex items-center justify-center">
-                <div className="w-6 h-6 rounded-full bg-[#007AFF] flex items-center justify-center text-white shrink-0">
-                  <Plus size={16} strokeWidth={3} />
-                </div>
-              </div>
-            }
-            title={
-              <span className="font-bold text-[14px] text-[#007AFF]">
-                Add custom payment method
-              </span>
-            }
-            trailing={null}
-            onClick={handleAddCustomMethod}
-            className="py-1.5 px-3"
           />
         </ActionList>
       </div>
