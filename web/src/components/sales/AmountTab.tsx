@@ -86,13 +86,20 @@ export function AmountTab({
             }
           }}
         >
-          <div className="relative flex items-center justify-center w-full rounded-[10px] border border-[#E5E7EB] px-4 py-3 transition-colors focus-within:border-[#0075FF] focus-within:ring-2 focus-within:ring-[#0075FF]/30">
-            <PencilLine size={17} className="mr-2 shrink-0 text-[#9CA3AF]" />
+          <div className="relative flex items-center w-full rounded-[10px] border border-[#E5E7EB] px-4 h-10.5 transition-colors focus-within:border-[#0075FF] focus-within:ring-2 focus-within:ring-[#0075FF]/30">
+            {!description && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-[15px] font-medium text-[#9CA3AF]"
+              >
+                <PencilLine size={17} className="shrink-0" />
+                <span>What’s this payment for?</span>
+              </div>
+            )}
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What’s this payment for?"
               autoComplete="off"
               role="combobox"
               aria-label="Payment description"
@@ -101,7 +108,7 @@ export function AmountTab({
                 showDescriptions && filteredDescriptions.length > 0
               }
               aria-controls="recent-payment-descriptions"
-              className="min-w-0 flex-1 bg-transparent text-center text-[15px] font-medium text-black placeholder:text-[#9CA3AF] focus:outline-none"
+              className="min-w-0 w-full bg-transparent text-center text-[15px] font-medium text-black focus:outline-none"
             />
           </div>
 

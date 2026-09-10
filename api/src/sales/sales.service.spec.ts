@@ -1047,6 +1047,51 @@ describe("SalesService amount invariants", () => {
     });
   });
 
+  describe("pending sale customer changes", () => {
+    it("reassigns an active pending sale to a merchant customer", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const saleId = "507f1f77bcf86cd799439013";
+      const populate = jest.fn();
+      const sale = {
+        _id: saleId,
+        merchantId,
+        status: "PENDING",
+        isArchived: false,
+        customerId: undefined,
+        customerUserId: undefined,
+        customerName: undefined,
+        save: jest.fn(),
+        populate,
+        toObject: jest.fn(() => ({ _id: saleId, merchantId })),
+      };
+      sale.save.mockResolvedValue(sale);
+      populate.mockResolvedValue(sale);
+      const relationship = {
+        _id: customerId,
+        userId: customerUserId,
+        name: "Ada Okafor",
+      };
+      const saleModel = {
+        findOne: jest.fn().mockResolvedValue(sale),
+      };
+      const customerModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(relationship),
+        }),
+      };
+      const service = createService(saleModel, customerModel);
+
+      await expect(
+        service.updateSaleCustomer(merchantId, saleId, customerId),
+      ).resolves.toBe(sale);
+      expect(sale.customerId).toBe(customerId);
+      expect(sale.customerUserId).toBe(customerUserId);
+      expect(sale.customerName).toBe("Ada Okafor");
+      expect(sale.save).toHaveBeenCalledTimes(1);
+      expect(populate).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("authenticated payer identity", () => {
     it("does not let a merchant open a static payment to their own account", async () => {
       const merchantId = "507f1f77bcf86cd799439012";

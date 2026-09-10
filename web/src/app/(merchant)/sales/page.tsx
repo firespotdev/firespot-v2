@@ -2,13 +2,11 @@
 
 import { useEffect, useRef, useState, useTransition, Suspense } from 'react'
 import {
-  ArrowLeft,
   Check,
   ChevronRight,
   Loader2,
   Plus,
   Share,
-  Share2,
   X,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -47,20 +45,17 @@ function SalesPageContent() {
   const searchParams = useSearchParams()
   const urlTab = searchParams.get('tab') as SalesTab | null
 
-  const [activeTab, setActiveTab] = useState<SalesTab>(
-    urlTab === 'confirmed' ? 'confirmed' : 'unconfirmed',
-  )
+  const activeTab: SalesTab =
+    urlTab === 'confirmed' ? 'confirmed' : 'unconfirmed'
+  const [showReviewAllHint, setShowReviewAllHint] = useState(true)
   const [, startTransition] = useTransition()
 
-  // Keep state in sync with ?tab query param
   useEffect(() => {
-    if (urlTab === 'confirmed' || urlTab === 'unconfirmed') {
-      setActiveTab(urlTab)
-    }
-  }, [urlTab])
+    const timeout = window.setTimeout(() => setShowReviewAllHint(false), 3000)
+    return () => window.clearTimeout(timeout)
+  }, [])
 
   const handleTabChange = (newTab: SalesTab) => {
-    setActiveTab(newTab)
     startTransition(() => {
       router.replace(`/sales?tab=${newTab}`)
     })
@@ -90,8 +85,6 @@ function SalesPageContent() {
   const activeSales =
     activeTab === 'unconfirmed' ? pendingSales : confirmedSales
   const isLoading = activeQuery.isLoading
-  const pendingLoading = pendingQuery.isLoading
-
   const metricLabel =
     activeTab === 'unconfirmed'
       ? 'Total unconfirmed sales'
@@ -190,6 +183,7 @@ function SalesPageContent() {
 
   const handleReviewAll = () => {
     if (pendingSales.length === 0) return
+    setShowReviewAllHint(false)
     openDrawer({
       type: 'unconfirmed-details',
       props: {
@@ -250,7 +244,7 @@ function SalesPageContent() {
         }
 
   return (
-    <div className="min-h-dvh bg-linear-to-br from-[#FFFFFF] to-[#F2F4F6]">
+    <div className="min-h-dvh bg-linear-to-br from-[#f4f6f8] to-[#f2f4f6]">
       <div className="mx-auto flex min-h-dvh w-full max-w-125 flex-col px-3 pb-8">
         {/* Top bar with Plus on left, TabSwitch in center, Close on right */}
         <header className="flex items-center justify-between py-1.75">
@@ -267,8 +261,8 @@ function SalesPageContent() {
             value={activeTab}
             onChange={handleTabChange}
             options={TAB_OPTIONS}
-            bgClassName="bg-[#E6E8EB]"
             maxW="max-w-[250px]"
+            bgClassName="bg-[#EBEDF0]"
             className="mx-auto"
             inactiveClassName="text-black font-bold"
           />
@@ -317,14 +311,14 @@ function SalesPageContent() {
 
                 <div className="relative">
                   {/* Review all tooltip pointing down to the checkmark button */}
-                  {pendingSales.length > 0 && (
+                  {showReviewAllHint && pendingSales.length > 0 && (
                     <button
                       type="button"
                       onClick={handleReviewAll}
-                      className="absolute bottom-[calc(100%+8px)] right-[-6px] z-20 whitespace-nowrap rounded-[10px] bg-black px-3.5 py-1.5 text-[13px] font-bold text-white shadow-lg cursor-pointer"
+                      className="absolute bottom-[calc(100%+12px)] right-[-6px] z-20 whitespace-nowrap rounded-[8px] bg-black px-3 h-[34px] text-[14px] font-bold text-white cursor-pointer"
                     >
                       Review all
-                      <span className="absolute -bottom-1.5 right-4 h-3 w-3 rotate-45 bg-black" />
+                      <span className="absolute -bottom-1 right-5 h-3 w-3 rotate-45 bg-black" />
                     </button>
                   )}
 
@@ -348,23 +342,23 @@ function SalesPageContent() {
         />
 
         {/* Confirmed Today Green Banner (Switches tab to confirmed when clicked) */}
-        {confirmedTodayCount > 0 && (
+        {confirmedTodayCount > 0 && activeTab === 'unconfirmed' && (
           <button
             type="button"
             onClick={() => handleTabChange('confirmed')}
-            className="mb-6 flex w-full items-center gap-2.5 rounded-full border border-[#24C1664D] bg-[#E9F6EC] px-3.5 py-2 text-[#24C166] text-left transition-opacity hover:opacity-90"
+            className="mb-6 flex w-full items-center gap-2.5 rounded-[8px] border border-[#24C16633] bg-[#DFF0E9] px-3 h-[32px] text-[#24C166] text-left"
           >
             <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#24C166] text-white">
               <Check size={10} strokeWidth={3} />
             </span>
-            <span className="flex-1 text-[13px] font-semibold leading-tight text-[#24C166]">
+            <span className="flex-1 text-[13px] font-medium leading-tight text-[#33A061]">
               {confirmedTodayCount} sale{confirmedTodayCount === 1 ? '' : 's'}{' '}
               confirmed and recorded today
             </span>
             <ChevronRight
               className="shrink-0 text-[#24C166]"
               size={16}
-              strokeWidth={2.5}
+              strokeWidth={2}
             />
           </button>
         )}
@@ -374,15 +368,21 @@ function SalesPageContent() {
           {!isLoading && activeSales.length > 0 && (
             <div>
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-[14px] font-bold text-black">
+                <h2
+                  className={
+                    activeTab === 'confirmed'
+                      ? 'text-[14px] font-bold text-black mt-3'
+                      : 'text-[14px] font-bold text-black italic'
+                  }
+                >
                   {activeTab === 'unconfirmed'
                     ? `${activeSales.length} awaiting confirmation...`
                     : `${activeSales.length} Confirmed sales`}
                 </h2>
               </div>
               {activeTab === 'unconfirmed' && (
-                <p className="mb-3 mt-1 text-xs font-medium text-[#00000066]">
-                  Swipe right to confirm, swipe left if the payment didn't
+                <p className="mt-0.5 text-xs font-medium text-[#00000066]">
+                  Swipe right to confirm, swipe left if the payment didn&apos;t
                   happen.
                 </p>
               )}
@@ -430,10 +430,9 @@ function SalesPageContent() {
               {activeTab === 'confirmed' && (
                 <Link
                   href="/history?mode=recorded"
-                  className="flex items-center justify-between border-t border-[#F1F1F1] px-4 py-3.5 text-sm font-semibold text-black hover:bg-gray-50 transition-colors"
+                  className="flex items-center justify-center px-4 h-11 text-[13px] font-medium text-[#6B7280]"
                 >
                   <span>View all recorded sales</span>
-                  <ChevronRight size={16} className="text-gray-400" />
                 </Link>
               )}
 

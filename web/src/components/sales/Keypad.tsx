@@ -20,7 +20,7 @@ export function Keypad({ onKeyPress, className = '' }: KeypadProps) {
       className={`w-full border-t border-[#F4F6F8] select-none ${className}`}
     >
       {rows.map((row, i) => (
-        <div key={i} className="flex border-b border-[#F4F6F8] h-16">
+        <div key={i} className="flex border-b border-[#F4F6F8] h-17.5">
           {row.map((key, j) => (
             <button
               key={key}

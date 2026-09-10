@@ -64,6 +64,7 @@ export interface DrawerConfig {
   type: DrawerContentType
   props?: Record<string, unknown>
   direction?: DrawerDirection
+  dismissible?: boolean
 }
 
 export interface DrawerState {

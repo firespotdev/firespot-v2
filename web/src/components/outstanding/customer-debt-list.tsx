@@ -245,15 +245,25 @@ export function CustomerDebtList({
             <AppCard rounded="16" divided>
               {activeSales.map((sale) => {
                 const isUnpaid = activeTab === 'unpaid'
+                const latestRepayment = isUnpaid
+                  ? undefined
+                  : sale.repayments?.[sale.repayments.length - 1]
                 const amount = isUnpaid
                   ? (sale.balanceOwed ??
                     Math.max(0, (sale.amount || 0) - (sale.amountPaid || 0)))
-                  : (sale.amountPaid ?? sale.amount ?? 0)
+                  : (latestRepayment?.amount ??
+                    sale.amountPaid ??
+                    sale.amount ??
+                    0)
                 const dateText = isUnpaid
                   ? sale.dueDate
                     ? `Due on ${formatDate(sale.dueDate)}`
                     : 'No due date'
-                  : formatDate(sale.recordedAt || sale.createdAt)
+                  : formatDate(
+                      latestRepayment?.recordedAt ||
+                        sale.recordedAt ||
+                        sale.createdAt,
+                    )
 
                 return (
                   <button

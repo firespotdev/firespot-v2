@@ -8,22 +8,34 @@ import {
   Copy,
   Info,
   Check,
-  User,
   ShoppingBag,
-  ExternalLink,
   Loader2,
+  PenLine,
+  Plus,
 } from 'lucide-react'
 import Image from 'next/image'
-import { format } from 'date-fns'
 import { formatCurrency } from '@/lib/utils'
-import { showNotificationToast, TagFooter } from '@/components/ui'
+import { formatDateTime } from '@/lib/utils/date-time'
+import { showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import {
   useConfirmSale,
   useArchiveSale,
   useInfiniteSales,
+  useUpdateSaleCustomer,
 } from '@/services/sales/hooks'
 import type { Sale } from '@/services/sales/interface'
+import type { Customer } from '@/services/customers/customersApi'
+import { MerchantAvatar } from '../layout'
+import {
+  getSaleCustomerPhotoUrl,
+  getSaleCustomerName,
+  getSaleCustomerPhone,
+  isRegisteredCustomer,
+  getSaleCustomerTitle,
+} from '@/lib/utils/sales'
+import { ClockIcon } from '@phosphor-icons/react'
+import { Clock } from 'iconsax-reactjs'
 
 interface UnconfirmedDetailsDrawerProps {
   sales?: Sale[]
@@ -38,7 +50,8 @@ export function UnconfirmedDetailsDrawer({
   onConfirmSuccess,
   onArchiveSuccess,
 }: UnconfirmedDetailsDrawerProps) {
-  const { closeDrawer } = useDrawerStore()
+  const closeDrawer = useDrawerStore((state) => state.closeDrawer)
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
   const pendingQuery = useInfiniteSales({ status: 'PENDING' })
 
   // If sales prop is provided use it, otherwise flatten from pendingQuery
@@ -51,10 +64,10 @@ export function UnconfirmedDetailsDrawer({
   const [currentIndex, setCurrentIndex] = useState(
     Math.min(initialIndex, Math.max(0, salesList.length - 1)),
   )
-  const [confirmedSaleIds, setConfirmedSaleIds] = useState<Record<string, boolean>>({})
 
   const confirmSaleMutation = useConfirmSale()
   const archiveSaleMutation = useArchiveSale()
+  const updateSaleCustomerMutation = useUpdateSaleCustomer()
 
   // Current active sale
   const currentSale = activeSales[currentIndex]
@@ -66,7 +79,9 @@ export function UnconfirmedDetailsDrawer({
         <div className="w-12 h-12 rounded-full bg-[#E9F6EC] flex items-center justify-center text-[#24C166] mb-3">
           <Check size={28} strokeWidth={3} />
         </div>
-        <h3 className="font-bold text-lg text-black">You're all caught up!</h3>
+        <h3 className="font-bold text-lg text-black">
+          You&apos;re all caught up!
+        </h3>
         <p className="text-sm text-[#757575] mt-1 max-w-[260px]">
           No more unconfirmed sales to review at the moment.
         </p>
@@ -81,38 +96,43 @@ export function UnconfirmedDetailsDrawer({
     )
   }
 
-  const isConfirmed = !!confirmedSaleIds[currentSale._id] || currentSale.status === 'CONFIRMED'
+  const isArchived =
+    currentSale.isArchived ||
+    currentSale.status === 'ARCHIVED' ||
+    currentSale.status === 'CANCELLED'
+  const isConfirmed = !isArchived && currentSale.status === 'CONFIRMED'
 
   const formattedDate = (() => {
     const raw = currentSale.recordedAt || currentSale.createdAt
-    if (!raw) return 'N/A'
-    try {
-      return format(new Date(raw), 'MMMM do, yyyy · h:mm a')
-    } catch {
-      return String(raw)
-    }
+    return formatDateTime(raw, { ordinalDay: true, fallback: 'N/A' })
   })()
 
-  const customerName = (() => {
-    if (typeof currentSale.customerId === 'object' && currentSale.customerId?.name) {
-      return currentSale.customerId.name
-    }
-    if (currentSale.customerName) {
-      return currentSale.customerName
-    }
-    return 'New customer'
-  })()
-
-  const customerPhone = (() => {
-    if (typeof currentSale.customerId === 'object' && currentSale.customerId?.phoneNumber) {
-      return currentSale.customerId.phoneNumber
-    }
-    return currentSale.customerPhone || ''
-  })()
+  const customerName = getSaleCustomerName(currentSale)
+  const customerPhone = getSaleCustomerPhone(currentSale)
+  const isRegistered = isRegisteredCustomer(currentSale)
+  const customerTitle = getSaleCustomerTitle(currentSale)
 
   const customerVisits = currentSale.customerPurchaseCount || 1
   const isRepeatCustomer =
     currentSale.customerType === 'Repeat' || customerVisits > 1
+
+  const saleReference =
+    (currentSale.reference && currentSale.reference !== currentSale.serialNumber
+      ? currentSale.reference
+      : currentSale._id?.slice(-8).toUpperCase()) || 'N/A'
+
+  const paymentMethodDisplay = (() => {
+    const method =
+      currentSale.paymentMethod ||
+      (currentSale.paymentRail === 'paystack' ? 'Card' : 'Bank Transfer')
+    if (
+      currentSale.targetBankName &&
+      !method.toLowerCase().includes(currentSale.targetBankName.toLowerCase())
+    ) {
+      return `${method} (${currentSale.targetBankName})`
+    }
+    return method
+  })()
 
   const handleCopy = (text: string, label: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -141,28 +161,17 @@ export function UnconfirmedDetailsDrawer({
     const saleId = currentSale._id
 
     confirmSaleMutation.mutate(saleId, {
-      onSuccess: () => {
-        setConfirmedSaleIds((prev) => ({ ...prev, [saleId]: true }))
+      onSuccess: (updatedSale) => {
+        setActiveSales((previousSales) =>
+          previousSales.map((sale) =>
+            sale._id === saleId ? { ...sale, ...updatedSale } : sale,
+          ),
+        )
         onConfirmSuccess?.(saleId)
         showNotificationToast({
           message: 'Payment confirmed',
           mode: 'success',
         })
-
-        // Auto advance after 900ms or stay if last
-        setTimeout(() => {
-          setActiveSales((prevList) => {
-            const nextList = prevList.filter((s) => s._id !== saleId)
-            if (nextList.length === 0) {
-              closeDrawer()
-              return []
-            }
-            if (currentIndex >= nextList.length) {
-              setCurrentIndex(nextList.length - 1)
-            }
-            return nextList
-          })
-        }, 800)
       },
       onError: () => {
         showNotificationToast({
@@ -178,23 +187,16 @@ export function UnconfirmedDetailsDrawer({
     const saleId = currentSale._id
 
     archiveSaleMutation.mutate(saleId, {
-      onSuccess: () => {
+      onSuccess: (updatedSale) => {
+        setActiveSales((previousSales) =>
+          previousSales.map((sale) =>
+            sale._id === saleId ? { ...sale, ...updatedSale } : sale,
+          ),
+        )
         onArchiveSuccess?.(saleId)
         showNotificationToast({
           message: 'Sale cancelled and archived',
           mode: 'success',
-        })
-
-        setActiveSales((prevList) => {
-          const nextList = prevList.filter((s) => s._id !== saleId)
-          if (nextList.length === 0) {
-            closeDrawer()
-            return []
-          }
-          if (currentIndex >= nextList.length) {
-            setCurrentIndex(nextList.length - 1)
-          }
-          return nextList
         })
       },
       onError: () => {
@@ -206,42 +208,51 @@ export function UnconfirmedDetailsDrawer({
     })
   }
 
-  const handleUndo = () => {
-    setConfirmedSaleIds((prev) => {
-      const copy = { ...prev }
-      delete copy[currentSale._id]
-      return copy
-    })
+  const handleSelectCustomer = (customer: Customer) => {
+    closeDrawer('customer-select')
+    updateSaleCustomerMutation.mutate(
+      { saleId: currentSale._id, customerId: customer._id },
+      {
+        onSuccess: (updatedSale) => {
+          setActiveSales((previousSales) =>
+            previousSales.map((sale) =>
+              sale._id === currentSale._id ? { ...sale, ...updatedSale } : sale,
+            ),
+          )
+          showNotificationToast({
+            message: 'Customer updated',
+            mode: 'success',
+          })
+        },
+        onError: () => {
+          showNotificationToast({
+            message: 'Failed to update customer',
+            mode: 'error',
+          })
+        },
+      },
+    )
   }
 
   return (
-    <div className="flex flex-col bg-white rounded-t-3xl max-h-[85dvh] font-satoshi text-black">
+    <div className="flex flex-col bg-linear-to-br from-[#ffffff] to-[#f2f4f6] rounded-t-[12px] text-black">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-[#F1F1F1] shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="relative w-8 h-8 rounded-full bg-[#E5E7EB] flex items-center justify-center text-gray-600 font-bold text-xs overflow-hidden">
-            {typeof currentSale.customerId === 'object' &&
-            currentSale.customerId?.profilePhotoUrl ? (
-              <Image
-                src={currentSale.customerId.profilePhotoUrl}
-                alt={customerName}
-                width={32}
-                height={32}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span>{customerName.charAt(0).toUpperCase()}</span>
-            )}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#24C166] rounded-full border border-white" />
-          </div>
+      <header className="flex items-center justify-between px-3 py-2 border-b border-[#F1F1F1] shrink-0">
+        <div className="flex items-center gap-2">
+          <MerchantAvatar
+            bankName={currentSale.targetBankName}
+            profilePhotoUrl={getSaleCustomerPhotoUrl(currentSale)}
+            alt={customerName}
+            size={36}
+          />
 
           <div className="flex flex-col">
-            <h2 className="text-[15px] font-bold text-black leading-tight">
+            <h2 className="text-[13px] font-bold text-black leading-tight">
               {currentSale.source === 'QR scan'
                 ? 'From QR kit scan'
                 : customerName}
             </h2>
-            <p className="text-[12px] text-[#757575] font-medium leading-none mt-0.5">
+            <p className="text-[12px] text-[#6B7280] font-medium leading-none mt-0.5">
               {currentIndex + 1} of {activeSales.length}
             </p>
           </div>
@@ -251,14 +262,14 @@ export function UnconfirmedDetailsDrawer({
           type="button"
           onClick={() => closeDrawer()}
           aria-label="Close"
-          className="w-9 h-9 flex items-center justify-center -mr-1 text-black"
+          className="w-9 h-9 flex items-center justify-center text-black"
         >
-          <X size={22} />
+          <X size={24} />
         </button>
       </header>
 
       {/* Scrollable Body */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {/* Amount & Navigation Bar */}
         <div className="flex items-center justify-between gap-2 py-2">
           {/* Left Arrow with large hit target */}
@@ -267,26 +278,28 @@ export function UnconfirmedDetailsDrawer({
             aria-label="Previous sale"
             onClick={handlePrev}
             disabled={currentIndex === 0}
-            className="w-11 h-11 shrink-0 rounded-full bg-[#F3F4F6] hover:bg-gray-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-black transition-all"
+            className="w-9 h-9 shrink-0 flex items-center justify-center text-black transition-all"
           >
-            <ChevronLeft size={22} strokeWidth={2.5} />
+            <ChevronLeft size={28} strokeWidth={3} color="#D1D5DB" />
           </button>
 
           {/* Amount & Status Center */}
           <div className="flex flex-col items-center justify-center text-center flex-1 min-w-0">
-            {isConfirmed ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#E9F6EC] text-[#24C166] border border-[#24C1664D]">
-                <span className="w-2 h-2 rounded-full bg-[#24C166]" />
+            {isArchived ? (
+              <span className="inline-flex items-center px-1.5 h-5 rounded-[6px] text-[11px] font-bold bg-[#E5E7EB] text-[#6B7280]">
+                Archived
+              </span>
+            ) : isConfirmed ? (
+              <span className="inline-flex items-center px-1.5 h-5 rounded-[6px] text-[11px] font-bold bg-[#24C1661A] text-[#24C166]">
                 Confirmed
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-[#FFF9EB] text-[#BB8123] border border-[#FDE68A]">
-                <span className="w-2 h-2 rounded-full bg-[#BB8123]" />
+              <span className="inline-flex items-center px-1.5 h-5 rounded-[6px] text-[11px] font-bold bg-[#BB81231A] text-[#BB8123]">
                 Unconfirmed
               </span>
             )}
 
-            <h1 className="text-[32px] font-bold text-black tracking-tight mt-1.5 leading-none">
+            <h1 className="text-[20px] font-bold text-black mt-2">
               ₦ {formatCurrency(currentSale.amount || 0)}
             </h1>
           </div>
@@ -297,282 +310,286 @@ export function UnconfirmedDetailsDrawer({
             aria-label="Next sale"
             onClick={handleNext}
             disabled={currentIndex >= activeSales.length - 1}
-            className="w-11 h-11 shrink-0 rounded-full bg-[#F3F4F6] hover:bg-gray-200 active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-black transition-all"
+            className="w-9 h-9 shrink-0 flex items-center justify-center text-black transition-all"
           >
-            <ChevronRight size={22} strokeWidth={2.5} />
+            <ChevronRight size={28} strokeWidth={3} color="#D1D5DB" />
           </button>
         </div>
 
         {/* Notice Message Banner */}
-        {isConfirmed ? (
-          <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#E9F6EC] border border-[#24C1664D] text-[#24C166] text-[13px] font-medium">
-            <Check size={18} strokeWidth={2.5} className="shrink-0" />
-            <span>Payment confirmed and added to sales.</span>
+        {isArchived ? (
+          <div className="flex items-center gap-2.5 p-3 rounded-[12px] bg-[#F3F4F6] text-[#6B7280] text-[13px] font-medium">
+            <X size={18} strokeWidth={2.5} className="shrink-0" />
+            <span>Sale cancelled and archived.</span>
+          </div>
+        ) : isConfirmed ? (
+          <div className="flex items-center justify-center -mt-3">
+            <p className="text-[#00000080] text-[14px] font-medium">
+              Payment confirmed and added to sales.
+            </p>
           </div>
         ) : (
-          <div className="flex items-start gap-2.5 p-3 rounded-[12px] bg-[#F9FAFB] border border-[#E5E7EB] text-[#4B5563] text-[13px] leading-relaxed">
-            <Info size={18} className="shrink-0 text-[#6B7280] mt-0.5" />
-            <span>Only confirm after you've verified that the payment was received.</span>
+          <div className="flex items-center justify-start gap-2 p-3 rounded-[12px] bg-[#F8F8F8] text-[#00000066] text-[12px]">
+            <Info size={16} className="shrink-0 text-[#6B7280]" />
+            <span>
+              Only confirm after you&apos;ve verified that the payment was
+              received.
+            </span>
           </div>
         )}
 
-        {/* Items Breakdown (if items exist) */}
-        {currentSale.items && currentSale.items.length > 0 && (
-          <div className="rounded-[14px] border border-[#F1F1F1] bg-white p-3.5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">
-                Items ({currentSale.items.length})
-              </span>
-              <span className="text-xs font-semibold text-black">
-                Total: ₦ {formatCurrency(currentSale.amount || 0)}
-              </span>
-            </div>
+        <div className="border-t border-[#f1f1f1] -mx-3 px-3 pt-3">
+          {/* Items Breakdown (if items exist) */}
+          {currentSale.items && currentSale.items.length > 0 && (
+            <div className="rounded-[14px] border border-[#F1F1F1] bg-white p-3.5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#6B7280] uppercase tracking-wider">
+                  Items ({currentSale.items.length})
+                </span>
+                <span className="text-xs font-semibold text-black">
+                  Total: ₦ {formatCurrency(currentSale.amount || 0)}
+                </span>
+              </div>
 
-            <div className="divide-y divide-[#F1F1F1]">
-              {currentSale.items.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-3 py-2">
-                  <div className="w-10 h-10 rounded-[8px] bg-[#F3F4F6] flex items-center justify-center shrink-0 overflow-hidden text-gray-500">
-                    {item.productImageUrl ? (
-                      <Image
-                        src={item.productImageUrl}
-                        alt={item.productName || 'Product'}
-                        width={40}
-                        height={40}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <ShoppingBag size={18} />
-                    )}
-                  </div>
+              <div className="divide-y divide-[#F1F1F1]">
+                {currentSale.items.map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-3 py-2">
+                    <div className="w-10 h-10 rounded-[8px] bg-[#F3F4F6] flex items-center justify-center shrink-0 overflow-hidden text-gray-500">
+                      {item.productImageUrl ? (
+                        <Image
+                          src={item.productImageUrl}
+                          alt={item.productName || 'Product'}
+                          width={40}
+                          height={40}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <ShoppingBag size={18} />
+                      )}
+                    </div>
 
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-black truncate">
-                      {item.quantity ? `${item.quantity}x ` : ''}
-                      {item.productName || 'Custom item'}
-                    </p>
-                    {item.selectedVariant?.label && (
-                      <p className="text-xs text-[#6B7280]">
-                        {item.selectedVariant.label}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-black truncate">
+                        {item.quantity ? `${item.quantity}x ` : ''}
+                        {item.productName || 'Custom item'}
                       </p>
-                    )}
+                      {item.selectedVariant?.label && (
+                        <p className="text-xs text-[#6B7280]">
+                          {item.selectedVariant.label}
+                        </p>
+                      )}
+                    </div>
+
+                    <span className="text-sm font-bold text-black shrink-0">
+                      ₦{' '}
+                      {formatCurrency((item.price || 0) * (item.quantity || 1))}
+                    </span>
                   </div>
-
-                  <span className="text-sm font-bold text-black shrink-0">
-                    ₦ {formatCurrency((item.price || 0) * (item.quantity || 1))}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Payment Information Card (Full Datapoint Breakdown) */}
-        <div className="rounded-[14px] border border-[#F1F1F1] bg-white p-4 space-y-3.5 shadow-[0px_2px_6px_0px_#00000005]">
-          <h3 className="font-bold text-[14px] text-black">
+          <h3 className="font-bold text-[14px] text-black mb-3 ml-0.5">
             Payment information
           </h3>
-
-          <div className="space-y-3 text-[13px]">
-            {/* Payment Method */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Payment method</span>
-              <span className="font-semibold text-black text-right">
-                {currentSale.paymentMethod || 'Bank transfer (Moniepoint)'}
-              </span>
-            </div>
-
-            {/* Target Bank */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Target bank</span>
-              <span className="font-semibold text-black text-right">
-                {currentSale.targetBankName || 'Moniepoint MFB'}
-              </span>
-            </div>
-
-            {/* Account Number */}
-            {currentSale.targetAccountNumber && (
+          {/* Payment Information Card (Full Datapoint Breakdown) */}
+          <div className="rounded-[14px] border border-[#F1F1F1] bg-white p-4 space-y-3.5 shadow-[0px_2px_6px_0px_#00000005]">
+            <div className="space-y-4 text-[13px]">
+              {/* Payment Method */}
               <div className="flex items-center justify-between">
-                <span className="text-[#6B7280] font-normal">Account number</span>
-                <span className="font-semibold text-black text-right">
-                  {currentSale.targetAccountNumber}
+                <span className="text-[#00000080] font-medium text-[14px]">
+                  Payment method
+                </span>
+                <span className="font-medium text-[14px] text-black text-right">
+                  {paymentMethodDisplay}
                 </span>
               </div>
-            )}
 
-            {/* Date and Time */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Date and time</span>
-              <span className="font-semibold text-black text-right">
-                {formattedDate}
-              </span>
-            </div>
-
-            {/* Sale ID / Reference with Copy */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Sale ID</span>
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-black font-mono text-xs">
-                  {currentSale.reference || currentSale._id.slice(-8).toUpperCase()}
+              {/* Date and Time */}
+              <div className="flex items-center justify-between">
+                <span className="text-[#00000080] font-medium text-[14px]">
+                  Date and time
                 </span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleCopy(
-                      currentSale.reference || currentSale._id,
-                      'Sale ID',
-                    )
-                  }
-                  className="p-1 text-gray-500 hover:text-black transition-colors"
-                  aria-label="Copy sale ID"
-                >
-                  <Copy size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Status */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Status</span>
-              <span className="font-semibold text-right flex items-center gap-1.5">
-                {isConfirmed ? (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-[#24C166]" />
-                    <span className="text-[#24C166]">Paid</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="w-2 h-2 rounded-full bg-[#BB8123]" />
-                    <span className="text-[#BB8123]">Unconfirmed</span>
-                  </>
-                )}
-              </span>
-            </div>
-
-            {/* Via QR Kit */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Via</span>
-              <span className="font-semibold text-black text-right">
-                {currentSale.qrKitName ||
-                  (currentSale.serialNumber
-                    ? `QR Kit #${currentSale.serialNumber}`
-                    : 'FSiD Scan')}
-              </span>
-            </div>
-
-            {/* Rail */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Rail</span>
-              <span className="font-semibold text-black text-right">
-                {currentSale.paymentRail === 'paystack'
-                  ? 'Paystack'
-                  : currentSale.paymentRail === 'manual_transfer'
-                    ? 'Manual Transfer'
-                    : 'Direct Bank Transfer'}
-              </span>
-            </div>
-
-            {/* Channel */}
-            <div className="flex items-center justify-between">
-              <span className="text-[#6B7280] font-normal">Channel</span>
-              <span className="font-semibold text-black text-right">
-                {currentSale.channel || 'Manual verification'}
-              </span>
-            </div>
-
-            {/* Customer Note */}
-            {currentSale.description && (
-              <div className="flex items-start justify-between pt-1 border-t border-[#F1F1F1]">
-                <span className="text-[#6B7280] font-normal">Note</span>
-                <span className="font-medium text-black text-right max-w-[200px] text-xs">
-                  {currentSale.description}
+                <span className="font-medium text-[14px] text-black text-right">
+                  {formattedDate}
                 </span>
               </div>
-            )}
 
-            {/* Customer Uploaded Receipt Preview */}
-            {currentSale.receiptUrl && (
-              <div className="pt-2 border-t border-[#F1F1F1]">
-                <span className="text-[#6B7280] font-normal block mb-1.5">
-                  Uploaded Receipt
+              {/* Sale ID / Reference with Copy */}
+              <div className="flex items-center justify-between">
+                <span className="text-[#00000080] font-medium text-[14px]">
+                  Sale ID
                 </span>
-                <a
-                  href={currentSale.receiptUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 p-2 rounded-[8px] bg-[#F9FAFB] border border-[#E5E7EB] text-xs font-semibold text-blue-600 hover:underline"
-                >
-                  <ExternalLink size={14} />
-                  <span>View payment receipt</span>
-                </a>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium text-[14px] text-black">
+                    {saleReference}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(saleReference, 'Sale ID')}
+                    className="p-1 text-gray-500 hover:text-black transition-colors"
+                    aria-label="Copy sale ID"
+                  >
+                    <Copy size={14} />
+                  </button>
+                </div>
               </div>
-            )}
+
+              {/* Status */}
+              <div className="flex items-center justify-between">
+                <span className="text-[#00000080] font-medium text-[14px]">
+                  Status
+                </span>
+                <span className="font-medium text-[14px] text-black text-right flex items-center gap-1.5">
+                  {isArchived ? (
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-[#6B7280]" />
+                      <span className="text-[#6B7280]">Archived</span>
+                    </div>
+                  ) : isConfirmed ? (
+                    <div className="flex items-center gap-1">
+                      <div className="w-4.5 h-4.5 rounded-full bg-[#24C166] flex justify-center items-center">
+                        <Check size={12} color="white" strokeWidth={3} />
+                      </div>
+                      <span className="text-[#24C166]">Paid</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1">
+                      <Clock
+                        size="20"
+                        color="#BB8123"
+                        variant="Bold"
+                        strokeWidth={3}
+                      />
+                      <span className="text-[#BB8123]">Unconfirmed</span>
+                    </div>
+                  )}
+                </span>
+              </div>
+
+              {/* Via QR Kit */}
+              <div className="flex items-center justify-between">
+                <span className="text-[#00000080] font-medium text-[14px]">
+                  Via
+                </span>
+                <span className="font-medium text-[14px] text-black text-right">
+                  {currentSale.qrKitName ||
+                    (currentSale.serialNumber
+                      ? `QR Kit #${currentSale.serialNumber}`
+                      : 'FSiD Scan')}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Customer Card */}
-        <div className="rounded-[14px] border border-[#F1F1F1] bg-white p-3.5 flex items-center justify-between gap-3 shadow-[0px_2px_6px_0px_#00000005]">
+        <h3 className="font-bold text-[14px] text-black pt-1 mb-3 ml-0.5">
+          Customer
+        </h3>
+
+        <div className="rounded-[12px] border border-[#F1F1F1] bg-white p-3 flex items-center justify-between gap-3 shadow-[0px_4px_8px_0px_#0000000A]">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-[#E5E7EB] flex items-center justify-center shrink-0 text-gray-700 font-bold">
-              <User size={18} />
-            </div>
+            <MerchantAvatar
+              bankName={currentSale.targetBankName}
+              profilePhotoUrl={getSaleCustomerPhotoUrl(currentSale)}
+              alt={customerTitle}
+              size={36}
+            />
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-semibold text-[14px] text-black truncate">
-                  {customerName}
+                  {customerTitle}
                 </p>
-                {isRepeatCustomer && (
+                {isRegistered && isRepeatCustomer && (
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#F3F4F6] text-[#4B5563] shrink-0">
                     Repeat ({customerVisits} visits)
                   </span>
                 )}
               </div>
               <p className="text-xs text-[#757575] mt-0.5 truncate">
-                {customerPhone || 'No phone number attached'}
+                {isRegistered
+                  ? customerPhone || 'No phone number attached'
+                  : 'Add details'}
               </p>
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() =>
-              showNotificationToast({
-                message: 'Customer editing available in customer directory',
-              })
-            }
-            className="px-3 py-1.5 rounded-full bg-[#F3F4F6] hover:bg-gray-200 text-xs font-bold text-black shrink-0 transition-colors"
-          >
-            UPDATE
-          </button>
+          {!isRegistered ? (
+            <button
+              type="button"
+              onClick={() =>
+                openDrawer({
+                  type: 'add-customer',
+                  props: {
+                    onSelect: (customer: Customer) => {
+                      closeDrawer('add-customer')
+                      handleSelectCustomer(customer)
+                    },
+                  },
+                })
+              }
+              disabled={
+                isConfirmed ||
+                isArchived ||
+                updateSaleCustomerMutation.isPending
+              }
+              className="px-3 h-9 w-fit rounded-full bg-[#F1F1F1] text-[10px] font-bold text-black tracking-[1px] flex justify-center items-center gap-1.5 disabled:opacity-50"
+            >
+              <Plus size={14} /> ADD
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() =>
+                openDrawer({
+                  type: 'customer-select',
+                  props: {
+                    title: 'Who paid you?',
+                    onSelect: handleSelectCustomer,
+                    onBack: () => closeDrawer('customer-select'),
+                  },
+                })
+              }
+              disabled={
+                isConfirmed ||
+                isArchived ||
+                updateSaleCustomerMutation.isPending
+              }
+              className="px-3 h-9 w-fit rounded-full bg-[#F1F1F1] text-[10px] font-bold text-black tracking-[1px] flex justify-center items-center gap-2 disabled:opacity-50"
+            >
+              <PenLine size={14} /> UPDATE
+            </button>
+          )}
         </div>
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-[#F1F1F1] shrink-0">
-        {isConfirmed ? (
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleUndo}
-              className="flex-1 h-12 rounded-full bg-[#F3F4F6] hover:bg-gray-200 text-black font-bold text-[14px] flex items-center justify-center transition-colors"
-            >
-              Undo
-            </button>
-            <div className="flex-1 h-12 rounded-full bg-[#24C166] text-white font-bold text-[14px] flex items-center justify-center gap-2 opacity-95 cursor-default">
-              <Check size={18} strokeWidth={3} />
-              <span>Confirmed</span>
-            </div>
+      <div className="p-3 border-t border-[#F1F1F1] shrink-0">
+        {isArchived ? (
+          <div className="h-11 rounded-full bg-[#E5E7EB] text-[#6B7280] font-bold text-[14px] flex items-center justify-center gap-2">
+            <X size={18} strokeWidth={3} />
+            <span>Archived</span>
+          </div>
+        ) : isConfirmed ? (
+          <div className="h-11 opacity-70 rounded-full bg-[#24C166] text-white font-bold text-[14px] flex items-center justify-center gap-2 cursor-default">
+            <Check size={18} strokeWidth={3} />
+            <span>Confirmed</span>
           </div>
         ) : (
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={handleCancelSale}
-              disabled={archiveSaleMutation.isPending || confirmSaleMutation.isPending}
-              className="flex-1 h-12 rounded-full bg-[#F3F4F6] hover:bg-gray-200 active:scale-[0.98] disabled:opacity-50 text-black font-bold text-[14px] flex items-center justify-center transition-all"
+              disabled={
+                archiveSaleMutation.isPending || confirmSaleMutation.isPending
+              }
+              className="flex-1 h-11 rounded-full bg-[#E5E7EB] disabled:opacity-50 text-black font-bold text-[14px] flex items-center justify-center transition-all"
             >
               {archiveSaleMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 'Cancel sale'
               )}
@@ -581,21 +598,19 @@ export function UnconfirmedDetailsDrawer({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={archiveSaleMutation.isPending || confirmSaleMutation.isPending}
-              className="flex-1 h-12 rounded-full bg-[#24C166] hover:bg-[#20af5c] active:scale-[0.98] disabled:opacity-50 text-white font-bold text-[14px] flex items-center justify-center shadow-[0px_2px_4px_0px_#1433204D] transition-all"
+              disabled={
+                archiveSaleMutation.isPending || confirmSaleMutation.isPending
+              }
+              className="flex-1 h-11 rounded-full bg-[#24C166] disabled:opacity-50 text-white font-bold text-[14px] flex items-center justify-center transition-all"
             >
               {confirmSaleMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 'Confirm payment'
               )}
             </button>
           </div>
         )}
-
-        <div className="mt-3">
-          <TagFooter />
-        </div>
       </div>
     </div>
   )

@@ -12,11 +12,13 @@ interface BankLogoProps {
 }
 
 export function BankLogo({ bankName, size = 40, className = '' }: BankLogoProps) {
-  const [src, setSrc] = useState(() => getBankLogo(bankName))
+  const logoSrc = getBankLogo(bankName)
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+  const src = failedSrc === logoSrc ? BANK_PLACEHOLDER : logoSrc
 
   const handleError = () => {
     if (src !== BANK_PLACEHOLDER) {
-      setSrc(BANK_PLACEHOLDER)
+      setFailedSrc(src)
     }
   }
 

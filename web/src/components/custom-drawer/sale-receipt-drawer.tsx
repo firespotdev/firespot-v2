@@ -3,11 +3,11 @@
 import { useRef, useState } from 'react'
 import { Share, Download, Copy, Check } from 'lucide-react'
 import { Button, TagFooter, CircularIconButton, LoaderCircle } from '../ui'
-import { format } from 'date-fns'
 import { showNotificationToast } from '@/components/ui'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { formatCurrency } from '@/lib/utils'
+import { formatDateTime } from '@/lib/utils/date-time'
 import { getSaleDescription } from '@/lib/utils/sales'
 import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 import { useReceiptPNGShare } from '@/hooks/use-receipt-png-share'
@@ -26,15 +26,6 @@ export function SaleReceiptDrawer({
   const receiptRef = useRef<HTMLDivElement>(null)
   const [isDownloading, setIsDownloading] = useState(false)
 
-  const formatDate = (date: string | Date | undefined) => {
-    if (!date) return 'N/A'
-    try {
-      return format(new Date(date), 'MMMM do, yyyy . h:mm a')
-    } catch {
-      return String(date)
-    }
-  }
-
   const merchantName =
     sale.merchant?.businessName || merchant.businessName || 'Merchant'
   const paidTo = sale.targetBankName || merchantName
@@ -43,8 +34,9 @@ export function SaleReceiptDrawer({
       receiptRef,
       cacheKey: `${sale.id}:${sale.recordedAt || sale.createdAt}`,
       filename: `firespot-receipt-${sale.reference || sale.id}.png`,
-      text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} to ${merchantName} on ${formatDate(
+      text: `Receipt for payment of NGN ${formatCurrency(sale.amount || 0)} to ${merchantName} on ${formatDateTime(
         sale.recordedAt || sale.createdAt,
+        { ordinalDay: true, fallback: 'N/A' },
       )}`,
     })
 
@@ -193,7 +185,10 @@ export function SaleReceiptDrawer({
                 Date and time
               </span>
               <span className="text-[14px] font-medium text-black">
-                {formatDate(sale.recordedAt || sale.createdAt)}
+                {formatDateTime(sale.recordedAt || sale.createdAt, {
+                  ordinalDay: true,
+                  fallback: 'N/A',
+                })}
               </span>
             </div>
 

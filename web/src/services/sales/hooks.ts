@@ -191,6 +191,23 @@ export const useConfirmSale = () => {
   });
 };
 
+export const useUpdateSaleCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      customerId,
+    }: {
+      saleId: string;
+      customerId: string;
+    }) => SalesApi.updateSaleCustomer(saleId, customerId),
+    onSuccess: (data, { saleId }) => {
+      queryClient.setQueryData(['sale', saleId], data);
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};
+
 export const useConfirmAllSales = () => {
   const queryClient = useQueryClient();
   return useMutation({

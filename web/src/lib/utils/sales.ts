@@ -107,7 +107,15 @@ export const getStatusDescription = (sale: Sale) => {
 }
 
 export const getRecentSaleSummary = (sale: Sale) => {
-  return getSaleDescription(sale)
+  const subject = getSaleSubject(sale)
+  const characters = Array.from(subject)
+  const shortenedSubject =
+    characters.length > 7
+      ? `${characters.slice(0, 7).join('').trimEnd()}...`
+      : subject
+  const amount = `₦${formatCurrency(sale.amount || 0)}`
+
+  return `${amount} for ${shortenedSubject}`
 }
 
 export const getSaleCustomerName = (sale: Sale) => {
@@ -139,4 +147,35 @@ export const getSaleCustomerPhotoUrl = (sale?: Sale | null) => {
   }
 
   return undefined
+}
+
+export const getSaleCustomerPhone = (sale?: Sale | null) => {
+  if (!sale) return ''
+
+  if (typeof sale.customerId === 'object' && sale.customerId?.phoneNumber) {
+    return sale.customerId.phoneNumber
+  }
+
+  return sale.customerPhone || ''
+}
+
+export const isRegisteredCustomer = (sale?: Sale | null): boolean => {
+  if (!sale) return false
+  return Boolean(
+    sale.customerId ||
+      sale.customerUserId ||
+      sale.customerName?.trim() ||
+      sale.customerPhone?.trim(),
+  )
+}
+
+export const getSaleCustomerTitle = (sale: Sale): string => {
+  if (isRegisteredCustomer(sale)) {
+    return getSaleCustomerName(sale)
+  }
+
+  const visits = sale.customerPurchaseCount || 1
+  const isRepeat = sale.customerType === 'Repeat' || visits > 1
+
+  return isRepeat ? `Repeat customer (${visits} visits)` : 'New customer'
 }

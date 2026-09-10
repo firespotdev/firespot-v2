@@ -158,6 +158,16 @@ export const SalesApi = {
     return data;
   },
 
+  updateSaleCustomer: async (
+    saleId: string,
+    customerId: string,
+  ): Promise<Sale> => {
+    const { data } = await apiClient.patch(`/sales/${saleId}/customer`, {
+      customerId,
+    });
+    return data;
+  },
+
   confirmAllSales: async (): Promise<ConfirmAllSalesResult> => {
     const { data } = await apiClient.patch('/sales/confirm-all');
     return data;

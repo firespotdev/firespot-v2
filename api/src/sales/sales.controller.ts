@@ -21,6 +21,7 @@ import { EditSaleDto } from './dto/edit-sale.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
 import { CustomerSaleActionDto } from './dto/customer-sale-action.dto';
 import { RecordRepaymentDto } from './dto/record-repayment.dto';
+import { UpdateSaleCustomerDto } from './dto/update-sale-customer.dto';
 import { CreatePaystackCollectSaleDto } from './dto/create-paystack-collect-sale.dto';
 import {
   InitializePaystackSaleDto,
@@ -233,6 +234,22 @@ export class SalesController {
   @Patch(':id/confirm')
   async confirmSale(@GetUser() user: User, @Param('id') saleId: string) {
     return this.salesService.confirmSale((user as any).userId, saleId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Change the customer on a pending sale' })
+  @Patch(':id/customer')
+  async updateSaleCustomer(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+    @Body() dto: UpdateSaleCustomerDto,
+  ) {
+    return this.salesService.updateSaleCustomer(
+      (user as any).userId,
+      saleId,
+      dto.customerId,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')

@@ -2,7 +2,6 @@
 
 import { Check, X, AlertCircle, Clock } from 'lucide-react'
 import { Button, StatBanner, TagFooter } from '../ui'
-import { LoaderCircle } from '../ui'
 import { useRouter } from '@bprogress/next/app'
 import { useSalesStats } from '@/services/sales/hooks'
 import Link from 'next/link'
@@ -11,7 +10,7 @@ import { cn, formatCurrency } from '@/lib/utils'
 
 interface RecordSuccessDrawerProps {
   successDetails: any
-  status: 'saving' | 'success' | 'error'
+  status: 'success' | 'error'
   errorMessage?: string
   setStep: (step: 'input' | 'saving' | 'success' | 'error') => void
   setAmount: (amount: string) => void
@@ -80,21 +79,6 @@ const RecordSuccessDrawer = ({
     else if (day === 3 || day === 23) suffix = 'rd'
 
     return `${day}${suffix} ${month}, ${year}`
-  }
-
-  if (status === 'saving') {
-    return (
-      <div className="h-dvh w-full overflow-hidden bg-[#FEFEFE] flex flex-col items-center">
-        <div className="w-full h-full flex flex-col font-satoshi">
-          <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4">
-            <LoaderCircle innerBg="#FEFEFE" />
-            <p className="text-[14px] font-medium text-black/70">
-              Saving to records...
-            </p>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   // Error state

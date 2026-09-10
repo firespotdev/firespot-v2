@@ -121,6 +121,7 @@ const DRAWER_CONFIG: Record<
     Content: ShareTransferDrawer,
     fullScreen: true,
     noHeader: true,
+    dismissible: true,
   },
   'profile-share': {
     title: '',
@@ -455,7 +456,8 @@ const DRAWER_CONFIG: Record<
     noHeader: true,
     direction: 'bottom',
     fullScreen: false,
-    contentClassName: 'bg-white',
+    contentClassName:
+      'bg-white data-[vaul-drawer-direction=bottom]:max-h-[93dvh]',
   },
   'payment-methods-active': {
     title: '',
@@ -516,11 +518,12 @@ export function CustomDrawer() {
       fullScreen,
       noHeader,
       hideHandle,
-      dismissible = false,
+      dismissible: defaultDismissible = false,
       contentClassName,
       animateOnClose,
     } = drawerConfig
     const drawerDirection = config.direction || direction || 'bottom'
+    const dismissible = config.dismissible ?? defaultDismissible
     const isOpen = exitingConfig !== config
 
     const handleClose = () => {

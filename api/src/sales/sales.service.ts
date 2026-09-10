@@ -696,7 +696,7 @@ export class SalesService {
     const customerPurchaseCount = confirmedSalesCount + 1 // Including this potential sale
 
     // Generate unique reference
-    const reference = generateReference('FS-', 8)
+    const reference = generateReference('SL-', 12)
 
     let qrKitName = undefined
     if (dto.serialNumber) {
@@ -825,7 +825,7 @@ export class SalesService {
       status: 'PENDING',
       source: 'QR scan',
       isCollection: true,
-      reference: generateReference('FS-', 8),
+      reference: generateReference('SL-', 12),
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
       // A collection request is not a recorded payment or a debt. These
@@ -884,7 +884,7 @@ export class SalesService {
     }
 
     const description = this.normalizeDescription(dto.description)
-    const fsReference = generateReference('FS-', 8)
+    const saleReference = generateReference('SL-', 12)
     const merchantObjectId = new Types.ObjectId(merchantId)
 
     const sale = new this.saleModel({
@@ -894,7 +894,7 @@ export class SalesService {
       status: 'PENDING',
       source: 'QR scan',
       isCollection: true,
-      reference: fsReference,
+      reference: saleReference,
       channel: dto.channel,
       serialNumber: dto.serialNumber,
       qrKitName: qrKit.name || dto.serialNumber,
@@ -1583,7 +1583,7 @@ export class SalesService {
       recordedAt: new Date(),
       customerType: 'New', // Default for manual as per request
       source: 'Manual',
-      reference: generateReference('FS-', 8),
+      reference: generateReference('SL-', 12),
       serialNumber: firstKit?.serialNumber,
       qrKitName: firstKit?.name || firstKit?.serialNumber,
       isPaidInFull: amounts.isPaidInFull,
@@ -2107,6 +2107,41 @@ export class SalesService {
     }
 
     return this.recordSale(merchantId, saleId, this.oneTapRecordPayload(sale))
+  }
+
+  async updateSaleCustomer(
+    merchantId: string,
+    saleId: string,
+    customerId: string,
+  ): Promise<Sale> {
+    const sale = await this.saleModel.findOne({
+      _id: saleId,
+      merchantId: new Types.ObjectId(merchantId),
+    })
+    if (!sale) {
+      throw new NotFoundException('Sale not found')
+    }
+    if (sale.status !== 'PENDING' || sale.isArchived) {
+      throw new UnprocessableEntityException(
+        'Only an active pending sale can change customer',
+      )
+    }
+
+    const customer = await this.requireMerchantRelationship(
+      merchantId,
+      customerId,
+    )
+    const customerUserId =
+      customer.userId ?? (await this.resolveCustomerUserId(customer._id))
+
+    sale.customerId = customer._id
+    sale.customerUserId = customerUserId
+    sale.customerName = customer.name
+
+    const savedSale = await sale.save()
+    await savedSale.populate(saleCustomerPopulate())
+    this.emitSaleEvent('sale.updated', savedSale)
+    return savedSale
   }
 
   async confirmAllSales(merchantId: string) {
