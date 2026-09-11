@@ -12,6 +12,7 @@ import { showNotificationToast } from '@/components/ui'
 import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 import { useSafeBack } from '@/hooks/use-safe-back'
+import { safeSessionStorage } from '@/lib/utils/storage'
 
 type Step = 'about' | 'payments'
 
@@ -32,10 +33,10 @@ type ApiError = {
 }
 
 function readMerchantOnboardingDraft(): MerchantOnboardingDraft | null {
-  if (typeof window === 'undefined') return null
+  const savedDraft = safeSessionStorage.getItem(DRAFT_KEY)
+  if (!savedDraft) return null
   try {
-    const savedDraft = sessionStorage.getItem(DRAFT_KEY)
-    return savedDraft ? JSON.parse(savedDraft) : null
+    return JSON.parse(savedDraft)
   } catch {
     return null
   }
@@ -141,7 +142,7 @@ function MerchantOnboardingPageContent() {
       },
       {
         onSuccess: () => {
-          sessionStorage.removeItem(DRAFT_KEY)
+          safeSessionStorage.removeItem(DRAFT_KEY)
           if (!draft.serialNumber) {
             router.replace('/profile')
             return

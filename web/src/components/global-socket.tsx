@@ -126,13 +126,23 @@ export function GlobalSocket() {
       }
       // Use the SW registration to show a real OS-level notification
       // even when the tab is focused (new Notification() is unreliable in some browsers)
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.ready
-        registration.showNotification(payload.notification.title, {
-          body: payload.notification.body,
-          icon: '/favicon.ico',
-          data: payload.data,
-        })
+      if (
+        'serviceWorker' in navigator &&
+        typeof Notification !== 'undefined' &&
+        Notification.permission === 'granted'
+      ) {
+        try {
+          const registration = await navigator.serviceWorker.ready
+          if (typeof registration?.showNotification === 'function') {
+            await registration.showNotification(payload.notification.title, {
+              body: payload.notification.body,
+              icon: '/favicon.ico',
+              data: payload.data,
+            })
+          }
+        } catch (swErr) {
+          console.warn('Could not show SW notification:', swErr)
+        }
       }
 
       queryClient.invalidateQueries({ queryKey: ['sales'] })

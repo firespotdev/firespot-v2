@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { safeLocalStorage } from '@/lib/utils/storage'
 import type { User } from './interface'
 
 interface AuthState {
@@ -9,11 +10,6 @@ interface AuthState {
   isAuthenticated: boolean
   onboardingCompleted: boolean
   activeProfileMode: 'merchant' | 'personal'
-  /**
-   * The `lastLoginAt` the upgrade prompt was dismissed for. Comparing against
-   * the current user's `lastLoginAt` keeps the prompt hidden across reloads but
-   * re-surfaces it on the next login.
-   */
   planPromptDismissedForLogin: string | null
   setAuth: (user: User, token: string, onboardingCompleted?: boolean) => void
   setUser: (user: User) => void
@@ -35,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
       activeProfileMode: 'merchant',
       planPromptDismissedForLogin: null,
       setAuth: (user, token, onboardingCompleted = true) => {
-        localStorage.setItem('token', token)
+        safeLocalStorage.setItem('token', token)
         set({
           user,
           token,
@@ -47,9 +43,7 @@ export const useAuthStore = create<AuthState>()(
       setUser: (user) => set({ user }),
       updateUser: (user) => set({ user }),
       setAccessToken: (token) => {
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', token)
-        }
+        safeLocalStorage.setItem('token', token)
         set({ token, isAuthenticated: true })
       },
       setOnboardingCompleted: (completed) =>
@@ -58,7 +52,7 @@ export const useAuthStore = create<AuthState>()(
         set({ planPromptDismissedForLogin: lastLoginAt }),
       setActiveProfileMode: (activeProfileMode) => set({ activeProfileMode }),
       logout: () => {
-        localStorage.removeItem('token')
+        safeLocalStorage.removeItem('token')
         set({
           user: null,
           token: null,
@@ -69,6 +63,7 @@ export const useAuthStore = create<AuthState>()(
         })
       },
     }),
+
     {
       name: 'auth-storage',
     },

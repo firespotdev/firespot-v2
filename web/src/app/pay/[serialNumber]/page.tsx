@@ -38,6 +38,7 @@ import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
+import { safeLocalStorage, safeSessionStorage } from '@/lib/utils/storage'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -119,11 +120,11 @@ export default function PaymentPage() {
     const storageKey = `firespot-active-sale:${serialNumber}`
 
     if (saleId) {
-      sessionStorage.setItem(storageKey, saleId)
+      safeSessionStorage.setItem(storageKey, saleId)
       return
     }
 
-    const storedSaleId = sessionStorage.getItem(storageKey)
+    const storedSaleId = safeSessionStorage.getItem(storageKey)
     if (!storedSaleId) {
       queueMicrotask(() => {
         if (active) setIsRecoveringActiveSale(false)
@@ -145,15 +146,15 @@ export default function PaymentPage() {
           return
         }
 
-        if (sessionStorage.getItem(storageKey) === storedSaleId) {
-          sessionStorage.removeItem(storageKey)
+        if (safeSessionStorage.getItem(storageKey) === storedSaleId) {
+          safeSessionStorage.removeItem(storageKey)
         }
         setIsRecoveringActiveSale(false)
       })
       .catch(() => {
         if (!active) return
-        if (sessionStorage.getItem(storageKey) === storedSaleId) {
-          sessionStorage.removeItem(storageKey)
+        if (safeSessionStorage.getItem(storageKey) === storedSaleId) {
+          safeSessionStorage.removeItem(storageKey)
         }
         setIsRecoveringActiveSale(false)
       })
@@ -167,8 +168,8 @@ export default function PaymentPage() {
     if (!saleId || saleLoading) return
     if (saleError || error || publicSale?.status === 'CANCELLED') {
       const storageKey = `firespot-active-sale:${serialNumber}`
-      if (sessionStorage.getItem(storageKey) === saleId) {
-        sessionStorage.removeItem(storageKey)
+      if (safeSessionStorage.getItem(storageKey) === saleId) {
+        safeSessionStorage.removeItem(storageKey)
       }
       router.replace(customerExitPath)
     }
@@ -597,9 +598,7 @@ export default function PaymentPage() {
           merchant={merchant}
           onPayDirectly={() => {
             const storageKey = `firespot-active-sale:${serialNumber}`
-            if (typeof window !== 'undefined') {
-              sessionStorage.removeItem(storageKey)
-            }
+            safeSessionStorage.removeItem(storageKey)
             router.push(`/pay/${encodeURIComponent(serialNumber)}`)
           }}
           onClose={() => router.replace(customerExitPath)}
@@ -726,12 +725,12 @@ export default function PaymentPage() {
 
     if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
 
-    let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
+    let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
     if (!fingerprint) {
       fingerprint =
         crypto.randomUUID?.() ||
         `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-      localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+      safeLocalStorage.setItem('firespot_customer_fingerprint', fingerprint)
     }
 
     const payerName =
@@ -892,12 +891,12 @@ export default function PaymentPage() {
       })
     })
 
-    let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
+    let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
     if (!fingerprint) {
       fingerprint =
         crypto.randomUUID?.() ||
         `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-      localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+      safeLocalStorage.setItem('firespot_customer_fingerprint', fingerprint)
     }
 
     // If a logged-in personal account is paying, attach their name so the

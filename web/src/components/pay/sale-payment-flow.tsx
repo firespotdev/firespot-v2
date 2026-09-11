@@ -25,6 +25,7 @@ import { LoadingPage } from '@/components/layout/LoadingPage'
 import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
 import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
+import { safeSessionStorage } from '@/lib/utils/storage'
 import { PaystackWaitingScreen } from './paystack-waiting-screen'
 import { PaystackRedirectingScreen } from './paystack-redirecting-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
@@ -149,9 +150,7 @@ export function SalePaymentFlow({
   }
 
   const clearActiveTransaction = () => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
-    }
+    safeSessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
   }
 
   const handleCancelled = (cancelledSale?: unknown) => {
