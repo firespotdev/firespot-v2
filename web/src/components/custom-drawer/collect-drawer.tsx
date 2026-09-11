@@ -56,7 +56,45 @@ export function CollectPaymentDrawer({
     recoveryIntervalMs: isConnected ? 15_000 : 5_000,
   })
   const sale = fetchedSale || initialSale
-  const [countdown, setCountdown] = useState(59)
+  const getRemainingTimeToMidnight = () => {
+    const now = new Date()
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Lagos',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false,
+    })
+    const parts = formatter.formatToParts(now)
+    const getPart = (type: string) =>
+      Number(parts.find((p) => p.type === type)?.value || 0)
+    const hours = getPart('hour')
+    const minutes = getPart('minute')
+    const seconds = getPart('second')
+
+    const secondsToday = hours * 3600 + minutes * 60 + seconds
+    const totalSecondsInDay = 86400
+    const secondsRemaining = Math.max(0, totalSecondsInDay - secondsToday)
+
+    const remHours = Math.floor(secondsRemaining / 3600)
+    const remMinutes = Math.floor((secondsRemaining % 3600) / 60)
+
+    if (secondsRemaining <= 0) {
+      return 'Expired (Midnight)'
+    }
+
+    if (remHours === 0 && remMinutes === 0) {
+      return 'Expires in <1m (Midnight)'
+    }
+
+    if (remHours > 0) {
+      return `Expires in ${remHours}h ${remMinutes}m (Midnight)`
+    }
+
+    return `Expires in ${remMinutes}m (Midnight)`
+  }
+
+  const [expiresInText, setExpiresInText] = useState(getRemainingTimeToMidnight)
   const [step, setStep] = useState<'qr' | 'uploaded' | 'loading'>('qr')
   const [isReceiptPreviewOpen, setIsReceiptPreviewOpen] = useState(false)
   const [overrideView, setOverrideView] = useState<
@@ -89,15 +127,12 @@ export function CollectPaymentDrawer({
   )
 
   useEffect(() => {
-    let timer: NodeJS.Timeout
-    if (activeView === 'qr') {
-      timer = setTimeout(
-        () => setCountdown((current) => (current > 0 ? current - 1 : 59)),
-        1000,
-      )
-    }
-    return () => clearTimeout(timer)
-  }, [countdown, activeView])
+    if (activeView !== 'qr') return
+    const timer = setInterval(() => {
+      setExpiresInText(getRemainingTimeToMidnight())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [activeView])
 
   useEffect(() => {
     if (!socket || !saleId) return
@@ -286,23 +321,17 @@ export function CollectPaymentDrawer({
 
   const saleTimestamp = sale.updatedAt || sale.createdAt
   const formattedPillDate =
-    new Date(saleTimestamp).toLocaleDateString(
-      'en-US',
-      {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      },
-    ) +
+    new Date(saleTimestamp).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }) +
     ' . ' +
-    new Date(saleTimestamp).toLocaleTimeString(
-      'en-US',
-      {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      },
-    )
+    new Date(saleTimestamp).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
 
   return (
     <div className="w-full h-full flex flex-col justify-between relative">
@@ -386,11 +415,7 @@ export function CollectPaymentDrawer({
         }
       >
         {activeView === 'waiting' || activeView === 'confirm' ? (
-          <BackButton
-            onClick={handleBackStep}
-            iconSize={20}
-            className="-m-3"
-          />
+          <BackButton onClick={handleBackStep} iconSize={20} className="-m-3" />
         ) : (
           <div className="w-5 h-5"></div>
         )}
@@ -458,16 +483,13 @@ export function CollectPaymentDrawer({
                   }
                   centerImageAlt={profile?.businessName || 'Merchant'}
                   centerImageSize={74}
+                  showFirespotBadge={true}
                 />
               </div>
             </div>
 
             <p className="text-[13px] text-[#00000066] font-medium mt-2">
-              Refreshes in:{' '}
-              <span className="text-[#000000B2]">
-                00:
-                {countdown.toString().padStart(2, '0')}
-              </span>
+              {expiresInText}
             </p>
           </div>
         )}

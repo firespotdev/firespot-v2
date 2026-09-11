@@ -1158,4 +1158,53 @@ describe("SalesService amount invariants", () => {
       expect(customersService.findOrCreateForUser).not.toHaveBeenCalled();
     });
   });
+
+  describe("sale midnight expiration", () => {
+    it("marks an unpaid pending sale from yesterday as expired", () => {
+      const service = createService({});
+      const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000);
+      const sale = {
+        createdAt: yesterday,
+        status: "PENDING",
+      };
+      expect(service.isSaleExpired(sale)).toBe(true);
+    });
+
+    it("does not treat an unpaid pending sale from today as expired", () => {
+      const service = createService({});
+      const sale = {
+        createdAt: new Date(),
+        status: "PENDING",
+      };
+      expect(service.isSaleExpired(sale)).toBe(false);
+    });
+
+    it("does not treat a pending sale with payment proof from yesterday as expired (safety guard)", () => {
+      const service = createService({});
+      const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000);
+      const saleWithReceipt = {
+        createdAt: yesterday,
+        status: "PENDING",
+        receiptUrl: "https://res.cloudinary.com/example/image.png",
+      };
+      expect(service.isSaleExpired(saleWithReceipt)).toBe(false);
+
+      const saleWithMarkedPaid = {
+        createdAt: yesterday,
+        status: "PENDING",
+        customerMarkedPaidAt: yesterday,
+      };
+      expect(service.isSaleExpired(saleWithMarkedPaid)).toBe(false);
+    });
+
+    it("does not treat confirmed sales as expired", () => {
+      const service = createService({});
+      const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000);
+      const sale = {
+        createdAt: yesterday,
+        status: "CONFIRMED",
+      };
+      expect(service.isSaleExpired(sale)).toBe(false);
+    });
+  });
 });

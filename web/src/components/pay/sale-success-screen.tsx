@@ -4,11 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Check, ChevronRight, CreditCard, X } from 'lucide-react'
+import { Check, ChevronRight, X } from 'lucide-react'
 import { Button, TagFooter, showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useAuthStore } from '@/services/auth'
-import { useSaveCardFromSale } from '@/services/sales/hooks'
+import {
+  useSaveCardFromSale,
+  useCustomerSavedCards,
+} from '@/services/sales/hooks'
 import type { FeedbackEligibility } from '@/services/feedback'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
@@ -16,6 +19,7 @@ import { formatAmount, formatConfirmationDate } from './utils'
 import { FeedbackPrompt } from './feedback-prompt'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
+import { Cards } from 'iconsax-reactjs'
 
 interface SaleSuccessScreenProps {
   sale: PublicSale
@@ -45,53 +49,62 @@ function PaystackSaleSuccessScreen({
   const searchParams = useSearchParams()
   const authUser = useAuthStore((state) => state.user)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
   const {
-    mutate: saveCard,
+    mutateAsync: saveCardAsync,
     isPending: isSavingCard,
     isSuccess: isCardSaveSuccessful,
   } = useSaveCardFromSale()
   const attemptedAutomaticSave = useRef(false)
+  const [justSaved, setJustSaved] = useState(false)
 
-  const [cardSaved, setCardSaved] = useState(() => {
-    if (!authUser?.savedCards?.length) return false
-    if (sale.cardDetails?.last4) {
-      return authUser.savedCards.some(
-        (c) =>
-          c.last4 === sale.cardDetails?.last4 &&
-          c.brand === sale.cardDetails?.brand,
-      )
-    }
-    return false
-  })
+  const savedCards = customerCards || authUser?.savedCards || []
+  const isAlreadySaved = Boolean(
+    savedCards.length > 0 &&
+    sale.cardDetails?.last4 &&
+    savedCards.some(
+      (c) =>
+        c.last4 === sale.cardDetails?.last4 &&
+        (!sale.cardDetails?.brand ||
+          !c.brand ||
+          c.brand.toLowerCase() === sale.cardDetails.brand.toLowerCase()),
+    ),
+  )
 
-  const saveCardToWallet = useCallback(() => {
-    saveCard(
-      {
+  const isCardSaved = justSaved || isCardSaveSuccessful || isAlreadySaved
+
+  const saveCardToWallet = useCallback(async () => {
+    try {
+      const res = await saveCardAsync({
         saleId: sale.id,
         customerFingerprint: getCustomerFingerprint(),
-      },
-      {
-        onSuccess: (res) => {
-          clearSaveCardIntent()
-          setCardSaved(true)
-          showNotificationToast({
-            message: res.message || 'Debit card saved to your wallet!',
-            mode: 'success',
+      })
+      clearSaveCardIntent()
+      setJustSaved(true)
+      if (res?.card && authUser) {
+        const currentCards = authUser.savedCards || []
+        if (!currentCards.some((c) => c.last4 === res.card?.last4)) {
+          useAuthStore.getState().setUser({
+            ...authUser,
+            savedCards: [...currentCards, res.card as any],
           })
-        },
-        onError: (err: unknown) => {
-          clearSaveCardIntent()
-          const msg =
-            (err as { response?: { data?: { message?: string } } })?.response
-              ?.data?.message || 'Could not save this card. Please try again.'
-          showNotificationToast({
-            message: msg,
-            mode: 'error',
-          })
-        },
-      },
-    )
-  }, [sale.id, saveCard])
+        }
+      }
+      showNotificationToast({
+        message: res?.message || 'Debit card saved to your wallet!',
+        mode: 'success',
+      })
+    } catch (err: unknown) {
+      clearSaveCardIntent()
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || 'Could not save this card. Please try again.'
+      showNotificationToast({
+        message: msg,
+        mode: 'error',
+      })
+    }
+  }, [sale.id, saveCardAsync, authUser])
 
   useEffect(() => {
     if (searchParams.get('saveCard') !== '1') return
@@ -104,13 +117,13 @@ function PaystackSaleSuccessScreen({
     }
 
     attemptedAutomaticSave.current = true
-    if (cardSaved) {
+    if (isCardSaved) {
       clearSaveCardIntent()
       return
     }
-    saveCardToWallet()
+    void saveCardToWallet()
   }, [
-    cardSaved,
+    isCardSaved,
     isAuthenticated,
     sale.canSaveCard,
     saveCardToWallet,
@@ -118,7 +131,7 @@ function PaystackSaleSuccessScreen({
   ])
 
   const handleSaveCard = () => {
-    if (cardSaved || isCardSaveSuccessful) {
+    if (isCardSaved) {
       showNotificationToast({
         message: 'This debit card is already saved to your wallet.',
         mode: 'success',
@@ -139,35 +152,35 @@ function PaystackSaleSuccessScreen({
       return
     }
 
-    saveCardToWallet()
+    void saveCardToWallet()
   }
 
   return (
-    <div className="h-dvh bg-[#24C166] overflow-hidden font-satoshi">
-      <div className="max-w-125 mx-auto h-full flex flex-col justify-between px-4 pb-4 pt-3 relative">
+    <div className="h-dvh bg-[#24C166] overflow-hidden">
+      <div className="max-w-125 mx-auto h-full flex flex-col justify-between px-4 relative">
         {/* Top Header */}
-        <header className="flex items-center justify-end py-1 shrink-0">
+        <header className="flex items-center justify-end py-2 shrink-0">
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="w-9 h-9 flex items-center justify-center text-white cursor-pointer active:opacity-75 transition-opacity"
+            className="w-9 h-9 flex items-center justify-center text-white cursor-pointer"
           >
-            <X size={24} strokeWidth={2.4} />
+            <X size={24} strokeWidth={2} />
           </button>
         </header>
 
         {/* Hero & Content */}
         <div className="flex-1 flex flex-col items-center justify-center text-center px-1 overflow-y-auto">
           {/* White circled checkmark */}
-          <div className="w-18 h-18 rounded-full border-4 border-white flex items-center justify-center mb-5 shrink-0">
-            <Check className="w-9 h-9 text-white" strokeWidth={3.5} />
+          <div className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center mb-5 shrink-0">
+            <Check className="w-9 h-9 text-white" strokeWidth={3} />
           </div>
 
-          <h1 className="text-white text-[22px] font-bold -tracking-[0.4px] mb-1.5 leading-tight">
+          <h1 className="text-white text-[20px] font-bold -tracking-[0.4px] mb-1.5 leading-tight">
             Payment successful
           </h1>
-          <p className="text-white text-[15px] font-normal leading-[135%] mb-6 max-w-[320px]">
+          <p className="text-white text-[14px] font-medium leading-[125%] mb-6 max-w-[320px]">
             NGN {formatAmount(sale.amount)} has been sent to {merchantName}.
           </p>
 
@@ -175,7 +188,7 @@ function PaystackSaleSuccessScreen({
           <button
             type="button"
             onClick={handleViewReceipt}
-            className="bg-[#1EA759] hover:bg-[#1A9650] text-white px-4 py-2 rounded-full flex items-center gap-1.5 font-bold text-[10px] tracking-[1px] shadow-sm transition-colors mb-7 cursor-pointer"
+            className="bg-[#33A061] hover:bg-[##33A061]/80 text-white px-3.5 h-9 rounded-full flex items-center gap-1.5 font-bold text-[10px] tracking-[1px] shadow-sm transition-colors mb-7 cursor-pointer"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -219,19 +232,19 @@ function PaystackSaleSuccessScreen({
                 type="button"
                 onClick={handleSaveCard}
                 disabled={isSavingCard}
-                className="w-full text-left bg-white rounded-[14px] p-3 shadow-[0px_4px_8px_0px_#0000000A] flex items-center gap-3 transition-colors active:bg-[#FAFAFA] cursor-pointer"
+                className="w-full text-left bg-white rounded-[12px] p-3 shadow-[0px_4px_8px_0px_#0000000A] flex items-center gap-3 transition-colors active:bg-[#FAFAFA] cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-[10px] bg-[#E83C52] flex items-center justify-center text-white shadow-sm shrink-0">
-                  <CreditCard size={20} strokeWidth={2.2} />
+                <div className="w-9 h-9 rounded-full bg-linear-to-br from-[#FB5012] to-[#D72483] flex items-center justify-center text-white shadow-sm shrink-0">
+                  <Cards size={24} strokeWidth={2} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-[14px] font-bold text-black leading-tight">
-                    {cardSaved || isCardSaveSuccessful
-                      ? 'Debit card saved for faster checkout'
+                    {isCardSaved
+                      ? 'Card saved for faster checkout'
                       : 'Save debit card for faster checkout'}
                   </p>
-                  <p className="text-xs text-[#64748B] font-medium leading-[130%] mt-0.5">
-                    {cardSaved || isCardSaveSuccessful
+                  <p className="text-[13px] text-[#00000099] font-medium leading-[125%] mt-0.5">
+                    {isCardSaved
                       ? 'Your card is saved for faster one-tap payments on your next visit.'
                       : 'Complete payments faster when you add a local or international debit card.'}
                   </p>
@@ -241,9 +254,9 @@ function PaystackSaleSuccessScreen({
             )}
 
             {/* Card 2: Merchant Profile & Feedback */}
-            <div className="w-full bg-white rounded-[14px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden text-left">
+            <div className="w-full bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden text-left">
               <Link
-                href={`/shop/${merchant.merchantSlug || sale.serialNumber}`}
+                href="#"
                 className="flex items-center gap-3 p-3 transition-colors active:bg-[#FAFAFA]"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F1F1F1] bg-[#E9EDF1]">

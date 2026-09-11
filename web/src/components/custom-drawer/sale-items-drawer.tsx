@@ -70,7 +70,7 @@ export function SaleItemsDrawer({ items = [] }: { items: SaleItem[] }) {
                   {item.productName || `Item ${index + 1}`}
                 </p>
                 <p className="truncate text-sm font-medium text-[#6B7280]">
-                  {description || 'Premium item'}
+                  {description || 'Custom item'}
                 </p>
                 <p className="mt-1 text-[14px] font-medium text-[#374151]">
                   NGN {formatAmount(item.price || 0)}

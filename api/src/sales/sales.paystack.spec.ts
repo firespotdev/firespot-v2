@@ -718,6 +718,7 @@ describe('SalesService Paystack collection integrity', () => {
       expect(result.status).toBe('CONFIRMED')
       expect(paystackService.chargeAuthorization).toHaveBeenCalledWith(
         expect.objectContaining({
+          email: '2348011112222@firespot.co',
           authorizationCode: 'AUTH_TEST123',
           amount: 500000,
           subaccount: 'ACCT_MERCHANT_1',
@@ -728,6 +729,106 @@ describe('SalesService Paystack collection integrity', () => {
         { _id: userId },
         { $set: { 'savedCards.$[card].lastUsedAt': expect.any(Date) } },
         { arrayFilters: [{ 'card._id': cardId }] },
+      )
+    })
+
+    it('charges a saved card using card.email when tokenized as a guest', async () => {
+      const saleId = new Types.ObjectId()
+      const userId = new Types.ObjectId()
+      const cardId = new Types.ObjectId()
+      const merchantId = new Types.ObjectId()
+
+      const sale = {
+        _id: saleId,
+        merchantId,
+        customerUserId: userId,
+        amount: 3000,
+        status: 'PENDING',
+        serialNumber: 'FS-TEST-2',
+        reference: 'FS-REF-2',
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      const merchant = {
+        _id: merchantId,
+        planTier: 'PRO',
+        planStatus: 'verified',
+        paystackSubaccountCode: 'ACCT_MERCHANT_2',
+        bankAccounts: [{ isPrimary: true }],
+      }
+
+      const user = {
+        _id: userId,
+        fullPhoneNumber: '+2348011112222',
+        firstName: 'Test',
+        lastName: 'Customer',
+        savedCards: [
+          {
+            _id: cardId,
+            authorizationCode: 'AUTH_GUEST_123',
+            email: 'generalcustomer@firespot.co',
+            brand: 'mastercard',
+            last4: '5555',
+            reusable: true,
+          },
+        ],
+      }
+
+      const attempt = {
+        _id: new Types.ObjectId(),
+        save: jest.fn().mockResolvedValue(true),
+      }
+
+      const paymentAttemptModel = jest.fn(() => attempt) as any
+      paymentAttemptModel.findOne = jest.fn(() => query(null))
+      paymentAttemptModel.findOneAndUpdate = jest.fn()
+
+      const { service, paystackService, userModel } = makeService({
+        saleModel: {
+          findById: jest.fn(() => query(sale)),
+          findOneAndUpdate: jest.fn(() => query(sale)),
+          updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+        },
+        userModel: {
+          findById: jest.fn((id) => {
+            if (String(id) === String(merchantId)) return query(merchant)
+            if (String(id) === String(userId)) return query(user)
+            return query(null)
+          }),
+        },
+        paymentAttemptModel,
+        paystackService: {
+          chargeAuthorization: jest.fn().mockResolvedValue({
+            success: true,
+            reference: 'COL-CHARGE-2',
+          }),
+          verifyTransaction: jest.fn().mockResolvedValue({
+            status: 'success',
+            amount: 300000,
+            channel: 'card',
+            currency: 'NGN',
+            domain: 'test',
+          }),
+        },
+      })
+
+      jest.spyOn(service as any, 'reservePaystackDailyCap').mockResolvedValue('2026-09-09')
+      jest.spyOn(service, 'confirmPaystackSale').mockResolvedValue({
+        ...sale,
+        status: 'CONFIRMED',
+      } as any)
+
+      await service.payWithSavedCard(
+        saleId.toString(),
+        { cardId: cardId.toString() },
+        userId.toString(),
+      )
+
+      expect(paystackService.chargeAuthorization).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: 'generalcustomer@firespot.co',
+          authorizationCode: 'AUTH_GUEST_123',
+        }),
       )
     })
 

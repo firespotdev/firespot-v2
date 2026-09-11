@@ -598,6 +598,7 @@ export class User extends Document {
     type: [
       {
         authorizationCode: { type: String, required: true, select: false },
+        email: String,
         brand: String,
         last4: String,
         expMonth: String,
@@ -622,6 +623,7 @@ export class User extends Document {
 export interface SavedCard {
   _id?: Types.ObjectId;
   authorizationCode: string;
+  email?: string;
   brand?: string;
   last4?: string;
   expMonth?: string;

@@ -62,7 +62,7 @@ function ProductRow({
           {product.name}
         </p>
         <p className="truncate text-sm font-medium text-[#6B7280]">
-          {product.description || 'Premium item'}
+          {product.description || 'Custom item'}
         </p>
         <p className="mt-1 text-[14px] font-medium text-[#374151]">
           NGN {money(product.price)}

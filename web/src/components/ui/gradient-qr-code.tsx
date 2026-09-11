@@ -15,6 +15,7 @@ interface GradientQRCodeProps {
   centerImageUrl?: string
   centerImageAlt?: string
   centerImageSize?: number
+  showFirespotBadge?: boolean
 }
 
 /**
@@ -34,6 +35,7 @@ export function GradientQRCode({
   centerImageUrl,
   centerImageAlt = 'Merchant',
   centerImageSize = 40,
+  showFirespotBadge = false,
 }: GradientQRCodeProps) {
   const gradientId = useId()
 
@@ -61,20 +63,31 @@ export function GradientQRCode({
       />
       {centerImageUrl && (
         <div
-          className="absolute left-1/2 top-1/2 overflow-hidden rounded-full border-4 border-white bg-white shadow-sm"
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10"
           style={{
             width: centerImageSize,
             height: centerImageSize,
-            transform: 'translate(-50%, -50%)',
           }}
         >
-          <Image
-            src={centerImageUrl}
-            alt={centerImageAlt}
-            width={centerImageSize}
-            height={centerImageSize}
-            className="h-full w-full object-cover"
-          />
+          <div className="w-full h-full overflow-hidden rounded-full border-4 border-white bg-white shadow-sm">
+            <Image
+              src={centerImageUrl}
+              alt={centerImageAlt}
+              width={centerImageSize}
+              height={centerImageSize}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          {showFirespotBadge && (
+            <div className="absolute bottom-0 right-0 border-[3px] border-white rounded-[8px] bg-white overflow-hidden shadow-xs">
+              <Image
+                src="/images/firespot_logo.png"
+                alt="Firespot Logo"
+                width={18}
+                height={18}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

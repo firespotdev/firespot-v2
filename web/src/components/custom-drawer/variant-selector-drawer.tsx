@@ -169,7 +169,7 @@ export function VariantSelectorDrawer({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[14px] font-bold">{product.name}</p>
             <p className="truncate text-sm font-medium text-[#6B7280]">
-              {product.description || 'Premium item'}
+              {product.description || 'Custom item'}
             </p>
             <p className="mt-1 text-[14px] font-medium text-[#374151]">
               NGN {money(price)}

@@ -31,6 +31,7 @@ import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
 import { SalePayAmountScreen } from '@/components/pay/sale-pay-amount-screen'
 import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
 import { PaystackWaitingScreen } from '@/components/pay/paystack-waiting-screen'
+import { SaleExpiredScreen } from '@/components/pay/sale-expired-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
@@ -589,6 +590,23 @@ export default function PaymentPage() {
 
   // Dynamic QR sale: stepped payment experience (request -> waiting -> success)
   if (saleId && publicSale) {
+    if (publicSale.isExpired) {
+      return (
+        <SaleExpiredScreen
+          serialNumber={serialNumber}
+          merchant={merchant}
+          onPayDirectly={() => {
+            const storageKey = `firespot-active-sale:${serialNumber}`
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem(storageKey)
+            }
+            router.push(`/pay/${encodeURIComponent(serialNumber)}`)
+          }}
+          onClose={() => router.replace(customerExitPath)}
+        />
+      )
+    }
+
     return (
       <SalePaymentFlow
         sale={publicSale}

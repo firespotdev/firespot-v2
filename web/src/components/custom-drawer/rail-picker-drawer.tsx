@@ -57,7 +57,9 @@ export function RailPickerDrawer({
                 Saved cards
               </p>
               <p className="truncate text-xs font-medium text-[#64748B]">
-                Login to pay faster with a saved debit card
+                {hasSavedCards
+                  ? 'Pay faster with a saved debit card'
+                  : 'Login to pay faster with a saved debit card'}
               </p>
             </div>
           </div>
