@@ -121,6 +121,7 @@ export function PaymentCheckoutFooter({
   onAction,
   onChangeAccount,
   onChangePaymentMethod,
+  onChangeSavedCard,
   savedCard,
   isSubmitting = false,
 }: {
@@ -131,6 +132,7 @@ export function PaymentCheckoutFooter({
   onAction: () => void
   onChangeAccount: () => void
   onChangePaymentMethod: () => void
+  onChangeSavedCard?: () => void
   savedCard?: SavedCard
   isSubmitting?: boolean
 }) {
@@ -151,6 +153,14 @@ export function PaymentCheckoutFooter({
         : account
           ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
           : 'Transfer directly to bank account'
+
+  const handleChangeClick = () => {
+    if (!hasPaystack) {
+      onChangeAccount()
+      return
+    }
+    onChangePaymentMethod()
+  }
 
   return (
     <section className="shrink-0 rounded-t-[12px] border-t border-[#E7E9EC] bg-white p-4 shadow-[0_-1px_1px_0px_rgba(0,0,0,0.08)]">
@@ -178,12 +188,13 @@ export function PaymentCheckoutFooter({
 
         <button
           type="button"
-          onClick={hasPaystack ? onChangePaymentMethod : onChangeAccount}
+          onClick={handleChangeClick}
           className="h-9 shrink-0 rounded-full bg-[#F1F1F1] px-3.5 text-[10px] font-bold uppercase tracking-[1px] text-black transition-colors"
         >
           Change
         </button>
       </div>
+
 
       <Button onClick={onAction} disabled={isSubmitting} className="mt-4">
         {isSubmitting ? (

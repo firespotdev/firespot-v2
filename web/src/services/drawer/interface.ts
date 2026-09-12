@@ -56,6 +56,7 @@ export type DrawerContentType =
   | 'unconfirmed-details'
   | 'payment-methods-active'
   | 'multiple-payment-options'
+  | 'saved-cards'
 
 
 

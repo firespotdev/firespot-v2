@@ -227,7 +227,7 @@ function PaystackSaleSuccessScreen({
           {/* Cards Section */}
           <div className="w-full space-y-3">
             {/* Card 1: Save debit card for faster checkout (shown on card payments) */}
-            {sale.canSaveCard && (
+            {sale.canSaveCard && !isAlreadySaved && (
               <button
                 type="button"
                 onClick={handleSaveCard}

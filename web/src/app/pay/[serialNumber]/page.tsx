@@ -25,6 +25,8 @@ import {
   useCustomerSavedCards,
   usePayWithSavedCard,
 } from '@/services/sales/hooks'
+import type { SavedCard } from '@/services/sales/interface'
+
 import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
 import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
 import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
@@ -82,8 +84,12 @@ export default function PaymentPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
   const savedCards = customerCards || authUser?.savedCards || []
-  const defaultSavedCard = savedCards[0]
+  const [selectedCardId, setSelectedCardId] = useState<string | undefined>()
+  const activeSavedCard =
+    savedCards.find((card) => card.id === selectedCardId) || savedCards[0]
+  const defaultSavedCard = activeSavedCard
   const payWithSavedCard = usePayWithSavedCard()
+
   const customerExitPath = isAuthenticated ? '/home' : '/'
   const isReturningFromPaystack =
     Boolean(saleId) && searchParams.get('payment') === 'paystack-return'
@@ -639,7 +645,49 @@ export default function PaymentPage() {
     selectedVariant: item.selectedVariant,
   }))
 
-  const handleOpenBankDrawer = () => {
+  const handleOpenSavedCardsDrawer = (
+    fromRailPicker = true,
+    selectedCard = activeSavedCard,
+  ) => {
+    if (savedCards.length === 0) return
+    openDrawer({
+      type: 'saved-cards',
+      direction: 'bottom',
+      props: {
+        savedCards,
+        selectedCardId: selectedCard?.id,
+        onSelectCard: (card: SavedCard) => {
+          setSelectedCardId(card.id)
+          setSelectedRail('saved')
+          usePurchaseCartStore.getState().setSelectedRail('saved')
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase('saved', card)
+          }
+        },
+        onAddNewCard: () => {
+          setSelectedRail('multiple')
+          usePurchaseCartStore.getState().setSelectedRail('multiple')
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase('multiple')
+          }
+        },
+        onBack:
+          fromRailPicker && merchant?.hasPaystackCollection
+            ? handleOpenPaymentMethodDrawer
+            : undefined,
+      },
+    })
+  }
+
+  const handleOpenBankDrawer = (fromRailPicker = true) => {
     if (
       !merchant ||
       !merchant.bankAccounts ||
@@ -653,13 +701,19 @@ export default function PaymentPage() {
       direction: 'bottom',
       props: {
         bankAccounts: sortedBankAccounts,
+        onBack:
+          fromRailPicker && merchant?.hasPaystackCollection
+            ? handleOpenPaymentMethodDrawer
+            : undefined,
         onSelectBank: (bank: BankAccount) => {
           const index = sortedBankAccounts.findIndex(
             (acc) => acc.accountNumber === bank.accountNumber,
           )
           if (index !== -1) {
             setSelectedBankIndex(index)
+            setSelectedRail('transfer')
             usePurchaseCartStore.getState().setSelectedBankIndex(index)
+            usePurchaseCartStore.getState().setSelectedRail('transfer')
             if (
               useDrawerStore
                 .getState()
@@ -667,7 +721,7 @@ export default function PaymentPage() {
                   (config) => config.type === 'pay-current-purchase',
                 )
             ) {
-              openCurrentPurchase()
+              openCurrentPurchase('transfer')
             }
           }
         },
@@ -675,9 +729,11 @@ export default function PaymentPage() {
     })
   }
 
-  const handleOpenPaymentMethodDrawer = () => {
+  const handleOpenPaymentMethodDrawer = (
+    selectedCard: SavedCard | undefined = activeSavedCard,
+  ) => {
     if (!merchant?.hasPaystackCollection) {
-      handleOpenBankDrawer()
+      handleOpenBankDrawer(false)
       return
     }
 
@@ -706,9 +762,16 @@ export default function PaymentPage() {
             openCurrentPurchase(rail)
           }
         },
+        onOpenBankPicker: () => {
+          handleOpenBankDrawer(true)
+        },
+        onOpenSavedCards: () => {
+          handleOpenSavedCardsDrawer(true, selectedCard)
+        },
       },
     })
   }
+
 
   function startPaystackPayment(
     amount: number,
@@ -776,7 +839,12 @@ export default function PaymentPage() {
     )
   }
 
-  function handlePayInstantly(amount: number, description: string) {
+  function handlePayInstantly(
+    amount: number,
+    description: string,
+    rail: PaymentRail = selectedRail,
+    savedCard: SavedCard | undefined = defaultSavedCard,
+  ) {
     if (amount <= 0) {
       showNotificationToast({
         message: 'Enter an amount first',
@@ -793,8 +861,8 @@ export default function PaymentPage() {
     )
       return
 
-    if (selectedRail === 'saved') {
-      const cardToUse = defaultSavedCard
+    if (rail === 'saved') {
+      const cardToUse = savedCard
       if (!cardToUse) {
         showNotificationToast({
           message: 'No saved card found. Please choose another payment method.',
@@ -823,6 +891,7 @@ export default function PaymentPage() {
               {
                 saleId: pendingSale._id,
                 cardId: cardToUse.id,
+                customerFingerprint: getCustomerFingerprint(),
               },
               {
                 onSuccess: () => {
@@ -880,10 +949,14 @@ export default function PaymentPage() {
 
   // Payer enters an amount, copies the account, and hands off to the shared
   // waiting/confirmation flow via ?saleId (the pending sale we just created).
-  const handlePayAmountCopy = (amount: number, description: string) => {
-    if (!bankAccount || createPendingSale.isPending) return Promise.resolve()
+  const handlePayAmountCopy = (
+    amount: number,
+    description: string,
+    account: BankAccount | undefined = bankAccount,
+  ) => {
+    if (!account || createPendingSale.isPending) return Promise.resolve()
 
-    const { accountNumber, bankName } = bankAccount
+    const { accountNumber, bankName } = account
     void navigator.clipboard.writeText(accountNumber).catch(() => {
       showNotificationToast({
         message: 'Could not copy the account number. Copy it on the next screen.',
@@ -977,6 +1050,7 @@ export default function PaymentPage() {
 
   function openCurrentPurchase(
     rail = usePurchaseCartStore.getState().selectedRail,
+    savedCard = defaultSavedCard,
   ) {
     const currentBankIndex = usePurchaseCartStore.getState().selectedBankIndex
     const currentAccount =
@@ -988,9 +1062,13 @@ export default function PaymentPage() {
         merchant,
         account: currentAccount,
         selectedRail: rail,
-        savedCard: rail === 'saved' ? defaultSavedCard : undefined,
-        onChangePaymentMethod: handleOpenPaymentMethodDrawer,
-        onPay: handlePurchasePay,
+        savedCard: rail === 'saved' ? savedCard : undefined,
+        onChangePaymentMethod: () =>
+          handleOpenPaymentMethodDrawer(savedCard),
+        onChangeAccount: () => handleOpenBankDrawer(true),
+        onChangeSavedCard: () =>
+          handleOpenSavedCardsDrawer(true, savedCard),
+        onPay: () => handlePurchasePay(rail, currentAccount, savedCard),
       },
     })
   }
@@ -1006,7 +1084,11 @@ export default function PaymentPage() {
     })
   }
 
-  function handlePurchasePay() {
+  function handlePurchasePay(
+    rail: PaymentRail,
+    account?: BankAccount,
+    savedCard?: SavedCard,
+  ) {
     const currentItems = usePurchaseCartStore.getState().items
     const total = currentItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
@@ -1019,13 +1101,11 @@ export default function PaymentPage() {
       .join(', ')
     if (
       merchant?.hasPaystackCollection &&
-      ['multiple', 'saved'].includes(
-        usePurchaseCartStore.getState().selectedRail,
-      )
+      ['multiple', 'saved'].includes(rail)
     ) {
-      return handlePayInstantly(total, description)
+      return handlePayInstantly(total, description, rail, savedCard)
     } else {
-      return handlePayAmountCopy(total, description)
+      return handlePayAmountCopy(total, description, account)
     }
   }
 
@@ -1037,8 +1117,9 @@ export default function PaymentPage() {
     <SalePayAmountScreen
       merchant={merchant}
       account={bankAccount}
-      onChangeAccount={handleOpenBankDrawer}
+      onChangeAccount={() => handleOpenBankDrawer(true)}
       onChangePaymentMethod={handleOpenPaymentMethodDrawer}
+      onChangeSavedCard={() => handleOpenSavedCardsDrawer(true)}
       selectedRail={selectedRail}
       selectedItemsCount={purchaseItems.length}
       selectedItemsTotal={purchaseTotal}

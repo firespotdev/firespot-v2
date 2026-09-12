@@ -19,6 +19,7 @@ interface SaleRequestScreenProps {
   account?: BankAccount
   onChangeAccount: () => void
   onChangePaymentMethod: () => void
+  onChangeSavedCard?: () => void
   selectedRail: PaymentRail
   onCopy: () => void
   onPayInstantly: () => void
@@ -35,6 +36,7 @@ export function SaleRequestScreen({
   account,
   onChangeAccount,
   onChangePaymentMethod,
+  onChangeSavedCard,
   selectedRail,
   onCopy,
   onPayInstantly,
@@ -44,6 +46,7 @@ export function SaleRequestScreen({
   isSubmitting = false,
   savedCard,
 }: SaleRequestScreenProps) {
+
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const items = sale.items || []
@@ -158,9 +161,11 @@ export function SaleRequestScreen({
           }
           onChangeAccount={onChangeAccount}
           onChangePaymentMethod={onChangePaymentMethod}
+          onChangeSavedCard={onChangeSavedCard}
           savedCard={savedCard}
           isSubmitting={isSubmitting}
         />
+
       </div>
     </div>
   )

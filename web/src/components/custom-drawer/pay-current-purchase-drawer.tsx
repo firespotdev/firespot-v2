@@ -25,6 +25,8 @@ interface Props {
   savedCard?: SavedCard
   isSubmitting?: boolean
   onChangePaymentMethod: () => void
+  onChangeAccount?: () => void
+  onChangeSavedCard?: () => void
   onPay: () => void | Promise<void>
 }
 
@@ -41,8 +43,11 @@ export function PayCurrentPurchaseDrawer({
   savedCard,
   isSubmitting = false,
   onChangePaymentMethod,
+  onChangeAccount,
+  onChangeSavedCard,
   onPay,
 }: Props) {
+
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const items = usePurchaseCartStore((state) => state.items)
@@ -197,7 +202,9 @@ export function PayCurrentPurchaseDrawer({
             <PaymentRailIcon rail="transfer" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-[#64748B]">Payment method</p>
+            <p className="text-xs font-medium text-[#64748B]">
+              {isInstant ? 'Payment method' : 'Transfer to'}
+            </p>
             <p className="truncate text-sm font-bold">{paymentMethodLabel}</p>
           </div>
           <button
@@ -208,6 +215,7 @@ export function PayCurrentPurchaseDrawer({
             Change
           </button>
         </div>
+
         <Button
           type="button"
           onClick={handlePay}

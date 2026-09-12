@@ -16,6 +16,8 @@ interface RailPickerDrawerProps {
   selectedRail?: PaymentRail
   paystackChannels?: string[]
   onSelectRail: (rail: PaymentRail) => void
+  onOpenBankPicker?: () => void
+  onOpenSavedCards?: () => void
 }
 
 export function RailPickerDrawer({
@@ -23,6 +25,8 @@ export function RailPickerDrawer({
   selectedRail = 'multiple',
   paystackChannels,
   onSelectRail,
+  onOpenBankPicker,
+  onOpenSavedCards,
 }: RailPickerDrawerProps) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const singlePaystackChannel =
@@ -30,11 +34,22 @@ export function RailPickerDrawer({
 
   const handleSelect = (rail: PaymentRail) => {
     if (rail === 'saved' && !hasSavedCards) return
+    if (rail === 'saved' && onOpenSavedCards) {
+      closeDrawer('rail-picker')
+      onOpenSavedCards()
+      return
+    }
+    if (rail === 'transfer' && onOpenBankPicker) {
+      closeDrawer('rail-picker')
+      onOpenBankPicker()
+      return
+    }
     // Remove this drawer before the callback opens the next one. Closing the
     // anonymous top drawer afterwards would pop the newly opened child.
     closeDrawer('rail-picker')
     onSelectRail(rail)
   }
+
 
   return (
     <div className="flex h-full min-h-0 flex-col">

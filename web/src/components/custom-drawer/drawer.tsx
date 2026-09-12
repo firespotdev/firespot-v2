@@ -17,7 +17,8 @@ import {
 import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
 import { ProfileMenuDrawer } from './profile-menu-drawer'
 import { PersonalProfileMenuDrawer } from './personal-profile-menu-drawer'
-import { SelectBankDrawer } from './select-bank-drawer'
+import { SelectBankDrawer, SelectBankHeaderLeft } from './select-bank-drawer'
+import { SavedCardsDrawer, SavedCardsHeaderLeft } from './saved-cards-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
 import { ShareTransferDrawer } from './share-transfer-drawer'
 import { ProfileShareDrawer } from './profile-share-drawer'
@@ -77,7 +78,7 @@ const DRAWER_CONFIG: Record<
   {
     title: string
     direction?: DrawerDirection
-    HeaderLeft?: React.ComponentType<{ fromActiveMethods?: boolean }>
+    HeaderLeft?: React.ComponentType<any>
     Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
@@ -109,7 +110,14 @@ const DRAWER_CONFIG: Record<
   'select-bank': {
     title: 'Transfer to',
     direction: 'bottom',
+    HeaderLeft: SelectBankHeaderLeft,
     Content: SelectBankDrawer,
+  },
+  'saved-cards': {
+    title: 'Saved cards',
+    direction: 'bottom',
+    HeaderLeft: SavedCardsHeaderLeft,
+    Content: SavedCardsDrawer,
   },
   'bank-transfer': {
     title: 'Send with bank app',
