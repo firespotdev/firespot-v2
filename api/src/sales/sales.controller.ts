@@ -190,6 +190,22 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get active ongoing sales' })
+  @Get('ongoing')
+  async getOngoingSales(@GetUser() user: User) {
+    return this.salesService.getOngoingSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Clear all active ongoing sales' })
+  @Delete('ongoing')
+  async clearAllOngoingSales(@GetUser() user: User) {
+    return this.salesService.clearAllOngoingSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get a single sale' })
   @Get(':id')
   async getSale(@GetUser() user: User, @Param('id') id: string) {

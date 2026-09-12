@@ -12,4 +12,5 @@ export * from './rail-picker-drawer'
 export * from './channel-picker-drawer'
 export * from './saved-cards-drawer'
 export * from './select-bank-drawer'
+export * from './ongoing-sales-drawer'
 

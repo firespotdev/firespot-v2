@@ -57,6 +57,7 @@ export type DrawerContentType =
   | 'payment-methods-active'
   | 'multiple-payment-options'
   | 'saved-cards'
+  | 'ongoing-sales'
 
 
 

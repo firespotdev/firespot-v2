@@ -281,7 +281,6 @@ export function CollectPaymentDrawer({
 
   const handleNewSale = () => {
     onRecordConfirm(null)
-    closeDrawer()
   }
 
   const handleRecordSale = () => {

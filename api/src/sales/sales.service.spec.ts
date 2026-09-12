@@ -1160,6 +1160,32 @@ describe("SalesService amount invariants", () => {
   });
 
   describe("sale midnight expiration", () => {
+    it("returns today's pending collection sales as ongoing sales", async () => {
+      const ongoingSales = [{ _id: "507f1f77bcf86cd799439013" }];
+      const exec = jest.fn().mockResolvedValue(ongoingSales);
+      const populate = jest.fn().mockReturnValue({ exec });
+      const sort = jest.fn().mockReturnValue({ populate });
+      const saleModel = {
+        updateMany: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
+        find: jest.fn().mockReturnValue({ sort }),
+      };
+      const service = createService(saleModel);
+
+      await expect(
+        service.getOngoingSales("507f1f77bcf86cd799439012"),
+      ).resolves.toEqual(ongoingSales);
+
+      expect(saleModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "PENDING",
+          isCollection: true,
+          isArchived: { $ne: true },
+          createdAt: { $gte: expect.any(Date) },
+        }),
+      );
+      expect(populate).toHaveBeenCalledTimes(1);
+    });
+
     it("marks an unpaid pending sale from yesterday as expired", () => {
       const service = createService({});
       const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000);

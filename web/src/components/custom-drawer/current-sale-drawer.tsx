@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Spinner } from '@/components/ui'
+import { Button, Spinner } from '@/components/ui'
 
 interface CartItem {
   id: string
@@ -55,6 +55,8 @@ interface Props {
   onEditCustomer: () => void
   onEditDueDate?: (dueDate: string) => void
   onConfirmRecord: () => void | Promise<void>
+  onPreviewRecord?: () => void
+  onPreviewCollect?: () => void | Promise<void>
 }
 
 export function CurrentSaleDrawer({
@@ -75,6 +77,8 @@ export function CurrentSaleDrawer({
   onEditCustomer,
   onEditDueDate,
   onConfirmRecord,
+  onPreviewRecord,
+  onPreviewCollect,
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const [dueDateOpen, setDueDateOpen] = useState(false)
@@ -113,6 +117,16 @@ export function CurrentSaleDrawer({
     setIsSubmitting(true)
     try {
       await onConfirmRecord()
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handlePreviewCollect = async () => {
+    if (!onPreviewCollect || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      await onPreviewCollect()
     } finally {
       setIsSubmitting(false)
     }
@@ -401,9 +415,27 @@ export function CurrentSaleDrawer({
         </div>
       )}
 
-      {/* Preview has no checkout action; Record and Collect remain the
-          explicit actions on the sale screen. */}
-      {mode !== 'preview' && (
+      {mode === 'preview' ? (
+        <div className="flex shrink-0 gap-3 border-t border-[#F1F1F1] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onPreviewRecord}
+            disabled={isSubmitting}
+            className="h-12 w-auto flex-1 bg-[#F1F1F1] text-black hover:bg-[#E8E8E8]"
+          >
+            Record
+          </Button>
+          <Button
+            type="button"
+            onClick={handlePreviewCollect}
+            disabled={isSubmitting}
+            className="h-12 w-auto flex-1"
+          >
+            {isSubmitting ? <Spinner /> : 'Collect'}
+          </Button>
+        </div>
+      ) : (
         <button
           onClick={handleContinue}
           disabled={isContinueDisabled}

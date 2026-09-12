@@ -3650,4 +3650,68 @@ export class SalesService {
       throw error
     }
   }
+
+  async getOngoingSales(merchantId: string): Promise<SaleDocument[]> {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const { startOfDay } = this.collectionDay(new Date())
+
+    // Unpaid manual collections expire at midnight. Paystack payments and
+    // payments with customer evidence keep their existing recovery lifecycle.
+    await this.saleModel.updateMany(
+      {
+        merchantId: merchantObjectId,
+        status: 'PENDING',
+        isCollection: true,
+        isArchived: { $ne: true },
+        createdAt: { $lt: startOfDay },
+        paymentRail: { $ne: 'paystack' },
+        receiptUrl: { $in: [null, ''] },
+        customerMarkedPaidAt: null,
+      },
+      {
+        $set: {
+          isArchived: true,
+          archiveReason: 'Expired at midnight',
+        },
+      },
+    )
+
+    return this.saleModel
+      .find({
+        merchantId: merchantObjectId,
+        status: 'PENDING',
+        isCollection: true,
+        isArchived: { $ne: true },
+        createdAt: { $gte: startOfDay },
+      })
+      .sort({ createdAt: -1 })
+      .populate(saleCustomerPopulate())
+      .exec()
+  }
+
+  async clearAllOngoingSales(
+    merchantId: string,
+  ): Promise<{ count: number }> {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const { startOfDay } = this.collectionDay(new Date())
+
+    const result = await this.saleModel.updateMany(
+      {
+        merchantId: merchantObjectId,
+        status: 'PENDING',
+        isCollection: true,
+        isArchived: { $ne: true },
+        createdAt: { $gte: startOfDay },
+        paymentRail: { $ne: 'paystack' },
+      },
+      {
+        $set: {
+          status: 'CANCELLED',
+          cancelledBy: 'merchant',
+        },
+      },
+    )
+
+    return { count: result.modifiedCount || 0 }
+  }
 }

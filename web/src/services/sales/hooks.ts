@@ -544,3 +544,22 @@ export const useDeleteSavedCard = () => {
     },
   });
 };
+
+export const useOngoingSales = (enabled = true) => {
+  return useQuery({
+    queryKey: ['sales', 'ongoing'],
+    queryFn: () => SalesApi.getOngoingSales(),
+    enabled,
+    staleTime: 10 * 1000,
+  });
+};
+
+export const useClearAllOngoingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => SalesApi.clearAllOngoingSales(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};

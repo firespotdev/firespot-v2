@@ -1,5 +1,6 @@
 'use client'
 
+import { BackspaceIcon } from '@phosphor-icons/react'
 import { Delete } from 'lucide-react'
 
 interface KeypadProps {
@@ -31,7 +32,12 @@ export function Keypad({ onKeyPress, className = '' }: KeypadProps) {
               `}
             >
               {key === 'backspace' ? (
-                <Delete className="w-6 h-6 text-black" />
+                <img
+                  src="/icons/fi_delete.svg"
+                  height={28}
+                  width={28}
+                  alt="delete"
+                />
               ) : (
                 <span className="text-[22px] font-bold text-black font-satoshi leading-none">
                   {key}

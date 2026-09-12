@@ -425,4 +425,14 @@ export const SalesApi = {
     const { data } = await apiClient.delete(`/users/me/saved-cards/${cardId}`);
     return data;
   },
+
+  getOngoingSales: async (): Promise<Sale[]> => {
+    const { data } = await apiClient.get('/sales/ongoing');
+    return data;
+  },
+
+  clearAllOngoingSales: async (): Promise<{ count: number }> => {
+    const { data } = await apiClient.delete('/sales/ongoing');
+    return data;
+  },
 };

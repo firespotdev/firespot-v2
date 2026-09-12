@@ -27,6 +27,8 @@ interface Options {
   prefillSale?: Sale
   /** Called after a confirm/edit succeeds so the next sale is a fresh create. */
   onSaleModeSettled: () => void
+  canCollect: boolean
+  onCollectUnavailable: () => void
 }
 
 /**
@@ -43,6 +45,8 @@ export function useSaleCheckoutFlow({
   saleMode,
   prefillSale,
   onSaleModeSettled,
+  canCollect,
+  onCollectUnavailable,
 }: Options) {
   const { openDrawer, closeDrawer, closeDrawersAbove } = useDrawerStore()
   const { data: profile } = useUserProfile()
@@ -119,6 +123,23 @@ export function useSaleCheckoutFlow({
         setAmount: cart.setAmount,
         setDescription: cart.setDescription,
         onRecordAnother: resetSaleState,
+      },
+    })
+  }
+
+  const openPendingCollection = (sale: Sale) => {
+    openDrawer({
+      type: 'collect-payment',
+      props: {
+        sale,
+        onRecordConfirm: (recordedSale: Sale | null) => {
+          if (!recordedSale) {
+            resetSaleState()
+            collapseToSheet()
+            return
+          }
+          openRecordedSaleDetails(recordedSale)
+        },
       },
     })
   }
@@ -427,20 +448,7 @@ export function useSaleCheckoutFlow({
     return collectSaleMutation
       .mutateAsync(payload)
       .then((data) => {
-        openDrawer({
-          type: 'collect-payment',
-          props: {
-            sale: data,
-            onRecordConfirm: (recordedSale: Sale | null) => {
-              if (!recordedSale) {
-                resetSaleState()
-                collapseToSheet()
-                return
-              }
-              openRecordedSaleDetails(recordedSale)
-            },
-          },
-        })
+        openPendingCollection(data)
       })
       .catch((error: any) => {
         showNotificationToast({
@@ -603,6 +611,23 @@ export function useSaleCheckoutFlow({
             dueDateVal,
           )
         },
+        onPreviewRecord:
+          mode === 'preview'
+            ? () => {
+                closeDrawer('checkout-sale')
+                handleRecordTapped()
+              }
+            : undefined,
+        onPreviewCollect:
+          mode === 'preview'
+            ? () => {
+                if (!canCollect) {
+                  onCollectUnavailable()
+                  return
+                }
+                return submitCollectSale(itemsList, totVal)
+              }
+            : undefined,
       },
     })
   }
@@ -624,6 +649,11 @@ export function useSaleCheckoutFlow({
   }
 
   const handleCollectTapped = () => {
+    if (!canCollect) {
+      onCollectUnavailable()
+      return
+    }
+
     const updatedCart = cart.getEffectiveItems()
     const totalVal = cart.getTotal()
 
@@ -667,5 +697,6 @@ export function useSaleCheckoutFlow({
     handleRecordTapped,
     handleCollectTapped,
     openSelectionPreview,
+    openPendingCollection,
   }
 }
