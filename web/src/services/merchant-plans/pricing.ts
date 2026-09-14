@@ -27,8 +27,9 @@ export function periodsFor(interval: BillingInterval): number {
 }
 
 /**
- * Total charged now for a plan. One-time tiers (LITE) ignore interval and
- * store count. PRO MAX multiplies by the merchant's active store count.
+ * Total charged now for a plan. One-time tiers (LITE) ignore interval.
+ * PRO and PRO MAX charge the base unit price for the selected cadence.
+ * Additional stores on PRO MAX are billed separately upon store creation.
  */
 export function planTotal(
   plan: PlanDefinition,
@@ -36,8 +37,7 @@ export function planTotal(
   storeCount: number,
 ): number {
   if (plan.billingType === 'one_time') return plan.price
-  const stores = plan.perStore ? Math.max(1, storeCount) : 1
-  return plan.price * stores * periodsFor(interval)
+  return plan.price * periodsFor(interval)
 }
 
 /** The per-unit price shown on the checkout line item. */

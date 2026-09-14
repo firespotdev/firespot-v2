@@ -280,10 +280,8 @@ export class MerchantPlansService {
     const effectiveInterval =
       plan.billingType === 'monthly' ? interval : 'monthly'
     const periods = effectiveInterval === 'annually' ? 12 : 1
-    const storeCount = plan.perStore
-      ? Math.max(1, await this.storesService.countActive(merchantId))
-      : 1
-    const fullAmount = plan.price * storeCount * periods
+    const storeCount = 1
+    const fullAmount = plan.price * periods
 
     const periodEnd = user.planCurrentPeriodEnd
     const hasLiveSubscription = Boolean(
@@ -415,11 +413,9 @@ export class MerchantPlansService {
       plan.billingType === 'monthly' ? interval : 'monthly'
     const periods = effectiveInterval === 'annually' ? 12 : 1
 
-    // PRO MAX bills per active store (at least one).
-    const storeCount = plan.perStore
-      ? Math.max(1, await this.storesService.countActive(merchantId))
-      : 1
-    const amount = plan.price * storeCount * periods
+    // Base plan covers 1 store. Additional stores on PRO MAX are billed separately upon store creation.
+    const storeCount = 1
+    const amount = plan.price * periods
 
     // A live subscription means this is a change, not a fresh purchase.
     const periodEnd = user.planCurrentPeriodEnd
@@ -636,11 +632,7 @@ export class MerchantPlansService {
     const currentPlan = getPlan(user.planTier || '')
     const currentInterval = await this.currentInterval(user)
     const currentPeriods = currentInterval === 'annually' ? 12 : 1
-    const currentStores = currentPlan?.perStore
-      ? Math.max(1, await this.storesService.countActive(user._id.toString()))
-      : 1
-    const currentAmount =
-      (currentPlan?.price || 0) * currentStores * currentPeriods
+    const currentAmount = (currentPlan?.price || 0) * currentPeriods
 
     // Derive the window: plans predating planCurrentPeriodStart have only an
     // end date, and a missing start would zero the proration.
@@ -857,6 +849,13 @@ export class MerchantPlansService {
           user.paystackCustomerCode,
           created.subscriptionCode,
         )
+        if (tier === 'PROMAX') {
+          await this.storesService.attachSubscriptionToPrimaryStore(
+            user._id.toString(),
+            created.subscriptionCode,
+            created.emailToken,
+          )
+        }
       } catch (error) {
         this.logger.error(
           `Upgrade applied but subscription setup failed for ${user._id}: ${error}`,
@@ -1118,6 +1117,17 @@ export class MerchantPlansService {
     for (const sub of user.subscriptions) {
       if (this.isIntentionallyRetired(sub) || sub.code === keepCode) continue
 
+      // Active store subscriptions on PRO MAX should not be retired when sibling store
+      // subscriptions are created or renewed.
+      if (user.planTier === 'PROMAX') {
+        const isStoreActive =
+          await this.storesService.hasActiveStoreWithSubscription(
+            user._id.toString(),
+            sub.code,
+          )
+        if (isStoreActive) continue
+      }
+
       const token = await this.ensureEmailToken(sub)
       if (!token) {
         this.logger.error(
@@ -1317,6 +1327,21 @@ export class MerchantPlansService {
       )
       return
     }
+
+    if (subscriptionCode) {
+      const store =
+        await this.storesService.findBySubscriptionCode(subscriptionCode)
+      if (store && String(store.merchantId) === String(user._id)) {
+        this.logger.warn(
+          `Subscription ${subscriptionCode} lapsed for store ${store.name} (${store._id}) of merchant ${user._id}`,
+        )
+        await this.storesService.deactivateStoreBySubscription(
+          user._id.toString(),
+          subscriptionCode,
+        )
+      }
+    }
+
     if (otherActive) {
       this.logger.log(
         `Ignoring lapse for ${subscriptionCode}: ${user._id} still has an active subscription`,

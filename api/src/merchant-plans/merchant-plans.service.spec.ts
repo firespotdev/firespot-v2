@@ -21,12 +21,17 @@ const makeOrder = (overrides: Record<string, any> = {}) => ({
 })
 
 const makeService = (overrides: Record<string, any> = {}) => {
-  const planOrderModel = {
+  const planOrderModel: any = jest.fn().mockImplementation((dto) => ({
+    ...dto,
+    _id: 'ORDER_1',
+    save: jest.fn().mockResolvedValue(undefined),
+  }))
+  Object.assign(planOrderModel, {
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
     updateOne: jest.fn(() => query({ acknowledged: true })),
     ...overrides.planOrderModel,
-  }
+  })
   const userModel = {
     findById: jest.fn(() => query(makeUser())),
     findOne: jest.fn(),
@@ -44,6 +49,10 @@ const makeService = (overrides: Record<string, any> = {}) => {
   }
   const storesService = {
     countActive: jest.fn().mockResolvedValue(1),
+    findBySubscriptionCode: jest.fn().mockResolvedValue(null),
+    hasActiveStoreWithSubscription: jest.fn().mockResolvedValue(false),
+    attachSubscriptionToPrimaryStore: jest.fn().mockResolvedValue(undefined),
+    deactivateStoreBySubscription: jest.fn().mockResolvedValue(undefined),
     ...overrides.storesService,
   }
   const configService = {
@@ -682,5 +691,104 @@ describe('MerchantPlansService recurring plan configuration', () => {
     ).rejects.toBeInstanceOf(ServiceUnavailableException)
     expect(paystackService.initializeTransaction).not.toHaveBeenCalled()
     expect(paystackService.chargeAuthorization).not.toHaveBeenCalled()
+  })
+
+  it('charges base plan price (10000) on PROMAX purchase without multiplying active store count', async () => {
+    const merchant = makeUser({
+      planTier: undefined,
+      planStatus: undefined,
+      planInterval: 'monthly',
+      planCurrentPeriodEnd: undefined,
+      fullPhoneNumber: '+2348012345678',
+    })
+    const { service, paystackService, storesService, configService } = makeService({
+      userModel: { findById: jest.fn(() => query(merchant)) },
+      storesService: { countActive: jest.fn().mockResolvedValue(3) },
+      configService: {
+        get: jest.fn((key: string) => {
+          if (key === 'PAYSTACK_PLAN_CODE_PROMAX') return 'PLN_promax'
+          return null
+        }),
+      },
+      paystackService: {
+        initializeTransaction: jest.fn().mockResolvedValue({
+          authorizationUrl: 'https://checkout.paystack.com/xyz',
+          reference: 'PLAN-ref-1',
+          accessCode: 'code-1',
+        }),
+      },
+    })
+
+    const result = await service.purchase(
+      merchant._id.toString(),
+      'PROMAX',
+      'monthly',
+      'PAYSTACK_CHECKOUT',
+    )
+
+    // Base plan price is 10,000 (1,000,000 kobo), not multiplied by 3 stores
+    expect(paystackService.initializeTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 1000000,
+        plan: 'PLN_promax',
+      }),
+    )
+    expect(result).toMatchObject({ amount: 10000 })
+  })
+
+  it('preserves active store subscriptions on supersede when user is on PROMAX', async () => {
+    const storeSub = { code: 'SUB_store', status: 'active', emailToken: 'TOK1' }
+    const oldSub = { code: 'SUB_old', status: 'active', emailToken: 'TOK2' }
+    const merchant = makeUser({
+      planTier: 'PROMAX',
+      subscriptions: [storeSub, oldSub],
+    })
+    const { service, userModel, paystackService, storesService } = makeService({
+      userModel: { findOne: jest.fn(() => query(merchant)) },
+      storesService: {
+        hasActiveStoreWithSubscription: jest.fn().mockImplementation((_mId, code) => {
+          return Promise.resolve(code === 'SUB_store')
+        }),
+      },
+      paystackService: {
+        disableSubscription: jest.fn().mockResolvedValue({ success: true }),
+      },
+    })
+
+    await service.supersedePreviousSubscriptions('CUS_1', 'SUB_new')
+
+    // SUB_store was preserved, only SUB_old was disabled
+    expect(paystackService.disableSubscription).toHaveBeenCalledTimes(1)
+    expect(paystackService.disableSubscription).toHaveBeenCalledWith({
+      code: 'SUB_old',
+      token: 'TOK2',
+    })
+    expect(storeSub.status).toBe('active')
+    expect(oldSub.status).toBe('cancelled')
+  })
+
+  it('deactivates store on subscription lapse if subscription matches an active store', async () => {
+    const merchant = makeUser({
+      planTier: 'PROMAX',
+      subscriptions: [{ code: 'SUB_store', status: 'active' }, { code: 'SUB_main', status: 'active' }],
+    })
+    const { service, userModel, storesService } = makeService({
+      userModel: { findOne: jest.fn(() => query(merchant)) },
+      storesService: {
+        findBySubscriptionCode: jest.fn().mockResolvedValue({
+          _id: 'store-1',
+          name: 'Branch Store',
+          merchantId: merchant._id,
+        }),
+        deactivateStoreBySubscription: jest.fn().mockResolvedValue(undefined),
+      },
+    })
+
+    await service.handleSubscriptionLapse('CUS_1', 'SUB_store')
+
+    expect(storesService.deactivateStoreBySubscription).toHaveBeenCalledWith(
+      merchant._id.toString(),
+      'SUB_store',
+    )
   })
 })

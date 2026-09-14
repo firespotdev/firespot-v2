@@ -23,8 +23,11 @@ export class Store extends Document {
   isActive: boolean
 
   // Paystack subscription funding this store (PRO MAX only)
-  @Prop()
+  @Prop({ index: true })
   subscriptionCode?: string
+
+  @Prop()
+  subscriptionEmailToken?: string
 
   createdAt?: Date
   updatedAt?: Date
