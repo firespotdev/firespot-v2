@@ -154,6 +154,10 @@ export class User extends Document {
       city: String,
       address: String,
       insideMarket: Boolean,
+      market: String,
+      shoppingComplex: String,
+      shopNumber: String,
+      landmark: String,
     },
   })
   mainAddress?: {
@@ -161,6 +165,10 @@ export class User extends Document {
     city?: string;
     address?: string;
     insideMarket?: boolean;
+    market?: string;
+    shoppingComplex?: string;
+    shopNumber?: string;
+    landmark?: string;
   };
 
   @Prop()

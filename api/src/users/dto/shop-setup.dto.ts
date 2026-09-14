@@ -121,6 +121,30 @@ export class UpdateLocationDto {
   @IsBoolean()
   insideMarket?: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  market?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  shoppingComplex?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  shopNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  landmark?: string;
+
   @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()

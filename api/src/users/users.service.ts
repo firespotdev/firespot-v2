@@ -239,6 +239,12 @@ export class UsersService {
 
     const { branchCount, ...address } = dto;
     user.mainAddress = { ...(user.mainAddress || {}), ...address };
+    if (dto.insideMarket === false) {
+      user.mainAddress.market = undefined;
+      user.mainAddress.shoppingComplex = undefined;
+      user.mainAddress.shopNumber = undefined;
+      user.mainAddress.landmark = undefined;
+    }
     if (branchCount !== undefined) user.branchCount = branchCount;
 
     await user.save();
