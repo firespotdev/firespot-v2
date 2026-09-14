@@ -589,6 +589,9 @@ export class User extends Document {
   @Prop({ default: true })
   savedCardsCheckoutEnabled?: boolean;
 
+  @Prop({ default: false })
+  paystackCollectionEnabled?: boolean;
+
   /**
    * Personal customer-saved cards tokenized via Paystack.
    * Enables customers to pay merchants in one tap without re-entering numbers.

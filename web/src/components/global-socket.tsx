@@ -112,6 +112,7 @@ export function GlobalSocket() {
         if (user?.role === 'merchant') {
           const saleId = payload.data?.saleId
           if (saleId) {
+            if (confirmedSaleIdsRef.current.has(saleId)) return
             showNewPaymentToast({
               time: formatPaymentTime(),
               toastId: `pending-sale-${saleId}`,
@@ -202,6 +203,11 @@ export function GlobalSocket() {
     const handleSalePending = (sale: Sale) => {
       // Merchant-initiated collect sales are handled in their own drawer.
       if (sale.isCollection) return
+      if (
+        sale.status !== 'PENDING' ||
+        confirmedSaleIdsRef.current.has(String(sale._id))
+      )
+        return
       // Don't interrupt if the merchant is already looking at this sale.
       if (isViewingSale(sale._id)) {
         invalidateSales()
@@ -278,6 +284,7 @@ export function GlobalSocket() {
       showNotificationToast({
         message: 'A customer is completing a Paystack payment',
         duration: 3000,
+        toastId: sale._id ? `pending-sale-${sale._id}` : undefined,
       })
       invalidateSales()
     }
@@ -305,9 +312,10 @@ export function GlobalSocket() {
           message: 'Paystack payment confirmed and recorded',
           mode: 'success',
           duration: 3500,
-          // One active confirmation toast, even if the same Paystack result is
-          // delivered through differently shaped sale events.
-          toastId: 'paystack-payment-confirmed',
+          // Replace any earlier pending/processing notification for this sale.
+          toastId: saleId
+            ? `pending-sale-${saleId}`
+            : 'paystack-payment-confirmed',
           onDismiss: () => {
             // A duplicate confirmation event must not immediately recreate a
             // notification the merchant deliberately closed.

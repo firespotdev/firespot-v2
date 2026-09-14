@@ -22,8 +22,17 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useSetPrimaryBankAccount, useUserProfile } from '@/services/users'
-import { showNotificationToast, TagFooter, BankLogo, Switch } from '@/components/ui'
+import {
+  useSetBankAccountEnabled,
+  useSetPrimaryBankAccount,
+  useUserProfile,
+} from '@/services/users'
+import {
+  showNotificationToast,
+  TagFooter,
+  BankLogo,
+  Switch,
+} from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { BankAccount } from '@/services/users'
 
@@ -32,6 +41,7 @@ interface SortableBankItemProps {
   isFirst: boolean
   showSwitch?: boolean
   isEnabled?: boolean
+  isUpdating?: boolean
   onToggleEnabled?: (accountNumber: string, enabled: boolean) => void
   showChevron?: boolean
 }
@@ -41,6 +51,7 @@ function SortableBankItem({
   isFirst,
   showSwitch,
   isEnabled = true,
+  isUpdating,
   onToggleEnabled,
   showChevron,
 }: SortableBankItemProps) {
@@ -99,6 +110,7 @@ function SortableBankItem({
         <div onClick={(e) => e.stopPropagation()}>
           <Switch
             checked={isEnabled}
+            disabled={isUpdating}
             onCheckedChange={(checked) =>
               onToggleEnabled?.(account.accountNumber, checked)
             }
@@ -136,10 +148,10 @@ export function BankDrawer({
 }: BankDrawerProps) {
   const { closeDrawer, closeAllDrawers } = useDrawerStore()
   const setPrimaryBankAccount = useSetPrimaryBankAccount()
+  const setBankAccountEnabled = useSetBankAccountEnabled()
   const { data: profile } = useUserProfile()
 
   const [accounts, setAccounts] = useState<BankAccount[]>([])
-  const [disabledAccounts, setDisabledAccounts] = useState<Record<string, boolean>>({})
 
   // Configure sensors for both mouse/touch
   const sensors = useSensors(
@@ -173,10 +185,26 @@ export function BankDrawer({
   }, [initialAccounts, profile?.bankAccounts])
 
   const handleToggleEnabled = (accountNumber: string, enabled: boolean) => {
-    setDisabledAccounts((prev) => ({
-      ...prev,
-      [accountNumber]: !enabled,
-    }))
+    setBankAccountEnabled.mutate(
+      { accountNumber, enabled },
+      {
+        onSuccess: () => {
+          setAccounts((items) =>
+            items.map((account) =>
+              account.accountNumber === accountNumber
+                ? { ...account, isEnabled: enabled }
+                : account,
+            ),
+          )
+        },
+        onError: () => {
+          showNotificationToast({
+            message: 'Could not update bank account visibility. Please try again.',
+            mode: 'error',
+          })
+        },
+      },
+    )
   }
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -249,7 +277,8 @@ export function BankDrawer({
                     account={account}
                     isFirst={index === 0}
                     showSwitch={showSwitch}
-                    isEnabled={!disabledAccounts[account.accountNumber]}
+                    isEnabled={account.isEnabled !== false}
+                    isUpdating={setBankAccountEnabled.isPending}
                     onToggleEnabled={handleToggleEnabled}
                     showChevron={showChevron || isCustomer}
                   />

@@ -1,4 +1,9 @@
-import { Injectable, HttpException, HttpStatus, ForbiddenException } from "@nestjs/common";
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  ForbiddenException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
@@ -89,25 +94,34 @@ export class UsersService {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
 
-    if (dto.savedCardsCheckoutEnabled) {
+    if (dto.savedCardsCheckoutEnabled || dto.paystackCollectionEnabled) {
       const { canCollect, reason } = getCollectEligibility(user);
       if (!canCollect) {
+        const settingLabel = dto.paystackCollectionEnabled
+          ? "Paystack payments"
+          : "saved-card checkout";
         throw new ForbiddenException({
           message:
             reason === "kyc_incomplete"
-              ? "Finish verifying your identity to enable saved-card checkout."
-              : "Upgrade to a Firespot Business plan to enable saved-card checkout.",
+              ? `Finish verifying your identity to enable ${settingLabel}.`
+              : `Upgrade to a Firespot Business plan to enable ${settingLabel}.`,
           reason,
         });
       }
     }
 
-    user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
+    if (dto.savedCardsCheckoutEnabled !== undefined) {
+      user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
+    }
+    if (dto.paystackCollectionEnabled !== undefined) {
+      user.paystackCollectionEnabled = dto.paystackCollectionEnabled;
+    }
     await user.save();
 
     return {
       message: "Payment settings updated",
-      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled,
+      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
+      paystackCollectionEnabled: user.paystackCollectionEnabled === true,
     };
   }
 
@@ -400,8 +414,8 @@ export class UsersService {
         key: "about",
         done: Boolean(
           user.businessName &&
-            user.businessDescription &&
-            user.businessIndustry,
+          user.businessDescription &&
+          user.businessIndustry,
         ),
       },
       { key: "bank", done: (user.bankAccounts?.length || 0) > 0 },
@@ -517,7 +531,9 @@ export class UsersService {
       await this.cloudinaryService.deleteImage(user.businessImagePublicId);
     }
 
-    const upload = await this.cloudinaryService.uploadBusinessImage(file.buffer);
+    const upload = await this.cloudinaryService.uploadBusinessImage(
+      file.buffer,
+    );
     user.businessImageUrl = upload.url;
     user.businessImagePublicId = upload.publicId;
     await user.save();
@@ -589,6 +605,7 @@ export class UsersService {
       accountNumber: dto.accountNumber,
       accountName: verification.accountName,
       isPrimary: dto.isPrimary || false,
+      isEnabled: true,
     } as any);
 
     await user.save();
@@ -602,6 +619,7 @@ export class UsersService {
         accountNumber: dto.accountNumber,
         accountName: verification.accountName,
         isPrimary: dto.isPrimary || false,
+        isEnabled: true,
       },
     };
   }
@@ -654,6 +672,32 @@ export class UsersService {
 
     return {
       message: "Primary bank account updated successfully",
+      bankAccount: account,
+    };
+  }
+
+  async setBankAccountEnabled(
+    userId: string,
+    accountNumber: string,
+    enabled: boolean,
+  ) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    const account = user.bankAccounts?.find(
+      (item) => item.accountNumber === accountNumber,
+    );
+    if (!account) {
+      throw new HttpException("Bank account not found", HttpStatus.NOT_FOUND);
+    }
+
+    account.isEnabled = enabled;
+    await user.save();
+
+    return {
+      message: `Bank account ${enabled ? "enabled" : "disabled"}`,
       bankAccount: account,
     };
   }
@@ -943,6 +987,7 @@ export class UsersService {
       collectBlockedReason: getCollectEligibility(user).reason,
       hasPayoutAccount: Boolean(user.paystackSubaccountCode),
       savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
+      paystackCollectionEnabled: user.paystackCollectionEnabled === true,
       savedCards: [...(user.savedCards || [])]
         .sort(
           (a, b) =>

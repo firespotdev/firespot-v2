@@ -89,10 +89,13 @@ export function SalePaymentFlow({
 
   const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
   const savedCards = customerCards || authUser?.savedCards || []
+  const savedCardPaymentsEnabled = Boolean(
+    merchant.hasPaystackCollection &&
+      merchant.savedCardsCheckoutEnabled !== false,
+  )
   const hasSavedCards = Boolean(
     isAuthenticated &&
-      merchant.hasPaystackCollection &&
-      merchant.savedCardsCheckoutEnabled !== false &&
+      savedCardPaymentsEnabled &&
       savedCards.length > 0,
   )
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>()
@@ -118,7 +121,8 @@ export function SalePaymentFlow({
 
   const [hasCopiedAccount, setHasCopiedAccount] = useState(false)
   const [selectedRail, setSelectedRail] = useState<PaymentRail>(() =>
-    merchant.hasPaystackCollection && sale.paymentRail !== 'manual_transfer'
+    merchant.paystackCollectionChannels?.length &&
+    sale.paymentRail !== 'manual_transfer'
       ? 'multiple'
       : 'transfer',
   )
@@ -441,6 +445,8 @@ export function SalePaymentFlow({
       type: 'rail-picker',
       direction: 'bottom',
       props: {
+        savedCardPaymentsEnabled,
+        isCustomerAuthenticated: isAuthenticated,
         hasSavedCards,
         selectedRail,
         paystackChannels,

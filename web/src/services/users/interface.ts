@@ -6,6 +6,7 @@ export interface BankAccount {
   accountNumber: string
   accountName: string
   isPrimary: boolean
+  isEnabled?: boolean
   createdAt?: string
   updatedAt?: string
 }

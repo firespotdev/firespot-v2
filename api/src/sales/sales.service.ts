@@ -942,7 +942,6 @@ export class SalesService {
       })
 
       await sale.populate(saleCustomerPopulate())
-      this.eventsGateway.server.to(merchantId).emit('sale.pending', sale)
       return initialized
     } catch (error) {
       if (sale._id && sale.status === 'PENDING') {

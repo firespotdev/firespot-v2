@@ -121,6 +121,7 @@ export interface User {
   collectBlockedReason?: 'no_plan' | 'kyc_incomplete' | null
   hasPayoutAccount?: boolean
   savedCardsCheckoutEnabled?: boolean
+  paystackCollectionEnabled?: boolean
   isLapsed?: boolean
   savedCards?: Array<{
     id: string

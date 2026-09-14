@@ -105,12 +105,24 @@ export default function PaymentPage() {
   }, [recordSaleScan, saleId])
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
+  const savedCardPaymentsEnabled = Boolean(
+    merchant?.hasPaystackCollection &&
+      merchant.savedCardsCheckoutEnabled !== false,
+  )
   const hasSavedCards = Boolean(
     isAuthenticated &&
-      merchant?.hasPaystackCollection &&
-      merchant.savedCardsCheckoutEnabled !== false &&
+      savedCardPaymentsEnabled &&
       savedCards.length > 0,
   )
+  const hasMultiplePaymentOptions = Boolean(
+    merchant?.paystackCollectionChannels?.length,
+  )
+  const effectiveSelectedRail: PaymentRail =
+    selectedRail === 'multiple' && !hasMultiplePaymentOptions
+      ? hasSavedCards
+        ? 'saved'
+        : 'transfer'
+      : selectedRail
   // Dynamic QR sale (public, limited view). A failed or cancelled dynamic sale
   // ends the flow; it must never fall back into static-payment mode.
   const {
@@ -741,8 +753,10 @@ export default function PaymentPage() {
       type: 'rail-picker',
       direction: 'bottom',
       props: {
+        savedCardPaymentsEnabled,
+        isCustomerAuthenticated: isAuthenticated,
         hasSavedCards,
-        selectedRail: usePurchaseCartStore.getState().selectedRail,
+        selectedRail: effectiveSelectedRail,
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
           setSelectedRail(rail)
@@ -842,7 +856,7 @@ export default function PaymentPage() {
   function handlePayInstantly(
     amount: number,
     description: string,
-    rail: PaymentRail = selectedRail,
+    rail: PaymentRail = effectiveSelectedRail,
     savedCard: SavedCard | undefined = defaultSavedCard,
   ) {
     if (amount <= 0) {
@@ -1049,7 +1063,7 @@ export default function PaymentPage() {
   }
 
   function openCurrentPurchase(
-    rail = usePurchaseCartStore.getState().selectedRail,
+    rail = effectiveSelectedRail,
     savedCard = defaultSavedCard,
   ) {
     const currentBankIndex = usePurchaseCartStore.getState().selectedBankIndex
@@ -1120,7 +1134,7 @@ export default function PaymentPage() {
       onChangeAccount={() => handleOpenBankDrawer(true)}
       onChangePaymentMethod={handleOpenPaymentMethodDrawer}
       onChangeSavedCard={() => handleOpenSavedCardsDrawer(true)}
-      selectedRail={selectedRail}
+      selectedRail={effectiveSelectedRail}
       selectedItemsCount={purchaseItems.length}
       selectedItemsTotal={purchaseTotal}
       onSelectItems={handleOpenCatalogue}
@@ -1144,7 +1158,9 @@ export default function PaymentPage() {
         payWithSavedCard.isPending ||
         recordSaleCopy.isPending
       }
-      savedCard={selectedRail === 'saved' ? defaultSavedCard : undefined}
+      savedCard={
+        effectiveSelectedRail === 'saved' ? defaultSavedCard : undefined
+      }
     />
   )
 }

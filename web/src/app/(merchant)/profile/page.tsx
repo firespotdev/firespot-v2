@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateBusinessImage } from '@/services/users'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle, VerifiedBadge } from '@/components/ui'
+import { LoaderCircle } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
@@ -69,6 +69,20 @@ export default function ProfilePage() {
   }, [photoSuccess])
 
   const sortedBankAccounts = sortBankAccounts(profile?.bankAccounts || [])
+  const hasPlan = Boolean(profile?.effectiveTier)
+  const savedCardsActive =
+    profile?.canCollect === true &&
+    profile.savedCardsCheckoutEnabled !== false
+  const paystackPaymentsActive =
+    hasPlan &&
+    profile?.canCollect === true &&
+    profile.hasPayoutAccount === true &&
+    profile.paystackCollectionEnabled === true
+  const activePaymentMethodCount =
+    1 +
+    (savedCardsActive ? 1 : 0) +
+    (paystackPaymentsActive ? 1 : 0) +
+    (sortedBankAccounts.some((account) => account.isEnabled !== false) ? 1 : 0)
 
   const handleCameraClick = () => {
     fileInputRef.current?.click()
@@ -212,7 +226,8 @@ export default function ProfilePage() {
                       height={16}
                       className="animate-pulse"
                     />
-                    4 payment methods active
+                    {activePaymentMethodCount} payment method
+                    {activePaymentMethodCount === 1 ? '' : 's'} active
                     <ChevronRight className="w-4 h-4 text-[#24C166] mt-[1%]" />
                   </button>
                 )

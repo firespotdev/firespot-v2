@@ -6,10 +6,32 @@ import {
 describe("Paystack collection channel entitlements", () => {
   const verified = { planStatus: "verified" };
 
+  it("returns no channels for a merchant without a plan", () => {
+    expect(
+      getMerchantPaystackChannels({
+        planStatus: "none",
+        paystackCollectionEnabled: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it("returns no channels until an eligible merchant explicitly enables them", () => {
+    expect(
+      getMerchantPaystackChannels({
+        ...verified,
+        planTier: "PRO",
+      }),
+    ).toEqual([]);
+  });
+
   it("uses card for LITE outside production", () => {
     expect(
       getMerchantPaystackChannels(
-        { ...verified, planTier: "LITE" },
+        {
+          ...verified,
+          planTier: "LITE",
+          paystackCollectionEnabled: true,
+        },
         { NODE_ENV: "development" },
       ),
     ).toEqual(["card"]);
@@ -18,7 +40,11 @@ describe("Paystack collection channel entitlements", () => {
   it("uses bank transfer for LITE in production", () => {
     expect(
       getMerchantPaystackChannels(
-        { ...verified, planTier: "LITE" },
+        {
+          ...verified,
+          planTier: "LITE",
+          paystackCollectionEnabled: true,
+        },
         { NODE_ENV: "production" },
       ),
     ).toEqual(["bank_transfer"]);
@@ -50,15 +76,33 @@ describe("Paystack collection channel entitlements", () => {
 
     expect(
       getMerchantPaystackChannels(
-        { ...verified, planTier: "PRO" },
+        {
+          ...verified,
+          planTier: "PRO",
+          paystackCollectionEnabled: true,
+        },
         environment,
       ),
     ).toEqual(["card", "bank_transfer", "ussd"]);
     expect(
       getMerchantPaystackChannels(
-        { ...verified, planTier: "PROMAX" },
+        {
+          ...verified,
+          planTier: "PROMAX",
+          paystackCollectionEnabled: true,
+        },
         environment,
       ),
     ).toEqual(["card", "bank_transfer", "ussd"]);
+  });
+
+  it("returns no channels when the merchant disables Paystack collection", () => {
+    expect(
+      getMerchantPaystackChannels({
+        ...verified,
+        planTier: "PRO",
+        paystackCollectionEnabled: false,
+      }),
+    ).toEqual([]);
   });
 });

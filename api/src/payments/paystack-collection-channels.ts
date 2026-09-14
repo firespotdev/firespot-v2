@@ -33,6 +33,10 @@ interface ChannelEnvironment {
   PAYSTACK_LITE_CHANNEL?: string;
 }
 
+type CollectionMerchant = PlanStateLike & {
+  paystackCollectionEnabled?: boolean;
+};
+
 function configuredCollectionChannels(
   environment: ChannelEnvironment,
 ): PaystackCollectionChannel[] {
@@ -71,11 +75,12 @@ export function getLitePaystackChannel(
 }
 
 export function getMerchantPaystackChannels(
-  merchant: PlanStateLike,
+  merchant: CollectionMerchant,
   environment: ChannelEnvironment = process.env,
 ): PaystackCollectionChannel[] {
   const tier = getEffectiveTier(merchant);
   if (!tier) return [];
+  if (merchant.paystackCollectionEnabled !== true) return [];
   if (tier === "LITE") return [getLitePaystackChannel(environment)];
   return configuredCollectionChannels(environment);
 }
