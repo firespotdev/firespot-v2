@@ -1,11 +1,38 @@
-import { Controller, Post, Get, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Headers,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { SalesService } from './sales.service';
 import { CreatePendingSaleDto } from './dto/create-pending-sale.dto';
 import { RecordSaleDto } from './dto/record-sale.dto';
 import { EditSaleDto } from './dto/edit-sale.dto';
 import { SalesQueryDto } from './dto/sales-query.dto';
+import { CustomerSaleActionDto } from './dto/customer-sale-action.dto';
+import { RecordRepaymentDto } from './dto/record-repayment.dto';
+import { UpdateSaleCustomerDto } from './dto/update-sale-customer.dto';
+import { CreatePaystackCollectSaleDto } from './dto/create-paystack-collect-sale.dto';
+import {
+  InitializePaystackSaleDto,
+  ReconcilePaystackSaleDto,
+} from './dto/initialize-paystack-sale.dto';
+import {
+  PayWithSavedCardDto,
+  SaveCardFromSaleDto,
+} from './dto/pay-with-saved-card.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '../schemas/user.schema';
 
@@ -15,19 +42,109 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @ApiOperation({ summary: 'Create a pending sale' })
+  @UseGuards(OptionalJwtAuthGuard)
   @Post('pending')
-  async createPendingSale(@Body() dto: CreatePendingSaleDto) {
-    return this.salesService.createPendingSale(dto);
+  async createPendingSale(
+    @Body() dto: CreatePendingSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.createPendingSale(dto, (user as any)?.userId);
+  }
+
+  @ApiOperation({ summary: 'Initialize a Paystack collection sale from customer pay page' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post('collect/paystack')
+  async createPaystackCollectSale(
+    @Body() dto: CreatePaystackCollectSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.createPaystackCollectSale(
+      dto,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Initialize Paystack for an existing dynamic sale' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post(':id/paystack/initialize')
+  async initializeExistingPaystackSale(
+    @Param('id') saleId: string,
+    @Body() dto: InitializePaystackSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.initializeExistingPaystackSale(
+      saleId,
+      dto,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Reconcile a returning Paystack checkout' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post(':id/paystack/reconcile')
+  async reconcilePaystackSale(
+    @Param('id') saleId: string,
+    @Body() dto: ReconcilePaystackSaleDto,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.reconcilePaystackSale(
+      saleId,
+      dto,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Save debit card used for a confirmed Paystack sale' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/save-card')
+  async saveCardFromSale(
+    @Param('id') saleId: string,
+    @Body() dto: SaveCardFromSaleDto,
+    @GetUser() user: User,
+  ) {
+    return this.salesService.saveCardFromSale(
+      saleId,
+      (user as any).userId,
+      dto.customerFingerprint,
+    );
+  }
+
+  @ApiOperation({ summary: 'Pay for a sale using a customer saved card in 1-tap' })
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/pay-saved-card')
+  async payWithSavedCard(
+    @Param('id') saleId: string,
+    @Body() dto: PayWithSavedCardDto,
+    @GetUser() user: User,
+  ) {
+    return this.salesService.payWithSavedCard(
+      saleId,
+      dto,
+      (user as any).userId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create a dynamic pending collect sale' })
+  @Post('collect')
+  async createPendingCollectSale(
+    @GetUser() user: User,
+    @Body() dto: CreatePendingSaleDto,
+  ) {
+    return this.salesService.createPendingCollectSale(
+      (user as any).userId,
+      dto,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Create a manual confirmed sale' })
   @Post()
-  async createManualSale(
-    @GetUser() user: User,
-    @Body() dto: RecordSaleDto,
-  ) {
+  async createManualSale(@GetUser() user: User, @Body() dto: RecordSaleDto) {
     return this.salesService.createManualSale((user as any).userId, dto);
   }
 
@@ -41,6 +158,22 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get my activity (payments I made)' })
+  @Get('customer/history')
+  async getCustomerHistory(@GetUser() user: User) {
+    return this.salesService.getMyActivity((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Attach me as the payer of a sale (on pay)' })
+  @Patch(':id/claim')
+  async claimSale(@GetUser() user: User, @Param('id') saleId: string) {
+    return this.salesService.claimSalePayer(saleId, (user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get merchant sales statistics' })
   @Get('stats')
   async getSalesStats(@GetUser() user: User, @Query() query: SalesQueryDto) {
@@ -49,10 +182,90 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get merchant outstanding summary' })
+  @Get('outstanding/summary')
+  async getOutstandingSummary(@GetUser() user: User) {
+    return this.salesService.getOutstandingSummary((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get active ongoing sales' })
+  @Get('ongoing')
+  async getOngoingSales(@GetUser() user: User) {
+    return this.salesService.getOngoingSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Clear all active ongoing sales' })
+  @Delete('ongoing')
+  async clearAllOngoingSales(@GetUser() user: User) {
+    return this.salesService.clearAllOngoingSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get a single sale' })
   @Get(':id')
   async getSale(@GetUser() user: User, @Param('id') id: string) {
     return this.salesService.getSaleById((user as any).userId, id);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Confirm every active pending sale in full' })
+  @Patch('confirm-all')
+  async confirmAllSales(@GetUser() user: User) {
+    return this.salesService.confirmAllSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Archive every active pending sale' })
+  @Patch('archive-all')
+  async archiveAllPendingSales(@GetUser() user: User) {
+    return this.salesService.archiveAllPendingSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Archive a customer's active outstanding sales",
+  })
+  @Patch('outstanding/customer/:customerId/archive')
+  async archiveCustomerOutstandingSales(
+    @GetUser() user: User,
+    @Param('customerId') customerId: string,
+  ) {
+    return this.salesService.archiveCustomerOutstandingSales(
+      (user as any).userId,
+      customerId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Confirm a pending sale in full' })
+  @Patch(':id/confirm')
+  async confirmSale(@GetUser() user: User, @Param('id') saleId: string) {
+    return this.salesService.confirmSale((user as any).userId, saleId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Change the customer on a pending sale' })
+  @Patch(':id/customer')
+  async updateSaleCustomer(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+    @Body() dto: UpdateSaleCustomerDto,
+  ) {
+    return this.salesService.updateSaleCustomer(
+      (user as any).userId,
+      saleId,
+      dto.customerId,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')
@@ -81,13 +294,148 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Archive a sale' })
+  @Patch(':id/archive')
+  async archiveSale(@GetUser() user: User, @Param('id') saleId: string) {
+    return this.salesService.archiveSale((user as any).userId, saleId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Cancel a pending sale' })
   @Patch(':id/cancel')
-  async cancelSale(
-    @GetUser() user: User,
-    @Param('id') saleId: string,
-  ) {
+  async cancelSale(@GetUser() user: User, @Param('id') saleId: string) {
     return this.salesService.cancelSale((user as any).userId, saleId);
   }
-}
 
+  @ApiOperation({
+    summary: 'Get public sale details (customer pay page)',
+    description:
+      'Unauthenticated, limited view of a sale for the customer paying a dynamic QR. Returns amount, items, status and merchant display info only.',
+  })
+  @Get(':id/public')
+  async getPublicSale(
+    @Param('id') saleId: string,
+    @Query('serialNumber') serialNumber: string,
+  ) {
+    return this.salesService.getPublicSaleById(saleId, serialNumber);
+  }
+
+  @ApiOperation({ summary: 'Cancel a pending dynamic sale as the customer' })
+  @Patch(':id/customer-cancel')
+  async cancelSaleAsCustomer(
+    @Param('id') saleId: string,
+    @Body() dto: CustomerSaleActionDto,
+  ) {
+    return this.salesService.cancelSaleAsCustomer(saleId, dto.serialNumber);
+  }
+
+  @ApiOperation({ summary: 'Tell the merchant that the customer has paid' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Patch(':id/customer-paid')
+  async markSalePaidByCustomer(
+    @Param('id') saleId: string,
+    @Body() dto: CustomerSaleActionDto,
+    @Headers('x-customer-fingerprint') customerFingerprint?: string,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.markSalePaidByCustomer(
+      saleId,
+      dto.serialNumber,
+      customerFingerprint,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({ summary: 'Upload customer payment receipt screenshot' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Post(':id/receipt')
+  @UseInterceptors(FileInterceptor('receipt'))
+  async uploadReceipt(
+    @Param('id') saleId: string,
+    @Query('serialNumber') serialNumber: string,
+    @Headers('x-customer-fingerprint') customerFingerprint: string,
+    @UploadedFile() file: Express.Multer.File,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.uploadReceipt(
+      saleId,
+      serialNumber,
+      customerFingerprint,
+      file.buffer,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiOperation({
+    summary: 'Remove uploaded receipt (customer, pending sales only)',
+  })
+  @Delete(':id/receipt')
+  async deleteReceipt(
+    @Param('id') saleId: string,
+    @Query('serialNumber') serialNumber: string,
+    @Headers('x-customer-fingerprint') customerFingerprint: string,
+  ) {
+    return this.salesService.deleteReceipt(
+      saleId,
+      serialNumber,
+      customerFingerprint,
+    );
+  }
+
+  @ApiOperation({ summary: 'Record customer scanning/accessing link' })
+  @Patch(':id/scan')
+  async recordScan(@Param('id') saleId: string) {
+    return this.salesService.recordScan(saleId);
+  }
+
+  @ApiOperation({ summary: 'Record customer copying account number' })
+  @UseGuards(OptionalJwtAuthGuard)
+  @Patch(':id/copy')
+  async recordCopy(
+    @Param('id') saleId: string,
+    @Body() dto: CustomerSaleActionDto,
+    @Headers('x-customer-fingerprint') customerFingerprint: string,
+    @GetUser() user?: User,
+  ) {
+    return this.salesService.recordCopy(
+      saleId,
+      dto.serialNumber,
+      customerFingerprint,
+      dto.targetBankName,
+      dto.targetAccountNumber,
+      dto.sourceBankName,
+      (user as any)?.userId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get customer outstanding sales' })
+  @Get('customer/:customerId/outstanding')
+  async getCustomerOutstandingSales(
+    @GetUser() user: User,
+    @Param('customerId') customerId: string,
+  ) {
+    return this.salesService.getCustomerOutstandingSales(
+      (user as any).userId,
+      customerId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Record a repayment for an outstanding sale' })
+  @Post(':id/repayment')
+  async recordRepayment(
+    @GetUser() user: User,
+    @Param('id') saleId: string,
+    @Body() dto: RecordRepaymentDto,
+  ) {
+    return this.salesService.recordRepayment(
+      (user as any)?.userId,
+      saleId,
+      dto,
+    );
+  }
+}

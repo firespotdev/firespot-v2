@@ -42,7 +42,7 @@ export default function CreateAgent({ onSuccess }: CreateAgentProps) {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-gray-100 bg-white p-6">
+        <div className="rounded-[12px] border border-gray-100 bg-white p-6">
           <div className="mb-4 flex items-center gap-3">
             <div
               className="rounded-xl p-3"
@@ -90,7 +90,7 @@ export default function CreateAgent({ onSuccess }: CreateAgentProps) {
         </div>
 
         {/* Recently Created */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-6">
+        <div className="rounded-[12px] border border-gray-100 bg-white p-6">
           <h3 className="mb-4 text-lg font-semibold text-gray-900">
             Recently Created
           </h3>

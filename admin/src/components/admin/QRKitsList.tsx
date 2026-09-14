@@ -202,6 +202,7 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
 
   // Clear selection when page/filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIds(new Set())
   }, [filters])
 
@@ -246,8 +247,8 @@ export default function QRKitsList({ onSelectQRKit }: QRKitsListProps) {
           console.log(`Generating PDF for ${qrKit.serialNumber}`)
           try {
             const pdfBlob = await generatePDFBlob(cardRenderRef.current, {
-              scale: 3,
-              backgroundColor: '#000000',
+              scale: 4,
+              backgroundColor: '#FFFFFF',
             })
             pdfDataList.push({ serialNumber: qrKit.serialNumber, pdfBlob })
           } catch (pdfErr) {

@@ -6,6 +6,8 @@ import type {
   UserProfile,
   QRKitActivationResponse,
   UpdateProfilePhotoResponse,
+  UpdateBusinessImageResponse,
+  UpdateProfileBannerResponse,
   SerialCheckResponse,
   PaymentVerificationResponse,
   BankAccount,
@@ -35,10 +37,29 @@ export interface DeleteBankAccountResponse {
   message: string
 }
 
+export interface PaymentSettings {
+  savedCardsCheckoutEnabled?: boolean
+  paystackCollectionEnabled?: boolean
+}
+
 // API functions
 export const userApi = {
   getProfile: async (): Promise<UserProfile> => {
     const response = await apiClient.get<UserProfile>('/users/me')
+    return response.data
+  },
+
+  updatePaymentSettings: async (
+    settings: PaymentSettings,
+  ): Promise<{
+    message: string
+    savedCardsCheckoutEnabled: boolean
+    paystackCollectionEnabled: boolean
+  }> => {
+    const response = await apiClient.patch(
+      '/users/me/payment-settings',
+      settings,
+    )
     return response.data
   },
 
@@ -87,6 +108,38 @@ export const userApi = {
     return response.data
   },
 
+  updateBusinessImage: async (
+    file: File,
+  ): Promise<UpdateBusinessImageResponse> => {
+    const formData = new FormData()
+    formData.append('businessImage', file)
+
+    const response = await apiClient.patch<UpdateBusinessImageResponse>(
+      '/users/business-image',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      },
+    )
+    return response.data
+  },
+
+  updateProfileBanner: async (
+    file: File,
+  ): Promise<UpdateProfileBannerResponse> => {
+    const formData = new FormData()
+    formData.append('banner', file)
+
+    const response = await apiClient.patch<UpdateProfileBannerResponse>(
+      '/users/banner',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    )
+    return response.data
+  },
+
   // Bank account management
   getBankAccounts: async (): Promise<BankAccountsResponse> => {
     const response = await apiClient.get<BankAccountsResponse>(
@@ -114,6 +167,20 @@ export const userApi = {
     return response.data
   },
 
+  setBankAccountEnabled: async ({
+    accountNumber,
+    enabled,
+  }: {
+    accountNumber: string
+    enabled: boolean
+  }): Promise<SetPrimaryResponse> => {
+    const response = await apiClient.patch<SetPrimaryResponse>(
+      `/users/bank-accounts/${accountNumber}/visibility`,
+      { enabled },
+    )
+    return response.data
+  },
+
   deleteBankAccount: async (
     accountNumber: string,
   ): Promise<DeleteBankAccountResponse> => {
@@ -130,6 +197,13 @@ export const userApi = {
     )
     return response.data
   },
+
+  getIndustries: async (): Promise<{ industries: string[] }> => {
+    const response = await apiClient.get<{ industries: string[] }>(
+      '/users/industries',
+    )
+    return response.data
+  },
 }
 
 // Hooks
@@ -137,6 +211,38 @@ export function useUserProfile() {
   return useQuery({
     queryKey: ['user', 'profile'],
     queryFn: userApi.getProfile,
+  })
+}
+
+export function useUpdatePaymentSettings() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.updatePaymentSettings,
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ['user', 'profile'],
+        (profile: UserProfile | undefined) =>
+          profile
+            ? {
+                ...profile,
+                savedCardsCheckoutEnabled:
+                  data.savedCardsCheckoutEnabled,
+                paystackCollectionEnabled:
+                  data.paystackCollectionEnabled,
+              }
+            : profile,
+      )
+    },
+  })
+}
+
+export function useIndustries() {
+  return useQuery({
+    queryKey: ['industries'],
+    queryFn: userApi.getIndustries,
+    select: (data) => data.industries,
+    staleTime: Infinity,
   })
 }
 
@@ -184,6 +290,40 @@ export function useUpdateProfilePhoto() {
   })
 }
 
+export function useUpdateBusinessImage() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.updateBusinessImage,
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ['user', 'profile'],
+        (oldData: UserProfile | undefined) =>
+          oldData
+            ? { ...oldData, businessImageUrl: data.businessImageUrl }
+            : oldData,
+      )
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useUpdateProfileBanner() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: userApi.updateProfileBanner,
+    onSuccess: (data) => {
+      queryClient.setQueryData(
+        ['user', 'profile'],
+        (oldData: UserProfile | undefined) =>
+          oldData ? { ...oldData, profileBannerUrl: data.profileBannerUrl } : oldData,
+      )
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
 // Bank account hooks
 export function useBankAccounts() {
   return useQuery({
@@ -209,6 +349,17 @@ export function useSetPrimaryBankAccount() {
 
   return useMutation({
     mutationFn: userApi.setPrimaryBankAccount,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useSetBankAccountEnabled() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: userApi.setBankAccountEnabled,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })

@@ -4,8 +4,9 @@ import { useRef, useState } from 'react'
 import { X, Check, Download } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { formatAmountInWords, formatDate } from '@/lib/utils/constants'
-import { downloadElementAsPDF } from '@/lib/utils/pdf-download'
+import { formatAmountInWords } from '@/lib/utils/constants'
+import { formatDateTime } from '@/lib/utils/date-time'
+import { downloadElementAsPNG } from '@/lib/utils/pdf-download'
 import { showNotificationToast } from '@/components/ui'
 
 interface ReceiptDrawerProps {
@@ -35,36 +36,25 @@ export function ReceiptDrawer({
 
     setIsDownloading(true)
     try {
-      await downloadElementAsPDF(receiptRef.current, {
-        filename: `firespot-receipt-${referenceNumber}.pdf`,
+      await downloadElementAsPNG(receiptRef.current, {
+        filename: `firespot-receipt-${referenceNumber}.png`,
         scale: 3,
         backgroundColor: '#F4F6F8',
       })
       showNotificationToast({
         message: 'Receipt downloaded successfully',
+        mode: 'success',
         duration: 2000,
       })
     } catch (error) {
       console.error('Failed to download receipt:', error)
       showNotificationToast({
         message: 'Failed to download receipt',
+        mode: 'error',
         duration: 2000,
       })
     } finally {
       setIsDownloading(false)
-    }
-  }
-
-  const handleShareReceipt = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Payment Receipt',
-          text: `Payment of ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} to ${paidTo}`,
-        })
-      } catch (error) {
-        // User cancelled or share failed
-      }
     }
   }
 
@@ -100,7 +90,7 @@ export function ReceiptDrawer({
                 Receipt
               </p>
               <p className="text-[8px] font-medium text-[#4C5563]">
-                {formatDate(date)}
+                {formatDateTime(date)}
               </p>
             </div>
           </div>

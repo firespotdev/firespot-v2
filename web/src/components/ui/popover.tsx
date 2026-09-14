@@ -21,10 +21,27 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  overlay = true,
+  overlayClassName,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
+  /** Adds the shared Firespot dimming layer behind the popover. */
+  overlay?: boolean
+  overlayClassName?: string
+}) {
   return (
     <PopoverPrimitive.Portal>
+      <div data-slot="popover-layer">
+      {overlay && (
+        <div
+          aria-hidden="true"
+          data-slot="popover-overlay"
+          className={cn(
+            "fixed inset-0 z-40 bg-[#00000014]",
+            overlayClassName,
+          )}
+        />
+      )}
       <PopoverPrimitive.Content
         data-slot="popover-content"
         align={align}
@@ -35,6 +52,7 @@ function PopoverContent({
         )}
         {...props}
       />
+      </div>
     </PopoverPrimitive.Portal>
   )
 }

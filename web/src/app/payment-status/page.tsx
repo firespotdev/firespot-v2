@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { X, ChevronRight, LinkIcon, MessageCircleHeart } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -55,7 +56,7 @@ function PaymentStatusContent() {
       },
     })
   }
- 
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login')
@@ -81,7 +82,6 @@ function PaymentStatusContent() {
       },
     })
   }, [reference, hasVerified, isAuthenticated, verifyPayment])
-
 
   if (!isAuthenticated) {
     return null
@@ -180,9 +180,7 @@ function PaymentStatusContent() {
           </div>
 
           <div className="p-4 pb-8 space-y-3">
-      
-
-            <div className="w-full bg-white rounded-2xl py-3 shadow-[0px_4px_8px_0px_#0000000A]">
+            <div className="w-full bg-white rounded-[12px] py-3 shadow-[0px_4px_8px_0px_#0000000A]">
               <Link
                 href="/activate"
                 className="w-full flex items-center gap-3 border-b border-[#F4F6F8] pb-3 px-3"

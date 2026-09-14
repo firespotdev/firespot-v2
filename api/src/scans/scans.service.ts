@@ -60,7 +60,7 @@ export class ScansService {
     return this.scanModel.findByIdAndUpdate(
       scanId,
       { accountCopied: true },
-      { new: true },
+      { returnDocument: 'after' },
     );
   }
 

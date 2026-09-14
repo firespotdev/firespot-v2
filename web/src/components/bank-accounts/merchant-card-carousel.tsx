@@ -10,7 +10,7 @@ import {
   type CarouselApi,
 } from '@/components/ui/carousel'
 import { BankLogo } from '@/components/ui/bank-logo'
-import { cn } from '@/lib/utils'
+import { cn, maskAccountNumber } from '@/lib/utils'
 import { showNotificationToast } from '@/components/ui'
 import { useEffect, useState } from 'react'
 
@@ -88,7 +88,10 @@ export function MerchantCardCarousel({
 
   const handleCopy = (account: BankAccount) => {
     navigator.clipboard.writeText(account.accountNumber)
-    showNotificationToast({ message: 'Account number copied!' })
+    showNotificationToast({
+      message: 'Account number copied',
+      mode: 'success',
+    })
 
     if (onCopy) {
       onCopy(account)
@@ -188,7 +191,7 @@ export function MerchantCardCarousel({
 
                 <div
                   className={cn(
-                    'bg-white rounded-2xl py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] mx-0.5',
+                    'bg-white rounded-[12px] py-4 shadow-[0px_1px_2px_0px_rgba(0,0,0,0.05)] mx-0.5',
                     showProfileInternal ? 'mt-6' : 'mt-0',
                   )}
                 >
@@ -219,7 +222,7 @@ export function MerchantCardCarousel({
                     </p>
                     <div className="flex items-center gap-1">
                       <p className="text-lg font-bold text-black">
-                        {account.accountNumber}
+                        {maskAccountNumber(account.accountNumber)}
                       </p>
                       <button
                         onClick={(e) => {

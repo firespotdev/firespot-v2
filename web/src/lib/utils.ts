@@ -20,4 +20,11 @@ export function formatCurrency(value: number) {
   }).format(value)
 }
 
+export function maskAccountNumber(accountNumber?: string) {
+  const value = accountNumber?.trim() || ''
+  if (!value) return ''
+  if (value.length <= 5) return '*'.repeat(value.length)
+  return `${value.slice(0, 2)}*****${value.slice(-3)}`
+}
+
 export { getInitials }

@@ -68,7 +68,7 @@ Core capabilities:
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd firespot-transfer-page-api
+cd firespot-two-api
 
 # Install dependencies
 pnpm install

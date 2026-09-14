@@ -42,7 +42,7 @@ export class AdminQROrdersService {
     const order = await this.orderModel.findByIdAndUpdate(
       id,
       { orderStatus: status },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!order) {

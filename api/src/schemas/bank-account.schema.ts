@@ -17,6 +17,9 @@ export class BankAccount {
   @Prop({ default: false })
   isPrimary: boolean;
 
+  @Prop({ default: true })
+  isEnabled: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

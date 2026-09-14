@@ -37,4 +37,16 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     return { status: 'failed' };
   }
+
+  @SubscribeMessage('join-sale-room')
+  handleJoinSaleRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() saleId: string,
+  ) {
+    if (saleId) {
+      client.join(`sale-${saleId}`);
+      return { status: 'joined', room: `sale-${saleId}` };
+    }
+    return { status: 'failed' };
+  }
 }

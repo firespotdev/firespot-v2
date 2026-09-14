@@ -29,9 +29,4 @@ echo "==> Current buildpacks:"
 heroku buildpacks -a "$APP"
 
 echo
-echo "Done. Deploy with EITHER:"
-echo "  A) GitHub integration: Heroku Dashboard > Deploy > connect firespotdev/firespot-v2,"
-echo "     set deploy branch to 'master', then Deploy Branch (or enable automatic deploys)."
-echo "  B) Manual git push:    git push https://git.heroku.com/$APP.git master:main"
-echo
-echo "After first deploy, verify: heroku logs --tail -a $APP  (watch for bcrypt/sharp load + boot)"
+echo "Done."

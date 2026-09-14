@@ -14,6 +14,7 @@ import { ConfigService } from '@nestjs/config'
 import { QRKitsService } from '../qr-kits/qr-kits.service'
 import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
 import { SmsService } from '../services/sms/sms.service'
+import { validatePaystackPaidValue } from '../payments/payment-validation'
 
 @Injectable()
 export class QROrdersService {
@@ -32,7 +33,6 @@ export class QROrdersService {
 
     return {
       ...pricing,
-      kitPrice: 0,
       maxKitsPerOrder: Math.min(
         100,
         Math.max(1, Math.floor(pricing.maxKitsPerOrder)),
@@ -75,9 +75,7 @@ export class QROrdersService {
 
     const email = `${user.fullPhoneNumber.replace('+', '')}@firespot.co`
 
-    // Merchants generate the QR kit for free. A physical order only pays for
-    // delivery of the already-owned QR kit.
-    const subtotal = 0
+    const subtotal = pricing.kitPrice * dto.quantity
     const totalAmount = subtotal + pricing.deliveryFee
 
     // Create DB Record
@@ -194,7 +192,9 @@ export class QROrdersService {
       if (serialNumbers.length === assignedKitIds.length) {
         await this.sendOnlineOrderSerialSms(order, serialNumbers)
       } else {
-        throw new Error('One or more reserved QR kit serials could not be found')
+        throw new Error(
+          'One or more reserved QR kit serials could not be found',
+        )
       }
     } catch (error) {
       const message =
@@ -224,11 +224,14 @@ export class QROrdersService {
       .select('fullPhoneNumber')
 
     if (!merchant?.fullPhoneNumber) {
-      const message = 'Merchant phone number is missing; serial SMS was not sent'
+      const message =
+        'Merchant phone number is missing; serial SMS was not sent'
       order.fulfilmentError = message
       order.fulfilmentFailedAt = new Date()
       await order.save()
-      console.error(`Could not send QR kit serial SMS for order ${order._id}: ${message}`)
+      console.error(
+        `Could not send QR kit serial SMS for order ${order._id}: ${message}`,
+      )
       return
     }
 
@@ -260,9 +263,22 @@ export class QROrdersService {
   }
 
   async verifyPayment(reference: string) {
+    const existingOrder = await this.orderModel.findOne({
+      paystackReference: reference,
+    })
+    if (!existingOrder) {
+      throw new NotFoundException('QR order not found')
+    }
+    if (existingOrder.paymentStatus === 'SUCCESSFUL') return existingOrder
+
     const verification = await this.paystackService.verifyTransaction(reference)
 
-    if (verification.status === 'success') {
+    const validation = validatePaystackPaidValue(verification, {
+      reference,
+      amountKobo: Math.round(existingOrder.totalAmount * 100),
+    })
+
+    if (validation.valid === true) {
       // Both the Paystack webhook and the frontend callback land here, and
       // Paystack retries webhooks. Match on paymentStatus so only the first
       // caller flips the order — otherwise entitlements are granted twice.
@@ -271,9 +287,11 @@ export class QROrdersService {
         {
           paymentStatus: 'SUCCESSFUL',
           orderStatus: 'PROCESSING',
-          paidAt: verification.paidAt ? new Date(verification.paidAt) : new Date(),
+          paidAt: verification.paidAt
+            ? new Date(verification.paidAt)
+            : new Date(),
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
 
       // Already settled by a previous call — return it without re-fulfilling.
@@ -291,6 +309,10 @@ export class QROrdersService {
       { paystackReference: reference },
       { paymentStatus: 'FAILED' },
     )
-    throw new BadRequestException('Payment was not successful')
+    throw new BadRequestException({
+      code: 'PAYSTACK_PAYMENT_VALIDATION_FAILED',
+      message: 'Payment could not be verified for this order',
+      reason: validation.reason,
+    })
   }
 }

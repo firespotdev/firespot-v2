@@ -8,16 +8,37 @@ import axios from "axios";
 
 @Injectable()
 export class SmsService {
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) {
+    // MOCK_OTP accepts any numeric code as valid — it must never run in
+    // production. Fail fast at boot rather than silently authenticating anyone.
+    if (this.isMockMode() && process.env.NODE_ENV === "production") {
+      throw new Error(
+        "MOCK_OTP must not be enabled in production. Remove MOCK_OTP or set it to false.",
+      );
+    }
+  }
+
+  private isMockMode(): boolean {
+    return (
+      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
+      "true"
+    );
+  }
+
+  /**
+   * Lets notification workflows preserve their production throttles while
+   * remaining repeatable in development, where an SMS is only a console log.
+   */
+  isMockEnabled(): boolean {
+    return this.isMockMode();
+  }
 
   /**
    * Send a generic SMS via Termii
    */
   async sendSms(to: string, message: string): Promise<any> {
     const formattedTo = this.formatPhoneNumber(to);
-    const mockOtp =
-      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
-      "true";
+    const mockOtp = this.isMockMode();
 
     if (mockOtp) {
       console.log("🔧 MOCK MODE: SMS request:", {
@@ -68,11 +89,10 @@ export class SmsService {
     otpExpiryMinutes: number,
     otpLength: number,
     messageTemplate: string,
+    pinAttempts = 3,
   ): Promise<string> {
     const formattedPhone = this.formatPhoneNumber(phoneNumber);
-    const mockOtp =
-      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
-      "true";
+    const mockOtp = this.isMockMode();
 
     if (mockOtp) {
       const mockPinId = `mock-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -103,7 +123,7 @@ export class SmsService {
           to: formattedPhone,
           from: "N-Alert", // Termii requires specific senders for OTP sometimes, keeping consistent with AuthService
           channel: "dnd",
-          pin_attempts: 1,
+          pin_attempts: pinAttempts,
           pin_time_to_live: otpExpiryMinutes,
           pin_length: otpLength,
           pin_placeholder: pinPlaceholder,
@@ -133,9 +153,7 @@ export class SmsService {
    * Verify OTP via Termii
    */
   async verifyOtp(pinId: string, pin: string): Promise<boolean> {
-    const mockOtp =
-      this.configService.get<string>("MOCK_OTP", "false").toLowerCase() ===
-      "true";
+    const mockOtp = this.isMockMode();
 
     if (mockOtp) {
       const isValid = /^\d+$/.test(pin);
@@ -163,7 +181,10 @@ export class SmsService {
         response.data.verified === "True" || response.data.verified === true;
       return isVerified;
     } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 400) {
+      if (
+        axios.isAxiosError(error) &&
+        (error.response?.status === 400 || error.response?.status === 422)
+      ) {
         return false;
       }
       this.handleTermiiError(error, "OTP verification");

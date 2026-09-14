@@ -43,3 +43,5 @@ pnpm-debug.log*
 .vercel
 changes.txt
 /scripts
+
+AGENTS.md

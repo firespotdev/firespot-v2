@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useRef } from 'react'
 import {
   useQRCodeSVG,
   useAssignQRKits,
@@ -65,7 +65,13 @@ function StatusBadge({
 export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
   const { data: svgData, isLoading } = useQRCodeSVG(qrKit.qrCodeSvgUrl)
   const { pricing } = useQRKitPricing()
-  const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
+  const brandedSvg = useMemo(
+    () =>
+      svgData
+        ? applyBrandingToSVG(svgData, GRADIENT_START, GRADIENT_END, null, 20)
+        : null,
+    [svgData],
+  )
   const [isDownloading, setIsDownloading] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const assignQRKits = useAssignQRKits()
@@ -80,19 +86,6 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
       ? qrKit.agentId
       : qrKit.agentId?._id || null
 
-  useEffect(() => {
-    if (svgData) {
-      const branded = applyBrandingToSVG(
-        svgData,
-        GRADIENT_START,
-        GRADIENT_END,
-        null,
-        20,
-      )
-      setBrandedSvg(branded)
-    }
-  }, [svgData])
-
   const handleDownloadPDF = async () => {
     if (!cardRef.current || isDownloading) return
 
@@ -100,8 +93,8 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
     try {
       await downloadElementAsPDF(cardRef.current, {
         filename: `firespot-qr-kit-${qrKit.serialNumber}.pdf`,
-        scale: 3,
-        backgroundColor: '#000000',
+        scale: 4,
+        backgroundColor: '#FFFFFF',
       })
       adminToast.success('PDF downloaded successfully')
     } catch (error) {
@@ -215,7 +208,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
               <div className="space-y-4">
                 <div className="flex flex-col items-center">
                   {isLoading ? (
-                    <div className="flex h-56 w-56 items-center justify-center rounded-2xl bg-gray-100">
+                    <div className="flex h-56 w-56 items-center justify-center rounded-[12px] bg-gray-100">
                       <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-600" />
                     </div>
                   ) : brandedSvg ? (
@@ -226,7 +219,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                           'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                         backdropFilter: 'blur(125.30880737304688px)',
                       }}
-                      className="py-6 px-6 rounded-2xl flex flex-col items-center relative w-full max-w-[300px]"
+                      className="py-6 px-6 rounded-[12px] flex flex-col items-center relative w-full max-w-[300px]"
                     >
                       <h2 className="text-white text-center font-bold text-xl leading-none tracking-tight">
                         SCAN TO TRANSFER
@@ -259,7 +252,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         </svg>
 
                         <div
-                          className="rounded-2xl p-1"
+                          className="rounded-[12px] p-1"
                           style={{
                             background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                           }}
@@ -395,7 +388,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                         <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-0.5 w-1/2">
                           <p className="text-white text-[6px]">
                             <span className="text-[#FFFFFF80]">or go to </span>
-                            pay.firespot.co
+                            lite.firespot.co
                           </p>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -428,7 +421,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex h-56 w-56 items-center justify-center rounded-2xl bg-gray-100 text-gray-400">
+                    <div className="flex h-56 w-56 items-center justify-center rounded-[12px] bg-gray-100 text-gray-400">
                       No QR code available
                     </div>
                   )}
@@ -436,7 +429,7 @@ export default function QRKitDetail({ qrKit, onClose }: QRKitDetailProps) {
                   <button
                     onClick={handleDownloadPDF}
                     disabled={isDownloading || !brandedSvg}
-                    className="mt-4 w-full rounded-2xl bg-black text-center px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-4 w-full rounded-[12px] bg-black text-center px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isDownloading ? (
                       <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />

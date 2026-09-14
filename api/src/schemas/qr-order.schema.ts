@@ -77,4 +77,3 @@ export type QROrderDocument = QROrder & Document
 
 // Indexes
 QROrderSchema.index({ merchantId: 1, createdAt: -1 })
-QROrderSchema.index({ paystackReference: 1 }, { sparse: true })

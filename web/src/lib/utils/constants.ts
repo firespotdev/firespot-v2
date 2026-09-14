@@ -77,29 +77,4 @@ const formatAmountInWords = (amount: number): string => {
   return `${nairaWords} Naira ${koboWords} Kobo`
 }
 
-const formatDate = (dateString?: string | Date): string => {
-  if (!dateString) {
-    const now = new Date()
-    return now.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    }) + ' . ' + now.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    })
-  }
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  }) + ' . ' + date.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  })
-}
-
-export { formatAmountInWords, formatDate }
+export { formatAmountInWords }

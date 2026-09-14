@@ -106,7 +106,7 @@ export class QRKitsController {
             },
           },
         },
-        profilePhotoUrl: { type: "string", nullable: true },
+        businessImageUrl: { type: "string", nullable: true },
       },
     },
   })

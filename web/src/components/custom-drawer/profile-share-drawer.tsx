@@ -6,25 +6,30 @@ import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
 import { Button } from '@/components/ui/button'
 import { showNotificationToast } from '@/components/ui'
-import { getInitials } from '@/lib/utils'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
 
 interface ProfileShareDrawerProps {
   businessName: string
-  serialNumber: string
-  profilePhotoUrl?: string
+  serialNumber?: string
+  url?: string
+  imageUrl?: string
   closeDrawer: () => void
 }
 
 export function ProfileShareDrawer({
   businessName,
   serialNumber,
-  profilePhotoUrl,
+  url,
+  imageUrl,
   closeDrawer,
 }: ProfileShareDrawerProps) {
-  const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL}/pay/${serialNumber}`
+  const shareUrl =
+    url ||
+    (serialNumber
+      ? `${process.env.NEXT_PUBLIC_APP_URL}/pay/${serialNumber}`
+      : process.env.NEXT_PUBLIC_APP_URL || 'https://lite.firespot.co')
   const qrRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -66,7 +71,12 @@ export function ProfileShareDrawer({
 
   const handleCopy = () => {
     navigator.clipboard.writeText(shareUrl)
-    showNotificationToast({ message: 'Link copied!' })
+    showNotificationToast({
+      message: 'Link copied',
+      mode: 'success',
+      duration: 30000,
+    })
+    closeDrawer()
   }
 
   const handleShare = async () => {
@@ -104,7 +114,7 @@ export function ProfileShareDrawer({
       </div>
       <div className="px-12 w-full py-6">
         <div
-          className="rounded-[24px] p-1 w-full max-w-[280px] mx-auto aspect-square"
+          className="rounded-[24px] p-1 w-full max-w-70 mx-auto aspect-square"
           style={{
             background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
           }}
@@ -122,14 +132,14 @@ export function ProfileShareDrawer({
             </div>
 
             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10">
-              <div className="relative w-24 h-24">
+              <div className="relative h-[81px] w-[81px]">
                 <div className="w-full h-full rounded-full overflow-hidden border-4 shadow-lg border-white bg-white">
-                  {profilePhotoUrl ? (
+                  {imageUrl ? (
                     <Image
-                      src={profilePhotoUrl}
+                      src={imageUrl}
                       alt="Business Logo"
-                      width={96}
-                      height={96}
+                      width={81}
+                      height={81}
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -137,18 +147,18 @@ export function ProfileShareDrawer({
                       <Image
                         src="/icons/store_solid.svg"
                         alt="store icon"
-                        width={48}
-                        height={48}
+                        width={49}
+                        height={49}
                       />
                     </div>
                   )}
                 </div>
-                <div className="absolute bottom-0 right-0 border-4 border-white rounded-[10.5px]">
+                <div className="absolute bottom-0 right-0 border-[3.5px] border-white rounded-[9.5px]">
                   <Image
                     src="/images/firespot_logo.png"
                     alt="Firespot Logo"
-                    width={24}
-                    height={24}
+                    width={18}
+                    height={18}
                   />
                 </div>
               </div>

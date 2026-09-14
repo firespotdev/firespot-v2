@@ -1,13 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { BrowserMultiFormatReader } from '@zxing/library'
 import { Zap } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { ClockCounterClockwiseIcon } from '@phosphor-icons/react'
 import { CTACarousel } from '@/components/ui/cta-carousel'
-import { useAuthStore } from '@/services/auth'
+import { BottomNav } from '@/components/layout'
+import { useAuthStore, useAuthReady } from '@/services/auth'
+import { hasPersonalIdentity, isTokenExpired } from '@/lib/utils/auth-redirect'
 
 export default function ScannerPage() {
   const router = useRouter()
@@ -21,44 +24,94 @@ export default function ScannerPage() {
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const token = useAuthStore((state) => state.token)
+  const onboardingCompleted = useAuthStore((state) => state.onboardingCompleted)
+  const user = useAuthStore((state) => state.user)
+  const activeProfileMode = useAuthStore((state) => state.activeProfileMode)
   const logout = useAuthStore((state) => state.logout)
+  const authReady = useAuthReady()
+
+  // Signed-in users (personal, or merchants in personal mode) get the Recent
+  // shortcut + bottom nav; logged-out visitors keep the login CTAs.
+  const isSignedIn =
+    authReady && isAuthenticated && !!token && !isTokenExpired(token)
+  const canUseScanner =
+    authReady &&
+    (!isSignedIn ||
+      user?.role !== 'merchant' ||
+      activeProfileMode === 'personal')
 
   useEffect(() => {
+    // Wait for the bootstrap refresh so a returning user with a valid refresh
+    // cookie isn't logged out over a merely-expired access token.
+    if (!authReady) return
     if (isAuthenticated && token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        if (payload.exp && payload.exp * 1000 < Date.now()) {
-          logout()
-          return
-        }
-      } catch (e) {
+      if (isTokenExpired(token)) {
         logout()
         return
       }
-      router.replace('/profile')
+      if (user?.role === 'merchant' && activeProfileMode !== 'personal') {
+        router.replace('/profile')
+        return
+      }
+      if (!onboardingCompleted) {
+        router.replace('/onboarding')
+        return
+      }
+      if (!hasPersonalIdentity(user)) {
+        router.replace('/onboarding?redirect=/')
+      }
     }
-  }, [isAuthenticated, token, router, logout])
+  }, [
+    authReady,
+    isAuthenticated,
+    token,
+    onboardingCompleted,
+    user,
+    activeProfileMode,
+    router,
+    logout,
+  ])
 
-  // Extract serial number from QR code content
-  const extractSerialNumber = useCallback(
+  // Preserve dynamic-sale parameters from Firespot payment URLs. Raw serial
+  // numbers remain supported for physical/static QR kits.
+  const getPaymentDestination = useCallback(
     (scannedText: string): string | null => {
-      // Expected format: {BASE_URL}/pay/{serialNumber} (new format)
-      const payUrlMatch = scannedText.match(/\/pay\/([A-Z0-9-]+)/i)
-      if (payUrlMatch) {
-        return payUrlMatch[1].toUpperCase()
+      const value = scannedText.trim()
+      if (/^[A-Z0-9-]{6,}$/i.test(value)) {
+        return `/pay/${value.toUpperCase()}`
       }
-      // Also accept raw serial numbers (alphanumeric, possibly with dashes)
-      if (/^[A-Z0-9-]{6,}$/i.test(scannedText)) {
-        return scannedText.toUpperCase()
+
+      try {
+        const scannedUrl = new URL(value)
+        const match = scannedUrl.pathname.match(
+          /^\/pay\/([A-Z0-9-]+)\/?$/i,
+        )
+        if (!match) return null
+
+        const serialNumber = match[1].toUpperCase()
+        const destination = new URL(
+          `/pay/${encodeURIComponent(serialNumber)}`,
+          window.location.origin,
+        )
+        const saleId = scannedUrl.searchParams.get('saleId')
+        if (saleId && /^[a-f\d]{24}$/i.test(saleId)) {
+          destination.searchParams.set('saleId', saleId)
+        }
+        if (scannedUrl.searchParams.get('shared') === 'true') {
+          destination.searchParams.set('shared', 'true')
+        }
+
+        return `${destination.pathname}${destination.search}`
+      } catch {
+        return null
       }
-      return null
     },
     [],
   )
 
   // Handle navigation to payment page
   const handleScanResult = useCallback(
-    (serialNumber: string) => {
+    (destination: string) => {
       if (hasNavigated) return
       setHasNavigated(true)
 
@@ -69,12 +122,14 @@ export default function ScannerPage() {
       }
 
       // Navigate to payment page
-      router.push(`/pay/${serialNumber}`)
+      router.push(destination)
     },
     [router, hasNavigated],
   )
 
   useEffect(() => {
+    if (!canUseScanner) return
+
     // Check browser capability
     const isBrowserSupported =
       typeof window !== 'undefined' &&
@@ -131,9 +186,9 @@ export default function ScannerPage() {
 
               if (result) {
                 const scannedText = result.getText()
-                const serialNumber = extractSerialNumber(scannedText)
-                if (serialNumber) {
-                  handleScanResult(serialNumber)
+                const destination = getPaymentDestination(scannedText)
+                if (destination) {
+                  handleScanResult(destination)
                 }
               }
               // NotFoundException is expected when no QR code is detected, so we ignore it
@@ -174,7 +229,7 @@ export default function ScannerPage() {
         videoRef.current.srcObject = null
       }
     }
-  }, [extractSerialNumber, handleScanResult])
+  }, [canUseScanner, getPaymentDestination, handleScanResult])
 
   const toggleFlash = async () => {
     if (!streamRef.current) return
@@ -192,6 +247,10 @@ export default function ScannerPage() {
     } catch (err) {
       console.error('Flash toggle failed:', err)
     }
+  }
+
+  if (!canUseScanner) {
+    return <div className="h-dvh bg-black" />
   }
 
   return (
@@ -214,14 +273,12 @@ export default function ScannerPage() {
               height={36}
             />
 
-            <p className="text-[#FFFFFFCC] text-sm">
-              Scan a firespot QR code to pay
-            </p>
+            <p className="text-[#FFFFFFCC] text-sm">Scan a firespot QR code</p>
 
             <button
               onClick={toggleFlash}
               disabled={!hasFlash}
-              className={`w-9 h-9 rounded-full flex items-center bg-[#FFFFFF66] justify-center shadow-[0_0_10px_0_rgba(255,255,255,0.3)] transition-colors`}
+              className={`glass-border w-9 h-9 rounded-full flex items-center bg-black/40 justify-center transition-colors`}
             >
               <Zap fill="#ffffff" stroke="#ffffff" className={`w-5 h-5`} />
             </button>
@@ -231,8 +288,10 @@ export default function ScannerPage() {
           <div className="flex-1 flex items-center justify-center px-8">
             <div className="flex-1 flex items-center justify-center">
               {error ? (
-                <div className="text-center p-6 bg-black/60 rounded-2xl max-w-sm">
-                  <p className="text-white text-sm mb-2">{error}</p>
+                <div className="text-center p-6 bg-black/60 rounded-[12px] max-w-sm">
+                  <p className="text-white text-sm mb-2">
+                    Camera access denied
+                  </p>
                   <p className="text-gray-400 text-xs">
                     Please ensure you're using a supported browser and have
                     granted camera permissions.
@@ -249,58 +308,72 @@ export default function ScannerPage() {
             </div>
           </div>
 
-          <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
-            <CTACarousel>
-              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
-                <h3 className="text-white font-bold text-sm">
-                  Login to your Firespot Lite account
-                </h3>
-                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
-                  Manage your QR kits and account numbers
-                </p>
-                <Link
-                  href="/login"
-                  className="block w-full bg-[#FFFFFF33] text-white text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
-                >
-                  LOG IN
-                </Link>
-              </div>
-              
-              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
-                <h3 className="text-white font-bold text-sm">
-                  Get your Firespot QR Kit
-                </h3>
-                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
-                  All your account numbers in one scan.
-                </p>
-                <Link
-                  href="/signup"
-                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
-                >
-                  SIGN UP
-                </Link>
-              </div>
-              
-              <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
-                <h3 className="text-white font-bold text-sm">
-                  Pay for your purchases faster
-                </h3>
-                <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-[15px]">
-                  Transfer from any Nigerian Bank
-                </p>
-                <Link
-                  href="https://firespot.co"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
-                >
-                  HOW IT WORKS
-                </Link>
-              </div>
-            </CTACarousel>
-          </div>
+          {isSignedIn ? (
+            <div className="flex justify-center pb-28">
+              <Link
+                href="/activity"
+                className="glass-border inline-flex items-center justify-center gap-1.5 w-23.5 py-2 pl-2 pr-3 rounded-4xl bg-[#FFFFFF1A] text-[#FFFFFF80] text-sm font-medium"
+              >
+                <ClockCounterClockwiseIcon size={20} color="#FFFFFF99" />
+                Recent
+              </Link>
+            </div>
+          ) : !isSignedIn ? (
+            <div className="py-4 bg-linear-to-t from-black/50 to-transparent">
+              <CTACarousel>
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                  <h3 className="text-white font-bold text-sm">
+                    Login to your Firespot Lite account
+                  </h3>
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-3.75">
+                    Manage your QR kits and account numbers
+                  </p>
+                  <Link
+                    href="/login"
+                    className="block w-full bg-[#FFFFFF33] text-white text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                  >
+                    LOG IN
+                  </Link>
+                </div>
+
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                  <h3 className="text-white font-bold text-sm">
+                    Get your Firespot QR Kit
+                  </h3>
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-3.75">
+                    All your account numbers in one scan.
+                  </p>
+                  <Link
+                    href="/login?intent=merchant"
+                    className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                  >
+                    SIGN UP
+                  </Link>
+                </div>
+
+                <div className="bg-[#FFFFFF66] rounded-[12px] px-4 py-3.5">
+                  <h3 className="text-white font-bold text-sm">
+                    Pay for your purchases faster
+                  </h3>
+                  <p className="text-[#E1E1E1] text-xs mb-3.5 border-b border-[#FFFFFF1F] pb-3.75">
+                    Transfer from any Nigerian Bank
+                  </p>
+                  <Link
+                    href="https://firespot.co"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full bg-white text-black text-[10px] tracking-[1px] py-2.5 font-bold rounded-full text-center transition-colors shadow-[0px_2px_24px_0px_#0000000A]"
+                  >
+                    HOW IT WORKS
+                  </Link>
+                </div>
+              </CTACarousel>
+            </div>
+          ) : null}
         </div>
       </div>
+
+      {isSignedIn && <BottomNav variant="dark" />}
     </div>
   )
 }

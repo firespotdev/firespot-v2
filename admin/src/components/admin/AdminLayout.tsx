@@ -16,6 +16,7 @@ import MerchantsList from './MerchantsList'
 import MerchantDetail from './MerchantDetail'
 import QROrdersList from './QROrdersList'
 import ChangePasswordModal from './ChangePasswordModal'
+import PaymentCases from './PaymentCases'
 
 type Tab =
   | 'dashboard'
@@ -25,6 +26,7 @@ type Tab =
   | 'create-agent'
   | 'merchants'
   | 'orders'
+  | 'payment-cases'
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
@@ -155,6 +157,25 @@ export default function AdminLayout() {
         </svg>
       ),
     },
+    {
+      id: 'payment-cases',
+      label: 'Payment Cases',
+      icon: (
+        <svg
+          className="h-5 w-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12h6m-6 4h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
+          />
+        </svg>
+      ),
+    },
   ]
 
   const handleSelectQRKit = (qrKit: QRKit) => {
@@ -196,7 +217,7 @@ export default function AdminLayout() {
               <h1 className="text-xl font-bold text-gray-900">
                 Firespot Admin
               </h1>
-              <p className="text-xs text-gray-500">QR Kit Management</p>
+              <p className="text-xs text-gray-500">Operations console</p>
             </div>
           </div>
 
@@ -247,7 +268,7 @@ export default function AdminLayout() {
 
         {/* Tabs */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <nav className="-mb-px flex gap-1">
+          <nav className="-mb-px flex gap-1 overflow-x-auto" aria-label="Admin sections">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
@@ -286,6 +307,7 @@ export default function AdminLayout() {
           <MerchantsList onSelectMerchant={handleSelectMerchant} />
         )}
         {activeTab === 'orders' && <QROrdersList />}
+        {activeTab === 'payment-cases' && <PaymentCases />}
       </main>
 
       {selectedQRKit && (

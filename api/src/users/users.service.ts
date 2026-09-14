@@ -1,24 +1,57 @@
-import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  ForbiddenException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
-import { Agent, AgentDocument } from "../admin/schemas/agent.schema";
+import { Product, ProductDocument } from "../schemas/product.schema";
 import { PaystackService } from "./services/paystack.service";
+import { PaystackSubaccountsService } from "./services/paystack-subaccounts.service";
 import { CloudinaryService } from "./services/cloudinary.service";
+import { MerchantReferralsService } from "../merchant-referrals/merchant-referrals.service";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { UpdatePaymentSettingsDto } from "./dto/update-payment-settings.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
+import { customAlphabet } from "nanoid";
+
+const nanoidAlphanumeric = customAlphabet(
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+);
 import { AddBankAccountDto } from "./dto/add-bank-account.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
+import {
+  getEffectiveTier,
+  isLapsed,
+  isInGracePeriod,
+  getCollectEligibility,
+  getNextStep,
+  hasCompletedKyc,
+  PlanTier,
+} from "../merchant-plans/constants/plans";
+import {
+  UpdateContactDto,
+  UpdateActiveHoursSetupDto,
+  UpdateEmployeeSetupDto,
+  UpdateFulfillmentDto,
+  UpdateLocationDto,
+  UpdateShopPoliciesDto,
+} from "./dto/shop-setup.dto";
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
-    @InjectModel(Agent.name) private agentModel: Model<AgentDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
+    private merchantReferralsService: MerchantReferralsService,
+    private paystackSubaccountsService: PaystackSubaccountsService,
   ) {}
 
   async verifyBankAccount(dto: VerifyAccountDto) {
@@ -30,6 +63,65 @@ export class UsersService {
     return {
       accountName: result.accountName,
       accountNumber: result.accountNumber,
+    };
+  }
+
+  /**
+   * Post-signup onboarding: saves the user's name and marks onboarding
+   * complete.
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    user.firstName = dto.firstName.trim();
+    user.lastName = dto.lastName.trim();
+    user.onboardingCompleted = true;
+    await user.save();
+
+    return {
+      message: "Profile updated successfully",
+      user: this.sanitizeUser(user),
+    };
+  }
+
+  async updatePaymentSettings(userId: string, dto: UpdatePaymentSettingsDto) {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (dto.savedCardsCheckoutEnabled || dto.paystackCollectionEnabled) {
+      const { canCollect, reason } = getCollectEligibility(user);
+      if (!canCollect) {
+        const settingLabel = dto.paystackCollectionEnabled
+          ? "Paystack payments"
+          : "saved-card checkout";
+        throw new ForbiddenException({
+          message:
+            reason === "kyc_incomplete"
+              ? `Finish verifying your identity to enable ${settingLabel}.`
+              : `Upgrade to a Firespot Business plan to enable ${settingLabel}.`,
+          reason,
+        });
+      }
+    }
+
+    if (dto.savedCardsCheckoutEnabled !== undefined) {
+      user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
+    }
+    if (dto.paystackCollectionEnabled !== undefined) {
+      user.paystackCollectionEnabled = dto.paystackCollectionEnabled;
+    }
+    await user.save();
+
+    return {
+      message: "Payment settings updated",
+      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
+      paystackCollectionEnabled: user.paystackCollectionEnabled === true,
     };
   }
 
@@ -51,29 +143,24 @@ export class UsersService {
       );
     }
 
+    await this.merchantReferralsService.validateOnboardingAttribution(
+      {
+        referralCode: dto.referralCode,
+        merchantReferralCode: dto.merchantReferralCode,
+      },
+      user._id,
+    );
+
     // Verify account number with Paystack
     const verification = await this.paystackService.verifyBankAccount(
       dto.accountNumber,
       dto.bankCode,
     );
 
-    // Handle referral code if provided (referral codes belong to agents)
-    let referringAgent: AgentDocument | null = null;
-    if (dto.referralCode) {
-      referringAgent = await this.agentModel.findOne({
-        referralCode: dto.referralCode.toUpperCase(),
-      });
-
-      if (!referringAgent) {
-        throw new HttpException(
-          "Invalid referral code",
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-
     // Update user with permanent bank details
     user.businessName = dto.businessName;
+    user.businessIndustry = dto.industry;
+    user.businessDescription = dto.description;
     if (!user.bankAccounts) {
       user.bankAccounts = [];
     }
@@ -85,15 +172,303 @@ export class UsersService {
       isPrimary: true,
     } as any);
 
-    if (referringAgent) {
-      user.referredByAgent = referringAgent._id;
+    // Becoming a merchant: upgrade role and assign a shareable slug
+    user.role = "merchant";
+    user.onboardingCompleted = true;
+    if (!user.merchantSlug) {
+      user.merchantSlug = await this.generateUniqueMerchantSlug();
     }
 
     await user.save();
+    await this.merchantReferralsService.applyOnboardingAttribution(user._id, {
+      referralCode: dto.referralCode,
+      merchantReferralCode: dto.merchantReferralCode,
+    });
+    const updatedUser = await this.userModel.findById(user._id).exec();
 
     return {
       message: "Profile setup completed successfully",
-      user: this.sanitizeUser(user),
+      user: this.sanitizeUser(updatedUser || user),
+    };
+  }
+
+  private async generateUniqueMerchantSlug(): Promise<string> {
+    while (true) {
+      const slug = nanoidAlphanumeric(6);
+      const existing = await this.userModel.findOne({ merchantSlug: slug });
+      if (!existing) {
+        return slug;
+      }
+    }
+  }
+
+  private async getMerchantOrThrow(userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    return user;
+  }
+
+  /** Contact details step: business email, website, social links. */
+  async updateContact(userId: string, dto: UpdateContactDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    if (dto.businessEmail !== undefined) user.businessEmail = dto.businessEmail;
+    if (dto.website !== undefined) user.website = dto.website;
+    if (dto.socialLinks !== undefined) {
+      // Merge so clearing one field doesn't wipe the others.
+      user.socialLinks = { ...(user.socialLinks || {}), ...dto.socialLinks };
+    }
+
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Fulfilment step: how customers get goods/services. */
+  async updateFulfillment(userId: string, dto: UpdateFulfillmentDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    user.fulfillment = { ...(user.fulfillment || {}), ...dto };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Location step: primary address, branch count, market/plaza flag. */
+  async updateLocation(userId: string, dto: UpdateLocationDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    const { branchCount, ...address } = dto;
+    user.mainAddress = { ...(user.mainAddress || {}), ...address };
+    if (branchCount !== undefined) user.branchCount = branchCount;
+
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  async updateEmployeeSetup(userId: string, dto: UpdateEmployeeSetupDto) {
+    const user = await this.getMerchantOrThrow(userId);
+
+    if (getEffectiveTier(user) !== "PROMAX") {
+      throw new HttpException(
+        "Employee setup is available on PRO MAX",
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    if (dto.staff.length !== dto.employeeCount - 1) {
+      throw new HttpException(
+        "Select one contact for every employee slot after the owner",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const normalizedPhones = dto.staff.map((staff) => staff.phoneNumber);
+    if (new Set(normalizedPhones).size !== normalizedPhones.length) {
+      throw new HttpException(
+        "The same employee cannot be added twice",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (normalizedPhones.includes(user.fullPhoneNumber)) {
+      throw new HttpException(
+        "The shop owner is already included",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    user.employeeSetup = {
+      employeeCount: dto.employeeCount,
+      staff: dto.staff,
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  async updateShopPolicies(userId: string, dto: UpdateShopPoliciesDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    user.shopPolicies = {
+      ...dto,
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  async updateActiveHoursSetup(userId: string, dto: UpdateActiveHoursSetupDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    const openingDays = dto.openingHours.days;
+    const bookingDays = dto.appointmentAndReservation.bookableHours.days;
+
+    const validateDays = (days: typeof openingDays, label: string) => {
+      if (days.length !== 7 || new Set(days.map((day) => day.day)).size !== 7) {
+        throw new HttpException(
+          `${label} must contain each day of the week`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      const enabled = days.filter((day) => day.enabled);
+      if (enabled.length === 0) {
+        throw new HttpException(
+          `${label} must include at least one open day`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      for (const day of enabled) {
+        if (!day.opensAt || !day.closesAt || day.opensAt === day.closesAt) {
+          throw new HttpException(
+            `${label} requires different opening and closing times`,
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        day.closesNextDay = day.closesAt < day.opensAt;
+      }
+    };
+
+    validateDays(openingDays, "Opening hours");
+    validateDays(bookingDays, "Bookable hours");
+
+    const appointment = dto.appointmentAndReservation;
+    if (appointment.bookingType === "SPACE") {
+      if (
+        !appointment.capacity.guestsAtOnce ||
+        !appointment.capacity.largestGroup
+      ) {
+        throw new HttpException(
+          "Guest capacity and largest group are required",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (
+        appointment.capacity.largestGroup > appointment.capacity.guestsAtOnce
+      ) {
+        throw new HttpException(
+          "Largest group cannot exceed guests at once",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      appointment.capacity.customersAtOnce = undefined;
+    } else {
+      if (!appointment.capacity.customersAtOnce) {
+        throw new HttpException(
+          "Customer capacity is required",
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      appointment.capacity.guestsAtOnce = undefined;
+      appointment.capacity.largestGroup = undefined;
+    }
+
+    if (
+      appointment.deposit.depositType === "PERCENTAGE" &&
+      appointment.deposit.amount > 100
+    ) {
+      throw new HttpException(
+        "Percentage deposit cannot exceed 100",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    user.activeHoursSetup = {
+      openingHours: dto.openingHours,
+      appointmentAndReservation: appointment,
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Marks the shop live. Reversible only by support for now. */
+  async goLive(userId: string) {
+    const user = await this.getMerchantOrThrow(userId);
+    if (!user.shopIsLive) {
+      user.shopIsLive = true;
+      user.shopWentLiveAt = new Date();
+      await user.save();
+    }
+    return { shopIsLive: true, shopWentLiveAt: user.shopWentLiveAt };
+  }
+
+  /**
+   * The shop-setup checklist. Completion for each actionable item is derived
+   * here so the client renders a single server-owned source of truth. Items
+   * without an implemented setup flow remain locked and excluded from totals.
+   */
+  async getShopSetup(userId: string) {
+    const user = await this.getMerchantOrThrow(userId);
+    const merchantId = user._id as Types.ObjectId;
+
+    const [productCount, activeKitCount] = await Promise.all([
+      this.productModel.countDocuments({ merchantId }),
+      this.qrKitModel.countDocuments({
+        merchantId,
+        activationStatus: "activated",
+      }),
+    ]);
+
+    const social = user.socialLinks || {};
+    const hasSocial = Object.values(social).some((v) => Boolean(v));
+
+    const employeeEligible = getEffectiveTier(user) === "PROMAX";
+    const actionable = [
+      {
+        key: "about",
+        done: Boolean(
+          user.businessName &&
+          user.businessDescription &&
+          user.businessIndustry,
+        ),
+      },
+      { key: "bank", done: (user.bankAccounts?.length || 0) > 0 },
+      { key: "verify", done: hasCompletedKyc(user) },
+      {
+        key: "contact",
+        done: Boolean(user.businessEmail || user.website || hasSocial),
+      },
+      {
+        key: "fulfillment",
+        done: Object.values(user.fulfillment || {}).some((v) => Boolean(v)),
+      },
+      {
+        key: "locations",
+        done: Boolean(user.mainAddress?.state && user.mainAddress?.address),
+      },
+      { key: "firstItem", done: productCount > 0 },
+      { key: "qrKit", done: activeKitCount > 0 },
+      {
+        key: "policies",
+        done: Boolean(user.shopPolicies?.configuredAt),
+      },
+      {
+        key: "operatingHours",
+        done: Boolean(user.activeHoursSetup?.configuredAt),
+      },
+      ...(employeeEligible
+        ? [
+            {
+              key: "employees",
+              done: Boolean(user.employeeSetup?.configuredAt),
+            },
+          ]
+        : []),
+    ].map((item) => ({ ...item, locked: false }));
+
+    const locked = ["bookings", "charges", "suppliers"].map((key) => ({
+      key,
+      done: false,
+      locked: true,
+    }));
+
+    const gated = employeeEligible
+      ? []
+      : [{ key: "employees", done: false, locked: false }];
+
+    const completedCount = actionable.filter((i) => i.done).length;
+
+    return {
+      items: [...actionable, ...gated, ...locked],
+      completedCount,
+      total: actionable.length,
+      isLive: user.shopIsLive === true,
     };
   }
 
@@ -120,6 +495,52 @@ export class UsersService {
     return {
       message: "Profile photo updated successfully",
       profilePhotoUrl: user.profilePhotoUrl,
+    };
+  }
+
+  async updateProfileBanner(userId: string, file: Express.Multer.File) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (user.profileBannerPublicId) {
+      await this.cloudinaryService.deleteImage(user.profileBannerPublicId);
+    }
+
+    const upload = await this.cloudinaryService.uploadBanner(file.buffer);
+    user.profileBannerUrl = upload.url;
+    user.profileBannerPublicId = upload.publicId;
+    await user.save();
+
+    return {
+      message: "Profile banner updated successfully",
+      profileBannerUrl: user.profileBannerUrl,
+    };
+  }
+
+  async updateBusinessImage(userId: string, file: Express.Multer.File) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    if (user.businessImagePublicId) {
+      await this.cloudinaryService.deleteImage(user.businessImagePublicId);
+    }
+
+    const upload = await this.cloudinaryService.uploadBusinessImage(
+      file.buffer,
+    );
+    user.businessImageUrl = upload.url;
+    user.businessImagePublicId = upload.publicId;
+    await user.save();
+
+    return {
+      message: "Business image updated successfully",
+      businessImageUrl: user.businessImageUrl,
     };
   }
 
@@ -184,9 +605,11 @@ export class UsersService {
       accountNumber: dto.accountNumber,
       accountName: verification.accountName,
       isPrimary: dto.isPrimary || false,
+      isEnabled: true,
     } as any);
 
     await user.save();
+    await this.paystackSubaccountsService.ensureForUser(user);
 
     return {
       message: "Bank account added successfully",
@@ -196,6 +619,7 @@ export class UsersService {
         accountNumber: dto.accountNumber,
         accountName: verification.accountName,
         isPrimary: dto.isPrimary || false,
+        isEnabled: true,
       },
     };
   }
@@ -244,9 +668,36 @@ export class UsersService {
     account.isPrimary = true;
 
     await user.save();
+    await this.paystackSubaccountsService.ensureForUser(user);
 
     return {
       message: "Primary bank account updated successfully",
+      bankAccount: account,
+    };
+  }
+
+  async setBankAccountEnabled(
+    userId: string,
+    accountNumber: string,
+    enabled: boolean,
+  ) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    const account = user.bankAccounts?.find(
+      (item) => item.accountNumber === accountNumber,
+    );
+    if (!account) {
+      throw new HttpException("Bank account not found", HttpStatus.NOT_FOUND);
+    }
+
+    account.isEnabled = enabled;
+    await user.save();
+
+    return {
+      message: `Bank account ${enabled ? "enabled" : "disabled"}`,
       bankAccount: account,
     };
   }
@@ -289,6 +740,9 @@ export class UsersService {
     }
 
     await user.save();
+    if (wasPrimary) {
+      await this.paystackSubaccountsService.ensureForUser(user);
+    }
 
     return {
       message: "Bank account deleted successfully",
@@ -389,6 +843,9 @@ export class UsersService {
     if (dto.name !== undefined) {
       qrKit.name = dto.name;
     }
+    if (dto.collectFeedback !== undefined) {
+      qrKit.collectFeedback = dto.collectFeedback;
+    }
 
     await qrKit.save();
 
@@ -417,19 +874,181 @@ export class UsersService {
     return { message: "FCM token registered successfully" };
   }
 
+  private toMerchantSummary(merchant: any) {
+    return {
+      id: merchant._id,
+      businessName: merchant.businessName,
+      merchantSlug: merchant.merchantSlug,
+      businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
+      businessIndustry: merchant.businessIndustry,
+    };
+  }
+
+  async getFavoriteMerchants(userId: string) {
+    const user = await this.userModel
+      .findById(userId)
+      .populate(
+        "favoriteMerchants",
+        "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry",
+      )
+      .exec();
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    const favorites = (user.favoriteMerchants || []) as any[];
+    return { favorites: favorites.map((m) => this.toMerchantSummary(m)) };
+  }
+
+  async addFavoriteMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      throw new HttpException("Invalid merchant id", HttpStatus.BAD_REQUEST);
+    }
+    const merchant = await this.userModel
+      .findOne({ _id: merchantId, role: "merchant" })
+      .exec();
+    if (!merchant) {
+      throw new HttpException("Merchant not found", HttpStatus.NOT_FOUND);
+    }
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        { $addToSet: { favoriteMerchants: new Types.ObjectId(merchantId) } },
+      )
+      .exec();
+    return this.getFavoriteMerchants(userId);
+  }
+
+  async removeFavoriteMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      throw new HttpException("Invalid merchant id", HttpStatus.BAD_REQUEST);
+    }
+    await this.userModel
+      .updateOne(
+        { _id: userId },
+        { $pull: { favoriteMerchants: new Types.ObjectId(merchantId) } },
+      )
+      .exec();
+    return this.getFavoriteMerchants(userId);
+  }
+
   private sanitizeUser(user: UserDocument) {
     return {
       id: user._id,
       phoneNumber: user.phoneNumber,
       phoneCountryCode: user.phoneCountryCode,
       fullPhoneNumber: user.fullPhoneNumber,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      onboardingCompleted: user.onboardingCompleted === true,
       businessName: user.businessName,
+      businessIndustry: user.businessIndustry,
+      businessDescription: user.businessDescription,
+      // Shop setup fields (drive the setup forms' prefill + the checklist)
+      businessEmail: user.businessEmail || null,
+      website: user.website || null,
+      socialLinks: user.socialLinks || null,
+      fulfillment: user.fulfillment || null,
+      mainAddress: user.mainAddress || null,
+      branchCount: user.branchCount ?? null,
+      employeeSetup: user.employeeSetup || null,
+      shopPolicies: user.shopPolicies || null,
+      activeHoursSetup: user.activeHoursSetup || null,
+      shopIsLive: user.shopIsLive === true,
       merchantSlug: user.merchantSlug,
+      merchantReferralCode: user.merchantReferralCode || null,
+      referralSource: user.referralSource || null,
       availableKitEntitlements: user.availableKitEntitlements || 0,
       bankAccounts: user.bankAccounts || [],
+      businessImageUrl: user.businessImageUrl,
       profilePhotoUrl: user.profilePhotoUrl,
+      profileBannerUrl: user.profileBannerUrl,
+      // Merchant plan + verification state (drives the badge and upgrade UI)
+      planTier: user.planTier || null,
+      planStatus: user.planStatus || "none",
+      nextKycStep: user.planTier
+        ? getNextStep(user.planTier as PlanTier, (user.kyc || {}) as any)
+            ?.key || null
+        : null,
+      verificationLevel: user.verificationLevel || null,
+      planCurrentPeriodEnd: user.planCurrentPeriodEnd || null,
+      // Lapse state. `effectiveTier` is what the merchant can actually use
+      // right now; `effectiveVerificationLevel` is null while lapsed so the
+      // badge disappears without the UI needing its own rule.
+      planGraceUntil: user.planGraceUntil || null,
+      effectiveTier: getEffectiveTier(user) || null,
+      isLapsed: isLapsed(user),
+      isInGracePeriod: isInGracePeriod(user),
+      effectiveVerificationLevel: isLapsed(user)
+        ? null
+        : user.verificationLevel || null,
+      // Collecting needs a plan AND completed KYC; recording never does.
+      canCollect: getCollectEligibility(user).canCollect,
+      collectBlockedReason: getCollectEligibility(user).reason,
+      hasPayoutAccount: Boolean(user.paystackSubaccountCode),
+      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
+      paystackCollectionEnabled: user.paystackCollectionEnabled === true,
+      savedCards: [...(user.savedCards || [])]
+        .sort(
+          (a, b) =>
+            (b.lastUsedAt || b.createdAt || new Date(0)).getTime() -
+            (a.lastUsedAt || a.createdAt || new Date(0)).getTime(),
+        )
+        .map((c) => ({
+          id: String(c._id),
+          brand: c.brand || "card",
+          last4: c.last4 || "••••",
+          expMonth: c.expMonth,
+          expYear: c.expYear,
+          bank: c.bank,
+          cardType: c.cardType,
+          createdAt: c.createdAt,
+          lastUsedAt: c.lastUsedAt,
+        })),
+      // Used by the client to re-surface the upgrade prompt once per login
+      lastLoginAt: user.lastLoginAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  async getSavedCards(userId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    return [...(user.savedCards || [])]
+      .sort(
+        (a, b) =>
+          (b.lastUsedAt || b.createdAt || new Date(0)).getTime() -
+          (a.lastUsedAt || a.createdAt || new Date(0)).getTime(),
+      )
+      .map((c) => ({
+        id: String(c._id),
+        brand: c.brand || "card",
+        last4: c.last4 || "••••",
+        expMonth: c.expMonth,
+        expYear: c.expYear,
+        bank: c.bank,
+        cardType: c.cardType,
+        createdAt: c.createdAt,
+        lastUsedAt: c.lastUsedAt,
+      }));
+  }
+
+  async deleteSavedCard(userId: string, cardId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+    const countBefore = user.savedCards?.length || 0;
+    user.savedCards = (user.savedCards || []).filter(
+      (c) => String(c._id) !== cardId,
+    );
+    if ((user.savedCards?.length || 0) === countBefore) {
+      throw new HttpException("Card not found", HttpStatus.NOT_FOUND);
+    }
+    await user.save();
+    return { success: true, message: "Card removed successfully" };
   }
 }

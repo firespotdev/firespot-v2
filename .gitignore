@@ -19,3 +19,8 @@ pnpm-debug.log*
 /docs/
 /CLAUDE.md
 /.agents/
+.codex
+PRODUCT.md
+DESIGN.md
+AGENTS.md
+.impeccable

@@ -13,6 +13,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from "@nestjs/swagger";
+import { Throttle } from "@nestjs/throttler";
 import { AdminAuthService } from "./admin-auth.service";
 import { AdminLoginDto } from "./dto/admin-login.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
@@ -24,6 +25,7 @@ export class AdminAuthController {
   constructor(private readonly adminAuthService: AdminAuthService) {}
 
   @Post("login")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: "Admin login" })
   @ApiResponse({
     status: 200,

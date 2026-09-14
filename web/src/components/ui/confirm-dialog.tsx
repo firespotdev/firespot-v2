@@ -51,7 +51,7 @@ export function ConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-md rounded-2xl border-gray-100 bg-white p-6"
+        className="max-w-md rounded-[12px] border-gray-100 bg-white p-6"
         showCloseButton={false}
       >
         <DialogHeader>

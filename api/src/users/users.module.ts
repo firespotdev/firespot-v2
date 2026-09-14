@@ -6,20 +6,33 @@ import { PaystackService } from "./services/paystack.service";
 import { CloudinaryService } from "./services/cloudinary.service";
 import { User, UserSchema } from "../schemas/user.schema";
 import { QRKit, QRKitSchema } from "../schemas/qrkit.schema";
-import { Agent, AgentSchema } from "../admin/schemas/agent.schema";
+import { Product, ProductSchema } from "../schemas/product.schema";
 import { AuthModule } from "../auth/auth.module";
+import { MerchantReferralsModule } from "../merchant-referrals/merchant-referrals.module";
+import { PaystackSubaccountsService } from "./services/paystack-subaccounts.service";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: QRKit.name, schema: QRKitSchema },
-      { name: Agent.name, schema: AgentSchema },
+      { name: Product.name, schema: ProductSchema },
     ]),
     forwardRef(() => AuthModule),
+    MerchantReferralsModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService, PaystackService, CloudinaryService],
-  exports: [UsersService, PaystackService],
+  providers: [
+    UsersService,
+    PaystackService,
+    PaystackSubaccountsService,
+    CloudinaryService,
+  ],
+  exports: [
+    UsersService,
+    PaystackService,
+    PaystackSubaccountsService,
+    CloudinaryService,
+  ],
 })
 export class UsersModule {}

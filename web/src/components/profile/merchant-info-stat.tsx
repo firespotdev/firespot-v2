@@ -7,9 +7,9 @@ import {
   Clock,
   PieChart,
   ChevronDown,
-  AlertCircle,
   Eye,
   EyeOff,
+  ArrowUpRight,
 } from 'lucide-react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
@@ -21,12 +21,13 @@ import {
   DATE_RANGE_LABELS,
   type DateRangePreset,
 } from '@/services/insights'
-import { useSalesStats } from '@/services/sales/hooks'
+import { VerifiedBadge } from '../ui'
 
 interface MerchantInfo {
-  profilePhotoUrl?: string
+  businessImageUrl?: string
   businessName: string
   bankAccountCount: number
+  effectiveVerificationLevel?: 'PRO' | 'PROMAX' | null
 }
 
 interface MerchantInfoStatProps {
@@ -36,7 +37,17 @@ interface MerchantInfoStatProps {
   onCameraClick?: () => void
   isUploadingPhoto?: boolean
   qrKitStatus?: React.ReactNode
+  quickActions?: React.ReactNode
   todaySalesAmount?: number
+  collectedAmount?: number
+  recordedAmount?: number
+  confirmedAmount?: number
+  unconfirmedAmount?: number
+  confirmedCount?: number
+  unconfirmedCount?: number
+  salesCount?: number
+  ordersCount?: number
+  owingCount?: number
   isAmountHidden?: boolean
   onToggleVisibility?: () => void
   currentFilter?: InsightsQuery
@@ -57,14 +68,21 @@ export function MerchantInfoStat({
   onCameraClick,
   isUploadingPhoto = false,
   qrKitStatus,
+  quickActions,
   todaySalesAmount = 0,
+  collectedAmount = 0,
+  recordedAmount = 0,
+  confirmedAmount,
+  unconfirmedAmount,
+  confirmedCount,
+  unconfirmedCount,
+  salesCount = 0,
   isAmountHidden = false,
   onToggleVisibility,
   currentFilter,
   onFilterChange,
 }: MerchantInfoStatProps) {
   const { openDrawer } = useDrawerStore()
-  const { data: salesStats } = useSalesStats()
 
   const handleOpenDrawer = () => {
     openDrawer({
@@ -86,7 +104,7 @@ export function MerchantInfoStat({
         const start = format(new Date(currentFilter.startDate), 'MMM d')
         const end = format(new Date(currentFilter.endDate), 'MMM d')
         return `${start} - ${end}`
-      } catch (e) {
+      } catch {
         return 'Custom'
       }
     }
@@ -97,15 +115,15 @@ export function MerchantInfoStat({
 
   return (
     <div className={cn('w-full flex flex-col items-center', className)}>
-      <div className="flex flex-col items-center px-4 mb-6">
+      <div className="flex flex-col items-center w-full mb-6">
         <div className="relative">
-          {merchantInfo.profilePhotoUrl ? (
+          {merchantInfo.businessImageUrl ? (
             <Image
-              src={merchantInfo.profilePhotoUrl}
+              src={merchantInfo.businessImageUrl}
               alt={merchantInfo.businessName}
               width={96}
               height={96}
-              className="w-24 h-24 rounded-full object-cover"
+              className="w-24 h-24 rounded-full object-cover shadow-[0px_4px_8px_0px_#0000000A]"
             />
           ) : (
             <div className="w-24 h-24 rounded-full bg-[#CED7E1] flex items-center justify-center">
@@ -139,9 +157,25 @@ export function MerchantInfoStat({
           )}
         </div>
 
-        <h1 className="font-bold text-xl text-black mt-4 text-center leading-none">
-          {merchantInfo.businessName}
-        </h1>
+        <Link
+          href="/profile"
+          className="flex items-center gap-1 mt-4 text-center"
+        >
+          <h1 className="font-bold text-xl text-black -tracking-[0.4px] leading-none">
+            {merchantInfo.businessName}
+          </h1>
+          <VerifiedBadge
+            className="mt-1"
+            level={merchantInfo?.effectiveVerificationLevel}
+          />
+          <div className="bg-[#D9D9D9] rounded-[4px] w-4 h-4 flex justify-center items-center mt-1">
+            <ArrowUpRight
+              size={12}
+              className="text-[#6B7280]"
+              strokeWidth={2}
+            />
+          </div>
+        </Link>
 
         {qrKitStatus ? (
           qrKitStatus
@@ -154,35 +188,14 @@ export function MerchantInfoStat({
         )}
       </div>
 
-      {salesStats?.pendingSalesCount && salesStats?.pendingSalesCount > 0 ? (
-        <Link
-          href="/recents"
-          className="w-full flex items-center gap-3 py-3 px-4 bg-white rounded-2xl shadow-[0px_2px_8px_0px_#0000000A] border-[3px] border-[#BB81234D] mb-2"
-        >
-          <Image
-            src="/icons/history_brown.svg"
-            alt="Recent"
-            width={24}
-            height={24}
-          />
-          <div className="flex-1">
-            <p className="leading-none text-left text-base font-medium text-[#6B4200]">
-              Recent sales
-            </p>
-            <span className="text-[13px] text-[#BB8123] font-medium">
-              {salesStats?.pendingSalesCount ?? 0} pending confirmations
-            </span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-[#BDBDBD]" />
-        </Link>
-      ) : null}
+      {quickActions}
 
-      <div className="border-2 border-[#0000000A] rounded-[12px] w-full">
-        <div className="border border-[#F4F6F8] px-4 py-3 bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] flex justify-between items-center">
-          <div className="">
+      <div className="border-2 border-[#000000]/8 bg-white rounded-[12px] w-full mb-6">
+        <div className="px-4 py-3 flex justify-between items-center border-b-2 border-[#F4F6F8]">
+          <div>
             <button
               onClick={handleOpenDrawer}
-              className="flex items-center gap-1 mb-1"
+              className="flex items-center gap-1 mb-2"
             >
               <span className="text-[#00000066] text-xs font-medium">
                 {filterLabel}
@@ -219,13 +232,47 @@ export function MerchantInfoStat({
             </Link>
           </div>
         </div>
-        <div className="flex items-center bg-[#f4f4f4] px-5 py-3 gap-2 rounded-[12px]">
-          <AlertCircle size={18} strokeWidth={2.5} color="#00000066" />
-          <p className="text-xs text-[#00000066] font-medium">
-            You will not receive a payout for these transactions.
-            <br />
-            Sales are recorded for accounting purposes only.
-          </p>
+
+        <div className="grid grid-cols-2 divide-x divide-[#F1F1F1] text-left">
+          <Link
+            href="/sales?tab=confirmed"
+            className="px-4 py-3 transition-colors group"
+          >
+            <div className="flex items-center gap-1">
+              <span className="text-[#00000066] text-xs font-medium">
+                Confirmed{' '}
+                {confirmedCount && confirmedCount > 0
+                  ? `(${confirmedCount})`
+                  : ''}
+              </span>{' '}
+              <ChevronRight size={12} strokeWidth={2} color="#00000066" />
+            </div>
+            <h4 className="font-bold text-[14px] text-black leading-none mt-2">
+              {isAmountHidden
+                ? '₦ ••••••••'
+                : `₦ ${formatCurrency(confirmedAmount ?? todaySalesAmount ?? collectedAmount)}`}
+            </h4>
+          </Link>
+
+          <Link
+            href="/sales?tab=unconfirmed"
+            className="px-4 py-3.5 transition-colors group"
+          >
+            <div className="flex items-center gap-1">
+              <span className="text-[#00000066] text-xs font-medium">
+                Unconfirmed{' '}
+                {unconfirmedCount && unconfirmedCount > 0
+                  ? `(${unconfirmedCount})`
+                  : ''}
+              </span>{' '}
+              <ChevronRight size={12} strokeWidth={2} color="#00000066" />
+            </div>
+            <h4 className="font-bold text-[14px] text-[#BB8123] leading-none mt-2">
+              {isAmountHidden
+                ? '₦ ••••••••'
+                : `₦ ${formatCurrency(unconfirmedAmount ?? recordedAmount)}`}
+            </h4>
+          </Link>
         </div>
       </div>
     </div>

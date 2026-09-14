@@ -13,7 +13,7 @@ interface StatCardProps {
 function StatCard({ title, value, subtitle, gradient }: StatCardProps) {
   return (
     <div
-      className={`rounded-2xl p-6 ${
+      className={`rounded-[12px] p-6 ${
         gradient
           ? 'bg-linear-to-br from-[#FB5012] to-[#D72483] text-white'
           : 'bg-white border border-gray-100'
@@ -47,8 +47,16 @@ function StatCard({ title, value, subtitle, gradient }: StatCardProps) {
 }
 
 export default function AdminDashboard() {
-  const { data: qrStats, isLoading: qrLoading, error: qrError } = useQRKitStats()
-  const { data: merchantStats, isLoading: merchantLoading, error: merchantError } = useMerchantOverviewStats()
+  const {
+    data: qrStats,
+    isLoading: qrLoading,
+    error: qrError,
+  } = useQRKitStats()
+  const {
+    data: merchantStats,
+    isLoading: merchantLoading,
+    error: merchantError,
+  } = useMerchantOverviewStats()
 
   const isLoading = qrLoading || merchantLoading
   const error = qrError || merchantError
@@ -61,7 +69,7 @@ export default function AdminDashboard() {
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="h-32 animate-pulse rounded-2xl bg-gray-100"
+              className="h-32 animate-pulse rounded-[12px] bg-gray-100"
             />
           ))}
         </div>
@@ -87,9 +95,7 @@ export default function AdminDashboard() {
 
       {/* QR Kit Stats */}
       <div>
-        <h3 className="mb-4 text-lg font-semibold text-gray-900">
-          QR Kits
-        </h3>
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">QR Kits</h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Total QR Kits"
@@ -203,4 +209,3 @@ export default function AdminDashboard() {
     </div>
   )
 }
-

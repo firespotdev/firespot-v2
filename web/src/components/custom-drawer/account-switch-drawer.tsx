@@ -1,0 +1,228 @@
+'use client'
+
+import { useMemo } from 'react'
+import Image from 'next/image'
+import { useRouter } from '@bprogress/next/app'
+import { Check, ChevronRight, CirclePlus, UserRound } from 'lucide-react'
+import {
+  ActionList,
+  ActionListItem,
+  showNotificationToast,
+  TagFooter,
+  VerifiedBadge,
+} from '@/components/ui'
+import { useAuthStore } from '@/services/auth'
+import { useDrawerStore } from '@/services/drawer'
+import { useCustomerHistory } from '@/services/sales/hooks'
+import { useUserProfile } from '@/services/users'
+import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
+import { getBusinessImageUrl } from '@/lib/utils/business-image'
+
+interface AccountSwitchDrawerProps {
+  closeDrawer: () => void
+  /** Which surface opened the drawer: the merchant profile or personal home */
+  mode?: 'merchant' | 'personal'
+}
+
+export function AccountSwitchDrawer({
+  closeDrawer,
+  mode = 'merchant',
+}: AccountSwitchDrawerProps) {
+  const router = useRouter()
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const authUser = useAuthStore((state) => state.user)
+  const setActiveProfileMode = useAuthStore(
+    (state) => state.setActiveProfileMode,
+  )
+  const { data: profile } = useUserProfile()
+  const {
+    data: customerHistory,
+    isLoading: isHistoryLoading,
+    isError: isHistoryError,
+  } = useCustomerHistory()
+
+  const firstName = profile?.firstName ?? authUser?.firstName
+  const lastName = profile?.lastName ?? authUser?.lastName
+  const personalName =
+    [firstName, lastName].filter(Boolean).join(' ') || 'Personal account'
+  const businessName = profile?.businessName ?? authUser?.businessName
+  const isMerchant =
+    (profile?.role ?? authUser?.role) === 'merchant' || Boolean(businessName)
+  const profilePhotoUrl = profile?.profilePhotoUrl
+  const businessImageUrl = getBusinessImageUrl(profile)
+
+  const paymentSummary = useMemo(() => {
+    const paymentDates = (customerHistory || [])
+      .map((sale) => new Date(sale.recordedAt || sale.createdAt))
+      .filter((date) => !Number.isNaN(date.getTime()))
+
+    if (!paymentDates.length) {
+      return { count: customerHistory?.length || 0, months: 0 }
+    }
+
+    const firstPaymentDate = paymentDates.reduce((earliest, date) =>
+      date < earliest ? date : earliest,
+    )
+    const now = new Date()
+    const monthsSinceFirst =
+      (now.getFullYear() - firstPaymentDate.getFullYear()) * 12 +
+      now.getMonth() -
+      firstPaymentDate.getMonth()
+
+    return {
+      count: customerHistory?.length || 0,
+      months: Math.max(1, monthsSinceFirst),
+    }
+  }, [customerHistory])
+
+  const paymentCount =
+    isHistoryLoading || isHistoryError
+      ? '—'
+      : paymentSummary.count.toLocaleString('en-NG')
+  const paymentPeriod =
+    isHistoryLoading || isHistoryError
+      ? '—'
+      : paymentSummary.months === 1
+        ? '1 month'
+        : `${paymentSummary.months} months`
+  const paymentLine =
+    !isHistoryLoading && !isHistoryError && paymentSummary.count < 1
+      ? 'No payments yet'
+      : `🔥 ${paymentCount} payments in ${paymentPeriod}`
+
+  const handleSwitchToPersonal = () => {
+    closeDrawer()
+    if (!hasPersonalIdentity(profile ?? authUser)) {
+      router.push('/onboarding?redirect=/home')
+      return
+    }
+    setActiveProfileMode('personal')
+    router.push('/home')
+  }
+
+  const handleSwitchToStore = () => {
+    closeDrawer()
+    setActiveProfileMode('merchant')
+    router.push('/profile')
+  }
+
+  const handleAddShop = () => {
+    if (!isMerchant) {
+      closeDrawer()
+      openDrawer({ type: 'business-intro' })
+      return
+    }
+    showNotificationToast({ message: 'Coming soon', duration: 2000 })
+  }
+
+  return (
+    <div className="px-3 pt-2 pb-6 space-y-3 font-satoshi">
+      {/* Personal identity */}
+      <ActionList rounded="12">
+        <ActionListItem
+          icon={
+            <span className="w-9 h-9 rounded-full bg-[#CED7E1] flex items-center justify-center overflow-hidden">
+              {profilePhotoUrl ? (
+                <Image
+                  src={profilePhotoUrl}
+                  alt={personalName}
+                  width={36}
+                  height={36}
+                  className="object-cover w-full h-full"
+                />
+              ) : (
+                <UserRound className="w-9 h-9 text-[#868788]" />
+              )}
+            </span>
+          }
+          title={
+            <span className="text-[15px] font-medium">{personalName}</span>
+          }
+          subtitle={
+            <span className="mt-1 inline-block text-[13px] font-medium text-[#64748B]">
+              {paymentLine}
+            </span>
+          }
+          trailing={null}
+          onClick={mode === 'merchant' ? handleSwitchToPersonal : undefined}
+          className="p-3"
+        />
+        {mode === 'merchant' && (
+          <ActionListItem
+            icon={
+              <Image
+                src="/icons/user_switch.svg"
+                alt="suer switch"
+                width={24}
+                height={24}
+              />
+            }
+            title={<span className="ml-1">Switch to personal profile</span>}
+            onClick={handleSwitchToPersonal}
+            className="px-5 py-5"
+          />
+        )}
+      </ActionList>
+
+      {/* Stores owned by this merchant (single store for now) */}
+      <ActionList rounded="12">
+        {isMerchant && businessName && (
+          <ActionListItem
+            icon={
+              <span className="w-9 h-9 rounded-full bg-[#CED7E1] flex items-center justify-center overflow-hidden">
+                {businessImageUrl ? (
+                  <Image
+                    src={businessImageUrl}
+                    alt={businessName}
+                    width={36}
+                    height={36}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src="/icons/store_solid.svg"
+                    alt=""
+                    width={22}
+                    height={22}
+                  />
+                )}
+              </span>
+            }
+            title={
+              <span className="inline-flex items-center gap-1">
+                {businessName.toUpperCase()}
+                {/* Effective level: null while lapsed, so the badge hides. */}
+                <VerifiedBadge level={profile?.effectiveVerificationLevel} />
+              </span>
+            }
+            subtitle="Owner · Main address"
+            trailing={
+              mode === 'merchant' ? (
+                <Check className="w-5 h-5 text-[#24C166] stroke-[3px]" />
+              ) : (
+                <ChevronRight
+                  size={16}
+                  className="text-[#AEAEB2] stroke-[2.5px]"
+                />
+              )
+            }
+            onClick={mode === 'personal' ? handleSwitchToStore : undefined}
+            className="p-3"
+          />
+        )}
+        <ActionListItem
+          icon={<CirclePlus className="w-6 h-6 text-[#0075FF]" />}
+          title={<span className="text-[#0075FF] ml-1">Add Shop</span>}
+          trailing={
+            <ChevronRight size={16} className="text-[#AEAEB2] stroke-[2.5px]" />
+          }
+          onClick={handleAddShop}
+          className="px-5 py-4"
+        />
+      </ActionList>
+
+      {/* Footer */}
+      <TagFooter />
+    </div>
+  )
+}

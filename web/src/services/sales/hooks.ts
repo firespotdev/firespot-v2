@@ -1,52 +1,246 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SalesApi, CreatePendingSalePayload, RecordSalePayload, EditSalePayload } from './salesApi';
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import {
+  SalesApi,
+  CreatePendingSalePayload,
+  CreatePaystackCollectPayload,
+  RecordSalePayload,
+  EditSalePayload,
+} from './salesApi';
+import type { Sale } from './interface';
 
 export const useCreatePendingSale = () => {
   return useMutation({
-    mutationFn: (payload: CreatePendingSalePayload) => SalesApi.createPendingSale(payload),
+    mutationFn: (payload: CreatePendingSalePayload) =>
+      SalesApi.createPendingSale(payload),
+  });
+};
+
+export const useCreatePaystackCollectSale = () => {
+  return useMutation({
+    mutationFn: (payload: CreatePaystackCollectPayload) =>
+      SalesApi.createPaystackCollectSale(payload),
+  });
+};
+
+export const useInitializeExistingPaystackSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+      channel,
+      customerFingerprint,
+    }: {
+      saleId: string;
+      serialNumber: string;
+      channel?: string;
+      customerFingerprint?: string;
+    }) =>
+      SalesApi.initializeExistingPaystackSale(saleId, {
+        serialNumber,
+        channel,
+        customerFingerprint,
+      }),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+    },
+  });
+};
+
+export const useReconcilePaystackSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.reconcilePaystackSale(saleId, serialNumber),
+    onSettled: (_, __, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
   });
 };
 
 export const useCreateManualSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (payload: RecordSalePayload) => SalesApi.createManualSale(payload),
+    mutationFn: (payload: RecordSalePayload) =>
+      SalesApi.createManualSale(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };
-export const useSales = (params?: Record<string, string | number | boolean | undefined>) => {
+export const useSales = (
+  params?: Record<string, string | number | boolean | undefined>,
+) => {
   return useQuery({
     queryKey: ['sales', params],
     queryFn: () => SalesApi.getSales(params),
   });
 };
 
-export const useSale = (id?: string) => {
+const INFINITE_SALES_PAGE_SIZE = 20;
+
+/**
+ * Page-by-page sales for endlessly scrolling lists. The key is prefixed with
+ * 'sales' so the existing invalidateQueries({ queryKey: ['sales'] }) calls
+ * refresh it alongside the plain useSales queries.
+ */
+export const useInfiniteSales = (
+  params?: Record<string, string | number | boolean | undefined>,
+) => {
+  return useInfiniteQuery({
+    queryKey: ['sales', 'infinite', params],
+    queryFn: ({ pageParam }) =>
+      SalesApi.getSales({
+        ...params,
+        page: String(pageParam),
+        limit: String(INFINITE_SALES_PAGE_SIZE),
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.meta.page < lastPage.meta.lastPage
+        ? lastPage.meta.page + 1
+        : undefined,
+  });
+};
+
+export const useSale = (
+  id?: string,
+  options?: {
+    initialData?: Sale;
+    recoveryIntervalMs?: number | false;
+  },
+) => {
   return useQuery({
     queryKey: ['sale', id],
     queryFn: () => SalesApi.getSale(id!),
     enabled: !!id,
+    initialData: options?.initialData,
+    refetchInterval: (query) =>
+      query.state.data?.status === 'PENDING'
+        ? options?.recoveryIntervalMs || false
+        : false,
   });
 };
 
-export const useSalesStats = (params?: Record<string, any>) => {
+export const useCustomerHistory = () => {
+  return useQuery({
+    queryKey: ['customer-history'],
+    queryFn: () => SalesApi.getCustomerHistory(),
+  });
+};
+
+export const useSalesStats = <TParams extends object = Record<string, never>>(
+  params?: TParams,
+  options?: { enabled?: boolean },
+) => {
   return useQuery({
     queryKey: ['sales-stats', params],
-    queryFn: () => SalesApi.getSalesStats(params),
+    queryFn: () =>
+      SalesApi.getSalesStats(
+        params as Record<string, string | number | boolean | undefined>,
+      ),
+    enabled: options?.enabled,
   });
 };
 
 export const useRecordSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ saleId, payload }: { saleId: string; payload: RecordSalePayload }) =>
-      SalesApi.recordSale(saleId, payload),
+    mutationFn: ({
+      saleId,
+      payload,
+    }: {
+      saleId: string;
+      payload: RecordSalePayload;
+    }) => SalesApi.recordSale(saleId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
+    },
+  });
+};
+
+export const useConfirmSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.confirmSale(saleId),
+    onSuccess: (data, saleId) => {
+      queryClient.setQueryData(['sale', saleId], data);
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useUpdateSaleCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      customerId,
+    }: {
+      saleId: string;
+      customerId: string;
+    }) => SalesApi.updateSaleCustomer(saleId, customerId),
+    onSuccess: (data, { saleId }) => {
+      queryClient.setQueryData(['sale', saleId], data);
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};
+
+export const useConfirmAllSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.confirmAllSales,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useArchiveAllPendingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.archiveAllPendingSales,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useArchiveCustomerOutstandingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (customerId: string) =>
+      SalesApi.archiveCustomerOutstandingSales(customerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };
@@ -55,9 +249,13 @@ export const useCancelSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (saleId: string) => SalesApi.cancelSale(saleId),
-    onSuccess: () => {
+    onSuccess: (data, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };
@@ -65,11 +263,303 @@ export const useCancelSale = () => {
 export const useEditSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ saleId, payload }: { saleId: string; payload: EditSalePayload }) =>
-      SalesApi.editSale(saleId, payload),
+    mutationFn: ({
+      saleId,
+      payload,
+    }: {
+      saleId: string;
+      payload: EditSalePayload;
+    }) => SalesApi.editSale(saleId, payload),
+    onSuccess: (data, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useCreatePendingCollectSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreatePendingSalePayload) =>
+      SalesApi.createPendingCollectSale(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useArchiveSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.archiveSale(saleId),
+    onSuccess: (data, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
+    },
+  });
+};
+
+export const useUploadReceipt = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+      file,
+      signal,
+    }: {
+      saleId: string;
+      serialNumber: string;
+      file: File;
+      signal?: AbortSignal;
+    }) => SalesApi.uploadReceipt(saleId, serialNumber, file, signal),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};
+
+/**
+ * Public sale view for the customer pay page. Polls every 5s while the sale
+ * is PENDING as a fallback for the confirmation socket.
+ */
+export const usePublicSale = (saleId?: string, serialNumber?: string) => {
+  return useQuery({
+    queryKey: ['public-sale', saleId, serialNumber],
+    queryFn: () => SalesApi.getPublicSale(saleId!, serialNumber!),
+    enabled: !!saleId && !!serialNumber,
+    refetchInterval: (query) =>
+      query.state.data?.status === 'PENDING' ? 5000 : false,
+  });
+};
+
+export const useCancelSaleAsCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.cancelSaleAsCustomer(saleId, serialNumber),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+    },
+  });
+};
+
+export const useMarkSalePaidByCustomer = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.markSalePaidByCustomer(saleId, serialNumber),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+    },
+  });
+};
+
+export const useDeleteReceipt = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+    }: {
+      saleId: string;
+      serialNumber: string;
+    }) => SalesApi.deleteReceipt(saleId, serialNumber),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+    },
+  });
+};
+
+export const useRecordRepayment = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      payload,
+    }: {
+      saleId: string;
+      payload: {
+        amountPaid: number;
+        paymentMethod?: string;
+        customerId?: string;
+      };
+    }) => SalesApi.recordRepayment(saleId, payload),
+    onSuccess: (_, { saleId, payload }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
+      if (payload?.customerId) {
+        queryClient.invalidateQueries({
+          queryKey: ['customer-outstanding-sales', payload.customerId],
+        });
+      }
+    },
+  });
+};
+
+export const useCustomerOutstandingSales = (customerId?: string) => {
+  return useQuery({
+    queryKey: ['customer-outstanding-sales', customerId],
+    queryFn: () => SalesApi.getCustomerOutstandingSales(customerId!),
+    enabled: !!customerId,
+  });
+};
+
+export const useOutstandingSummary = (enabled = true) => {
+  return useQuery({
+    queryKey: ['sales-outstanding-summary'],
+    queryFn: () => SalesApi.getOutstandingSummary(),
+    enabled,
+  });
+};
+
+/**
+ * Attach the logged-in user as a sale's payer when they commit to paying.
+ * No-op-friendly: fails silently for logged-out payers (caller guards on auth).
+ */
+export const useClaimSalePayer = () => {
+  return useMutation({
+    mutationFn: ({ saleId }: { saleId: string }) =>
+      SalesApi.claimSalePayer(saleId),
+  });
+};
+
+export const useRecordScan = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (saleId: string) => SalesApi.recordScan(saleId),
+    onSuccess: (_, saleId) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};
+
+export const useRecordCopy = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      serialNumber,
+      targetBankName,
+      targetAccountNumber,
+      sourceBankName,
+    }: {
+      saleId: string;
+      serialNumber: string;
+      targetBankName?: string;
+      targetAccountNumber?: string;
+      sourceBankName?: string;
+    }) =>
+      SalesApi.recordCopy(saleId, {
+        serialNumber,
+        targetBankName,
+        targetAccountNumber,
+        sourceBankName,
+      }),
+    onSuccess: (_, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+    },
+  });
+};
+
+export const useSaveCardFromSale = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      customerFingerprint,
+    }: {
+      saleId: string;
+      customerFingerprint?: string;
+    }) => SalesApi.saveCardFromSale(saleId, customerFingerprint),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+    },
+  });
+};
+
+export const usePayWithSavedCard = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      cardId,
+      customerFingerprint,
+    }: {
+      saleId: string;
+      cardId: string;
+      customerFingerprint?: string;
+    }) => SalesApi.payWithSavedCard(saleId, { cardId, customerFingerprint }),
+    onSuccess: (data, { saleId }) => {
+      queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['public-sale', saleId] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['saved-cards'] });
+    },
+  });
+};
+
+export const useCustomerSavedCards = (enabled = true) => {
+  return useQuery({
+    queryKey: ['saved-cards'],
+    queryFn: () => SalesApi.getSavedCards(),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+};
+
+export const useDeleteSavedCard = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (cardId: string) => SalesApi.deleteSavedCard(cardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-cards'] });
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] });
+    },
+  });
+};
+
+export const useOngoingSales = (enabled = true) => {
+  return useQuery({
+    queryKey: ['sales', 'ongoing'],
+    queryFn: () => SalesApi.getOngoingSales(),
+    enabled,
+    staleTime: 10 * 1000,
+  });
+};
+
+export const useClearAllOngoingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => SalesApi.clearAllOngoingSales(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
     },
   });
 };

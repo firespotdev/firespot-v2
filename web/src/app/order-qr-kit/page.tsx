@@ -99,7 +99,8 @@ function OrderQRKitPageContent() {
           <div className="w-full py-3.5 px-3">
             <Link
               href={qrKitId ? `/qr-kits/${qrKitId}` : '/qr-kits'}
-              className="inline-flex h-6 w-6 items-center justify-center"
+              aria-label={qrKitId ? 'Back to QR kit' : 'Back to QR kits'}
+              className="-m-3 inline-flex min-h-11 min-w-11 items-center justify-center"
             >
               <ArrowLeft className="h-5 w-5 text-black" strokeWidth={2} />
             </Link>

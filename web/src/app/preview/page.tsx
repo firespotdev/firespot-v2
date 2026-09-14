@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { ArrowLeft, ArrowUpRight } from 'lucide-react'
+import { useRouter } from '@bprogress/next/app'
+import { ArrowUpRight } from 'lucide-react'
 import Link from 'next/link'
 import { useAuthStore } from '@/services/auth'
 import { useUserProfile } from '@/services/users'
@@ -12,9 +12,12 @@ import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
+import { BackButton } from '@/components/ui/back-button'
+import { useSafeBack } from '@/hooks/use-safe-back'
 
 export default function PreviewPage() {
   const router = useRouter()
+  const handleBack = useSafeBack('/profile')
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -44,12 +47,7 @@ export default function PreviewPage() {
       <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
         <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
           <header className="sticky top-0 w-full z-50 bg-[#F4F6F8] flex items-center justify-between px-4 py-2">
-            <button
-              onClick={() => router.back()}
-              className="w-10 h-10 flex items-center justify-center"
-            >
-              <ArrowLeft size={24} strokeWidth={2} />
-            </button>
+            <BackButton onClick={handleBack} className="h-10 w-10" />
             <div className="flex flex-col items-center">
               <h1 className="text-base font-bold text-black">Preview</h1>
             </div>
@@ -58,7 +56,8 @@ export default function PreviewPage() {
 
           <div className="flex-1 flex flex-col items-center justify-center px-4">
             <p className="text-center text-[#00000080] font-medium">
-              Add a bank account to see what your customers would see when they scan your QR code.
+              Add a bank account to see what your customers would see when they
+              scan your QR code.
             </p>
             <Button
               className="mt-4"
@@ -104,7 +103,8 @@ export default function PreviewPage() {
 
       navigator.clipboard.writeText(accountNumber)
       showNotificationToast({
-        message: 'Account number copied!',
+        message: 'Account number copied',
+        mode: 'success',
         duration: 2000,
       })
 
@@ -140,7 +140,8 @@ export default function PreviewPage() {
             <MerchantCardCarousel
               bankAccounts={sortedBankAccounts}
               merchantInfo={{
-                profilePhotoUrl: profile.profilePhotoUrl,
+                profilePhotoUrl:
+                  profile.businessImageUrl || profile.profilePhotoUrl,
                 businessName: profile.businessName || '',
                 bankAccountCount: profile.bankAccounts?.length || 0,
               }}
@@ -151,7 +152,8 @@ export default function PreviewPage() {
               onCopy={(account) => {
                 navigator.clipboard.writeText(account.accountNumber)
                 showNotificationToast({
-                  message: 'Account number copied!',
+                  message: 'Account number copied',
+                  mode: 'success',
                   duration: 2000,
                 })
                 openDrawer({
@@ -168,7 +170,7 @@ export default function PreviewPage() {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
+        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-[12px]">
           <div className="max-w-125 mx-auto p-4 pb-6">
             <Button
               className="w-full bg-black text-white rounded-[48px] h-12 font-bold"

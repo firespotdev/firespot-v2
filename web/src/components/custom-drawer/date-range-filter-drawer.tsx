@@ -6,7 +6,11 @@ import { format } from 'date-fns'
 import type { DateRangePreset, InsightsQuery } from '@/services/insights'
 import { DATE_RANGE_LABELS } from '@/services/insights'
 import { Input } from '@/components/ui'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 
 interface DateRangeFilterDrawerProps {
@@ -75,7 +79,7 @@ export function DateRangeFilterDrawer({
   return (
     <div className="px-4 pb-6 pt-2">
       {/* Preset Options */}
-      <div className="bg-white rounded-2xl p-4 mb-4 shadow-[0px_4px_8px_0px_#0000000A]">
+      <div className="bg-white rounded-[12px] p-4 mb-4 shadow-[0px_4px_8px_0px_#0000000A]">
         <p className="text-xs text-[#00000066] font-medium mb-3">
           Filter by date range
         </p>
@@ -106,7 +110,7 @@ export function DateRangeFilterDrawer({
       </div>
 
       {/* Custom Date Range */}
-      <div className="bg-white rounded-2xl p-4 shadow-[0px_4px_8px_0px_#0000000A]">
+      <div className="bg-white rounded-[12px] p-4 shadow-[0px_4px_8px_0px_#0000000A]">
         <p className="text-xs text-[#00000066] font-medium mb-3">
           OR choose a specific date range
         </p>
@@ -118,7 +122,9 @@ export function DateRangeFilterDrawer({
                   <Input
                     type="text"
                     placeholder="From"
-                    value={startDate ? format(new Date(startDate), 'yyyy-MM-dd') : ''}
+                    value={
+                      startDate ? format(new Date(startDate), 'yyyy-MM-dd') : ''
+                    }
                     readOnly
                     className="pr-10 cursor-pointer pointer-events-none"
                   />
@@ -131,7 +137,10 @@ export function DateRangeFilterDrawer({
                   selected={startDate ? new Date(startDate) : undefined}
                   onSelect={(date) => {
                     if (date) {
-                      handleCustomDateChange('start', format(date, 'yyyy-MM-dd'))
+                      handleCustomDateChange(
+                        'start',
+                        format(date, 'yyyy-MM-dd'),
+                      )
                       setOpenStart(false)
                     }
                   }}
@@ -143,11 +152,16 @@ export function DateRangeFilterDrawer({
           <div className="flex-1">
             <Popover open={openEnd} onOpenChange={setOpenEnd}>
               <PopoverTrigger asChild disabled={!startDate}>
-                <button className="relative w-full text-left cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" disabled={!startDate}>
+                <button
+                  className="relative w-full text-left cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={!startDate}
+                >
                   <Input
                     type="text"
                     placeholder="To"
-                    value={endDate ? format(new Date(endDate), 'yyyy-MM-dd') : ''}
+                    value={
+                      endDate ? format(new Date(endDate), 'yyyy-MM-dd') : ''
+                    }
                     readOnly
                     disabled={!startDate}
                     className="pr-10 cursor-pointer pointer-events-none"

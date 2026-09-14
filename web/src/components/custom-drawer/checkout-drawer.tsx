@@ -6,8 +6,10 @@ import { ChevronDown, Minus, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
 import { useCreateQROrder, useQRKitPricing } from '@/services/qr-orders'
-import { useRouter } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { showNotificationToast } from '@/components/ui'
+import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
+import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 
 const formatNaira = (amount: number) =>
   `NGN ${amount.toLocaleString('en-NG', {
@@ -48,6 +50,11 @@ export const CheckoutDrawer = ({
   const { closeDrawer } = useDrawerStore()
   const router = useRouter()
   const createOrderMutation = useCreateQROrder()
+  const {
+    isRedirectingToPaystack,
+    startPaystackRedirect,
+    cancelPaystackRedirect,
+  } = usePaystackRedirectState()
   const { pricing, isLoading: isPricingLoading } = useQRKitPricing()
 
   const [quantity, setQuantity] = useState(initialQuantity)
@@ -70,6 +77,7 @@ export const CheckoutDrawer = ({
   }
 
   const handlePay = () => {
+    if (createOrderMutation.isPending || isRedirectingToPaystack) return
     if (!quantity || !phoneNumber || !state || !address) {
       showNotificationToast({
         message: 'Missing order details',
@@ -78,6 +86,7 @@ export const CheckoutDrawer = ({
       return
     }
 
+    if (!isFree) startPaystackRedirect()
     createOrderMutation.mutate(
       {
         qrKitId,
@@ -91,6 +100,7 @@ export const CheckoutDrawer = ({
         onSuccess: (data) => {
           // Free order: already settled server-side, no payment step follows.
           if (data?.isFree) {
+            cancelPaystackRedirect()
             clearForm()
             closeDrawer()
             router.push('/order-status?status=success')
@@ -103,21 +113,29 @@ export const CheckoutDrawer = ({
             return
           }
 
+          cancelPaystackRedirect()
           showNotificationToast({
             message: 'Error initializing payment',
+            mode: 'error',
             duration: 3000,
           })
         },
         onError: (error: unknown) => {
+          cancelPaystackRedirect()
           const apiError = error as ApiError
           showNotificationToast({
             message:
               apiError.response?.data?.message || 'Failed to create order',
+            mode: 'error',
             duration: 3000,
           })
         },
       },
     )
+  }
+
+  if (isRedirectingToPaystack) {
+    return <PaystackRedirectingScreen />
   }
 
   return (

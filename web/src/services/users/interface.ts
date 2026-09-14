@@ -6,6 +6,7 @@ export interface BankAccount {
   accountNumber: string
   accountName: string
   isPrimary: boolean
+  isEnabled?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -31,6 +32,7 @@ export interface QRKitActivationResponse {
 export interface SerialCheckResponse {
   status: 'available' | 'already_bound' | 'not_found'
   serialNumber: string
+  reservedForMerchantId?: string
 }
 
 export interface PaymentVerificationResponse {
@@ -43,4 +45,14 @@ export interface PaymentVerificationResponse {
 export interface UpdateProfilePhotoResponse {
   message: string
   profilePhotoUrl: string
+}
+
+export interface UpdateBusinessImageResponse {
+  message: string
+  businessImageUrl: string
+}
+
+export interface UpdateProfileBannerResponse {
+  message: string
+  profileBannerUrl: string
 }

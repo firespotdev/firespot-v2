@@ -8,7 +8,9 @@ interface PhoneInputProps {
   value?: string
   onChange?: (value: string) => void
   className?: string
+  inputClassName?: string
   error?: boolean
+  autoFocus?: boolean
 }
 
 function formatPhoneNumber(input: string) {
@@ -46,7 +48,9 @@ export function PhoneInput({
   value,
   onChange,
   className,
+  inputClassName,
   error,
+  autoFocus = false,
 }: PhoneInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [phoneValue, setPhoneValue] = useState(() => {
@@ -114,6 +118,7 @@ export function PhoneInput({
 
       <Input
         ref={inputRef}
+        autoFocus={autoFocus}
         type="tel"
         value={phoneValue}
         onChange={handleChange}
@@ -123,6 +128,7 @@ export function PhoneInput({
           'pl-28 font-medium',
           error &&
             'border-[#FF002E] focus-visible:border-[#FF002E] focus-visible:ring-[#FF002E]/20 focus-visible:ring-[3px]',
+          inputClassName,
         )}
       />
     </div>

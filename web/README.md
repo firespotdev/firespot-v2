@@ -72,7 +72,7 @@ Firespot Lite enables merchants to accept payments through physical QR code kits
 ```bash
 # Clone the repository
 git clone <repo-url>
-cd firespot-transfer-page
+cd firespot-two
 
 # Install dependencies
 pnpm install
@@ -92,7 +92,7 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 ## Project Structure
 
 ```
-firespot-transfer-page/
+firespot-two/
 ├── public/                     # Static assets
 │   ├── bank_logos/             #   Bank logo images
 │   ├── fonts/                  #   Custom fonts (Satoshi, Sofia Pro)

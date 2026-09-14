@@ -1,22 +1,46 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import { ArrowUpRight, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMerchantBySerial } from '@/services/qr'
 import { useRecordAccountCopy } from '@/services/scans'
-import { LoaderCircle, showNotificationToast } from '@/components/ui'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { showNotificationToast } from '@/components/ui'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
+import { useAuthStore } from '@/services/auth'
 import type { MerchantProfile } from '@/services/qr/interface'
-import { MerchantCardCarousel } from '@/components/bank-accounts/merchant-card-carousel'
-import { useCreatePendingSale } from '@/services/sales/hooks'
+import { SalesApi } from '@/services/sales/salesApi'
+import {
+  useCreatePendingSale,
+  useCreatePaystackCollectSale,
+  useRecordScan,
+  useRecordCopy,
+  useClaimSalePayer,
+  usePublicSale,
+  useCustomerSavedCards,
+  usePayWithSavedCard,
+} from '@/services/sales/hooks'
+import type { SavedCard } from '@/services/sales/interface'
+
+import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
+import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
+import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
+import { SalePayAmountScreen } from '@/components/pay/sale-pay-amount-screen'
+import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
+import { PaystackWaitingScreen } from '@/components/pay/paystack-waiting-screen'
+import { SaleExpiredScreen } from '@/components/pay/sale-expired-screen'
+import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
+import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
+import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
+import { safeLocalStorage, safeSessionStorage } from '@/lib/utils/storage'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -25,21 +49,165 @@ const GRADIENT_END = '#D72483'
 
 export default function PaymentPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
+  const router = useRouter()
   const serialNumber = params.serialNumber as string
+  const saleId = searchParams.get('saleId') || ''
+  const [isRecoveringActiveSale, setIsRecoveringActiveSale] = useState(
+    () => !saleId,
+  )
+
   const [selectedBankIndex, setSelectedBankIndex] = useState(0)
+  const [selectedRail, setSelectedRail] = useState<PaymentRail>('multiple')
+  const [selectedChannel, setSelectedChannel] = useState<string>(
+    DEFAULT_PAYSTACK_CHANNEL,
+  )
+  const purchaseItems = usePurchaseCartStore((state) => state.items)
+  const clearPurchase = usePurchaseCartStore((state) => state.clear)
+  const resetPurchase = usePurchaseCartStore((state) => state.reset)
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
+  const [isEnteringWaiting, setIsEnteringWaiting] = useState(false)
   const recordCopy = useRecordAccountCopy()
   const createPendingSale = useCreatePendingSale()
+  const createPaystackCollectSale = useCreatePaystackCollectSale()
+  const {
+    isRedirectingToPaystack,
+    startPaystackRedirect,
+    cancelPaystackRedirect,
+  } = usePaystackRedirectState()
+  const { mutate: recordSaleScan } = useRecordScan()
+  const recordSaleCopy = useRecordCopy()
+  const claimSalePayer = useClaimSalePayer()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
+  const authUser = useAuthStore((state) => state.user)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
+  const savedCards = customerCards || authUser?.savedCards || []
+  const [selectedCardId, setSelectedCardId] = useState<string | undefined>()
+  const activeSavedCard =
+    savedCards.find((card) => card.id === selectedCardId) || savedCards[0]
+  const defaultSavedCard = activeSavedCard
+  const payWithSavedCard = usePayWithSavedCard()
+
+  const customerExitPath = isAuthenticated ? '/home' : '/'
+  const isReturningFromPaystack =
+    Boolean(saleId) && searchParams.get('payment') === 'paystack-return'
+
+  useEffect(() => {
+    resetPurchase()
+  }, [resetPurchase, serialNumber])
+
+  useEffect(() => {
+    if (saleId) {
+      recordSaleScan(saleId)
+    }
+  }, [recordSaleScan, saleId])
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
+  const savedCardPaymentsEnabled = Boolean(
+    merchant?.hasPaystackCollection &&
+      merchant.savedCardsCheckoutEnabled !== false,
+  )
+  const hasSavedCards = Boolean(
+    isAuthenticated &&
+      savedCardPaymentsEnabled &&
+      savedCards.length > 0,
+  )
+  const hasMultiplePaymentOptions = Boolean(
+    merchant?.paystackCollectionChannels?.length,
+  )
+  const effectiveSelectedRail: PaymentRail =
+    selectedRail === 'multiple' && !hasMultiplePaymentOptions
+      ? hasSavedCards
+        ? 'saved'
+        : 'transfer'
+      : selectedRail
+  // Dynamic QR sale (public, limited view). A failed or cancelled dynamic sale
+  // ends the flow; it must never fall back into static-payment mode.
+  const {
+    data: publicSale,
+    isLoading: saleLoading,
+    isError: saleError,
+  } = usePublicSale(saleId || undefined, serialNumber)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    let active = true
+    const storageKey = `firespot-active-sale:${serialNumber}`
+
+    if (saleId) {
+      safeSessionStorage.setItem(storageKey, saleId)
+      return
+    }
+
+    const storedSaleId = safeSessionStorage.getItem(storageKey)
+    if (!storedSaleId) {
+      queueMicrotask(() => {
+        if (active) setIsRecoveringActiveSale(false)
+      })
+      return
+    }
+
+    queueMicrotask(() => {
+      if (active) setIsRecoveringActiveSale(true)
+    })
+    SalesApi.getPublicSale(storedSaleId, serialNumber)
+      .then((storedSale) => {
+        if (!active) return
+
+        if (storedSale.status === 'PENDING') {
+          router.replace(
+            `/pay/${encodeURIComponent(serialNumber)}?saleId=${encodeURIComponent(storedSaleId)}`,
+          )
+          return
+        }
+
+        if (safeSessionStorage.getItem(storageKey) === storedSaleId) {
+          safeSessionStorage.removeItem(storageKey)
+        }
+        setIsRecoveringActiveSale(false)
+      })
+      .catch(() => {
+        if (!active) return
+        if (safeSessionStorage.getItem(storageKey) === storedSaleId) {
+          safeSessionStorage.removeItem(storageKey)
+        }
+        setIsRecoveringActiveSale(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [saleId, serialNumber, router])
+
+  useEffect(() => {
+    if (!saleId || saleLoading) return
+    if (saleError || error || publicSale?.status === 'CANCELLED') {
+      const storageKey = `firespot-active-sale:${serialNumber}`
+      if (safeSessionStorage.getItem(storageKey) === saleId) {
+        safeSessionStorage.removeItem(storageKey)
+      }
+      router.replace(customerExitPath)
+    }
+  }, [
+    saleId,
+    saleLoading,
+    saleError,
+    error,
+    publicSale?.status,
+    serialNumber,
+    customerExitPath,
+    router,
+  ])
 
   const qrCodeRef = useRef<HTMLDivElement>(null)
   const [brandedSvg, setBrandedSvg] = useState<string | null>(null)
 
   useEffect(() => {
     if (!error && merchant) {
-      setBrandedSvg(null)
+      queueMicrotask(() => setBrandedSvg(null))
       return
     }
 
@@ -61,47 +229,64 @@ export default function PaymentPage() {
     return () => clearTimeout(timer)
   }, [error, merchant])
 
-  const trackCopyEvent = (accountNumber: string, bankName: string) => {
-    if (hasCopyBeenRecorded) return
-
-    setHasCopyBeenRecorded(true)
-    recordCopy.mutate(
-      { serialNumber, accountNumber, bankName },
-      {
-        onError: (err) => {
-          console.error('Failed to record copy event:', err)
+  const trackCopyEvent = async (
+    accountNumber: string,
+    bankName: string,
+    sourceBankName?: string,
+  ) => {
+    const isFirstCopy = !hasCopyBeenRecorded
+    if (isFirstCopy) {
+      setHasCopyBeenRecorded(true)
+      recordCopy.mutate(
+        { serialNumber, accountNumber, bankName },
+        {
+          onError: (err) => {
+            console.error('Failed to record copy event:', err)
+          },
         },
-      },
-    )
+      )
 
-    if (merchant) {
-      // Get or create a persistent fingerprint for this customer
-      let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
-      if (!fingerprint) {
-        fingerprint =
-          crypto.randomUUID?.() ||
-          `fs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+      // Dynamic QR: link this merchant-initiated sale to the logged-in payer so
+      // it appears in their Activity once confirmed. No-op when logged out.
+      if (saleId && authUser?.id) {
+        claimSalePayer.mutate({ saleId })
       }
+    }
 
-      createPendingSale.mutate({
-        merchantId: merchant.id,
-        customerFingerprint: fingerprint,
-        source: window.location.search.includes('shared=true')
-          ? 'Link shared'
-          : 'QR scan',
-        targetBankName: bankName,
-        serialNumber: serialNumber,
-      })
+    if (saleId) {
+      try {
+        await recordSaleCopy.mutateAsync({
+          saleId,
+          serialNumber,
+          targetBankName: bankName,
+          targetAccountNumber: accountNumber,
+          sourceBankName,
+        })
+      } catch (error) {
+        console.error('Failed to persist transfer selection:', error)
+      }
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-dvh bg-white flex items-center justify-center">
-        <LoaderCircle innerBg="#FFFFFF" />
-      </div>
-    )
+  if (
+    (isEnteringWaiting && !saleId) ||
+    isRecoveringActiveSale ||
+    isLoading ||
+    (saleId &&
+      (saleLoading ||
+        saleError ||
+        error ||
+        !publicSale ||
+        publicSale.status === 'CANCELLED'))
+  ) {
+    if (isReturningFromPaystack) {
+      return (
+        <PaystackWaitingScreen
+          onMinimize={() => router.replace(customerExitPath)}
+        />
+      )
+    }
+    return <LoadingPage innerBg="#FFFFFF" />
   }
 
   if (error || !merchant) {
@@ -135,7 +320,7 @@ export default function PaymentPage() {
                   'radial-gradient(circle at top center, rgba(255, 94, 0) -25%, rgba(0, 0, 0) 40%)',
                 backdropFilter: 'blur(125.30880737304688px)',
               }}
-              className="p-4 rounded-2xl flex flex-col items-center relative w-full max-w-75 mb-5"
+              className="p-4 rounded-[12px] flex flex-col items-center relative w-full max-w-75 mb-5"
             >
               <h3 className="text-white text-center font-bold font-sofia-pro text-xl leading-none -tracking-[0.4px]">
                 SCAN TO TRANSFER
@@ -166,24 +351,25 @@ export default function PaymentPage() {
                 </svg>
 
                 <div
-                  className="rounded-2xl p-1"
+                  className="rounded-[12px] p-1"
                   style={{
                     background: `linear-gradient(134.65deg, ${GRADIENT_START} 0.32%, ${GRADIENT_END} 100.3%)`,
                   }}
                 >
-                  <div className="bg-white p-4 rounded-[1.2rem] relative">
+                  <div className="relative rounded-[10px] bg-white p-4">
                     {brandedSvg ? (
                       <div
                         dangerouslySetInnerHTML={{ __html: brandedSvg }}
-                        className="h-40 w-40 [&>svg]:h-full [&>svg]:w-full"
+                        className="h-40 w-40 overflow-hidden rounded-[6px] [&>svg]:h-full [&>svg]:w-full"
                       />
                     ) : (
-                      <div className="h-40 w-40 flex items-center justify-center">
+                      <div className="flex h-40 w-40 items-center justify-center overflow-hidden rounded-[6px]">
                         <QRCodeSVG
                           value="https://lite.firespot.co"
                           size={180}
                           level="H"
                           includeMargin={false}
+                          className="h-full w-full"
                         />
                       </div>
                     )}
@@ -341,7 +527,7 @@ export default function PaymentPage() {
                 <div className="bg-[#FFFFFF33] rounded-full px-1 flex justify-between items-center gap-0.5 w-1/2">
                   <p className="text-white text-[6px] font-sofia">
                     <span className="text-[#FFFFFF80]">or go to </span>
-                    pay.firespot.co
+                    lite.firespot.co
                   </p>
                   <Image
                     src="/images/world.png"
@@ -393,9 +579,15 @@ export default function PaymentPage() {
             <div className="max-w-125 mx-auto">
               <Button asChild className="w-full">
                 <Link
-                  href={`/signup?redirect=/activate&serial=${serialNumber}`}
+                  href={
+                    authUser?.role === 'merchant'
+                      ? `/activate?serial=${encodeURIComponent(serialNumber)}`
+                      : `/onboarding/merchant/start?serial=${encodeURIComponent(serialNumber)}`
+                  }
                 >
-                  Login and activate this QR kit
+                  {authUser?.role === 'merchant'
+                    ? 'Activate this QR kit'
+                    : 'Login and activate this QR kit'}
                 </Link>
               </Button>
 
@@ -415,11 +607,99 @@ export default function PaymentPage() {
     )
   }
 
-  const sortedBankAccounts = sortBankAccounts(merchant.bankAccounts)
+  // Dynamic QR sale: stepped payment experience (request -> waiting -> success)
+  if (saleId && publicSale) {
+    if (publicSale.isExpired) {
+      return (
+        <SaleExpiredScreen
+          serialNumber={serialNumber}
+          merchant={merchant}
+          onPayDirectly={() => {
+            const storageKey = `firespot-active-sale:${serialNumber}`
+            safeSessionStorage.removeItem(storageKey)
+            router.push(`/pay/${encodeURIComponent(serialNumber)}`)
+          }}
+          onClose={() => router.replace(customerExitPath)}
+        />
+      )
+    }
+
+    return (
+      <SalePaymentFlow
+        sale={publicSale}
+        merchant={merchant}
+        serialNumber={serialNumber}
+        onTrackCopy={trackCopyEvent}
+      />
+    )
+  }
+
+  const sortedBankAccounts = sortBankAccounts(
+    merchant.bankAccounts,
+  ) as BankAccount[]
+  const paystackChannels = merchant.paystackCollectionChannels || []
+  const effectiveSelectedChannel = paystackChannels.includes(selectedChannel)
+    ? selectedChannel
+    : paystackChannels[0] || selectedChannel
   const bankAccount =
     sortedBankAccounts[selectedBankIndex] || sortedBankAccounts[0]
+  const purchaseTotal = purchaseItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
+  )
+  const purchaseSaleItems = purchaseItems.map((item) => ({
+    productId: item.id.split('-')[0],
+    productName: item.name,
+    productDescription: item.description,
+    productImageUrl: item.imageUrl,
+    price: item.price,
+    quantity: item.quantity,
+    selectedVariant: item.selectedVariant,
+  }))
 
-  const handleOpenBankDrawer = () => {
+  const handleOpenSavedCardsDrawer = (
+    fromRailPicker = true,
+    selectedCard = activeSavedCard,
+  ) => {
+    if (savedCards.length === 0) return
+    openDrawer({
+      type: 'saved-cards',
+      direction: 'bottom',
+      props: {
+        savedCards,
+        selectedCardId: selectedCard?.id,
+        onSelectCard: (card: SavedCard) => {
+          setSelectedCardId(card.id)
+          setSelectedRail('saved')
+          usePurchaseCartStore.getState().setSelectedRail('saved')
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase('saved', card)
+          }
+        },
+        onAddNewCard: () => {
+          setSelectedRail('multiple')
+          usePurchaseCartStore.getState().setSelectedRail('multiple')
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase('multiple')
+          }
+        },
+        onBack:
+          fromRailPicker && merchant?.hasPaystackCollection
+            ? handleOpenPaymentMethodDrawer
+            : undefined,
+      },
+    })
+  }
+
+  const handleOpenBankDrawer = (fromRailPicker = true) => {
     if (
       !merchant ||
       !merchant.bankAccounts ||
@@ -433,110 +713,454 @@ export default function PaymentPage() {
       direction: 'bottom',
       props: {
         bankAccounts: sortedBankAccounts,
+        onBack:
+          fromRailPicker && merchant?.hasPaystackCollection
+            ? handleOpenPaymentMethodDrawer
+            : undefined,
         onSelectBank: (bank: BankAccount) => {
           const index = sortedBankAccounts.findIndex(
             (acc) => acc.accountNumber === bank.accountNumber,
           )
           if (index !== -1) {
             setSelectedBankIndex(index)
+            setSelectedRail('transfer')
+            usePurchaseCartStore.getState().setSelectedBankIndex(index)
+            usePurchaseCartStore.getState().setSelectedRail('transfer')
+            if (
+              useDrawerStore
+                .getState()
+                .configs.some(
+                  (config) => config.type === 'pay-current-purchase',
+                )
+            ) {
+              openCurrentPurchase('transfer')
+            }
           }
         },
       },
     })
   }
 
-  const handleSendWithBankApp = () => {
-    if (bankAccount) {
-      const { accountNumber, bankName, accountName } = bankAccount
+  const handleOpenPaymentMethodDrawer = (
+    selectedCard: SavedCard | undefined = activeSavedCard,
+  ) => {
+    if (!merchant?.hasPaystackCollection) {
+      handleOpenBankDrawer(false)
+      return
+    }
 
-      navigator.clipboard.writeText(accountNumber)
+    openDrawer({
+      type: 'rail-picker',
+      direction: 'bottom',
+      props: {
+        savedCardPaymentsEnabled,
+        isCustomerAuthenticated: isAuthenticated,
+        hasSavedCards,
+        selectedRail: effectiveSelectedRail,
+        paystackChannels,
+        onSelectRail: (rail: PaymentRail) => {
+          setSelectedRail(rail)
+          usePurchaseCartStore.getState().setSelectedRail(rail)
+          if (
+            rail === 'multiple' &&
+            !paystackChannels.includes(selectedChannel) &&
+            paystackChannels[0]
+          ) {
+            setSelectedChannel(paystackChannels[0])
+          }
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase(rail)
+          }
+        },
+        onOpenBankPicker: () => {
+          handleOpenBankDrawer(true)
+        },
+        onOpenSavedCards: () => {
+          handleOpenSavedCardsDrawer(true, selectedCard)
+        },
+      },
+    })
+  }
+
+
+  function startPaystackPayment(
+    amount: number,
+    description: string,
+    channel: string,
+  ) {
+    if (amount <= 0) {
       showNotificationToast({
-        message: 'Account number copied to clipboard',
+        message: 'Enter an amount first',
         duration: 2000,
       })
-      trackCopyEvent(accountNumber, bankName)
+      return
+    }
 
-      openDrawer({
-        type: 'bank-transfer',
-        props: {
-          accountNumber,
-          bankName,
-          accountName,
-          onCopy: () => trackCopyEvent(accountNumber, bankName),
+    if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
+
+    let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
+    if (!fingerprint) {
+      fingerprint =
+        crypto.randomUUID?.() ||
+        `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+      safeLocalStorage.setItem('firespot_customer_fingerprint', fingerprint)
+    }
+
+    const payerName =
+      [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
+      undefined
+
+    closeAllDrawers()
+    startPaystackRedirect()
+    createPaystackCollectSale.mutate(
+      {
+        serialNumber,
+        amount,
+        description,
+        channel,
+        customerFingerprint: fingerprint,
+        customerName: payerName,
+        items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
+      },
+      {
+        onSuccess: (res) => {
+          if (res.authorizationUrl) {
+            clearPurchase()
+            window.location.href = res.authorizationUrl
+          } else {
+            cancelPaystackRedirect()
+            showNotificationToast({
+              message: 'Failed to start payment. Please try again.',
+              mode: 'error',
+            })
+          }
         },
+        onError: (err: unknown) => {
+          cancelPaystackRedirect()
+          const msg =
+            (err as { response?: { data?: { message?: string } } })?.response
+              ?.data?.message || 'Failed to start payment. Please try again.'
+          showNotificationToast({
+            message: msg,
+            mode: 'error',
+          })
+        },
+      },
+    )
+  }
+
+  function handlePayInstantly(
+    amount: number,
+    description: string,
+    rail: PaymentRail = effectiveSelectedRail,
+    savedCard: SavedCard | undefined = defaultSavedCard,
+  ) {
+    if (amount <= 0) {
+      showNotificationToast({
+        message: 'Enter an amount first',
+        duration: 2000,
       })
+      return
+    }
+
+    if (
+      createPaystackCollectSale.isPending ||
+      createPendingSale.isPending ||
+      payWithSavedCard.isPending ||
+      isRedirectingToPaystack
+    )
+      return
+
+    if (rail === 'saved') {
+      const cardToUse = savedCard
+      if (!cardToUse) {
+        showNotificationToast({
+          message: 'No saved card found. Please choose another payment method.',
+          mode: 'error',
+        })
+        return
+      }
+
+      if (!merchant) return
+
+      closeAllDrawers()
+      createPendingSale.mutate(
+        {
+          merchantId: merchant.id,
+          customerFingerprint: getCustomerFingerprint(),
+          serialNumber,
+          amount,
+          description,
+          targetBankName: bankAccount?.bankName,
+          items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
+        },
+        {
+          onSuccess: (pendingSale) => {
+            clearPurchase()
+            payWithSavedCard.mutate(
+              {
+                saleId: pendingSale._id,
+                cardId: cardToUse.id,
+                customerFingerprint: getCustomerFingerprint(),
+              },
+              {
+                onSuccess: () => {
+                  router.push(`/pay/${serialNumber}?saleId=${pendingSale._id}`)
+                },
+                onError: (err: unknown) => {
+                  const msg =
+                    (err as { response?: { data?: { message?: string } } })
+                      ?.response?.data?.message ||
+                    'Payment failed. Please try again.'
+                  showNotificationToast({
+                    message: msg,
+                    mode: 'error',
+                  })
+                },
+              },
+            )
+          },
+          onError: (err: unknown) => {
+            const msg =
+              (err as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message ||
+              'Failed to start payment. Please try again.'
+            showNotificationToast({
+              message: msg,
+              mode: 'error',
+            })
+          },
+        },
+      )
+      return
+    }
+
+    if (paystackChannels.length === 0) {
+      showNotificationToast({
+        message: 'No instant payment method is currently available.',
+        mode: 'error',
+      })
+      return
+    }
+
+    openDrawer({
+      type: 'channel-picker',
+      direction: 'bottom',
+      props: {
+        selectedChannel: effectiveSelectedChannel,
+        availableChannels: paystackChannels,
+        onSelectChannel: (channelId: string) => {
+          setSelectedChannel(channelId)
+          startPaystackPayment(amount, description, channelId)
+        },
+      },
+    })
+  }
+
+  // Payer enters an amount, copies the account, and hands off to the shared
+  // waiting/confirmation flow via ?saleId (the pending sale we just created).
+  const handlePayAmountCopy = (
+    amount: number,
+    description: string,
+    account: BankAccount | undefined = bankAccount,
+  ) => {
+    if (!account || createPendingSale.isPending) return Promise.resolve()
+
+    const { accountNumber, bankName } = account
+    void navigator.clipboard.writeText(accountNumber).catch(() => {
+      showNotificationToast({
+        message: 'Could not copy the account number. Copy it on the next screen.',
+        mode: 'error',
+      })
+    })
+
+    let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
+    if (!fingerprint) {
+      fingerprint =
+        crypto.randomUUID?.() ||
+        `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
+      safeLocalStorage.setItem('firespot_customer_fingerprint', fingerprint)
+    }
+
+    // If a logged-in personal account is paying, attach their name so the
+    // merchant sees it instead of "New".
+    const payerName =
+      [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
+      undefined
+
+    return new Promise<void>((resolve) => {
+      createPendingSale.mutate(
+        {
+          merchantId: merchant.id,
+          amount,
+          description,
+          customerFingerprint: fingerprint,
+          customerName: payerName,
+          source: window.location.search.includes('shared=true')
+            ? 'Link shared'
+            : 'QR scan',
+          targetBankName: bankName,
+          serialNumber,
+          items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
+        },
+        {
+          onSuccess: (sale: { _id?: string }) => {
+            const newSaleId = sale?._id
+            if (!newSaleId) {
+              showNotificationToast({
+                message: 'Failed to start payment. Please try again.',
+                mode: 'error',
+              })
+              resolve()
+              return
+            }
+
+            const continueToWaiting = () => {
+              recordCopy.mutate({ serialNumber, accountNumber, bankName })
+              // Mark copied so the flow resumes at "waiting", then hand off.
+              recordSaleCopy.mutate(
+                {
+                  saleId: newSaleId,
+                  serialNumber,
+                  targetBankName: bankName,
+                  targetAccountNumber: accountNumber,
+                },
+                {
+                  onSettled: () => {
+                    setIsEnteringWaiting(true)
+                    router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
+                    closeAllDrawers()
+                    clearPurchase()
+                    resolve()
+                  },
+                },
+              )
+            }
+
+            if (authUser?.id) {
+              claimSalePayer.mutate(
+                { saleId: newSaleId },
+                { onSettled: continueToWaiting },
+              )
+            } else {
+              continueToWaiting()
+            }
+          },
+          onError: () => {
+            showNotificationToast({
+              message: 'Failed to start payment. Please try again.',
+              mode: 'error',
+            })
+            resolve()
+          },
+        },
+      )
+    })
+  }
+
+  function openCurrentPurchase(
+    rail = effectiveSelectedRail,
+    savedCard = defaultSavedCard,
+  ) {
+    const currentBankIndex = usePurchaseCartStore.getState().selectedBankIndex
+    const currentAccount =
+      sortedBankAccounts[currentBankIndex] || sortedBankAccounts[0]
+    openDrawer({
+      type: 'pay-current-purchase',
+      direction: 'bottom',
+      props: {
+        merchant,
+        account: currentAccount,
+        selectedRail: rail,
+        savedCard: rail === 'saved' ? savedCard : undefined,
+        onChangePaymentMethod: () =>
+          handleOpenPaymentMethodDrawer(savedCard),
+        onChangeAccount: () => handleOpenBankDrawer(true),
+        onChangeSavedCard: () =>
+          handleOpenSavedCardsDrawer(true, savedCard),
+        onPay: () => handlePurchasePay(rail, currentAccount, savedCard),
+      },
+    })
+  }
+
+  const handleOpenCatalogue = () => {
+    openDrawer({
+      type: 'pay-catalogue',
+      direction: 'bottom',
+      props: {
+        merchant,
+        onCheckout: openCurrentPurchase,
+      },
+    })
+  }
+
+  function handlePurchasePay(
+    rail: PaymentRail,
+    account?: BankAccount,
+    savedCard?: SavedCard,
+  ) {
+    const currentItems = usePurchaseCartStore.getState().items
+    const total = currentItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0,
+    )
+    const description = currentItems
+      .map((item) =>
+        item.quantity > 1 ? `${item.name} x${item.quantity}` : item.name,
+      )
+      .join(', ')
+    if (
+      merchant?.hasPaystackCollection &&
+      ['multiple', 'saved'].includes(rail)
+    ) {
+      return handlePayInstantly(total, description, rail, savedCard)
+    } else {
+      return handlePayAmountCopy(total, description, account)
     }
   }
 
+  if (isRedirectingToPaystack) {
+    return <PaystackRedirectingScreen />
+  }
+
   return (
-    <div className="h-dvh bg-[#F4F6F8] overflow-hidden">
-      <div className="max-w-125 mx-auto h-full flex flex-col font-satoshi">
-        <PageHeader
-          title="Transfer to"
-          showDropdown
-          onTitleClick={handleOpenBankDrawer}
-          onShareClick={() => {
-            openDrawer({
-              type: 'share-transfer',
-              props: {
-                businessName: merchant.businessName,
-                serialNumber,
-                profilePhotoUrl: merchant.profilePhotoUrl,
-              },
-            })
-          }}
-        />
-
-        <div className="flex-1 px-4 pb-32 flex flex-col justify-evenly overflow-y-auto">
-          {sortedBankAccounts.length > 0 && (
-            <MerchantCardCarousel
-              bankAccounts={sortedBankAccounts}
-              merchantInfo={{
-                profilePhotoUrl: merchant.profilePhotoUrl,
-                businessName: merchant.businessName,
-                bankAccountCount: merchant.bankAccounts?.length || 0,
-              }}
-              variant="payment-centered"
-              initialIndex={selectedBankIndex}
-              onIndexChange={setSelectedBankIndex}
-              clickableCard={true}
-              onBankAccountsClick={handleOpenBankDrawer}
-              onCopy={(account) => {
-                trackCopyEvent(account.accountNumber, account.bankName)
-                openDrawer({
-                  type: 'bank-transfer',
-                  props: {
-                    accountNumber: account.accountNumber,
-                    bankName: account.bankName,
-                    accountName: account.accountName,
-                    onCopy: () =>
-                      trackCopyEvent(account.accountNumber, account.bankName),
-                  },
-                })
-              }}
-            />
-          )}
-        </div>
-
-        <div className="border-t border-[#F1F1F1] fixed bottom-0 left-0 right-0 bg-white rounded-2xl">
-          <div className="max-w-125 mx-auto p-4 pb-6">
-            <Button
-              className="w-full bg-black text-white rounded-[48px] h-12 font-bold"
-              onClick={handleSendWithBankApp}
-            >
-              Send with my bank app
-            </Button>
-
-            <Link
-              href="/signup"
-              className="w-full text-xs text-[#878F98] font-medium flex items-center justify-center gap-0.5 mt-4 underline underline-offset-4"
-            >
-              I want something like this for my business
-              <ArrowUpRight className="w-3 h-3 text-[#878F98] mt-[1%]" />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+    <SalePayAmountScreen
+      merchant={merchant}
+      account={bankAccount}
+      onChangeAccount={() => handleOpenBankDrawer(true)}
+      onChangePaymentMethod={handleOpenPaymentMethodDrawer}
+      onChangeSavedCard={() => handleOpenSavedCardsDrawer(true)}
+      selectedRail={effectiveSelectedRail}
+      selectedItemsCount={purchaseItems.length}
+      selectedItemsTotal={purchaseTotal}
+      onSelectItems={handleOpenCatalogue}
+      onCopy={handlePayAmountCopy}
+      onPayInstantly={handlePayInstantly}
+      onShare={() => {
+        openDrawer({
+          type: 'share-transfer',
+          props: {
+            businessName: merchant.businessName,
+            serialNumber,
+            businessImageUrl:
+              merchant.businessImageUrl || merchant.profilePhotoUrl,
+          },
+        })
+      }}
+      onClose={() => router.push('/')}
+      isSubmitting={
+        createPendingSale.isPending ||
+        createPaystackCollectSale.isPending ||
+        payWithSavedCard.isPending ||
+        recordSaleCopy.isPending
+      }
+      savedCard={
+        effectiveSelectedRail === 'saved' ? defaultSavedCard : undefined
+      }
+    />
   )
 }

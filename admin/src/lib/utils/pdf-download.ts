@@ -7,64 +7,97 @@ interface DownloadElementOptions {
   filename?: string
   scale?: number
   backgroundColor?: string
+  pageMarginMm?: number
 }
 
-/**
- * Downloads an HTML element as a PDF file.
- */
+export function getA4ImagePlacement(
+  pdf: jsPDF,
+  aspectRatio: number,
+  marginMm = 10,
+) {
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  const maxWidth = pageWidth - marginMm * 2
+  const maxHeight = pageHeight - marginMm * 2
+  let width = maxWidth
+  let height = width / aspectRatio
+
+  if (height > maxHeight) {
+    height = maxHeight
+    width = height * aspectRatio
+  }
+
+  return {
+    x: (pageWidth - width) / 2,
+    y: (pageHeight - height) / 2,
+    width,
+    height,
+  }
+}
+
+export async function waitForElementAssets(
+  element: HTMLElement,
+): Promise<void> {
+  const assetsReady = Promise.all([
+    document.fonts?.ready,
+    ...Array.from(element.querySelectorAll('img')).map(async (image) => {
+      if (!image.complete) {
+        await new Promise<void>((resolve) => {
+          image.addEventListener('load', () => resolve(), { once: true })
+          image.addEventListener('error', () => resolve(), { once: true })
+        })
+      }
+      await image.decode().catch(() => undefined)
+    }),
+  ])
+  await Promise.race([
+    assetsReady,
+    new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
+  ])
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
+}
+
+/** Downloads the displayed QR-kit card proportionally on a centered A4 page. */
 export async function downloadElementAsPDF(
   element: HTMLElement,
-  options: DownloadElementOptions = {}
+  options: DownloadElementOptions = {},
 ): Promise<void> {
   const {
     filename = 'firespot-qr-kit.pdf',
-    scale = 3,
-    backgroundColor = '#000000',
+    scale = 4,
+    backgroundColor,
+    pageMarginMm = 10,
   } = options
 
-  try {
-    // Generate PNG at high resolution using html-to-image
-    const dataUrl = await toPng(element, {
-      pixelRatio: scale,
-      cacheBust: true,
-      backgroundColor,
-    })
+  await waitForElementAssets(element)
+  const dataUrl = await toPng(element, {
+    pixelRatio: scale,
+    cacheBust: true,
+    includeQueryParams: true,
+    backgroundColor,
+    width: element.scrollWidth,
+    height: element.scrollHeight,
+  })
+  const aspectRatio = element.scrollWidth / element.scrollHeight
+  const pdf = new jsPDF({
+    orientation: aspectRatio > 1 ? 'landscape' : 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  })
+  const placement = getA4ImagePlacement(pdf, aspectRatio, pageMarginMm)
 
-    // Create a temporary image to get dimensions
-    const img = new Image()
-    img.src = dataUrl
-    
-    await new Promise((resolve) => {
-      img.onload = resolve
-    })
-
-    // Calculate PDF dimensions based on image aspect ratio
-    const imgWidth = img.width
-    const imgHeight = img.height
-    const aspectRatio = imgWidth / imgHeight
-
-    // Use A4 width (210mm) as reference, calculate height to maintain aspect ratio
-    const pdfWidth = 210
-    const pdfHeight = pdfWidth / aspectRatio
-
-    // Create PDF with custom dimensions
-    const pdf = new jsPDF({
-      orientation: aspectRatio > 1 ? 'landscape' : 'portrait',
-      unit: 'mm',
-      format: [pdfWidth, pdfHeight],
-    })
-
-    // Add image data directly to the PDF
-    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
-
-    // Trigger the download
-    pdf.save(filename)
-  } catch (error) {
-    console.error('Error generating PDF:', error)
-    // Detailed error logging to help debug if it still fails
-    if (error instanceof Error) {
-      console.error('Error message:', error.message)
-    }
-    throw error
-  }
+  pdf.addImage(
+    dataUrl,
+    'PNG',
+    placement.x,
+    placement.y,
+    placement.width,
+    placement.height,
+    undefined,
+    'FAST',
+  )
+  pdf.save(filename)
 }

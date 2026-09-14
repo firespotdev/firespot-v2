@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose'
 import { ConfigService } from '@nestjs/config'
 import { Model, Types } from 'mongoose'
 import { nanoid } from 'nanoid'
+import { generateReference } from '../common/reference'
 import { QRKit, QRKitDocument } from '../schemas/qrkit.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { Agent, AgentDocument } from '../admin/schemas/agent.schema'
@@ -14,8 +15,14 @@ import {
   detectBrowserType,
 } from '../scans/utils/device-detector'
 import { QRCodeService } from '../services/qr-code.service'
+import {
+  getCollectEligibility,
+  getEffectiveTier,
+} from '../merchant-plans/constants/plans'
+import { getMerchantPaystackChannels } from '../payments/paystack-collection-channels'
 import { customAlphabet } from 'nanoid'
 import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
+import { validatePaystackPaidValue } from '../payments/payment-validation'
 
 const generateDigitalSerial = customAlphabet(
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
@@ -64,7 +71,11 @@ export class QRKitsService {
       }
     }
 
-    return { status: 'available' as const, serialNumber: qrKit.serialNumber }
+    return {
+      status: 'available' as const,
+      serialNumber: qrKit.serialNumber,
+      reservedForMerchantId: qrKit.reservedForMerchantId?.toString(),
+    }
   }
 
   async getQRKitBySerial(
@@ -77,7 +88,7 @@ export class QRKitsService {
       .findOne({ serialNumber: serialNumber.toUpperCase() })
       .populate(
         'merchantId',
-        'businessName bankAccounts profilePhotoUrl merchantSlug',
+        'businessName bankAccounts businessImageUrl profilePhotoUrl merchantSlug paystackSubaccountCode savedCardsCheckoutEnabled paystackCollectionEnabled planTier planStatus planGraceUntil cancelAtPeriodEnd planCurrentPeriodEnd kycCompletedAt',
       )
 
     if (!qrKit) {
@@ -120,21 +131,37 @@ export class QRKitsService {
 
     const bankAccounts =
       merchant.bankAccounts && merchant.bankAccounts.length > 0
-        ? merchant.bankAccounts.map((acc) => ({
-            bankName: acc.bankName,
-            bankCode: acc.bankCode,
-            accountNumber: acc.accountNumber,
-            accountName: acc.accountName,
-            isPrimary: acc.isPrimary,
-          }))
+        ? merchant.bankAccounts
+            .filter((acc) => acc.isEnabled !== false)
+            .map((acc) => ({
+              bankName: acc.bankName,
+              bankCode: acc.bankCode,
+              accountNumber: acc.accountNumber,
+              accountName: acc.accountName,
+              isPrimary: acc.isPrimary,
+            }))
         : []
+
+    const canCollect = getCollectEligibility(merchant).canCollect
+    const hasPaystackCollection = Boolean(
+      merchant.paystackSubaccountCode && canCollect,
+    )
+    const paystackCollectionChannels = hasPaystackCollection
+      ? getMerchantPaystackChannels(merchant)
+      : []
 
     return {
       id: merchant._id,
       merchantSlug: merchant.merchantSlug,
       businessName: merchant.businessName,
       bankAccounts,
-      profilePhotoUrl: merchant.profilePhotoUrl,
+      businessImageUrl:
+        merchant.businessImageUrl || merchant.profilePhotoUrl,
+      hasDetailedReceipts: Boolean(getEffectiveTier(merchant)),
+      hasPaystackCollection,
+      paystackCollectionChannels,
+      savedCardsCheckoutEnabled:
+        merchant.savedCardsCheckoutEnabled !== false,
     }
   }
 
@@ -191,10 +218,16 @@ export class QRKitsService {
     const pricing = getQRKitPricing(this.configService)
     const activationAmount = nairaToKobo(pricing.activationAmount)
 
-    const reference = `qrkit_${qrKit.serialNumber}_${nanoid(10)}`
+    const reference = `qrkit_${qrKit.serialNumber}_${generateReference('', 10)}`
+
+    const isReservedForThisMerchant = Boolean(
+      qrKit.reservedForMerchantId &&
+      qrKit.reservedForMerchantId.toString() === userId,
+    )
 
     const hasEntitlement =
-      !!user.availableKitEntitlements && user.availableKitEntitlements > 0
+      (!!user.availableKitEntitlements && user.availableKitEntitlements > 0) ||
+      isReservedForThisMerchant
 
     // Free activation, either because it's free for everyone or because this
     // merchant pre-paid via an order. No Paystack round trip in either case.
@@ -204,7 +237,7 @@ export class QRKitsService {
 
     const frontendUrl =
       this.configService.get<string>('FRONTEND_URL') || 'http://localhost:3000'
-    const callbackUrl = `${frontendUrl}/activate?mode=callback&reference=${reference}`
+    const callbackUrl = `${frontendUrl}/payment-status?reference=${reference}`
 
     // Use phone number as pseudo-email for Paystack
     const email = `${user.phoneNumber}@firespot.co`
@@ -265,6 +298,10 @@ export class QRKitsService {
     qrKit.source = qrKit.source || 'admin-generated'
     qrKit.paystackReference = paystackResponse.reference
     qrKit.paystackAccessCode = paystackResponse.accessCode
+    // Snapshot the expected kobo amount at initialization so a later pricing
+    // change cannot alter what this payment must settle.
+    qrKit.activationAmount = activationAmount
+    qrKit.paystackExpectedAmountKobo = activationAmount
     await qrKit.save()
 
     return {
@@ -360,11 +397,21 @@ export class QRKitsService {
     // Verify payment with Paystack
     const verification = await this.paystackService.verifyTransaction(reference)
 
-    if (verification.status !== 'success') {
+    const validation = validatePaystackPaidValue(verification, {
+      reference,
+      amountKobo:
+        qrKit.paystackExpectedAmountKobo ??
+        nairaToKobo(getQRKitPricing(this.configService).activationAmount),
+    })
+    if (validation.valid === false) {
       qrKit.paymentStatus = 'failed'
       await qrKit.save()
       throw new HttpException(
-        'Payment verification failed',
+        {
+          code: 'PAYSTACK_PAYMENT_VALIDATION_FAILED',
+          message: 'Payment verification failed',
+          reason: validation.reason,
+        },
         HttpStatus.BAD_REQUEST,
       )
     }
@@ -416,7 +463,7 @@ export class QRKitsService {
     }
   }
 
-  async completeActivationByWebhook(reference: string) {
+  async completeActivationByWebhook(reference: string, webhookData: any) {
     const qrKit = await this.qrKitModel.findOne({
       paystackReference: reference,
     })
@@ -427,6 +474,25 @@ export class QRKitsService {
 
     if (qrKit.activationStatus === 'activated') {
       return { success: true, message: 'Already activated' }
+    }
+
+    const validation = validatePaystackPaidValue(webhookData, {
+      reference,
+      amountKobo:
+        qrKit.paystackExpectedAmountKobo ??
+        nairaToKobo(getQRKitPricing(this.configService).activationAmount),
+    })
+    if (validation.valid === false) {
+      qrKit.paymentStatus = 'failed'
+      await qrKit.save()
+      throw new HttpException(
+        {
+          code: 'PAYSTACK_PAYMENT_VALIDATION_FAILED',
+          message: 'Payment verification failed',
+          reason: validation.reason,
+        },
+        HttpStatus.BAD_REQUEST,
+      )
     }
 
     qrKit.paymentStatus = 'successful'
@@ -602,6 +668,10 @@ export class QRKitsService {
       return existingReservations.map((kit) => kit._id as Types.ObjectId)
     }
 
+    user.availableKitEntitlements =
+      (user.availableKitEntitlements || 0) + quantity
+    await user.save()
+
     if (existingReservations.length > 0) {
       await this.qrKitModel.updateMany(
         { reservedForOrderId: orderObjectId },
@@ -636,7 +706,7 @@ export class QRKitsService {
               source: 'admin-generated',
             },
           },
-          { new: true, sort: { createdAt: 1 } },
+          { returnDocument: 'after', sort: { createdAt: 1 } },
         )
 
         if (!qrKit) {

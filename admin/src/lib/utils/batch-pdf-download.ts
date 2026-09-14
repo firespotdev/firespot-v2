@@ -3,6 +3,7 @@
 import JSZip from 'jszip'
 import { toPng } from 'html-to-image'
 import { jsPDF } from 'jspdf'
+import { getA4ImagePlacement, waitForElementAssets } from './pdf-download'
 
 interface GeneratePDFOptions {
   scale?: number
@@ -16,41 +17,38 @@ export async function generatePDFBlob(
   element: HTMLElement,
   options: GeneratePDFOptions = {}
 ): Promise<Blob> {
-  const { scale = 3, backgroundColor = '#000000' } = options
+  const { scale = 4, backgroundColor = '#FFFFFF' } = options
 
-  // Generate PNG at high resolution using html-to-image
+  await waitForElementAssets(element)
   const dataUrl = await toPng(element, {
     pixelRatio: scale,
     cacheBust: true,
+    includeQueryParams: true,
     backgroundColor,
+    width: element.scrollWidth,
+    height: element.scrollHeight,
   })
 
-  // Create a temporary image to get dimensions
-  const img = new Image()
-  img.src = dataUrl
+  const aspectRatio = element.scrollWidth / element.scrollHeight
 
-  await new Promise((resolve) => {
-    img.onload = resolve
-  })
-
-  // Calculate PDF dimensions based on image aspect ratio
-  const imgWidth = img.width
-  const imgHeight = img.height
-  const aspectRatio = imgWidth / imgHeight
-
-  // Use A4 width (210mm) as reference, calculate height to maintain aspect ratio
-  const pdfWidth = 210
-  const pdfHeight = pdfWidth / aspectRatio
-
-  // Create PDF with custom dimensions
   const pdf = new jsPDF({
     orientation: aspectRatio > 1 ? 'landscape' : 'portrait',
     unit: 'mm',
-    format: [pdfWidth, pdfHeight],
+    format: 'a4',
+    compress: true,
   })
+  const placement = getA4ImagePlacement(pdf, aspectRatio)
 
-  // Add image data directly to the PDF
-  pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
+  pdf.addImage(
+    dataUrl,
+    'PNG',
+    placement.x,
+    placement.y,
+    placement.width,
+    placement.height,
+    undefined,
+    'FAST'
+  )
 
   // Return as Blob instead of downloading
   return pdf.output('blob')

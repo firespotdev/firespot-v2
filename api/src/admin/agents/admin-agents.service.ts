@@ -346,7 +346,11 @@ export class AdminAgentsService {
    */
   async suspend(id: string): Promise<AgentDocument> {
     const agent = await this.agentModel
-      .findByIdAndUpdate(id, { $set: { status: "suspended" } }, { new: true })
+      .findByIdAndUpdate(
+        id,
+        { $set: { status: "suspended" } },
+        { returnDocument: "after" },
+      )
       .exec();
 
     if (!agent) {
@@ -409,7 +413,11 @@ export class AdminAgentsService {
    */
   async reactivate(id: string): Promise<AgentDocument> {
     const agent = await this.agentModel
-      .findByIdAndUpdate(id, { $set: { status: "active" } }, { new: true })
+      .findByIdAndUpdate(
+        id,
+        { $set: { status: "active" } },
+        { returnDocument: "after" },
+      )
       .exec();
 
     if (!agent) {

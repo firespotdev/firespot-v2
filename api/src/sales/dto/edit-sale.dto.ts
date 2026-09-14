@@ -3,7 +3,7 @@ import { IsNumber, IsOptional, IsString, IsEnum, Min } from 'class-validator'
 export class EditSaleDto {
   @IsOptional()
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   amount?: number
 
   @IsOptional()
