@@ -18,6 +18,10 @@ export interface ShopMainAddress {
   city?: string
   address?: string
   insideMarket?: boolean
+  market?: string
+  shoppingComplex?: string
+  shopNumber?: string
+  landmark?: string
 }
 
 export type ShopDay = 'SUN' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT'

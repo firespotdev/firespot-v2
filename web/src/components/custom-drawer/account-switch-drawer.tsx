@@ -131,7 +131,13 @@ export function AccountSwitchDrawer({
                   className="object-cover w-full h-full"
                 />
               ) : (
-                <UserRound className="w-9 h-9 text-[#868788]" />
+                <Image
+                  src="/images/default_avatar.png"
+                  alt="default avatar"
+                  width={36}
+                  height={36}
+                  className="object-cover w-full h-full"
+                />
               )}
             </span>
           }

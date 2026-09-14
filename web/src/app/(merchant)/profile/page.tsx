@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateBusinessImage } from '@/services/users'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle } from '@/components/ui'
+import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
@@ -252,34 +252,46 @@ export default function ProfilePage() {
           {/* Stats Section - Inquiries, Bookings, New orders, Owing */}
           <div className="grid grid-cols-4 gap-2 w-full text-center">
             {/* Inquiries */}
-            <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => showNotificationToast({ message: 'Coming soon' })}
+              className="flex flex-col items-center cursor-pointer"
+            >
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 0
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 Inquiries
               </span>
-            </div>
+            </button>
 
             {/* Bookings */}
-            <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => showNotificationToast({ message: 'Coming soon' })}
+              className="flex flex-col items-center cursor-pointer"
+            >
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 0
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 Bookings
               </span>
-            </div>
+            </button>
 
             {/* New orders */}
-            <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => showNotificationToast({ message: 'Coming soon' })}
+              className="flex flex-col items-center cursor-pointer"
+            >
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 0
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 New orders
               </span>
-            </div>
+            </button>
 
             {/* Owing */}
             <Link
