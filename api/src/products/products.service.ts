@@ -6,6 +6,8 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { Product, ProductDocument } from "../schemas/product.schema";
+import { User, UserDocument } from "../schemas/user.schema";
+import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import {
   ProductCategory,
   ProductCategoryDocument,
@@ -17,8 +19,28 @@ import {
   UpdateCategoryDto,
   UpdateProductDto,
 } from "./dto/product.dto";
+import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
 
 const normaliseName = (value: string) => value.trim().replace(/\s+/g, " ");
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+interface PublicProductRecord {
+  _id: Types.ObjectId;
+  name: string;
+  description?: string;
+  price: number;
+  imageUrl?: string;
+  merchantId: {
+    _id: Types.ObjectId;
+    businessName: string;
+    merchantSlug?: string;
+    businessImageUrl?: string;
+    profilePhotoUrl?: string;
+    businessIndustry?: string;
+    mainAddress?: { state?: string; city?: string };
+  };
+}
 
 @Injectable()
 export class ProductsService {
@@ -26,6 +48,8 @@ export class ProductsService {
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(ProductCategory.name)
     private categoryModel: Model<ProductCategoryDocument>,
+    @InjectModel(User.name) private userModel: Model<UserDocument>,
+    @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     private cloudinaryService: CloudinaryService,
   ) {}
 
@@ -267,6 +291,105 @@ export class ProductsService {
           updatedAt: serialized.updatedAt,
         };
       }),
+    };
+  }
+
+  async discoverProducts(query: PublicDiscoveryQueryDto) {
+    const search = query.search?.trim();
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const liveMerchantIds = await this.userModel
+      .find({ role: "merchant", shopIsLive: true })
+      .distinct("_id")
+      .exec();
+    const discoverableMerchantIds = await this.qrKitModel.distinct(
+      "merchantId",
+      {
+        merchantId: { $in: liveMerchantIds },
+        activationStatus: "activated",
+      },
+    );
+    const filter: Record<string, unknown> = {
+      merchantId: { $in: discoverableMerchantIds },
+      isArchived: false,
+    };
+
+    if (search) {
+      const pattern = new RegExp(escapeRegExp(search), "i");
+      filter.$or = [{ name: pattern }, { description: pattern }];
+    }
+
+    const [productRecords, total] = await Promise.all([
+      this.productModel
+        .find(filter)
+        .select("name description price imageUrl merchantId createdAt")
+        .populate(
+          "merchantId",
+          "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry mainAddress",
+        )
+        .sort({ createdAt: -1, _id: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.productModel.countDocuments(filter).exec(),
+    ]);
+    const products = productRecords as unknown as PublicProductRecord[];
+    const merchantIds = products
+      .map((product) => product.merchantId?._id)
+      .filter(Boolean);
+    const qrKits = await this.qrKitModel
+      .find({
+        merchantId: { $in: merchantIds },
+        activationStatus: "activated",
+      })
+      .select("merchantId serialNumber isDigital createdAt")
+      .sort({ isDigital: -1, createdAt: 1 })
+      .lean()
+      .exec();
+    const serialByMerchant = new Map<string, string>();
+    for (const kit of qrKits) {
+      const merchantId = String(kit.merchantId);
+      if (!serialByMerchant.has(merchantId)) {
+        serialByMerchant.set(merchantId, kit.serialNumber);
+      }
+    }
+
+    return {
+      data: products.flatMap((product) => {
+        const serialNumber = serialByMerchant.get(
+          String(product.merchantId._id),
+        );
+        if (!serialNumber) return [];
+
+        return [
+          {
+            id: String(product._id),
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            imageUrl: product.imageUrl,
+            merchant: {
+              id: String(product.merchantId._id),
+              businessName: product.merchantId.businessName,
+              merchantSlug: product.merchantId.merchantSlug,
+              businessImageUrl:
+                product.merchantId.businessImageUrl ||
+                product.merchantId.profilePhotoUrl,
+              businessIndustry: product.merchantId.businessIndustry,
+              state: product.merchantId.mainAddress?.state,
+              city: product.merchantId.mainAddress?.city,
+              serialNumber,
+            },
+          },
+        ];
+      }),
+      meta: {
+        page,
+        limit,
+        total,
+        lastPage: Math.ceil(total / limit) || 1,
+      },
     };
   }
 

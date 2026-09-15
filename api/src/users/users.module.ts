@@ -1,6 +1,9 @@
 import { Module, forwardRef } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { UsersController } from "./users.controller";
+import {
+  PublicMerchantsController,
+  UsersController,
+} from "./users.controller";
 import { UsersService } from "./users.service";
 import { PaystackService } from "./services/paystack.service";
 import { CloudinaryService } from "./services/cloudinary.service";
@@ -21,7 +24,7 @@ import { PaystackSubaccountsService } from "./services/paystack-subaccounts.serv
     forwardRef(() => AuthModule),
     MerchantReferralsModule,
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, PublicMerchantsController],
   providers: [
     UsersService,
     PaystackService,

@@ -41,6 +41,20 @@ import {
   UpdateLocationDto,
   UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
+import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+interface PublicMerchantRecord {
+  _id: Types.ObjectId;
+  businessName: string;
+  merchantSlug?: string;
+  businessImageUrl?: string;
+  profilePhotoUrl?: string;
+  businessIndustry?: string;
+  mainAddress?: { state?: string; city?: string };
+}
 
 @Injectable()
 export class UsersService {
@@ -63,6 +77,94 @@ export class UsersService {
     return {
       accountName: result.accountName,
       accountNumber: result.accountNumber,
+    };
+  }
+
+  async discoverMerchants(query: PublicDiscoveryQueryDto) {
+    const search = query.search?.trim();
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const merchantIdsWithActiveKits = await this.qrKitModel.distinct(
+      "merchantId",
+      {
+        activationStatus: "activated",
+        merchantId: { $ne: null },
+      },
+    );
+    const filter: Record<string, unknown> = {
+      _id: { $in: merchantIdsWithActiveKits },
+      role: "merchant",
+      shopIsLive: true,
+      businessName: { $exists: true, $ne: "" },
+    };
+
+    if (search) {
+      const pattern = new RegExp(escapeRegExp(search), "i");
+      filter.$or = [
+        { businessName: pattern },
+        { merchantSlug: pattern },
+        { businessIndustry: pattern },
+      ];
+    }
+
+    const [merchantRecords, total] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .select(
+          "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry mainAddress shopWentLiveAt",
+        )
+        .sort({ shopWentLiveAt: -1, _id: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.userModel.countDocuments(filter).exec(),
+    ]);
+
+    const merchants = merchantRecords as unknown as PublicMerchantRecord[];
+    const merchantIds = merchants.map((merchant) => merchant._id);
+    const qrKits = await this.qrKitModel
+      .find({
+        merchantId: { $in: merchantIds },
+        activationStatus: "activated",
+      })
+      .select("merchantId serialNumber isDigital createdAt")
+      .sort({ isDigital: -1, createdAt: 1 })
+      .lean()
+      .exec();
+    const serialByMerchant = new Map<string, string>();
+    for (const kit of qrKits) {
+      const merchantId = String(kit.merchantId);
+      if (!serialByMerchant.has(merchantId)) {
+        serialByMerchant.set(merchantId, kit.serialNumber);
+      }
+    }
+
+    return {
+      data: merchants.flatMap((merchant) => {
+        const serialNumber = serialByMerchant.get(String(merchant._id));
+        if (!serialNumber) return [];
+
+        return [
+          {
+            id: String(merchant._id),
+            businessName: merchant.businessName,
+            merchantSlug: merchant.merchantSlug,
+            businessImageUrl:
+              merchant.businessImageUrl || merchant.profilePhotoUrl,
+            businessIndustry: merchant.businessIndustry,
+            state: merchant.mainAddress?.state,
+            city: merchant.mainAddress?.city,
+            serialNumber,
+          },
+        ];
+      }),
+      meta: {
+        page,
+        limit,
+        total,
+        lastPage: Math.ceil(total / limit) || 1,
+      },
     };
   }
 

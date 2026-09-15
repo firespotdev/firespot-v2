@@ -11,6 +11,8 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
+import { GetUser } from "../auth/decorators/get-user.decorator";
 import { CreateFeedbackDto } from "./dto/create-feedback.dto";
 import { FeedbackService } from "./feedback.service";
 
@@ -20,24 +22,29 @@ export class FeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
 
   @Get("eligibility")
+  @UseGuards(OptionalJwtAuthGuard)
   getEligibility(
     @Query("saleId") saleId: string,
     @Query("serialNumber") serialNumber: string,
     @Headers("x-customer-fingerprint") fingerprint?: string,
+    @GetUser() user?: { userId: string },
   ) {
     return this.feedbackService.getEligibility(
       saleId,
       serialNumber,
       fingerprint,
+      user?.userId,
     );
   }
 
   @Post()
+  @UseGuards(OptionalJwtAuthGuard)
   create(
     @Body() dto: CreateFeedbackDto,
     @Headers("x-customer-fingerprint") fingerprint?: string,
+    @GetUser() user?: { userId: string },
   ) {
-    return this.feedbackService.create(dto, fingerprint);
+    return this.feedbackService.create(dto, fingerprint, user?.userId);
   }
 
   @Get()

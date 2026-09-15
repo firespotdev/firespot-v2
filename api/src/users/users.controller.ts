@@ -13,6 +13,7 @@ import {
   ParseFilePipe,
   FileTypeValidator,
   MaxFileSizeValidator,
+  Query,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -45,6 +46,19 @@ import {
   UpdateLocationDto,
   UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
+import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
+
+@ApiTags("public-merchants")
+@Controller("public/merchants")
+export class PublicMerchantsController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  @ApiOperation({ summary: "Discover live merchants" })
+  discover(@Query() query: PublicDiscoveryQueryDto) {
+    return this.usersService.discoverMerchants(query);
+  }
+}
 
 @ApiTags("users")
 @Controller("users")

@@ -2,19 +2,14 @@
 
 import { Suspense, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import {
-  Plus,
   Search,
   Mic,
   Ghost,
   Store,
   Package,
-  BriefcaseBusiness,
   MapPinned,
-  Ticket,
-  WalletCards,
-  Banknote,
-  Gift,
 } from 'lucide-react'
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
@@ -22,14 +17,9 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { showNotificationToast } from '@/components/ui'
 
 const QUICK_ACTIONS = [
-  { label: 'Shops', Icon: Store },
-  { label: 'Products', Icon: Package },
-  { label: 'Services', Icon: BriefcaseBusiness },
-  { label: 'Places', Icon: MapPinned },
-  { label: 'Events', Icon: Ticket },
-  { label: 'Gift Cards', Icon: WalletCards },
-  { label: 'Cash', Icon: Banknote },
-  { label: 'Rewards', Icon: Gift },
+  { label: 'Shops', Icon: Store, href: '/search?type=shops' },
+  { label: 'Products', Icon: Package, href: '/search?type=products' },
+  { label: 'Places', Icon: MapPinned, href: '/places' },
 ]
 
 const FILTER_PILLS = [
@@ -82,23 +72,12 @@ function HomePageContent() {
           onTitleClick={handleAccountSwitch}
           logoSrc="/images/firespot_personal.png"
           className="bg-white"
-          rightSlot={
-            <button
-              type="button"
-              onClick={comingSoon}
-              aria-label="Add"
-              className="h-9 w-9 flex items-center justify-center"
-            >
-              <Plus className="w-6 h-6 text-black" />
-            </button>
-          }
         />
 
         {/* Search */}
         <div className="px-4 mt-4">
-          <button
-            type="button"
-            onClick={comingSoon}
+          <Link
+            href="/search"
             className="w-full h-11 bg-[#F1F3F5] rounded-full flex items-center gap-2 px-4"
           >
             <Search className="w-4.5 h-4.5 text-[#9CA3AF]" />
@@ -106,22 +85,21 @@ function HomePageContent() {
               Find anything on Firespot
             </span>
             <Mic className="w-4.5 h-4.5 text-[#9CA3AF]" />
-          </button>
+          </Link>
         </div>
 
-        <div className="grid grid-cols-4 gap-x-3 gap-y-4 px-4 mt-5">
-          {QUICK_ACTIONS.map(({ label, Icon }) => (
-            <button
+        <div className="grid grid-cols-3 gap-x-3 gap-y-4 px-4 mt-5">
+          {QUICK_ACTIONS.map(({ label, Icon, href }) => (
+            <Link
               key={label}
-              type="button"
-              onClick={comingSoon}
+              href={href}
               className="flex flex-col items-center gap-1.5"
             >
               <span className="w-full aspect-square rounded-3xl bg-[#FBEEEE] flex items-center justify-center">
                 <Icon className="w-7 h-7 text-[#E23B4E]" strokeWidth={1.75} />
               </span>
               <span className="text-xs text-black">{label}</span>
-            </button>
+            </Link>
           ))}
         </div>
 
@@ -154,13 +132,6 @@ function HomePageContent() {
           <p className="text-sm text-[#00000080] mt-1">
             Explore a broader region or another location entirely.
           </p>
-          <button
-            type="button"
-            onClick={comingSoon}
-            className="bg-black text-white text-sm font-bold rounded-full px-6 h-11 mt-6"
-          >
-            Change location
-          </button>
         </div>
       </div>
     </div>

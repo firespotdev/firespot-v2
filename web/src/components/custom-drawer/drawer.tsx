@@ -50,6 +50,7 @@ import { AccountSwitchDrawer } from './account-switch-drawer'
 import { SaleReceiptDrawer } from './sale-receipt-drawer'
 import { ActivityDetailsDrawer } from './activity-details-drawer'
 import { ActivityOptionsDrawer } from './activity-options-drawer'
+import { CustomerActionsDrawer } from './customer-actions-drawer'
 import { VerifyIdentityDrawer } from './verify-identity-drawer'
 import { PlanCheckoutDrawer } from './plan-checkout-drawer'
 import { CancelPlanDrawer } from './cancel-plan-drawer'
@@ -79,7 +80,7 @@ const DRAWER_CONFIG: Record<
   {
     title: string
     direction?: DrawerDirection
-    HeaderLeft?: React.ComponentType<any>
+    HeaderLeft?: React.ElementType
     Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
@@ -248,6 +249,13 @@ const DRAWER_CONFIG: Record<
     Content: ActivityOptionsDrawer,
     noHeader: true,
     direction: 'bottom',
+  },
+  'customer-actions': {
+    title: '',
+    Content: CustomerActionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-white',
   },
   'verify-identity': {
     title: '',
