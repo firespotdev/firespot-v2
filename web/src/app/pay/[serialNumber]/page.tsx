@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useRouter } from '@bprogress/next/app'
 import { ArrowUpRight, X } from 'lucide-react'
@@ -25,23 +25,41 @@ import {
   useCustomerSavedCards,
   usePayWithSavedCard,
 } from '@/services/sales/hooks'
+import type { SavedCard } from '@/services/sales/interface'
+
 import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
 import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
 import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
 import { SalePayAmountScreen } from '@/components/pay/sale-pay-amount-screen'
 import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
 import { PaystackWaitingScreen } from '@/components/pay/paystack-waiting-screen'
+import { SaleExpiredScreen } from '@/components/pay/sale-expired-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { QRCodeSVG } from 'qrcode.react'
 import { applyBrandingToSVG } from '@/lib/utils/svg-branding'
 import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
+import {
+  useCustomerCartDraft,
+  useDeleteCustomerCartDraft,
+  useSaveCustomerCartDraft,
+} from '@/services/customer-actions'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
+import { safeLocalStorage, safeSessionStorage } from '@/lib/utils/storage'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
 const GRADIENT_START = '#FB5012'
 const GRADIENT_END = '#D72483'
+
+const cartDraftItems = (
+  items: ReturnType<typeof usePurchaseCartStore.getState>['items'],
+) =>
+  items.map((item) => ({
+    productId: item.id.split('-')[0],
+    quantity: item.quantity,
+    selectedVariant: item.selectedVariant,
+  }))
 
 export default function PaymentPage() {
   const params = useParams()
@@ -61,6 +79,12 @@ export default function PaymentPage() {
   const purchaseItems = usePurchaseCartStore((state) => state.items)
   const clearPurchase = usePurchaseCartStore((state) => state.clear)
   const resetPurchase = usePurchaseCartStore((state) => state.reset)
+  const replacePurchaseItems = usePurchaseCartStore(
+    (state) => state.replaceItems,
+  )
+  const hydratedDraftMerchantRef = useRef<string | null>(null)
+  const serverDraftExistsRef = useRef(false)
+  const draftSyncRef = useRef<Promise<unknown>>(Promise.resolve())
   const [hasCopyBeenRecorded, setHasCopyBeenRecorded] = useState(false)
   const [isEnteringWaiting, setIsEnteringWaiting] = useState(false)
   const recordCopy = useRecordAccountCopy()
@@ -80,13 +104,19 @@ export default function PaymentPage() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
   const savedCards = customerCards || authUser?.savedCards || []
-  const defaultSavedCard = savedCards[0]
+  const [selectedCardId, setSelectedCardId] = useState<string | undefined>()
+  const activeSavedCard =
+    savedCards.find((card) => card.id === selectedCardId) || savedCards[0]
+  const defaultSavedCard = activeSavedCard
   const payWithSavedCard = usePayWithSavedCard()
+
   const customerExitPath = isAuthenticated ? '/home' : '/'
   const isReturningFromPaystack =
     Boolean(saleId) && searchParams.get('payment') === 'paystack-return'
 
   useEffect(() => {
+    hydratedDraftMerchantRef.current = null
+    serverDraftExistsRef.current = false
     resetPurchase()
   }, [resetPurchase, serialNumber])
 
@@ -97,12 +127,118 @@ export default function PaymentPage() {
   }, [recordSaleScan, saleId])
 
   const { data: merchant, isLoading, error } = useMerchantBySerial(serialNumber)
+  const cartDraftQuery = useCustomerCartDraft(
+    merchant?.id,
+    isAuthenticated && !saleId,
+  )
+  const { mutateAsync: saveCartDraft } = useSaveCustomerCartDraft()
+  const { mutateAsync: deleteCartDraft } = useDeleteCustomerCartDraft()
+  const enqueueDraftSync = useCallback((operation: () => Promise<unknown>) => {
+    const queued = draftSyncRef.current.then(operation, operation)
+    draftSyncRef.current = queued.catch(() => undefined)
+    return queued
+  }, [])
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      saleId ||
+      !merchant?.id ||
+      !cartDraftQuery.isFetched ||
+      hydratedDraftMerchantRef.current === merchant.id
+    ) {
+      return
+    }
+
+    const restoredItems = (cartDraftQuery.data?.items || []).map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      imageUrl: item.imageUrl,
+      price: item.price,
+      quantity: item.quantity,
+      selectedVariant: item.selectedVariant,
+    }))
+    serverDraftExistsRef.current = Boolean(cartDraftQuery.data)
+    hydratedDraftMerchantRef.current = merchant.id
+    replacePurchaseItems(restoredItems)
+  }, [
+    cartDraftQuery.data,
+    cartDraftQuery.isFetched,
+    isAuthenticated,
+    merchant?.id,
+    replacePurchaseItems,
+    saleId,
+  ])
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      saleId ||
+      !merchant?.id ||
+      hydratedDraftMerchantRef.current !== merchant.id
+    ) {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      if (purchaseItems.length === 0) {
+        if (serverDraftExistsRef.current) {
+          serverDraftExistsRef.current = false
+          void enqueueDraftSync(() => deleteCartDraft(merchant.id))
+        }
+        return
+      }
+
+      serverDraftExistsRef.current = true
+      void enqueueDraftSync(() =>
+        saveCartDraft({
+          merchantId: merchant.id,
+          payload: {
+            serialNumber,
+            items: cartDraftItems(purchaseItems),
+          },
+        }),
+      )
+    }, 750)
+
+    return () => window.clearTimeout(timer)
+  }, [
+    deleteCartDraft,
+    enqueueDraftSync,
+    isAuthenticated,
+    merchant?.id,
+    purchaseItems,
+    saleId,
+    saveCartDraft,
+    serialNumber,
+  ])
+
+  const clearSubmittedPurchase = () => {
+    if (isAuthenticated && merchant?.id) {
+      serverDraftExistsRef.current = false
+      void enqueueDraftSync(() => deleteCartDraft(merchant.id))
+    }
+    clearPurchase()
+  }
+  const savedCardPaymentsEnabled = Boolean(
+    merchant?.hasPaystackCollection &&
+      merchant.savedCardsCheckoutEnabled !== false,
+  )
   const hasSavedCards = Boolean(
     isAuthenticated &&
-      merchant?.hasPaystackCollection &&
-      merchant.savedCardsCheckoutEnabled !== false &&
+      savedCardPaymentsEnabled &&
       savedCards.length > 0,
   )
+  const hasMultiplePaymentOptions = Boolean(
+    merchant?.paystackCollectionChannels?.length,
+  )
+  const effectiveSelectedRail: PaymentRail =
+    selectedRail === 'multiple' && !hasMultiplePaymentOptions
+      ? hasSavedCards
+        ? 'saved'
+        : 'transfer'
+      : selectedRail
   // Dynamic QR sale (public, limited view). A failed or cancelled dynamic sale
   // ends the flow; it must never fall back into static-payment mode.
   const {
@@ -118,11 +254,11 @@ export default function PaymentPage() {
     const storageKey = `firespot-active-sale:${serialNumber}`
 
     if (saleId) {
-      sessionStorage.setItem(storageKey, saleId)
+      safeSessionStorage.setItem(storageKey, saleId)
       return
     }
 
-    const storedSaleId = sessionStorage.getItem(storageKey)
+    const storedSaleId = safeSessionStorage.getItem(storageKey)
     if (!storedSaleId) {
       queueMicrotask(() => {
         if (active) setIsRecoveringActiveSale(false)
@@ -144,15 +280,15 @@ export default function PaymentPage() {
           return
         }
 
-        if (sessionStorage.getItem(storageKey) === storedSaleId) {
-          sessionStorage.removeItem(storageKey)
+        if (safeSessionStorage.getItem(storageKey) === storedSaleId) {
+          safeSessionStorage.removeItem(storageKey)
         }
         setIsRecoveringActiveSale(false)
       })
       .catch(() => {
         if (!active) return
-        if (sessionStorage.getItem(storageKey) === storedSaleId) {
-          sessionStorage.removeItem(storageKey)
+        if (safeSessionStorage.getItem(storageKey) === storedSaleId) {
+          safeSessionStorage.removeItem(storageKey)
         }
         setIsRecoveringActiveSale(false)
       })
@@ -166,8 +302,8 @@ export default function PaymentPage() {
     if (!saleId || saleLoading) return
     if (saleError || error || publicSale?.status === 'CANCELLED') {
       const storageKey = `firespot-active-sale:${serialNumber}`
-      if (sessionStorage.getItem(storageKey) === saleId) {
-        sessionStorage.removeItem(storageKey)
+      if (safeSessionStorage.getItem(storageKey) === saleId) {
+        safeSessionStorage.removeItem(storageKey)
       }
       router.replace(customerExitPath)
     }
@@ -589,6 +725,21 @@ export default function PaymentPage() {
 
   // Dynamic QR sale: stepped payment experience (request -> waiting -> success)
   if (saleId && publicSale) {
+    if (publicSale.isExpired) {
+      return (
+        <SaleExpiredScreen
+          serialNumber={serialNumber}
+          merchant={merchant}
+          onPayDirectly={() => {
+            const storageKey = `firespot-active-sale:${serialNumber}`
+            safeSessionStorage.removeItem(storageKey)
+            router.push(`/pay/${encodeURIComponent(serialNumber)}`)
+          }}
+          onClose={() => router.replace(customerExitPath)}
+        />
+      )
+    }
+
     return (
       <SalePaymentFlow
         sale={publicSale}
@@ -622,7 +773,49 @@ export default function PaymentPage() {
     selectedVariant: item.selectedVariant,
   }))
 
-  const handleOpenBankDrawer = () => {
+  const handleOpenSavedCardsDrawer = (
+    fromRailPicker = true,
+    selectedCard = activeSavedCard,
+  ) => {
+    if (savedCards.length === 0) return
+    openDrawer({
+      type: 'saved-cards',
+      direction: 'bottom',
+      props: {
+        savedCards,
+        selectedCardId: selectedCard?.id,
+        onSelectCard: (card: SavedCard) => {
+          setSelectedCardId(card.id)
+          setSelectedRail('saved')
+          usePurchaseCartStore.getState().setSelectedRail('saved')
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase('saved', card)
+          }
+        },
+        onAddNewCard: () => {
+          setSelectedRail('multiple')
+          usePurchaseCartStore.getState().setSelectedRail('multiple')
+          if (
+            useDrawerStore
+              .getState()
+              .configs.some((config) => config.type === 'pay-current-purchase')
+          ) {
+            openCurrentPurchase('multiple')
+          }
+        },
+        onBack:
+          fromRailPicker && merchant?.hasPaystackCollection
+            ? handleOpenPaymentMethodDrawer
+            : undefined,
+      },
+    })
+  }
+
+  const handleOpenBankDrawer = (fromRailPicker = true) => {
     if (
       !merchant ||
       !merchant.bankAccounts ||
@@ -636,13 +829,19 @@ export default function PaymentPage() {
       direction: 'bottom',
       props: {
         bankAccounts: sortedBankAccounts,
+        onBack:
+          fromRailPicker && merchant?.hasPaystackCollection
+            ? handleOpenPaymentMethodDrawer
+            : undefined,
         onSelectBank: (bank: BankAccount) => {
           const index = sortedBankAccounts.findIndex(
             (acc) => acc.accountNumber === bank.accountNumber,
           )
           if (index !== -1) {
             setSelectedBankIndex(index)
+            setSelectedRail('transfer')
             usePurchaseCartStore.getState().setSelectedBankIndex(index)
+            usePurchaseCartStore.getState().setSelectedRail('transfer')
             if (
               useDrawerStore
                 .getState()
@@ -650,7 +849,7 @@ export default function PaymentPage() {
                   (config) => config.type === 'pay-current-purchase',
                 )
             ) {
-              openCurrentPurchase()
+              openCurrentPurchase('transfer')
             }
           }
         },
@@ -658,9 +857,11 @@ export default function PaymentPage() {
     })
   }
 
-  const handleOpenPaymentMethodDrawer = () => {
+  const handleOpenPaymentMethodDrawer = (
+    selectedCard: SavedCard | undefined = activeSavedCard,
+  ) => {
     if (!merchant?.hasPaystackCollection) {
-      handleOpenBankDrawer()
+      handleOpenBankDrawer(false)
       return
     }
 
@@ -668,8 +869,10 @@ export default function PaymentPage() {
       type: 'rail-picker',
       direction: 'bottom',
       props: {
+        savedCardPaymentsEnabled,
+        isCustomerAuthenticated: isAuthenticated,
         hasSavedCards,
-        selectedRail: usePurchaseCartStore.getState().selectedRail,
+        selectedRail: effectiveSelectedRail,
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
           setSelectedRail(rail)
@@ -689,9 +892,16 @@ export default function PaymentPage() {
             openCurrentPurchase(rail)
           }
         },
+        onOpenBankPicker: () => {
+          handleOpenBankDrawer(true)
+        },
+        onOpenSavedCards: () => {
+          handleOpenSavedCardsDrawer(true, selectedCard)
+        },
       },
     })
   }
+
 
   function startPaystackPayment(
     amount: number,
@@ -708,12 +918,12 @@ export default function PaymentPage() {
 
     if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
 
-    let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
+    let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
     if (!fingerprint) {
       fingerprint =
         crypto.randomUUID?.() ||
         `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-      localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+      safeLocalStorage.setItem('firespot_customer_fingerprint', fingerprint)
     }
 
     const payerName =
@@ -735,7 +945,7 @@ export default function PaymentPage() {
       {
         onSuccess: (res) => {
           if (res.authorizationUrl) {
-            clearPurchase()
+            clearSubmittedPurchase()
             window.location.href = res.authorizationUrl
           } else {
             cancelPaystackRedirect()
@@ -759,7 +969,12 @@ export default function PaymentPage() {
     )
   }
 
-  function handlePayInstantly(amount: number, description: string) {
+  function handlePayInstantly(
+    amount: number,
+    description: string,
+    rail: PaymentRail = effectiveSelectedRail,
+    savedCard: SavedCard | undefined = defaultSavedCard,
+  ) {
     if (amount <= 0) {
       showNotificationToast({
         message: 'Enter an amount first',
@@ -776,8 +991,8 @@ export default function PaymentPage() {
     )
       return
 
-    if (selectedRail === 'saved') {
-      const cardToUse = defaultSavedCard
+    if (rail === 'saved') {
+      const cardToUse = savedCard
       if (!cardToUse) {
         showNotificationToast({
           message: 'No saved card found. Please choose another payment method.',
@@ -801,11 +1016,12 @@ export default function PaymentPage() {
         },
         {
           onSuccess: (pendingSale) => {
-            clearPurchase()
+            clearSubmittedPurchase()
             payWithSavedCard.mutate(
               {
                 saleId: pendingSale._id,
                 cardId: cardToUse.id,
+                customerFingerprint: getCustomerFingerprint(),
               },
               {
                 onSuccess: () => {
@@ -863,10 +1079,14 @@ export default function PaymentPage() {
 
   // Payer enters an amount, copies the account, and hands off to the shared
   // waiting/confirmation flow via ?saleId (the pending sale we just created).
-  const handlePayAmountCopy = (amount: number, description: string) => {
-    if (!bankAccount || createPendingSale.isPending) return Promise.resolve()
+  const handlePayAmountCopy = (
+    amount: number,
+    description: string,
+    account: BankAccount | undefined = bankAccount,
+  ) => {
+    if (!account || createPendingSale.isPending) return Promise.resolve()
 
-    const { accountNumber, bankName } = bankAccount
+    const { accountNumber, bankName } = account
     void navigator.clipboard.writeText(accountNumber).catch(() => {
       showNotificationToast({
         message: 'Could not copy the account number. Copy it on the next screen.',
@@ -874,12 +1094,12 @@ export default function PaymentPage() {
       })
     })
 
-    let fingerprint = localStorage.getItem('firespot_customer_fingerprint')
+    let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
     if (!fingerprint) {
       fingerprint =
         crypto.randomUUID?.() ||
         `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-      localStorage.setItem('firespot_customer_fingerprint', fingerprint)
+      safeLocalStorage.setItem('firespot_customer_fingerprint', fingerprint)
     }
 
     // If a logged-in personal account is paying, attach their name so the
@@ -930,7 +1150,7 @@ export default function PaymentPage() {
                     setIsEnteringWaiting(true)
                     router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
                     closeAllDrawers()
-                    clearPurchase()
+                    clearSubmittedPurchase()
                     resolve()
                   },
                 },
@@ -959,7 +1179,8 @@ export default function PaymentPage() {
   }
 
   function openCurrentPurchase(
-    rail = usePurchaseCartStore.getState().selectedRail,
+    rail = effectiveSelectedRail,
+    savedCard = defaultSavedCard,
   ) {
     const currentBankIndex = usePurchaseCartStore.getState().selectedBankIndex
     const currentAccount =
@@ -971,9 +1192,13 @@ export default function PaymentPage() {
         merchant,
         account: currentAccount,
         selectedRail: rail,
-        savedCard: rail === 'saved' ? defaultSavedCard : undefined,
-        onChangePaymentMethod: handleOpenPaymentMethodDrawer,
-        onPay: handlePurchasePay,
+        savedCard: rail === 'saved' ? savedCard : undefined,
+        onChangePaymentMethod: () =>
+          handleOpenPaymentMethodDrawer(savedCard),
+        onChangeAccount: () => handleOpenBankDrawer(true),
+        onChangeSavedCard: () =>
+          handleOpenSavedCardsDrawer(true, savedCard),
+        onPay: () => handlePurchasePay(rail, currentAccount, savedCard),
       },
     })
   }
@@ -989,7 +1214,11 @@ export default function PaymentPage() {
     })
   }
 
-  function handlePurchasePay() {
+  function handlePurchasePay(
+    rail: PaymentRail,
+    account?: BankAccount,
+    savedCard?: SavedCard,
+  ) {
     const currentItems = usePurchaseCartStore.getState().items
     const total = currentItems.reduce(
       (sum, item) => sum + item.price * item.quantity,
@@ -1002,13 +1231,11 @@ export default function PaymentPage() {
       .join(', ')
     if (
       merchant?.hasPaystackCollection &&
-      ['multiple', 'saved'].includes(
-        usePurchaseCartStore.getState().selectedRail,
-      )
+      ['multiple', 'saved'].includes(rail)
     ) {
-      return handlePayInstantly(total, description)
+      return handlePayInstantly(total, description, rail, savedCard)
     } else {
-      return handlePayAmountCopy(total, description)
+      return handlePayAmountCopy(total, description, account)
     }
   }
 
@@ -1020,9 +1247,10 @@ export default function PaymentPage() {
     <SalePayAmountScreen
       merchant={merchant}
       account={bankAccount}
-      onChangeAccount={handleOpenBankDrawer}
+      onChangeAccount={() => handleOpenBankDrawer(true)}
       onChangePaymentMethod={handleOpenPaymentMethodDrawer}
-      selectedRail={selectedRail}
+      onChangeSavedCard={() => handleOpenSavedCardsDrawer(true)}
+      selectedRail={effectiveSelectedRail}
       selectedItemsCount={purchaseItems.length}
       selectedItemsTotal={purchaseTotal}
       onSelectItems={handleOpenCatalogue}
@@ -1039,14 +1267,29 @@ export default function PaymentPage() {
           },
         })
       }}
-      onClose={() => router.push('/')}
+      onClose={() => {
+        if (isAuthenticated && merchant?.id && purchaseItems.length > 0) {
+          void enqueueDraftSync(() =>
+            saveCartDraft({
+              merchantId: merchant.id,
+              payload: {
+                serialNumber,
+                items: cartDraftItems(purchaseItems),
+              },
+            }),
+          )
+        }
+        router.push('/')
+      }}
       isSubmitting={
         createPendingSale.isPending ||
         createPaystackCollectSale.isPending ||
         payWithSavedCard.isPending ||
         recordSaleCopy.isPending
       }
-      savedCard={selectedRail === 'saved' ? defaultSavedCard : undefined}
+      savedCard={
+        effectiveSelectedRail === 'saved' ? defaultSavedCard : undefined
+      }
     />
   )
 }

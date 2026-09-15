@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronRight } from 'lucide-react'
+import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { useDrawerStore } from '@/services/drawer'
 import { TagFooter, BankLogo } from '../ui'
 
@@ -12,9 +12,29 @@ interface BankAccount {
   isPrimary: boolean
 }
 
-interface SelectBankDrawerProps {
+export interface SelectBankDrawerProps {
   bankAccounts: BankAccount[]
   onSelectBank: (bankAccount: BankAccount) => void
+  onBack?: () => void
+}
+
+export function SelectBankHeaderLeft({ onBack }: { onBack?: () => void }) {
+  const closeDrawer = useDrawerStore((state) => state.closeDrawer)
+  if (!onBack) return null
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        closeDrawer('select-bank')
+        onBack()
+      }}
+      aria-label="Back"
+      className="w-9 h-9 flex items-center justify-center text-black"
+    >
+      <ArrowLeft size={22} strokeWidth={2.2} />
+    </button>
+  )
 }
 
 export function SelectBankDrawer({
@@ -36,7 +56,7 @@ export function SelectBankDrawer({
 
   const handleSelectBank = (bankAccount: BankAccount) => {
     onSelectBank(bankAccount)
-    closeDrawer()
+    closeDrawer('select-bank')
   }
 
   // Sort accounts: primary first, then by name
@@ -45,6 +65,14 @@ export function SelectBankDrawer({
     if (b.isPrimary) return 1
     return a.bankName.localeCompare(b.bankName)
   })
+
+  const hasExplicitPrimary = sortedAccounts.some((a) => a.isPrimary)
+  const primaryAccounts = hasExplicitPrimary
+    ? sortedAccounts.filter((a) => a.isPrimary)
+    : sortedAccounts.slice(0, 1)
+  const secondaryAccounts = hasExplicitPrimary
+    ? sortedAccounts.filter((a) => !a.isPrimary)
+    : sortedAccounts.slice(1)
 
   return (
     <div className="px-3">
@@ -57,10 +85,9 @@ export function SelectBankDrawer({
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3">
-              {sortedAccounts
-                .filter((account) => account.isPrimary)
-                .map((account, index) => (
+            {primaryAccounts.length > 0 && (
+              <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3 border border-[#F1F1F1]">
+                {primaryAccounts.map((account, index) => (
                   <button
                     key={account.accountNumber}
                     onClick={() => handleSelectBank(account)}
@@ -77,7 +104,7 @@ export function SelectBankDrawer({
                       <p className="font-bold text-sm text-[#0F172A] truncate">
                         {account.bankName}
                       </p>
-                      {index === 0 && account.isPrimary && (
+                      {index === 0 && (
                         <p className="text-xs text-[#64748B] font-medium">
                           Most preferred
                         </p>
@@ -87,16 +114,17 @@ export function SelectBankDrawer({
                     <ChevronRight className="w-4 h-4 text-[#6B7280] shrink-0" />
                   </button>
                 ))}
-            </div>
-            <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-2">
-              {sortedAccounts
-                .filter((account) => !account.isPrimary)
-                .map((account, index) => (
+              </div>
+            )}
+
+            {secondaryAccounts.length > 0 && (
+              <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-2 border border-[#F1F1F1]">
+                {secondaryAccounts.map((account) => (
                   <button
                     key={account.accountNumber}
                     onClick={() => handleSelectBank(account)}
                     type="button"
-                    className="w-full flex items-center gap-3 py-3 px-4 border-b border-[#EBEBEB] last:border-b-0"
+                    className="w-full flex items-center gap-3 py-3 px-4 border-b border-[#EBEBEB] last:border-b-0 hover:bg-[#F4F6F8] transition-colors"
                   >
                     <BankLogo
                       bankName={account.bankName}
@@ -108,17 +136,13 @@ export function SelectBankDrawer({
                       <p className="font-bold text-sm text-[#0F172A] truncate">
                         {account.bankName}
                       </p>
-                      {index === 0 && account.isPrimary && (
-                        <p className="text-xs text-[#64748B] font-medium">
-                          Most preferred
-                        </p>
-                      )}
                     </div>
 
                     <ChevronRight className="w-4 h-4 text-[#6B7280] shrink-0" />
                   </button>
                 ))}
-            </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -128,3 +152,4 @@ export function SelectBankDrawer({
     </div>
   )
 }
+

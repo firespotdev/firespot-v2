@@ -1158,4 +1158,79 @@ describe("SalesService amount invariants", () => {
       expect(customersService.findOrCreateForUser).not.toHaveBeenCalled();
     });
   });
+
+  describe("sale midnight expiration", () => {
+    it("returns today's pending collection sales as ongoing sales", async () => {
+      const ongoingSales = [{ _id: "507f1f77bcf86cd799439013" }];
+      const exec = jest.fn().mockResolvedValue(ongoingSales);
+      const populate = jest.fn().mockReturnValue({ exec });
+      const sort = jest.fn().mockReturnValue({ populate });
+      const saleModel = {
+        updateMany: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
+        find: jest.fn().mockReturnValue({ sort }),
+      };
+      const service = createService(saleModel);
+
+      await expect(
+        service.getOngoingSales("507f1f77bcf86cd799439012"),
+      ).resolves.toEqual(ongoingSales);
+
+      expect(saleModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: "PENDING",
+          isCollection: true,
+          isArchived: { $ne: true },
+          createdAt: { $gte: expect.any(Date) },
+        }),
+      );
+      expect(populate).toHaveBeenCalledTimes(1);
+    });
+
+    it("marks an unpaid pending sale from yesterday as expired", () => {
+      const service = createService({});
+      const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000);
+      const sale = {
+        createdAt: yesterday,
+        status: "PENDING",
+      };
+      expect(service.isSaleExpired(sale)).toBe(true);
+    });
+
+    it("does not treat an unpaid pending sale from today as expired", () => {
+      const service = createService({});
+      const sale = {
+        createdAt: new Date(),
+        status: "PENDING",
+      };
+      expect(service.isSaleExpired(sale)).toBe(false);
+    });
+
+    it("does not treat a pending sale with payment proof from yesterday as expired (safety guard)", () => {
+      const service = createService({});
+      const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000);
+      const saleWithReceipt = {
+        createdAt: yesterday,
+        status: "PENDING",
+        receiptUrl: "https://res.cloudinary.com/example/image.png",
+      };
+      expect(service.isSaleExpired(saleWithReceipt)).toBe(false);
+
+      const saleWithMarkedPaid = {
+        createdAt: yesterday,
+        status: "PENDING",
+        customerMarkedPaidAt: yesterday,
+      };
+      expect(service.isSaleExpired(saleWithMarkedPaid)).toBe(false);
+    });
+
+    it("does not treat confirmed sales as expired", () => {
+      const service = createService({});
+      const yesterday = new Date(Date.now() - 36 * 60 * 60 * 1000);
+      const sale = {
+        createdAt: yesterday,
+        status: "CONFIRMED",
+      };
+      expect(service.isSaleExpired(sale)).toBe(false);
+    });
+  });
 });

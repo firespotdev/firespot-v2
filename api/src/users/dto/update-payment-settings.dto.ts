@@ -1,6 +1,11 @@
-import { IsBoolean } from "class-validator";
+import { IsBoolean, IsOptional } from "class-validator";
 
 export class UpdatePaymentSettingsDto {
   @IsBoolean()
-  savedCardsCheckoutEnabled: boolean;
+  @IsOptional()
+  savedCardsCheckoutEnabled?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  paystackCollectionEnabled?: boolean;
 }

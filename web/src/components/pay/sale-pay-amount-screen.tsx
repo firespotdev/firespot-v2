@@ -20,6 +20,7 @@ interface SalePayAmountScreenProps {
   account?: BankAccount
   onChangeAccount: () => void
   onChangePaymentMethod: () => void
+  onChangeSavedCard?: () => void
   selectedRail?: PaymentRail
   selectedItemsCount?: number
   selectedItemsTotal?: number
@@ -41,6 +42,7 @@ export function SalePayAmountScreen({
   account,
   onChangeAccount,
   onChangePaymentMethod,
+  onChangeSavedCard,
   selectedRail = 'multiple',
   selectedItemsCount = 0,
   selectedItemsTotal = 0,
@@ -52,6 +54,7 @@ export function SalePayAmountScreen({
   isSubmitting = false,
   savedCard,
 }: SalePayAmountScreenProps) {
+
   const [amountDigits, setAmountDigits] = useState('')
   const [description, setDescription] = useState('')
 
@@ -217,9 +220,11 @@ export function SalePayAmountScreen({
           onAction={handleAction}
           onChangeAccount={onChangeAccount}
           onChangePaymentMethod={onChangePaymentMethod}
+          onChangeSavedCard={onChangeSavedCard}
           savedCard={savedCard}
           isSubmitting={isSubmitting}
         />
+
       </div>
     </div>
   )

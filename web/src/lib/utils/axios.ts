@@ -1,11 +1,10 @@
 import axios from 'axios'
 import { useAuthStore } from '@/services/auth/authSlice'
+import { safeLocalStorage } from './storage'
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'
 
-// User API client — withCredentials so the httpOnly refresh cookie is stored
-// (on verify-otp) and sent to /auth/refresh and /auth/logout.
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -16,11 +15,9 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('token')
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
+    const token = safeLocalStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
@@ -37,12 +34,11 @@ export function refreshAccessToken(): Promise<string | null> {
       .then((res) => {
         const token: string | undefined = res.data?.accessToken
         if (token) {
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('token', token)
-          }
+          safeLocalStorage.setItem('token', token)
           useAuthStore.getState().setAccessToken(token)
           return token
         }
+
         return null
       })
       .catch(() => null)

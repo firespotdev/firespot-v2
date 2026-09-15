@@ -1,11 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import {
-  ChevronDown,
-  Share,
-  X,
-} from 'lucide-react'
+import { ChevronDown, Share, X } from 'lucide-react'
 import type { PublicSale } from '@/services/sales/interface'
 import type { SavedCard } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
@@ -23,6 +19,7 @@ interface SaleRequestScreenProps {
   account?: BankAccount
   onChangeAccount: () => void
   onChangePaymentMethod: () => void
+  onChangeSavedCard?: () => void
   selectedRail: PaymentRail
   onCopy: () => void
   onPayInstantly: () => void
@@ -39,6 +36,7 @@ export function SaleRequestScreen({
   account,
   onChangeAccount,
   onChangePaymentMethod,
+  onChangeSavedCard,
   selectedRail,
   onCopy,
   onPayInstantly,
@@ -48,6 +46,7 @@ export function SaleRequestScreen({
   isSubmitting = false,
   savedCard,
 }: SaleRequestScreenProps) {
+
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const items = sale.items || []
@@ -102,7 +101,7 @@ export function SaleRequestScreen({
             )}
           </div>
 
-          <h2 className="font-bold text-[20px] text-black -tracking-[0.4px] mt-4 uppercase">
+          <h2 className="font-bold text-[20px] text-black -tracking-[0.4px] mt-4 uppercase leading-[125%]">
             {accountName}
           </h2>
           {merchantName && (
@@ -162,9 +161,11 @@ export function SaleRequestScreen({
           }
           onChangeAccount={onChangeAccount}
           onChangePaymentMethod={onChangePaymentMethod}
+          onChangeSavedCard={onChangeSavedCard}
           savedCard={savedCard}
           isSubmitting={isSubmitting}
         />
+
       </div>
     </div>
   )

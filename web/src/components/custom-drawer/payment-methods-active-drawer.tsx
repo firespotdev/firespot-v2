@@ -45,11 +45,12 @@ export function PaymentMethodsActiveDrawer() {
 
   const [cashCardActive, setCashCardActive] = useState(true)
   const updatePaymentSettings = useUpdatePaymentSettings()
-  const [multipleOptionsActive, setMultipleOptionsActive] = useState(false)
-  const [bankAccountsActive, setBankAccountsActive] = useState(true)
 
-  const bankAccountCount = profile?.bankAccounts?.length ?? 3
-  const qrKitCount = qrKitsData?.data?.length ?? 3
+  const bankAccountCount = profile?.bankAccounts?.length ?? 0
+  const hasEnabledBankAccount = Boolean(
+    profile?.bankAccounts?.some((account) => account.isEnabled !== false),
+  )
+  const qrKitCount = qrKitsData?.data?.length ?? 0
 
   const effectiveTier = profile?.effectiveTier
   const hasPlan = Boolean(effectiveTier)
@@ -61,17 +62,42 @@ export function PaymentMethodsActiveDrawer() {
   const availableOptionsCount = !hasPlan ? 0 : isOnLite ? 1 : 4
   const savedCardsActive =
     canCollect && profile?.savedCardsCheckoutEnabled !== false
+  const multipleOptionsActive = Boolean(
+    hasPlan &&
+      canCollect &&
+      profile?.hasPayoutAccount &&
+      profile?.paystackCollectionEnabled === true,
+  )
 
   const handleSavedCardsChange = (enabled: boolean) => {
     if (!canCollect) return
-    updatePaymentSettings.mutate(enabled, {
-      onError: () => {
-        showNotificationToast({
-          message: 'Could not update saved-card checkout. Please try again.',
-          mode: 'error',
-        })
+    updatePaymentSettings.mutate(
+      { savedCardsCheckoutEnabled: enabled },
+      {
+        onError: () => {
+          showNotificationToast({
+            message: 'Could not update saved-card checkout. Please try again.',
+            mode: 'error',
+          })
+        },
       },
-    })
+    )
+  }
+
+  const handleMultipleOptionsChange = (enabled: boolean) => {
+    if (!hasPlan || !canCollect || !profile?.hasPayoutAccount) return
+    updatePaymentSettings.mutate(
+      { paystackCollectionEnabled: enabled },
+      {
+        onError: () => {
+          showNotificationToast({
+            message:
+              'Could not update Paystack payment options. Please try again.',
+            mode: 'error',
+          })
+        },
+      },
+    )
   }
 
   const handleSavedCardsRowClick = () => {
@@ -105,7 +131,7 @@ export function PaymentMethodsActiveDrawer() {
     (cashCardActive ? 1 : 0) +
     (savedCardsActive ? 1 : 0) +
     (isProOrAbove && multipleOptionsActive ? 1 : 0) +
-    (bankAccountsActive ? 1 : 0)
+    (hasEnabledBankAccount ? 1 : 0)
 
   const handleAddCustomMethod = () => {
     showNotificationToast({
@@ -170,7 +196,7 @@ export function PaymentMethodsActiveDrawer() {
 
         {/* Card 2: Payment Methods & Add Custom */}
         <ActionList rounded="12">
-          <ActionListItem
+          {/* <ActionListItem
             as="div"
             icon={
               <div className="w-9 h-9 rounded-[10px] bg-black flex items-center justify-center shadow-sm shrink-0 overflow-hidden">
@@ -200,7 +226,7 @@ export function PaymentMethodsActiveDrawer() {
               />
             }
             className="p-3"
-          />
+          /> */}
 
           {/* Row 2: Firespot Customer-saved cards */}
           <ActionListItem
@@ -295,10 +321,15 @@ export function PaymentMethodsActiveDrawer() {
             trailing={
               <div onClick={(e) => e.stopPropagation()}>
                 <Switch
-                  checked={isProOrAbove && multipleOptionsActive}
-                  disabled={!isProOrAbove}
+                  checked={multipleOptionsActive}
+                  disabled={
+                    !hasPlan ||
+                    !canCollect ||
+                    !profile?.hasPayoutAccount ||
+                    updatePaymentSettings.isPending
+                  }
                   onCheckedChange={
-                    isProOrAbove ? setMultipleOptionsActive : undefined
+                    hasPlan ? handleMultipleOptionsChange : undefined
                   }
                 />
               </div>
@@ -333,12 +364,7 @@ export function PaymentMethodsActiveDrawer() {
               </span>
             }
             trailing={
-              <div onClick={(e) => e.stopPropagation()}>
-                <Switch
-                  checked={bankAccountsActive}
-                  onCheckedChange={setBankAccountsActive}
-                />
-              </div>
+              <ChevronRight size={16} className="text-[#AEAEB2] stroke-[2px]" />
             }
           />
         </ActionList>

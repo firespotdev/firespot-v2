@@ -17,7 +17,9 @@ import {
 import { BankDrawer, BankDrawerHeaderLeft } from './bank-drawer'
 import { ProfileMenuDrawer } from './profile-menu-drawer'
 import { PersonalProfileMenuDrawer } from './personal-profile-menu-drawer'
-import { SelectBankDrawer } from './select-bank-drawer'
+import { SelectBankDrawer, SelectBankHeaderLeft } from './select-bank-drawer'
+import { SavedCardsDrawer, SavedCardsHeaderLeft } from './saved-cards-drawer'
+import { OngoingSalesDrawer } from './ongoing-sales-drawer'
 import { BankTransferDrawer } from './bank-transfer-drawer'
 import { ShareTransferDrawer } from './share-transfer-drawer'
 import { ProfileShareDrawer } from './profile-share-drawer'
@@ -48,6 +50,7 @@ import { AccountSwitchDrawer } from './account-switch-drawer'
 import { SaleReceiptDrawer } from './sale-receipt-drawer'
 import { ActivityDetailsDrawer } from './activity-details-drawer'
 import { ActivityOptionsDrawer } from './activity-options-drawer'
+import { CustomerActionsDrawer } from './customer-actions-drawer'
 import { VerifyIdentityDrawer } from './verify-identity-drawer'
 import { PlanCheckoutDrawer } from './plan-checkout-drawer'
 import { CancelPlanDrawer } from './cancel-plan-drawer'
@@ -79,7 +82,7 @@ const DRAWER_CONFIG: Record<
   {
     title: string
     direction?: DrawerDirection
-    HeaderLeft?: React.ComponentType<{ fromActiveMethods?: boolean }>
+    HeaderLeft?: React.ElementType
     Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
@@ -111,7 +114,20 @@ const DRAWER_CONFIG: Record<
   'select-bank': {
     title: 'Transfer to',
     direction: 'bottom',
+    HeaderLeft: SelectBankHeaderLeft,
     Content: SelectBankDrawer,
+  },
+  'saved-cards': {
+    title: 'Saved cards',
+    direction: 'bottom',
+    HeaderLeft: SavedCardsHeaderLeft,
+    Content: SavedCardsDrawer,
+  },
+  'ongoing-sales': {
+    title: 'Ongoing sales',
+    direction: 'left',
+    Content: OngoingSalesDrawer,
+    noHeader: true,
   },
   'bank-transfer': {
     title: 'Send with bank app',
@@ -235,6 +251,13 @@ const DRAWER_CONFIG: Record<
     Content: ActivityOptionsDrawer,
     noHeader: true,
     direction: 'bottom',
+  },
+  'customer-actions': {
+    title: '',
+    Content: CustomerActionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-white',
   },
   'verify-identity': {
     title: '',
@@ -588,6 +611,35 @@ export function CustomDrawer() {
             className="h-full w-full max-w-full bg-white"
           >
             <DrawerTitle className="sr-only">{title || 'Menu'}</DrawerTitle>
+            <Content {...(config.props || {})} closeDrawer={handleClose} />
+            {nextDrawer}
+          </DrawerContent>
+        </DrawerPrimitive>
+      )
+    }
+
+    // For partial-width left drawers (e.g. ongoing-sales)
+    if (drawerDirection === 'left' && !fullScreen) {
+      return (
+        <DrawerPrimitive
+          key={`${config.type}-${index}`}
+          open={isOpen}
+          onOpenChange={(open) => {
+            if (!open && index === configs.length - 1) {
+              handleClose()
+            }
+          }}
+          direction="left"
+          dismissible={dismissible}
+          repositionInputs={false}
+        >
+          <DrawerContent
+            hideHandle={true}
+            className={`h-full w-[75vw] max-w-[75%] bg-[#f4f6f8] overflow-hidden ${contentClassName || ''}`}
+          >
+            <DrawerTitle className="sr-only">
+              {title || 'Ongoing sales'}
+            </DrawerTitle>
             <Content {...(config.props || {})} closeDrawer={handleClose} />
             {nextDrawer}
           </DrawerContent>

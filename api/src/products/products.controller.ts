@@ -26,6 +26,7 @@ import {
   UpdateCategoryDto,
   UpdateProductDto,
 } from './dto/product.dto'
+import { PublicDiscoveryQueryDto } from '../common/dto/public-discovery-query.dto'
 
 @ApiTags('products')
 @Controller()
@@ -117,12 +118,17 @@ export class ProductsController {
 }
 
 @ApiTags('products')
-@Controller('public/merchants')
+@Controller('public')
 export class PublicProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Get(':merchantId/catalogue')
+  @Get('merchants/:merchantId/catalogue')
   getCatalogue(@Param('merchantId') merchantId: string) {
     return this.productsService.findPublicCatalogue(merchantId)
+  }
+
+  @Get('products')
+  discover(@Query() query: PublicDiscoveryQueryDto) {
+    return this.productsService.discoverProducts(query)
   }
 }

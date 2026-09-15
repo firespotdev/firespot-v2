@@ -103,6 +103,7 @@ describe('UsersService - updatePaymentSettings', () => {
     expect(res).toEqual({
       message: 'Payment settings updated',
       savedCardsCheckoutEnabled: false,
+      paystackCollectionEnabled: false,
     });
     expect(user.savedCardsCheckoutEnabled).toBe(false);
     expect(user.save).toHaveBeenCalled();
@@ -129,8 +130,60 @@ describe('UsersService - updatePaymentSettings', () => {
     expect(res).toEqual({
       message: 'Payment settings updated',
       savedCardsCheckoutEnabled: true,
+      paystackCollectionEnabled: false,
     });
     expect(user.savedCardsCheckoutEnabled).toBe(true);
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('persists Paystack collection changes for a verified PRO merchant', async () => {
+    const user = {
+      _id: new Types.ObjectId(),
+      planTier: 'PRO',
+      planStatus: 'verified',
+      kycCompletedAt: new Date(),
+      savedCardsCheckoutEnabled: true,
+      paystackCollectionEnabled: true,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    userModel.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(user),
+    });
+
+    const res = await service.updatePaymentSettings(String(user._id), {
+      paystackCollectionEnabled: false,
+    });
+
+    expect(res).toEqual({
+      message: 'Payment settings updated',
+      savedCardsCheckoutEnabled: true,
+      paystackCollectionEnabled: false,
+    });
+    expect(user.paystackCollectionEnabled).toBe(false);
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('allows a verified LITE merchant to enable Paystack payments', async () => {
+    const user = {
+      _id: new Types.ObjectId(),
+      planTier: 'LITE',
+      planStatus: 'verified',
+      kycCompletedAt: new Date(),
+      paystackCollectionEnabled: false,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    userModel.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(user),
+    });
+
+    const res = await service.updatePaymentSettings(String(user._id), {
+      paystackCollectionEnabled: true,
+    });
+
+    expect(res.paystackCollectionEnabled).toBe(true);
+    expect(user.paystackCollectionEnabled).toBe(true);
     expect(user.save).toHaveBeenCalled();
   });
 });

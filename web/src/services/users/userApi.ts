@@ -37,6 +37,11 @@ export interface DeleteBankAccountResponse {
   message: string
 }
 
+export interface PaymentSettings {
+  savedCardsCheckoutEnabled?: boolean
+  paystackCollectionEnabled?: boolean
+}
+
 // API functions
 export const userApi = {
   getProfile: async (): Promise<UserProfile> => {
@@ -45,14 +50,15 @@ export const userApi = {
   },
 
   updatePaymentSettings: async (
-    savedCardsCheckoutEnabled: boolean,
+    settings: PaymentSettings,
   ): Promise<{
     message: string
     savedCardsCheckoutEnabled: boolean
+    paystackCollectionEnabled: boolean
   }> => {
     const response = await apiClient.patch(
       '/users/me/payment-settings',
-      { savedCardsCheckoutEnabled },
+      settings,
     )
     return response.data
   },
@@ -161,6 +167,20 @@ export const userApi = {
     return response.data
   },
 
+  setBankAccountEnabled: async ({
+    accountNumber,
+    enabled,
+  }: {
+    accountNumber: string
+    enabled: boolean
+  }): Promise<SetPrimaryResponse> => {
+    const response = await apiClient.patch<SetPrimaryResponse>(
+      `/users/bank-accounts/${accountNumber}/visibility`,
+      { enabled },
+    )
+    return response.data
+  },
+
   deleteBankAccount: async (
     accountNumber: string,
   ): Promise<DeleteBankAccountResponse> => {
@@ -208,6 +228,8 @@ export function useUpdatePaymentSettings() {
                 ...profile,
                 savedCardsCheckoutEnabled:
                   data.savedCardsCheckoutEnabled,
+                paystackCollectionEnabled:
+                  data.paystackCollectionEnabled,
               }
             : profile,
       )
@@ -327,6 +349,17 @@ export function useSetPrimaryBankAccount() {
 
   return useMutation({
     mutationFn: userApi.setPrimaryBankAccount,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useSetBankAccountEnabled() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: userApi.setBankAccountEnabled,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })

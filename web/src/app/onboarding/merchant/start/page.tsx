@@ -6,6 +6,7 @@ import { Suspense, useState } from 'react'
 import { SignupForm } from '@/components/auth/signup-form'
 import { OtpVerification } from '@/components/auth/otp-verification'
 import { useRequestOtp, useVerifyOtp } from '@/services/auth'
+import { safeSessionStorage } from '@/lib/utils/storage'
 
 const DRAFT_KEY = 'firespot:merchant-onboarding-draft'
 
@@ -62,7 +63,7 @@ function MerchantStartPageContent() {
         searchParams.get('mref')?.trim().toUpperCase() || undefined,
       serialNumber: searchParams.get('serial') || undefined,
     }
-    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    safeSessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
 
     requestOtp.mutate(
       {

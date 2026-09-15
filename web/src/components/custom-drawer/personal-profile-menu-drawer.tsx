@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useRef } from 'react'
+import { useRouter } from '@bprogress/next/app'
 import {
   Camera,
   ChevronRight,
@@ -27,6 +28,7 @@ interface PersonalProfileMenuDrawerProps {
 export function PersonalProfileMenuDrawer({
   closeDrawer,
 }: PersonalProfileMenuDrawerProps) {
+  const router = useRouter()
   const authUser = useAuthStore((state) => state.user)
   const { data: profile } = useUserProfile()
   const {
@@ -59,6 +61,11 @@ export function PersonalProfileMenuDrawer({
   const handleLogout = () => {
     closeDrawer()
     void logoutEverywhere()
+  }
+
+  const handlePay = () => {
+    closeDrawer()
+    router.push('/')
   }
 
   const displayName =
@@ -228,7 +235,9 @@ export function PersonalProfileMenuDrawer({
 
           {/* Action Buttons Row */}
           <div className="mt-4 w-full flex items-center gap-3">
-            <Button className="h-11">Pay</Button>
+            <Button onClick={handlePay} className="h-11">
+              Pay
+            </Button>
           </div>
         </div>
 
@@ -442,39 +451,6 @@ export function PersonalProfileMenuDrawer({
 
         {/* Section I: System Links & Sign Out */}
         <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
-          <Link
-            href="#"
-            onClick={closeDrawer}
-            className="flex min-h-13 w-full items-center justify-between gap-3 px-4 py-3 border-b border-[#F4F6F8]"
-          >
-            <div className="flex items-center gap-3">
-              <Image
-                src="/images/firespot_logo.png"
-                alt=""
-                width={24}
-                height={24}
-                className="w-6 h-6 object-contain"
-              />
-              <span className="text-[16px] font-medium text-black">
-                About Firespot
-              </span>
-            </div>
-            <ChevronRight size={18} className="text-[#C7C7CC]" />
-          </Link>
-
-          <button
-            type="button"
-            className="flex min-h-13 w-full items-center justify-between gap-3 px-4 py-3 border-b border-[#F4F6F8] transition-colors text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-[24px]">⭐️</span>
-              <span className="text-[16px] font-medium text-black">
-                Rate the app
-              </span>
-            </div>
-            <ChevronRight size={18} className="text-[#C7C7CC]" />
-          </button>
-
           <a
             href="https://twitter.com"
             target="_blank"

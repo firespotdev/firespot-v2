@@ -36,6 +36,7 @@ export type DrawerContentType =
   | 'sale-receipt'
   | 'activity-details'
   | 'activity-options'
+  | 'customer-actions'
   | 'verify-identity'
   | 'plan-checkout'
   | 'cancel-plan'
@@ -56,6 +57,8 @@ export type DrawerContentType =
   | 'unconfirmed-details'
   | 'payment-methods-active'
   | 'multiple-payment-options'
+  | 'saved-cards'
+  | 'ongoing-sales'
   | 'post-composer'
   | 'post-product-select'
 

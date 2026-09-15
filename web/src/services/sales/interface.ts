@@ -42,6 +42,8 @@ export interface SaleCustomerIdentity {
 export interface PublicSale {
   id: string;
   status: SaleStatus;
+  isExpired?: boolean;
+  expiresAt?: string;
   amount?: number;
   items: SaleItem[];
   location?: string;

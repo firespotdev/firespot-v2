@@ -1,5 +1,11 @@
 import { initializeApp } from 'firebase/app'
-import { getMessaging, getToken, onMessage } from 'firebase/messaging'
+import {
+  getMessaging,
+  getToken,
+  onMessage,
+  isSupported,
+  type Messaging,
+} from 'firebase/messaging'
 
 const firebaseConfig = {
   apiKey: 'AIzaSyDfKyERVpkcHFGJ4W2e00UsUH3VVUgQzgI',
@@ -14,19 +20,43 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig)
 
-// Messaging service
-export const messaging =
-  typeof window !== 'undefined' ? getMessaging(app) : null
+let messagingPromise: Promise<Messaging | null> | null = null
+
+export const getMessagingSafe = async (): Promise<Messaging | null> => {
+  if (typeof window === 'undefined') return null
+
+  if (!messagingPromise) {
+    messagingPromise = (async () => {
+      try {
+        const supported = await isSupported()
+        if (!supported) return null
+        return getMessaging(app)
+      } catch (err) {
+        console.warn(
+          'Firebase messaging is not supported in this browser:',
+          err,
+        )
+        return null
+      }
+    })()
+  }
+
+  return messagingPromise
+}
 
 export const requestForToken = async () => {
   if (
-    !messaging ||
     typeof window === 'undefined' ||
+    typeof Notification === 'undefined' ||
     !('serviceWorker' in navigator)
-  )
+  ) {
     return null
+  }
 
   try {
+    const msg = await getMessagingSafe()
+    if (!msg) return null
+
     const permission = await Notification.requestPermission()
     if (permission === 'granted') {
       // Explicitly register the service worker
@@ -34,7 +64,7 @@ export const requestForToken = async () => {
         '/firebase-messaging-sw.js',
       )
 
-      const currentToken = await getToken(messaging, {
+      const currentToken = await getToken(msg, {
         vapidKey: process.env.NEXT_PUBLIC_VAPID_KEY,
         serviceWorkerRegistration: registration,
       })
@@ -52,10 +82,25 @@ export const requestForToken = async () => {
     console.error('An error occurred while retrieving token. ', err)
     return null
   }
+
+  return null
 }
 
 // Returns an unsubscribe function — persistent, fires for every message
 export const onForegroundMessage = (callback: (payload: any) => void) => {
-  if (!messaging) return () => {}
-  return onMessage(messaging, callback)
+  let unsub: (() => void) | null = null
+  let disposed = false
+
+  getMessagingSafe()
+    .then((msg) => {
+      if (msg && !disposed) {
+        unsub = onMessage(msg, callback)
+      }
+    })
+    .catch(() => {})
+
+  return () => {
+    disposed = true
+    unsub?.()
+  }
 }

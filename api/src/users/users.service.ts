@@ -1,4 +1,9 @@
-import { Injectable, HttpException, HttpStatus, ForbiddenException } from "@nestjs/common";
+import {
+  Injectable,
+  HttpException,
+  HttpStatus,
+  ForbiddenException,
+} from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
@@ -36,6 +41,20 @@ import {
   UpdateLocationDto,
   UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
+import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+interface PublicMerchantRecord {
+  _id: Types.ObjectId;
+  businessName: string;
+  merchantSlug?: string;
+  businessImageUrl?: string;
+  profilePhotoUrl?: string;
+  businessIndustry?: string;
+  mainAddress?: { state?: string; city?: string };
+}
 
 @Injectable()
 export class UsersService {
@@ -58,6 +77,94 @@ export class UsersService {
     return {
       accountName: result.accountName,
       accountNumber: result.accountNumber,
+    };
+  }
+
+  async discoverMerchants(query: PublicDiscoveryQueryDto) {
+    const search = query.search?.trim();
+    const page = query.page || 1;
+    const limit = query.limit || 20;
+    const merchantIdsWithActiveKits = await this.qrKitModel.distinct(
+      "merchantId",
+      {
+        activationStatus: "activated",
+        merchantId: { $ne: null },
+      },
+    );
+    const filter: Record<string, unknown> = {
+      _id: { $in: merchantIdsWithActiveKits },
+      role: "merchant",
+      shopIsLive: true,
+      businessName: { $exists: true, $ne: "" },
+    };
+
+    if (search) {
+      const pattern = new RegExp(escapeRegExp(search), "i");
+      filter.$or = [
+        { businessName: pattern },
+        { merchantSlug: pattern },
+        { businessIndustry: pattern },
+      ];
+    }
+
+    const [merchantRecords, total] = await Promise.all([
+      this.userModel
+        .find(filter)
+        .select(
+          "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry mainAddress shopWentLiveAt",
+        )
+        .sort({ shopWentLiveAt: -1, _id: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+        .exec(),
+      this.userModel.countDocuments(filter).exec(),
+    ]);
+
+    const merchants = merchantRecords as unknown as PublicMerchantRecord[];
+    const merchantIds = merchants.map((merchant) => merchant._id);
+    const qrKits = await this.qrKitModel
+      .find({
+        merchantId: { $in: merchantIds },
+        activationStatus: "activated",
+      })
+      .select("merchantId serialNumber isDigital createdAt")
+      .sort({ isDigital: -1, createdAt: 1 })
+      .lean()
+      .exec();
+    const serialByMerchant = new Map<string, string>();
+    for (const kit of qrKits) {
+      const merchantId = String(kit.merchantId);
+      if (!serialByMerchant.has(merchantId)) {
+        serialByMerchant.set(merchantId, kit.serialNumber);
+      }
+    }
+
+    return {
+      data: merchants.flatMap((merchant) => {
+        const serialNumber = serialByMerchant.get(String(merchant._id));
+        if (!serialNumber) return [];
+
+        return [
+          {
+            id: String(merchant._id),
+            businessName: merchant.businessName,
+            merchantSlug: merchant.merchantSlug,
+            businessImageUrl:
+              merchant.businessImageUrl || merchant.profilePhotoUrl,
+            businessIndustry: merchant.businessIndustry,
+            state: merchant.mainAddress?.state,
+            city: merchant.mainAddress?.city,
+            serialNumber,
+          },
+        ];
+      }),
+      meta: {
+        page,
+        limit,
+        total,
+        lastPage: Math.ceil(total / limit) || 1,
+      },
     };
   }
 
@@ -89,25 +196,34 @@ export class UsersService {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
 
-    if (dto.savedCardsCheckoutEnabled) {
+    if (dto.savedCardsCheckoutEnabled || dto.paystackCollectionEnabled) {
       const { canCollect, reason } = getCollectEligibility(user);
       if (!canCollect) {
+        const settingLabel = dto.paystackCollectionEnabled
+          ? "Paystack payments"
+          : "saved-card checkout";
         throw new ForbiddenException({
           message:
             reason === "kyc_incomplete"
-              ? "Finish verifying your identity to enable saved-card checkout."
-              : "Upgrade to a Firespot Business plan to enable saved-card checkout.",
+              ? `Finish verifying your identity to enable ${settingLabel}.`
+              : `Upgrade to a Firespot Business plan to enable ${settingLabel}.`,
           reason,
         });
       }
     }
 
-    user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
+    if (dto.savedCardsCheckoutEnabled !== undefined) {
+      user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
+    }
+    if (dto.paystackCollectionEnabled !== undefined) {
+      user.paystackCollectionEnabled = dto.paystackCollectionEnabled;
+    }
     await user.save();
 
     return {
       message: "Payment settings updated",
-      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled,
+      savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
+      paystackCollectionEnabled: user.paystackCollectionEnabled === true,
     };
   }
 
@@ -225,6 +341,12 @@ export class UsersService {
 
     const { branchCount, ...address } = dto;
     user.mainAddress = { ...(user.mainAddress || {}), ...address };
+    if (dto.insideMarket === false) {
+      user.mainAddress.market = undefined;
+      user.mainAddress.shoppingComplex = undefined;
+      user.mainAddress.shopNumber = undefined;
+      user.mainAddress.landmark = undefined;
+    }
     if (branchCount !== undefined) user.branchCount = branchCount;
 
     await user.save();
@@ -400,8 +522,8 @@ export class UsersService {
         key: "about",
         done: Boolean(
           user.businessName &&
-            user.businessDescription &&
-            user.businessIndustry,
+          user.businessDescription &&
+          user.businessIndustry,
         ),
       },
       { key: "bank", done: (user.bankAccounts?.length || 0) > 0 },
@@ -517,7 +639,9 @@ export class UsersService {
       await this.cloudinaryService.deleteImage(user.businessImagePublicId);
     }
 
-    const upload = await this.cloudinaryService.uploadBusinessImage(file.buffer);
+    const upload = await this.cloudinaryService.uploadBusinessImage(
+      file.buffer,
+    );
     user.businessImageUrl = upload.url;
     user.businessImagePublicId = upload.publicId;
     await user.save();
@@ -589,6 +713,7 @@ export class UsersService {
       accountNumber: dto.accountNumber,
       accountName: verification.accountName,
       isPrimary: dto.isPrimary || false,
+      isEnabled: true,
     } as any);
 
     await user.save();
@@ -602,6 +727,7 @@ export class UsersService {
         accountNumber: dto.accountNumber,
         accountName: verification.accountName,
         isPrimary: dto.isPrimary || false,
+        isEnabled: true,
       },
     };
   }
@@ -654,6 +780,32 @@ export class UsersService {
 
     return {
       message: "Primary bank account updated successfully",
+      bankAccount: account,
+    };
+  }
+
+  async setBankAccountEnabled(
+    userId: string,
+    accountNumber: string,
+    enabled: boolean,
+  ) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new HttpException("User not found", HttpStatus.NOT_FOUND);
+    }
+
+    const account = user.bankAccounts?.find(
+      (item) => item.accountNumber === accountNumber,
+    );
+    if (!account) {
+      throw new HttpException("Bank account not found", HttpStatus.NOT_FOUND);
+    }
+
+    account.isEnabled = enabled;
+    await user.save();
+
+    return {
+      message: `Bank account ${enabled ? "enabled" : "disabled"}`,
       bankAccount: account,
     };
   }
@@ -943,6 +1095,7 @@ export class UsersService {
       collectBlockedReason: getCollectEligibility(user).reason,
       hasPayoutAccount: Boolean(user.paystackSubaccountCode),
       savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
+      paystackCollectionEnabled: user.paystackCollectionEnabled === true,
       savedCards: [...(user.savedCards || [])]
         .sort(
           (a, b) =>

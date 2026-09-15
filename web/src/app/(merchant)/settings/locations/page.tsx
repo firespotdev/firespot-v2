@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Store } from 'lucide-react'
 import {
   AppCard,
   Button,
@@ -43,6 +42,12 @@ export default function LocationsSettingsPage() {
   const [insideMarket, setInsideMarket] = useState(
     existing?.insideMarket === true,
   )
+  const [market, setMarket] = useState(existing?.market ?? '')
+  const [shoppingComplex, setShoppingComplex] = useState(
+    existing?.shoppingComplex ?? '',
+  )
+  const [shopNumber, setShopNumber] = useState(existing?.shopNumber ?? '')
+  const [landmark, setLandmark] = useState(existing?.landmark ?? '')
 
   // Cities depend on the chosen state; reset the city when the state changes.
   const cities = useMemo(
@@ -69,6 +74,12 @@ export default function LocationsSettingsPage() {
         city: city || undefined,
         address: address.trim() || undefined,
         insideMarket,
+        market: insideMarket ? market.trim() || undefined : undefined,
+        shoppingComplex: insideMarket
+          ? shoppingComplex.trim() || undefined
+          : undefined,
+        shopNumber: insideMarket ? shopNumber.trim() || undefined : undefined,
+        landmark: insideMarket ? landmark.trim() || undefined : undefined,
         branchCount,
       },
       {
@@ -80,12 +91,12 @@ export default function LocationsSettingsPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-[#F5F6F8] font-satoshi">
+    <div className="min-h-dvh bg-linear-to-br from-[#ffffff] to-[#f4f6f8]">
       <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
         <BackButton onClick={handleBack} className="self-start px-4 py-3.5" />
 
         {/* flex-1 pushes the footer to the bottom; it scrolls if content is tall */}
-        <div className="px-4 flex-1">
+        <div className="px-4 flex-1 pb-6">
           <p className="text-sm text-[#00000080] font-medium mt-0.5">
             Set up location
           </p>
@@ -175,6 +186,60 @@ export default function LocationsSettingsPage() {
                 onCheckedChange={setInsideMarket}
               />
             </AppCard>
+
+            {insideMarket && (
+              <div className="space-y-6">
+                <div>
+                  <Label htmlFor="market">Market (optional)</Label>
+                  <Input
+                    id="market"
+                    value={market}
+                    onChange={(event) => setMarket(event.target.value)}
+                    placeholder="Set market"
+                    maxLength={150}
+                    className="font-medium"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="shopping-complex">
+                    Shopping complex (optional)
+                  </Label>
+                  <Input
+                    id="shopping-complex"
+                    value={shoppingComplex}
+                    onChange={(event) => setShoppingComplex(event.target.value)}
+                    placeholder="Name of the building/plaza your Shop is in"
+                    maxLength={200}
+                    className="font-medium"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="shop-number">Shop number (optional)</Label>
+                  <Input
+                    id="shop-number"
+                    value={shopNumber}
+                    onChange={(event) => setShopNumber(event.target.value)}
+                    placeholder="eg 32B"
+                    maxLength={50}
+                    className="font-medium"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="landmark">Landmark (optional)</Label>
+                  <Input
+                    id="landmark"
+                    value={landmark}
+                    onChange={(event) => setLandmark(event.target.value)}
+                    placeholder="For example, Beside White House"
+                    maxLength={300}
+                    className="font-medium"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

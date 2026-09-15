@@ -5,7 +5,12 @@ import { useRouter } from '@bprogress/next/app'
 import { ChevronRight, X } from 'lucide-react'
 import { TabSwitch } from '@/components/ui'
 import { usePlanCatalog } from '@/services/merchant-plans'
-import { useSale, useSales } from '@/services/sales/hooks'
+import {
+  useSale,
+  useSales,
+  useOngoingSales,
+} from '@/services/sales/hooks'
+import type { Sale } from '@/services/sales/interface'
 import { useProducts } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import { useDrawerStore } from '@/services/drawer'
@@ -51,6 +56,8 @@ export function RecordSaleDrawer({
     saleMode.kind === 'create' ? undefined : saleMode.id,
   )
   const { data: recentSalesData } = useSales({ limit: 5 })
+  const { data: ongoingSales = [] } = useOngoingSales()
+  const ongoingCount = ongoingSales.length
   const recentDescriptions = useMemo(() => {
     const seen = new Set<string>()
 
@@ -82,13 +89,22 @@ export function RecordSaleDrawer({
 
   const cart = useSaleCart({ prefillSale })
 
-  const { handleRecordTapped, handleCollectTapped, openSelectionPreview } =
-    useSaleCheckoutFlow({
-      cart,
-      saleMode,
-      prefillSale,
-      onSaleModeSettled: () => setSaleMode({ kind: 'create' }),
-    })
+  const {
+    handleRecordTapped,
+    handleCollectTapped,
+    openSelectionPreview,
+    openPendingCollection,
+  } = useSaleCheckoutFlow({
+    cart,
+    saleMode,
+    prefillSale,
+    onSaleModeSettled: () => setSaleMode({ kind: 'create' }),
+    canCollect,
+    onCollectUnavailable: () => {
+      useDrawerStore.getState().closeAllDrawers()
+      router.push('/plans')
+    },
+  })
 
   const handleProductAddTapped = (product: Product) => {
     if (product.variants && product.variants.length > 0) {
@@ -138,13 +154,21 @@ export function RecordSaleDrawer({
     return groups
   }
 
-  const onCollect = () => {
-    if (!canCollect) {
-      closeDrawer()
-      router.push('/plans')
-      return
-    }
-    handleCollectTapped()
+  const handleOpenOngoingSales = () => {
+    openDrawer({
+      type: 'ongoing-sales',
+      direction: 'left',
+      props: {
+        onSelectSale: (sale: Sale) => {
+          useDrawerStore.getState().closeDrawer('ongoing-sales')
+          openPendingCollection(sale)
+        },
+        onNewSale: () => {
+          cart.resetCart()
+          useDrawerStore.getState().closeDrawer('ongoing-sales')
+        },
+      },
+    })
   }
 
   const effectiveItems = cart.getEffectiveItems()
@@ -163,13 +187,14 @@ export function RecordSaleDrawer({
       <div className="flex justify-between items-center px-4 py-2">
         <button
           type="button"
-          aria-label="Cart"
-          className="relative -ml-2 shrink-0 rounded-full p-2 text-black"
+          onClick={handleOpenOngoingSales}
+          aria-label="Ongoing sales"
+          className="relative -ml-2 shrink-0 rounded-full p-2 text-black transition-colors hover:bg-black/5 active:scale-95 cursor-pointer"
         >
           <BasketIcon className="w-6 h-6" />
-          {selectedItemCount > 0 && (
+          {ongoingCount > 0 && (
             <span className="absolute right-1 top-0.5 grid h-[17px] w-[17px] place-items-center rounded-full bg-[#FF2D55] text-[9px] font-bold leading-none tabular-nums text-white">
-              {selectedItemCount > 99 ? '99+' : selectedItemCount}
+              {ongoingCount > 99 ? '99+' : ongoingCount}
             </span>
           )}
         </button>
@@ -266,7 +291,7 @@ export function RecordSaleDrawer({
             <button
               type="button"
               disabled={!hasSaleValue}
-              onClick={onCollect}
+              onClick={handleCollectTapped}
               className={`h-12 px-5 rounded-full font-bold text-sm transition-all duration-200 flex items-center gap-1.5 ${
                 hasSaleValue
                   ? 'bg-black text-white hover:bg-black/90 active:bg-black/85'

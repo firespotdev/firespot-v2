@@ -117,6 +117,16 @@ export class SalesService {
     }
   }
 
+  private payerEmailForUser(
+    user?: { fullPhoneNumber?: string; _id?: any } | null,
+  ): string {
+    if (user?.fullPhoneNumber) {
+      const digits = user.fullPhoneNumber.replace(/\D/g, '')
+      if (digits) return `${digits}@firespot.co`
+    }
+    return 'generalcustomer@firespot.co'
+  }
+
   private payerEmailAlias(identity: string): string {
     const digest = createHash('sha256')
       .update(`firespot-paystack-payer:${identity}`)
@@ -184,6 +194,19 @@ export class SalesService {
     const startOfDay = new Date(`${dayKey}T00:00:00.000+01:00`)
     const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000)
     return { dayKey, startOfDay, endOfDay }
+  }
+
+  isSaleExpired(sale: {
+    createdAt?: Date | string
+    status?: string
+    receiptUrl?: string
+    customerMarkedPaidAt?: Date | string
+  }): boolean {
+    if (sale.status !== 'PENDING') return false
+    if (sale.receiptUrl || sale.customerMarkedPaidAt) return false
+    const createdAt = sale.createdAt ? new Date(sale.createdAt) : new Date()
+    const { endOfDay } = this.collectionDay(createdAt)
+    return Date.now() >= endOfDay.getTime()
   }
 
   private async recordedAmountForDay(
@@ -481,6 +504,9 @@ export class SalesService {
       throw new UnprocessableEntityException(
         'This transaction is no longer awaiting payment',
       )
+    }
+    if (this.isSaleExpired(sale)) {
+      throw new UnprocessableEntityException('This sale expired at midnight.')
     }
     if (sale.paymentRail === 'paystack') {
       throw new UnprocessableEntityException(
@@ -916,7 +942,6 @@ export class SalesService {
       })
 
       await sale.populate(saleCustomerPopulate())
-      this.eventsGateway.server.to(merchantId).emit('sale.pending', sale)
       return initialized
     } catch (error) {
       if (sale._id && sale.status === 'PENDING') {
@@ -953,6 +978,9 @@ export class SalesService {
       throw new UnprocessableEntityException(
         'This payment request can no longer be paid.',
       )
+    }
+    if (this.isSaleExpired(sale)) {
+      throw new UnprocessableEntityException('This sale expired at midnight.')
     }
     if (sale.receiptUrl || sale.customerMarkedPaidAt || sale.isCopied) {
       throw new UnprocessableEntityException(
@@ -1113,12 +1141,9 @@ export class SalesService {
       payerUserId && Types.ObjectId.isValid(payerUserId)
         ? await this.userModel.findById(payerUserId).exec()
         : null
-    const payerIdentity = payer
-      ? `user:${String(payer._id)}`
-      : customerFingerprint
-        ? `fingerprint:${customerFingerprint}`
-        : `transaction:${paystackReference}`
-    const payerPaystackEmail = this.payerEmailAlias(payerIdentity)
+    const payerPaystackEmail = payer
+      ? this.payerEmailForUser(payer)
+      : 'generalcustomer@firespot.co'
     const payerName = payer
       ? [payer.firstName, payer.lastName].filter(Boolean).join(' ') || undefined
       : customerName
@@ -1759,10 +1784,16 @@ export class SalesService {
     }
 
     const merchant = sale.merchantId as any
+    const isExpired = this.isSaleExpired(sale)
+    const expiresAt = this.collectionDay(
+      (sale as any).createdAt || new Date(),
+    ).endOfDay.toISOString()
 
     return {
       id: sale._id,
       status: sale.status,
+      isExpired,
+      expiresAt,
       amount: sale.amount,
       items: (sale.items || []).map((item: any) => ({
         productName: item.productName,
@@ -2394,6 +2425,9 @@ export class SalesService {
       throw new UnprocessableEntityException(
         'This transaction is no longer awaiting payment',
       )
+    }
+    if (this.isSaleExpired(sale)) {
+      throw new UnprocessableEntityException('This sale expired at midnight.')
     }
     if (sale.paymentRail === 'paystack') {
       throw new UnprocessableEntityException(
@@ -3280,6 +3314,7 @@ export class SalesService {
     const newCard = {
       _id: new Types.ObjectId(),
       authorizationCode: auth.authorizationCode,
+      email: sale.payerPaystackEmail || 'generalcustomer@firespot.co',
       brand: auth.brand || 'card',
       last4: auth.last4 || '••••',
       expMonth: auth.expMonth,
@@ -3343,6 +3378,9 @@ export class SalesService {
     if (sale.status !== 'PENDING') {
       throw new BadRequestException('Sale is not in a payable state')
     }
+    if (this.isSaleExpired(sale)) {
+      throw new UnprocessableEntityException('This sale expired at midnight.')
+    }
 
     const normalizedFingerprint = dto.customerFingerprint?.trim()
     if (
@@ -3394,8 +3432,8 @@ export class SalesService {
     const amountKobo = Math.round(amount * 100)
     const merchantId = String(merchant._id)
 
-    const payerIdentity = `user:${String(user._id)}`
-    const payerPaystackEmail = this.payerEmailAlias(payerIdentity)
+    const payerPaystackEmail =
+      card.email || this.payerEmailForUser(user)
     const payerName =
       [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined
     const payerPhone = user.fullPhoneNumber
@@ -3610,5 +3648,69 @@ export class SalesService {
       }
       throw error
     }
+  }
+
+  async getOngoingSales(merchantId: string): Promise<SaleDocument[]> {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const { startOfDay } = this.collectionDay(new Date())
+
+    // Unpaid manual collections expire at midnight. Paystack payments and
+    // payments with customer evidence keep their existing recovery lifecycle.
+    await this.saleModel.updateMany(
+      {
+        merchantId: merchantObjectId,
+        status: 'PENDING',
+        isCollection: true,
+        isArchived: { $ne: true },
+        createdAt: { $lt: startOfDay },
+        paymentRail: { $ne: 'paystack' },
+        receiptUrl: { $in: [null, ''] },
+        customerMarkedPaidAt: null,
+      },
+      {
+        $set: {
+          isArchived: true,
+          archiveReason: 'Expired at midnight',
+        },
+      },
+    )
+
+    return this.saleModel
+      .find({
+        merchantId: merchantObjectId,
+        status: 'PENDING',
+        isCollection: true,
+        isArchived: { $ne: true },
+        createdAt: { $gte: startOfDay },
+      })
+      .sort({ createdAt: -1 })
+      .populate(saleCustomerPopulate())
+      .exec()
+  }
+
+  async clearAllOngoingSales(
+    merchantId: string,
+  ): Promise<{ count: number }> {
+    const merchantObjectId = new Types.ObjectId(merchantId)
+    const { startOfDay } = this.collectionDay(new Date())
+
+    const result = await this.saleModel.updateMany(
+      {
+        merchantId: merchantObjectId,
+        status: 'PENDING',
+        isCollection: true,
+        isArchived: { $ne: true },
+        createdAt: { $gte: startOfDay },
+        paymentRail: { $ne: 'paystack' },
+      },
+      {
+        $set: {
+          status: 'CANCELLED',
+          cancelledBy: 'merchant',
+        },
+      },
+    )
+
+    return { count: result.modifiedCount || 0 }
   }
 }

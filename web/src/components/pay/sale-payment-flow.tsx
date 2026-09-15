@@ -8,7 +8,7 @@ import { showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import { useSaleSocket } from '@/hooks/useSaleSocket'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
-import type { PublicSale } from '@/services/sales/interface'
+import type { PublicSale, SavedCard } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { SaleRequestScreen } from './sale-request-screen'
 import { SaleWaitingScreen } from './sale-waiting-screen'
@@ -25,6 +25,7 @@ import { LoadingPage } from '@/components/layout/LoadingPage'
 import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
 import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
+import { safeSessionStorage } from '@/lib/utils/storage'
 import { PaystackWaitingScreen } from './paystack-waiting-screen'
 import { PaystackRedirectingScreen } from './paystack-redirecting-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
@@ -88,14 +89,21 @@ export function SalePaymentFlow({
 
   const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
   const savedCards = customerCards || authUser?.savedCards || []
+  const savedCardPaymentsEnabled = Boolean(
+    merchant.hasPaystackCollection &&
+      merchant.savedCardsCheckoutEnabled !== false,
+  )
   const hasSavedCards = Boolean(
     isAuthenticated &&
-      merchant.hasPaystackCollection &&
-      merchant.savedCardsCheckoutEnabled !== false &&
+      savedCardPaymentsEnabled &&
       savedCards.length > 0,
   )
-  const defaultSavedCard = savedCards[0]
+  const [selectedCardId, setSelectedCardId] = useState<string | undefined>()
+  const activeSavedCard =
+    savedCards.find((card) => card.id === selectedCardId) || savedCards[0]
+  const defaultSavedCard = activeSavedCard
   const payWithSavedCard = usePayWithSavedCard()
+
 
   // sortBankAccounts widens the type; the data is the merchant's own accounts
   const sortedBankAccounts = sortBankAccounts(
@@ -113,7 +121,8 @@ export function SalePaymentFlow({
 
   const [hasCopiedAccount, setHasCopiedAccount] = useState(false)
   const [selectedRail, setSelectedRail] = useState<PaymentRail>(() =>
-    merchant.hasPaystackCollection && sale.paymentRail !== 'manual_transfer'
+    merchant.paystackCollectionChannels?.length &&
+    sale.paymentRail !== 'manual_transfer'
       ? 'multiple'
       : 'transfer',
   )
@@ -149,9 +158,7 @@ export function SalePaymentFlow({
   }
 
   const clearActiveTransaction = () => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
-    }
+    safeSessionStorage.removeItem(`firespot-active-sale:${serialNumber}`)
   }
 
   const handleCancelled = (cancelledSale?: unknown) => {
@@ -375,41 +382,47 @@ export function SalePaymentFlow({
     })
   }
 
-  const handleChangePaymentMethod = () => {
+  const handleOpenSavedCards = (fromRailPicker = true) => {
+    if (savedCards.length === 0) return
     openDrawer({
-      type: 'rail-picker',
+      type: 'saved-cards',
       direction: 'bottom',
       props: {
-        hasSavedCards,
-        selectedRail,
-        paystackChannels,
-        onSelectRail: (rail: PaymentRail) => {
-          setSelectedRail(rail)
-          if (
-            rail === 'multiple' &&
-            !paystackChannels.includes(selectedChannel) &&
-            paystackChannels[0]
-          ) {
-            setSelectedChannel(paystackChannels[0])
-          }
+        savedCards,
+        selectedCardId: activeSavedCard?.id,
+        onSelectCard: (card: SavedCard) => {
+          setSelectedCardId(card.id)
+          setSelectedRail('saved')
         },
+        onAddNewCard: () => {
+          setSelectedRail('multiple')
+        },
+        onBack:
+          fromRailPicker && merchant.hasPaystackCollection
+            ? handleChangePaymentMethod
+            : undefined,
       },
     })
   }
 
-  const handleChangeAccount = () => {
+  const handleChangeAccount = (fromRailPicker = true) => {
     if (sortedBankAccounts.length === 0) return
     openDrawer({
       type: 'select-bank',
       direction: 'bottom',
       props: {
         bankAccounts: sortedBankAccounts,
+        onBack:
+          fromRailPicker && merchant.hasPaystackCollection
+            ? handleChangePaymentMethod
+            : undefined,
         onSelectBank: (bank: BankAccount) => {
           const index = sortedBankAccounts.findIndex(
             (acc) => acc.accountNumber === bank.accountNumber,
           )
           if (index !== -1) {
             setSelectedAccountIndex(index)
+            setSelectedRail('transfer')
             navigator.clipboard.writeText(bank.accountNumber)
             showNotificationToast({
               message: 'Account number copied',
@@ -426,6 +439,37 @@ export function SalePaymentFlow({
       },
     })
   }
+
+  const handleChangePaymentMethod = () => {
+    openDrawer({
+      type: 'rail-picker',
+      direction: 'bottom',
+      props: {
+        savedCardPaymentsEnabled,
+        isCustomerAuthenticated: isAuthenticated,
+        hasSavedCards,
+        selectedRail,
+        paystackChannels,
+        onSelectRail: (rail: PaymentRail) => {
+          setSelectedRail(rail)
+          if (
+            rail === 'multiple' &&
+            !paystackChannels.includes(selectedChannel) &&
+            paystackChannels[0]
+          ) {
+            setSelectedChannel(paystackChannels[0])
+          }
+        },
+        onOpenBankPicker: () => {
+          handleChangeAccount(true)
+        },
+        onOpenSavedCards: () => {
+          handleOpenSavedCards(true)
+        },
+      },
+    })
+  }
+
 
   const handleOpenBankApp = () => {
     openDrawer({
@@ -508,15 +552,17 @@ export function SalePaymentFlow({
       sale={sale}
       merchant={merchant}
       account={account}
-      onChangeAccount={handleChangeAccount}
+      onChangeAccount={() => handleChangeAccount(true)}
       onChangePaymentMethod={handleChangePaymentMethod}
+      onChangeSavedCard={() => handleOpenSavedCards(true)}
       selectedRail={selectedRail}
       onCopy={handleCopy}
       onPayInstantly={handlePayInstantly}
       onShare={handleShare}
       onClose={handleClose}
       hasPaystackCollection={merchant.hasPaystackCollection}
-      savedCard={selectedRail === 'saved' ? defaultSavedCard : undefined}
+      savedCard={selectedRail === 'saved' ? activeSavedCard : undefined}
+
       isSubmitting={
         initializePaystack.isPending || payWithSavedCard.isPending
       }

@@ -3,13 +3,7 @@
 import { useMemo } from 'react'
 import Image from 'next/image'
 import { useRouter } from '@bprogress/next/app'
-import {
-  Check,
-  ChevronRight,
-  CirclePlus,
-  MapPin,
-  UserRound,
-} from 'lucide-react'
+import { Check, ChevronRight, CirclePlus, UserRound } from 'lucide-react'
 import {
   ActionList,
   ActionListItem,
@@ -81,7 +75,6 @@ export function AccountSwitchDrawer({
     }
   }, [customerHistory])
 
-  // Rating and location are not backed for the personal profile yet.
   const paymentCount =
     isHistoryLoading || isHistoryError
       ? '—'
@@ -92,8 +85,10 @@ export function AccountSwitchDrawer({
       : paymentSummary.months === 1
         ? '1 month'
         : `${paymentSummary.months} months`
-  const ratingLine = `☆ 4.74 · 🔥 ${paymentCount} payments in ${paymentPeriod}`
-  const locationLine = 'No location set'
+  const paymentLine =
+    !isHistoryLoading && !isHistoryError && paymentSummary.count < 1
+      ? 'No payments yet'
+      : `🔥 ${paymentCount} payments in ${paymentPeriod}`
 
   const handleSwitchToPersonal = () => {
     closeDrawer()
@@ -109,10 +104,6 @@ export function AccountSwitchDrawer({
     closeDrawer()
     setActiveProfileMode('merchant')
     router.push('/profile')
-  }
-
-  const handleUpdateLocation = () => {
-    showNotificationToast({ message: 'Coming soon', duration: 2000 })
   }
 
   const handleAddShop = () => {
@@ -140,7 +131,13 @@ export function AccountSwitchDrawer({
                   className="object-cover w-full h-full"
                 />
               ) : (
-                <UserRound className="w-9 h-9 text-[#868788]" />
+                <Image
+                  src="/images/default_avatar.png"
+                  alt="default avatar"
+                  width={36}
+                  height={36}
+                  className="object-cover w-full h-full"
+                />
               )}
             </span>
           }
@@ -148,19 +145,15 @@ export function AccountSwitchDrawer({
             <span className="text-[15px] font-medium">{personalName}</span>
           }
           subtitle={
-            <span className="flex flex-col gap-0.5 mt-1">
-              <span className="text-[13px] font-medium text-black">
-                {ratingLine}
-              </span>
-              <span className="text-[13px] font-medium text-[#00000080] mt-1">
-                {locationLine}
-              </span>
+            <span className="mt-1 inline-block text-[13px] font-medium text-[#64748B]">
+              {paymentLine}
             </span>
           }
           trailing={null}
+          onClick={mode === 'merchant' ? handleSwitchToPersonal : undefined}
           className="p-3"
         />
-        {mode === 'merchant' ? (
+        {mode === 'merchant' && (
           <ActionListItem
             icon={
               <Image
@@ -173,17 +166,6 @@ export function AccountSwitchDrawer({
             title={<span className="ml-1">Switch to personal profile</span>}
             onClick={handleSwitchToPersonal}
             className="px-5 py-5"
-          />
-        ) : (
-          <ActionListItem
-            icon={<MapPin size={24} className="text-[#0075FF]" />}
-            title={
-              <span className="text-[#0075FF] text-sm font-bold">
-                Update location
-              </span>
-            }
-            onClick={handleUpdateLocation}
-            className="px-4 py-4.5"
           />
         )}
       </ActionList>

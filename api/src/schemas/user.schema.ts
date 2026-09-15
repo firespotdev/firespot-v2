@@ -154,6 +154,10 @@ export class User extends Document {
       city: String,
       address: String,
       insideMarket: Boolean,
+      market: String,
+      shoppingComplex: String,
+      shopNumber: String,
+      landmark: String,
     },
   })
   mainAddress?: {
@@ -161,6 +165,10 @@ export class User extends Document {
     city?: string;
     address?: string;
     insideMarket?: boolean;
+    market?: string;
+    shoppingComplex?: string;
+    shopNumber?: string;
+    landmark?: string;
   };
 
   @Prop()
@@ -589,6 +597,9 @@ export class User extends Document {
   @Prop({ default: true })
   savedCardsCheckoutEnabled?: boolean;
 
+  @Prop({ default: false })
+  paystackCollectionEnabled?: boolean;
+
   /**
    * Personal customer-saved cards tokenized via Paystack.
    * Enables customers to pay merchants in one tap without re-entering numbers.
@@ -598,6 +609,7 @@ export class User extends Document {
     type: [
       {
         authorizationCode: { type: String, required: true, select: false },
+        email: String,
         brand: String,
         last4: String,
         expMonth: String,
@@ -622,6 +634,7 @@ export class User extends Document {
 export interface SavedCard {
   _id?: Types.ObjectId;
   authorizationCode: string;
+  email?: string;
   brand?: string;
   last4?: string;
   expMonth?: string;

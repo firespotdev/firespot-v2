@@ -1,37 +1,59 @@
 'use client'
 
-import Link from 'next/link'
-import { Button, EmptyState, LoaderCircle } from '@/components/ui'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Map1, Scan } from 'iconsax-reactjs'
-import { MagnifyingGlassIcon } from '@phosphor-icons/react'
 import { useState } from 'react'
+import Link from 'next/link'
+import { Heart, Search } from 'lucide-react'
+import {
+  ActionList,
+  ActionListItem,
+  EmptyState,
+  LoaderCircle,
+  showNotificationToast,
+} from '@/components/ui'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { MerchantAvatar } from '@/components/layout'
+import { Map1, Scan } from 'iconsax-reactjs'
+import { useFavorites, useRemoveFavorite } from '@/services/favorites'
 
-type ActivityTab = 'ALL' | 'SHOPS' | 'ITEMS' | 'POSTS' | 'EVENTS'
-const TABS: ActivityTab[] = ['ALL', 'SHOPS', 'ITEMS', 'POSTS', 'EVENTS']
+type SavedTab = 'ALL' | 'SHOPS'
+const TABS: SavedTab[] = ['ALL', 'SHOPS']
 
 export default function SavedPage() {
-  const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [isError, setIsError] = useState<boolean>(false)
-  const data = []
+  const [activeTab, setActiveTab] = useState<SavedTab>('ALL')
+  const { data, isLoading, isError } = useFavorites()
+  const removeFavorite = useRemoveFavorite()
+  const favorites = data?.favorites || []
 
-  const [activeTab, setActiveTab] = useState<ActivityTab>('ALL')
+  const remove = (merchantId: string, businessName?: string) => {
+    removeFavorite.mutate(merchantId, {
+      onSuccess: () =>
+        showNotificationToast({
+          message: `${businessName || 'Business'} removed from Faves`,
+          mode: 'success',
+        }),
+      onError: () =>
+        showNotificationToast({
+          message: 'Could not remove this business. Try again.',
+          mode: 'error',
+        }),
+    })
+  }
 
   return (
     <div className="min-h-dvh bg-white font-satoshi">
-      <div className="max-w-125 mx-auto min-h-dvh">
+      <div className="max-w-125 mx-auto min-h-dvh pb-24">
         <PageHeader
           title="Saved"
           logoSrc="/images/firespot_personal.png"
           className="bg-white"
           rightSlot={
-            <button
-              type="button"
-              aria-label="search"
-              className="w-9 h-9 flex justify-center items-center"
+            <Link
+              href="/search?type=shops"
+              aria-label="Search shops"
+              className="grid h-9 w-9 place-items-center rounded-full active:bg-black/5"
             >
-              <MagnifyingGlassIcon size={20} strokeWidth={2} color="black" />
-            </button>
+              <Search size={20} />
+            </Link>
           }
         />
 
@@ -46,7 +68,7 @@ export default function SavedPage() {
                 className={`shrink-0 px-4 h-9 rounded-full text-[10px] font-bold tracking-[1px] flex items-center transition-colors ${
                   active
                     ? 'bg-black text-white'
-                    : 'bg-[#E5E7EB99] text-[#000000]'
+                    : 'bg-[#E5E7EB99] text-black'
                 }`}
               >
                 {tab}
@@ -55,73 +77,84 @@ export default function SavedPage() {
           })}
         </div>
 
-        <div className="frequent border-b border-[#f1f1f1] pb-16">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-bold text-sm text-black">Lists</h3>
-            <Button
-              variant="outline"
-              className="w-fit border-none h-fit p-0 bg-transparent underline underline-offset-3 font-medium text-xs"
-            >
-              View all
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2">
-          <div className="p-3 flex gap-3"></div>
-        </div>
-
-        <div className="h-[calc(100dvh-12rem)] flex flex-col justify-center items-center">
+        <main className="px-3">
           {isLoading ? (
-            <div className="flex justify-center">
+            <div className="flex justify-center py-16">
               <LoaderCircle />
             </div>
           ) : isError ? (
-            <div className="text-center">
-              <p className="text-sm text-[#00000080] font-medium max-w-60">
-                Couldn’t load your activity. Pull to refresh or try again later.
-              </p>
+            <p className="py-16 text-center text-sm font-medium text-[#00000080]">
+              Couldn’t load your saved shops. Try again later.
+            </p>
+          ) : favorites.length === 0 ? (
+            <div className="flex min-h-[60dvh] items-center">
+              <EmptyState
+                emoji={
+                  <span
+                    className="text-[64px] leading-none"
+                    role="img"
+                    aria-label="heart"
+                  >
+                    ❤️
+                  </span>
+                }
+                title="No saved shops yet"
+                details="Businesses you add to Faves will appear here."
+                cta={
+                  <div className="flex items-center gap-3 mt-6">
+                    <Link
+                      href="/search?type=shops"
+                      className="inline-flex items-center gap-1 bg-black text-white text-[10px] font-bold tracking-[1px] rounded-full h-9 px-4"
+                    >
+                      <Map1 size={16} color="white" />
+                      EXPLORE
+                    </Link>
+                    <Link
+                      href="/"
+                      className="inline-flex items-center gap-1 bg-[#F1F1F1] border border-[#DFDFDF80] text-black text-[10px] font-bold tracking-[1px] rounded-full h-9 px-4"
+                    >
+                      <Scan size={16} color="black" />
+                      SCAN QR
+                    </Link>
+                  </div>
+                }
+              />
             </div>
-          ) : data.length === 0 ? (
-            <EmptyState
-              emoji={
-                <span
-                  className="text-[64px] leading-none"
-                  role="img"
-                  aria-label="map"
-                >
-                  🗺️
-                </span>
-              }
-              title="You haven't visited anywhere"
-              details="Places you visit show here when you scan a Firespot QR code or visit a shop on the app."
-              cta={
-                <div className="flex items-center gap-3 mt-6">
-                  <Link
-                    href="/home"
-                    className="inline-flex items-center gap-1 bg-black text-white text-[10px] font-bold tracking-[1px] rounded-full h-9 px-4"
-                  >
-                    <Map1 size={16} color="white" />
-                    EXPLORE
-                  </Link>
-                  <Link
-                    href="/"
-                    className="inline-flex items-center gap-1 bg-[#F1F1F1] border border-[#DFDFDF80] text-black text-[10px] font-bold tracking-[1px] rounded-full h-9 px-4"
-                  >
-                    <Scan size={16} color="black" />
-                    SCAN QR
-                  </Link>
-                </div>
-              }
-            />
           ) : (
-            <div className="px-4">
-              <p className="text-center text-xs text-[#00000066] font-medium py-4">
-                You’ve reached the end of the list
-              </p>
-            </div>
+            <ActionList>
+              {favorites.map((merchant) => (
+                <ActionListItem
+                  key={merchant.id}
+                  as="div"
+                  icon={
+                    <MerchantAvatar
+                      profilePhotoUrl={
+                        merchant.businessImageUrl || merchant.profilePhotoUrl
+                      }
+                      alt={merchant.businessName || 'Saved business'}
+                      size={48}
+                    />
+                  }
+                  title={merchant.businessName || 'Business'}
+                  subtitle={merchant.businessIndustry || 'Saved shop'}
+                  trailing={
+                    <button
+                      type="button"
+                      onClick={() =>
+                        remove(merchant.id, merchant.businessName)
+                      }
+                      disabled={removeFavorite.isPending}
+                      aria-label={`Remove ${merchant.businessName || 'business'} from Faves`}
+                      className="grid h-9 w-9 place-items-center rounded-full text-[#E23B4E] disabled:opacity-50 active:bg-[#FBEEEE]"
+                    >
+                      <Heart size={18} fill="currentColor" />
+                    </button>
+                  }
+                />
+              ))}
+            </ActionList>
           )}
-        </div>
+        </main>
       </div>
     </div>
   )

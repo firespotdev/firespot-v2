@@ -32,7 +32,7 @@ export function BusinessIntroDrawer({ closeDrawer }: BusinessIntroDrawerProps) {
 
   const handleGetStarted = () => {
     closeDrawer()
-    router.push('/onboarding/merchant')
+    router.push('/onboarding/merchant?from=personal')
   }
 
   return (
