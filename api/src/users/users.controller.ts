@@ -47,6 +47,8 @@ import {
   UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
 import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
+import { UpdateCurrentLocationDto } from "./dto/update-current-location.dto";
+import { CurrentLocationService } from "./current-location.service";
 
 @ApiTags("public-merchants")
 @Controller("public/merchants")
@@ -66,6 +68,7 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly paystackService: PaystackService,
+    private readonly currentLocationService: CurrentLocationService,
   ) {}
 
   @Get("industries")
@@ -563,6 +566,25 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "Location saved" })
   async updateLocation(@Request() req, @Body() dto: UpdateLocationDto) {
     return this.usersService.updateLocation(req.user.userId, dto);
+  }
+
+  @Get("me/current-location")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Get the user's current personal location" })
+  async getCurrentLocation(@Request() req) {
+    return this.currentLocationService.get(req.user.userId);
+  }
+
+  @Patch("me/current-location")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save the user's current personal location" })
+  async updateCurrentLocation(
+    @Request() req,
+    @Body() dto: UpdateCurrentLocationDto,
+  ) {
+    return this.currentLocationService.update(req.user.userId, dto);
   }
 
   @Patch("me/employees")

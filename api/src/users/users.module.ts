@@ -13,6 +13,8 @@ import { Product, ProductSchema } from "../schemas/product.schema";
 import { AuthModule } from "../auth/auth.module";
 import { MerchantReferralsModule } from "../merchant-referrals/merchant-referrals.module";
 import { PaystackSubaccountsService } from "./services/paystack-subaccounts.service";
+import { GoogleGeocodingService } from "./services/google-geocoding.service";
+import { CurrentLocationService } from "./current-location.service";
 
 @Module({
   imports: [
@@ -30,6 +32,8 @@ import { PaystackSubaccountsService } from "./services/paystack-subaccounts.serv
     PaystackService,
     PaystackSubaccountsService,
     CloudinaryService,
+    GoogleGeocodingService,
+    CurrentLocationService,
   ],
   exports: [
     UsersService,

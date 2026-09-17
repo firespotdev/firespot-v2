@@ -38,6 +38,7 @@ export interface MerchantPost {
   createdAt: string
   updatedAt: string
   merchant?: PostMerchant
+  distanceKm?: number
 }
 
 export interface PostPreviewResponse {
@@ -55,7 +56,15 @@ export interface PostPayload {
 
 export interface PostFeedResponse {
   data: MerchantPost[]
-  meta: { limit: number; total: number }
+  meta: { limit: number; total: number; mode: PostFeedMode }
+}
+
+export type PostFeedMode = 'latest' | 'nearby' | 'open_now'
+
+export interface PostFeedParams {
+  mode: PostFeedMode
+  latitude?: number
+  longitude?: number
 }
 
 export const PostsApi = {
@@ -91,8 +100,11 @@ export const PostsApi = {
     return data
   },
 
-  feed: async (): Promise<PostFeedResponse> => {
-    const { data } = await publicApiClient.get<PostFeedResponse>('/public/posts/feed')
+  feed: async (params: PostFeedParams): Promise<PostFeedResponse> => {
+    const { data } = await publicApiClient.get<PostFeedResponse>(
+      '/public/posts/feed',
+      { params },
+    )
     return data
   },
 }

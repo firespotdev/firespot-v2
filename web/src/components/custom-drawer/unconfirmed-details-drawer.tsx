@@ -20,7 +20,7 @@ import { showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import {
   useConfirmSale,
-  useArchiveSale,
+  useCancelSale,
   useInfiniteSales,
   useUpdateSaleCustomer,
 } from '@/services/sales/hooks'
@@ -34,7 +34,6 @@ import {
   isRegisteredCustomer,
   getSaleCustomerTitle,
 } from '@/lib/utils/sales'
-import { ClockIcon } from '@phosphor-icons/react'
 import { Clock } from 'iconsax-reactjs'
 
 interface UnconfirmedDetailsDrawerProps {
@@ -66,7 +65,7 @@ export function UnconfirmedDetailsDrawer({
   )
 
   const confirmSaleMutation = useConfirmSale()
-  const archiveSaleMutation = useArchiveSale()
+  const cancelSaleMutation = useCancelSale()
   const updateSaleCustomerMutation = useUpdateSaleCustomer()
 
   // Current active sale
@@ -121,7 +120,7 @@ export function UnconfirmedDetailsDrawer({
       ? currentSale.reference
       : currentSale._id?.slice(-8).toUpperCase()) || 'N/A'
 
-  const itemsTotal = useMemo(() => {
+  const itemsTotal = (() => {
     if (!currentSale?.items || currentSale.items.length === 0) {
       return currentSale?.amount || 0
     }
@@ -130,7 +129,7 @@ export function UnconfirmedDetailsDrawer({
       0,
     )
     return sum || currentSale?.amount || 0
-  }, [currentSale])
+  })()
 
   const paymentMethodDisplay = (() => {
     const method =
@@ -194,10 +193,10 @@ export function UnconfirmedDetailsDrawer({
   }
 
   const handleCancelSale = () => {
-    if (archiveSaleMutation.isPending) return
+    if (cancelSaleMutation.isPending) return
     const saleId = currentSale._id
 
-    archiveSaleMutation.mutate(saleId, {
+    cancelSaleMutation.mutate(saleId, {
       onSuccess: (updatedSale) => {
         setActiveSales((previousSales) =>
           previousSales.map((sale) =>
@@ -206,7 +205,7 @@ export function UnconfirmedDetailsDrawer({
         )
         onArchiveSuccess?.(saleId)
         showNotificationToast({
-          message: 'Sale cancelled and archived',
+          message: 'Sale cancelled',
           mode: 'success',
         })
       },
@@ -618,11 +617,11 @@ export function UnconfirmedDetailsDrawer({
               type="button"
               onClick={handleCancelSale}
               disabled={
-                archiveSaleMutation.isPending || confirmSaleMutation.isPending
+                cancelSaleMutation.isPending || confirmSaleMutation.isPending
               }
               className="flex-1 h-11 rounded-full bg-[#E5E7EB] disabled:opacity-50 text-black font-bold text-[14px] flex items-center justify-center transition-all"
             >
-              {archiveSaleMutation.isPending ? (
+              {cancelSaleMutation.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 'Cancel sale'
@@ -633,7 +632,7 @@ export function UnconfirmedDetailsDrawer({
               type="button"
               onClick={handleConfirm}
               disabled={
-                archiveSaleMutation.isPending || confirmSaleMutation.isPending
+                cancelSaleMutation.isPending || confirmSaleMutation.isPending
               }
               className="flex-1 h-11 rounded-full bg-[#24C166] disabled:opacity-50 text-white font-bold text-[14px] flex items-center justify-center transition-all"
             >

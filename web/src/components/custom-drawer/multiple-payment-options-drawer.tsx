@@ -1,11 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import { ArrowLeft, X, Hash } from 'lucide-react'
 import { useRouter } from '@bprogress/next/app'
-import { ActionList, ActionListItem, Switch, TagFooter } from '@/components/ui'
+import {
+  ActionList,
+  ActionListItem,
+  Switch,
+  TagFooter,
+  showNotificationToast,
+} from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
-import { useUserProfile } from '@/services/users'
+import { useUpdatePaymentSettings, useUserProfile } from '@/services/users'
 import { BankIcon, CreditCardIcon } from '@phosphor-icons/react'
 import { Card } from 'iconsax-reactjs'
 
@@ -13,22 +18,21 @@ interface MultiplePaymentOptionsDrawerProps {
   fromActiveMethods?: boolean
 }
 
+type DisplayedPaystackChannel = 'bank_transfer' | 'bank' | 'ussd' | 'card'
+
 export function MultiplePaymentOptionsDrawer({
   fromActiveMethods,
 }: MultiplePaymentOptionsDrawerProps) {
   const router = useRouter()
   const { closeDrawer, openDrawer, closeAllDrawers } = useDrawerStore()
   const { data: profile } = useUserProfile()
+  const updatePaymentSettings = useUpdatePaymentSettings()
 
   const effectiveTier = profile?.effectiveTier
   const hasPlan = Boolean(effectiveTier)
-  const isProOrAbove =
-    effectiveTier === 'PRO' || effectiveTier === 'PROMAX'
-
-  const [bankTransfer, setBankTransfer] = useState(true)
-  const [directDebit, setDirectDebit] = useState(true)
-  const [ussd1, setUssd1] = useState(true)
-  const [card, setCard] = useState(true)
+  const isProOrAbove = effectiveTier === 'PRO' || effectiveTier === 'PROMAX'
+  const selectedChannels = profile?.paystackCollectionChannels ?? []
+  const liteChannel = effectiveTier === 'LITE' ? selectedChannels[0] : undefined
 
   const handleBack = () => {
     closeDrawer('multiple-payment-options')
@@ -39,6 +43,77 @@ export function MultiplePaymentOptionsDrawer({
 
   const handleClose = () => {
     closeAllDrawers()
+  }
+
+  const goToPlan = (tier: 'LITE' | 'PRO') => {
+    closeAllDrawers()
+    router.push(`/plans?tier=${tier}`)
+  }
+
+  const handleChannelChange = (
+    channel: DisplayedPaystackChannel,
+    enabled: boolean,
+  ) => {
+    if (!hasPlan) {
+      goToPlan('LITE')
+      return
+    }
+
+    if (!isProOrAbove) {
+      if (channel !== liteChannel) {
+        goToPlan('PRO')
+        return
+      }
+
+      if (profile?.canCollect !== true) {
+        closeDrawer('multiple-payment-options')
+        openDrawer({ type: 'verify-identity' })
+        return
+      }
+
+      updatePaymentSettings.mutate(
+        { paystackCollectionEnabled: enabled },
+        {
+          onError: () => {
+            showNotificationToast({
+              message: 'Could not update Paystack payments. Please try again.',
+              mode: 'error',
+            })
+          },
+        },
+      )
+      return
+    }
+
+    const nextChannels = enabled
+      ? [...new Set([...selectedChannels, channel])]
+      : selectedChannels.filter((selected) => selected !== channel)
+
+    if (nextChannels.length === 0) {
+      showNotificationToast({
+        message: 'Keep at least one Paystack payment option active.',
+      })
+      return
+    }
+
+    updatePaymentSettings.mutate(
+      { paystackCollectionChannels: nextChannels },
+      {
+        onError: () => {
+          showNotificationToast({
+            message: 'Could not update payment options. Please try again.',
+            mode: 'error',
+          })
+        },
+      },
+    )
+  }
+
+  const isChannelChecked = (channel: DisplayedPaystackChannel) => {
+    if (isProOrAbove) return selectedChannels.includes(channel)
+    return (
+      channel === liteChannel && profile?.paystackCollectionEnabled === true
+    )
   }
 
   return (
@@ -68,40 +143,6 @@ export function MultiplePaymentOptionsDrawer({
         </button>
       </header>
 
-      {!isProOrAbove && (
-        <div className="mb-3 rounded-[12px] bg-white p-3.5 shadow-[0px_4px_8px_0px_#0000000A] flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            {!hasPlan ? (
-              <span className="rounded-[4px] bg-[#9CA3AF] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white">
-                Available in LITE
-              </span>
-            ) : (
-              <span className="rounded-[4px] bg-linear-to-br from-[#FB5012] to-[#D72483] px-1.5 py-0.5 text-[11px] font-bold leading-none text-white shadow-xs">
-                More with PRO
-              </span>
-            )}
-            <span className="text-[14px] font-bold text-black">
-              {!hasPlan ? 'Available in Firespot Lite' : 'More with Firespot Pro'}
-            </span>
-          </div>
-          <p className="text-xs text-[#64748B]">
-            {!hasPlan
-              ? 'Upgrade to Firespot Lite to start collecting payments automatically.'
-              : 'Upgrade to Pro to enable instant automated bank transfers, direct debit, USSD, and cards.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              closeAllDrawers()
-              router.push(!hasPlan ? '/plans?tier=LITE' : '/plans?tier=PRO')
-            }}
-            className="mt-1 w-full rounded-[10px] bg-black py-2 text-center text-xs font-bold text-white transition-opacity active:opacity-80 cursor-pointer"
-          >
-            {!hasPlan ? 'Get started with Lite' : 'Upgrade to Pro'}
-          </button>
-        </div>
-      )}
-
       {/* ActionList Card */}
       <ActionList rounded="12">
         {/* Row 1: Bank Transfer */}
@@ -124,9 +165,11 @@ export function MultiplePaymentOptionsDrawer({
           }
           trailing={
             <Switch
-              checked={isProOrAbove && bankTransfer}
-              disabled={!isProOrAbove}
-              onCheckedChange={setBankTransfer}
+              checked={isChannelChecked('bank_transfer')}
+              disabled={updatePaymentSettings.isPending}
+              onCheckedChange={(enabled) =>
+                handleChannelChange('bank_transfer', enabled)
+              }
             />
           }
           className="p-3"
@@ -152,9 +195,11 @@ export function MultiplePaymentOptionsDrawer({
           }
           trailing={
             <Switch
-              checked={isProOrAbove && directDebit}
-              disabled={!isProOrAbove}
-              onCheckedChange={setDirectDebit}
+              checked={isChannelChecked('bank')}
+              disabled={updatePaymentSettings.isPending}
+              onCheckedChange={(enabled) =>
+                handleChannelChange('bank', enabled)
+              }
             />
           }
           className="p-3"
@@ -176,9 +221,11 @@ export function MultiplePaymentOptionsDrawer({
           }
           trailing={
             <Switch
-              checked={isProOrAbove && ussd1}
-              disabled={!isProOrAbove}
-              onCheckedChange={setUssd1}
+              checked={isChannelChecked('ussd')}
+              disabled={updatePaymentSettings.isPending}
+              onCheckedChange={(enabled) =>
+                handleChannelChange('ussd', enabled)
+              }
             />
           }
           className="p-3"
@@ -200,9 +247,11 @@ export function MultiplePaymentOptionsDrawer({
           }
           trailing={
             <Switch
-              checked={isProOrAbove && card}
-              disabled={!isProOrAbove}
-              onCheckedChange={setCard}
+              checked={isChannelChecked('card')}
+              disabled={updatePaymentSettings.isPending}
+              onCheckedChange={(enabled) =>
+                handleChannelChange('card', enabled)
+              }
             />
           }
           className="p-3"

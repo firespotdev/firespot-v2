@@ -94,7 +94,7 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
     subtitle: 'Photo, name and price',
     Icon: <PackageIcon weight="fill" size={24} color="white" />,
     bg: '#3B9BF5',
-    destination: { kind: 'none' },
+    destination: { kind: 'route', href: '/products' },
   },
   bookings: {
     title: 'Bookings',
@@ -142,18 +142,13 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
 
 /** Row order on screen, matching the design (independent of API order). */
 export const CHECKLIST_ORDER: ShopSetupKey[] = [
-  'about',
   'bank',
   'verify',
   'fulfillment',
   'locations',
-  'employees',
   'contact',
   'firstItem',
-  'bookings',
   'policies',
   'operatingHours',
-  'charges',
   'qrKit',
-  'suppliers',
 ]

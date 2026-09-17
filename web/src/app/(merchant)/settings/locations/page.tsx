@@ -23,9 +23,16 @@ import {
 import { useUserProfile } from '@/services/users'
 import { useUpdateLocation } from '@/services/shop'
 import { StorefrontIcon } from '@phosphor-icons/react'
+import { LocateFixed } from 'lucide-react'
 import { useSafeBack } from '@/hooks/use-safe-back'
 
 const BRANCH_OPTIONS = ['1', '2', '3', '4', '5', '6+']
+
+interface CapturedLocation {
+  latitude: number
+  longitude: number
+  accuracy: number
+}
 
 export default function LocationsSettingsPage() {
   const handleBack = useSafeBack('/profile')
@@ -48,6 +55,9 @@ export default function LocationsSettingsPage() {
   )
   const [shopNumber, setShopNumber] = useState(existing?.shopNumber ?? '')
   const [landmark, setLandmark] = useState(existing?.landmark ?? '')
+  const [capturedLocation, setCapturedLocation] =
+    useState<CapturedLocation | null>(null)
+  const [isLocating, setIsLocating] = useState(false)
 
   // Cities depend on the chosen state; reset the city when the state changes.
   const cities = useMemo(
@@ -58,6 +68,39 @@ export default function LocationsSettingsPage() {
   const onStateChange = (value: string) => {
     setState(value)
     setCity('')
+  }
+
+  const captureShopLocation = () => {
+    if (!navigator.geolocation) {
+      showNotificationToast({
+        message: 'Location is not available in this browser.',
+        mode: 'error',
+      })
+      return
+    }
+
+    setIsLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setCapturedLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy,
+        })
+        setIsLocating(false)
+      },
+      (error) => {
+        setIsLocating(false)
+        showNotificationToast({
+          message:
+            error.code === error.PERMISSION_DENIED
+              ? 'Allow location access in your browser to capture your shop location.'
+              : 'Could not find your location. Try again at your shop.',
+          mode: 'error',
+        })
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+    )
   }
 
   const handleSave = () => {
@@ -81,6 +124,9 @@ export default function LocationsSettingsPage() {
         shopNumber: insideMarket ? shopNumber.trim() || undefined : undefined,
         landmark: insideMarket ? landmark.trim() || undefined : undefined,
         branchCount,
+        latitude: capturedLocation?.latitude,
+        longitude: capturedLocation?.longitude,
+        locationAccuracyMeters: capturedLocation?.accuracy,
       },
       {
         onSuccess: handleBack,

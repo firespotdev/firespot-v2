@@ -9,8 +9,89 @@ import { Model, Types } from "mongoose";
 import { Product, ProductDocument } from "../schemas/product.schema";
 import { Post, PostDocument, PostStatus } from "../schemas/post.schema";
 import { User, UserDocument } from "../schemas/user.schema";
-import { CreatePostDto, UpdatePostDto } from "./dto/post.dto";
+import { CreatePostDto, PostFeedQueryDto, UpdatePostDto } from "./dto/post.dto";
 import { fetchPostMetadata, parseSupportedPostUrl } from "./post-metadata";
+
+const NEARBY_RADIUS_METERS = 25_000;
+const FEED_LIMIT = 50;
+const DAY_ORDER = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+
+interface OpeningDay {
+  day: string;
+  enabled: boolean;
+  opensAt?: string;
+  closesAt?: string;
+  closesNextDay?: boolean;
+}
+
+interface NearbyMerchant extends PopulatedMerchant {
+  distanceMeters: number;
+  activeHoursSetup?: {
+    openingHours?: {
+      timezone?: string;
+      days?: OpeningDay[];
+    };
+  };
+}
+
+const timeToMinutes = (value?: string) => {
+  const match = /^(\d{2}):(\d{2})$/.exec(value || "");
+  if (!match) return null;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+};
+
+const isOpenAt = (merchant: NearbyMerchant, now = new Date()) => {
+  const openingHours = merchant.activeHoursSetup?.openingHours;
+  if (!openingHours?.days?.length) return false;
+
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: openingHours.timezone || "Africa/Lagos",
+      weekday: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(now);
+    const day = (parts.find((part) => part.type === "weekday")?.value || "")
+      .slice(0, 3)
+      .toUpperCase();
+    const hours = Number(
+      parts.find((part) => part.type === "hour")?.value || "0",
+    );
+    const minutes = Number(
+      parts.find((part) => part.type === "minute")?.value || "0",
+    );
+    const minuteOfDay = hours * 60 + minutes;
+    const todayIndex = DAY_ORDER.indexOf(day);
+    if (todayIndex < 0) return false;
+
+    const today = openingHours.days.find((entry) => entry.day === day);
+    const previousDay = DAY_ORDER[(todayIndex + 6) % DAY_ORDER.length];
+    const previous = openingHours.days.find(
+      (entry) => entry.day === previousDay,
+    );
+    const isWithin = (schedule: OpeningDay, fromPreviousDay = false) => {
+      if (!schedule.enabled) return false;
+      const opensAt = timeToMinutes(schedule.opensAt);
+      const closesAt = timeToMinutes(schedule.closesAt);
+      if (opensAt === null || closesAt === null) return false;
+      const overnight = schedule.closesNextDay || closesAt < opensAt;
+      if (fromPreviousDay) return overnight && minuteOfDay < closesAt;
+      return overnight
+        ? minuteOfDay >= opensAt
+        : minuteOfDay >= opensAt && minuteOfDay < closesAt;
+    };
+
+    return Boolean(
+      (today && isWithin(today)) || (previous && isWithin(previous, true)),
+    );
+  } catch {
+    return false;
+  }
+};
 
 interface PopulatedMerchant {
   _id: Types.ObjectId;
@@ -296,11 +377,91 @@ export class PostsService {
     return { deleted: true };
   }
 
-  async feed() {
+  async feed(query: PostFeedQueryDto = {}) {
+    const mode = query.mode || "latest";
+    if (mode !== "latest") {
+      if (query.latitude === undefined || query.longitude === undefined) {
+        throw new BadRequestException(
+          "Latitude and longitude are required for location-based posts",
+        );
+      }
+
+      const nearbyRecords = await this.userModel.aggregate<NearbyMerchant>([
+        {
+          $geoNear: {
+            key: "mainLocation",
+            near: {
+              type: "Point",
+              coordinates: [query.longitude, query.latitude],
+            },
+            distanceField: "distanceMeters",
+            maxDistance: NEARBY_RADIUS_METERS,
+            spherical: true,
+            query: { role: "merchant", shopIsLive: true },
+          },
+        },
+        {
+          $project: {
+            businessName: 1,
+            profilePhotoUrl: 1,
+            businessImageUrl: 1,
+            activeHoursSetup: 1,
+            distanceMeters: 1,
+          },
+        },
+      ]);
+      const nearbyMerchants =
+        mode === "open_now"
+          ? nearbyRecords.filter((merchant) => isOpenAt(merchant))
+          : nearbyRecords;
+      if (!nearbyMerchants.length) {
+        return { data: [], meta: { limit: FEED_LIMIT, total: 0, mode } };
+      }
+
+      const merchantById = new Map(
+        nearbyMerchants.map((merchant) => [String(merchant._id), merchant]),
+      );
+      const records = await this.postModel
+        .find({
+          status: "PUBLISHED",
+          merchantId: { $in: nearbyMerchants.map((merchant) => merchant._id) },
+        })
+        .sort({ publishedAt: -1, createdAt: -1 })
+        .limit(FEED_LIMIT)
+        .populate("productIds", "name description price imageUrl isArchived")
+        .lean()
+        .exec();
+      const data = records
+        .flatMap((record) => {
+          const post = record as unknown as PopulatedPost;
+          if (!(post.merchantId instanceof Types.ObjectId)) return [];
+          const merchant = merchantById.get(post.merchantId.toHexString());
+          if (!merchant) return [];
+          return [
+            {
+              ...this.serialize({ ...post, merchantId: merchant }),
+              distanceKm:
+                Math.round((merchant.distanceMeters / 1000) * 10) / 10,
+            },
+          ];
+        })
+        .sort(
+          (a, b) =>
+            a.distanceKm - b.distanceKm ||
+            new Date(b.publishedAt || b.createdAt || 0).getTime() -
+              new Date(a.publishedAt || a.createdAt || 0).getTime(),
+        );
+
+      return {
+        data,
+        meta: { limit: FEED_LIMIT, total: data.length, mode },
+      };
+    }
+
     const posts = await this.postModel
       .find({ status: "PUBLISHED" })
       .sort({ publishedAt: -1, createdAt: -1 })
-      .limit(50)
+      .limit(FEED_LIMIT)
       .populate("merchantId", "businessName profilePhotoUrl businessImageUrl")
       .populate("productIds", "name description price imageUrl isArchived")
       .lean()
@@ -308,7 +469,7 @@ export class PostsService {
 
     return {
       data: posts.map((post) => this.serialize(post)),
-      meta: { limit: 50, total: posts.length },
+      meta: { limit: FEED_LIMIT, total: posts.length, mode },
     };
   }
 }

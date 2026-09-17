@@ -6,8 +6,13 @@ import {
   IsMongoId,
   IsOptional,
   IsString,
+  IsIn,
+  IsNumber,
+  Max,
   MaxLength,
+  Min,
 } from "class-validator";
+import { Type } from "class-transformer";
 
 const POST_STATUSES = ["DRAFT", "PUBLISHED"] as const;
 
@@ -35,3 +40,23 @@ export class CreatePostDto extends PreviewPostDto {
 }
 
 export class UpdatePostDto extends PartialType(CreatePostDto) {}
+
+export class PostFeedQueryDto {
+  @IsOptional()
+  @IsIn(["latest", "nearby", "open_now"])
+  mode?: "latest" | "nearby" | "open_now" = "latest";
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+}

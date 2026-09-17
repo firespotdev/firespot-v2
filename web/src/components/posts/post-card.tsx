@@ -21,6 +21,7 @@ const PLATFORM_LABELS: Record<PostPlatform, string> = {
 interface PostCardProps {
   post: MerchantPost
   manage?: boolean
+  interactive?: boolean
   onEdit?: () => void
   onDelete?: () => void
 }
@@ -37,6 +38,7 @@ const merchantNameFor = (post: MerchantPost) =>
 export function PostCard({
   post,
   manage = false,
+  interactive = true,
   onEdit,
   onDelete,
 }: PostCardProps) {
@@ -103,7 +105,7 @@ export function PostCard({
         >
           {cardContent}
         </button>
-      ) : (
+      ) : interactive ? (
         <a
           href={post.sourceUrl}
           target="_blank"
@@ -113,6 +115,8 @@ export function PostCard({
         >
           {cardContent}
         </a>
+      ) : (
+        cardContent
       )}
     </article>
   )

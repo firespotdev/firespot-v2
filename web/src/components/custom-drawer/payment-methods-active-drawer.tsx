@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { X, Plus, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from '@bprogress/next/app'
@@ -17,6 +16,7 @@ import { useUserQRKits } from '@/services/qr'
 import { Card, Scan } from 'iconsax-reactjs'
 import { BankIcon } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
+import { getActivePaymentMethodCount } from '@/lib/utils/payment-methods'
 
 const GRADIENT_TEXT_CLASS =
   'bg-linear-to-br from-[#FB5012] to-[#D72483] bg-clip-text text-transparent'
@@ -43,30 +43,30 @@ export function PaymentMethodsActiveDrawer() {
   const { data: qrKitsData } = useUserQRKits()
   const { closeDrawer, openDrawer } = useDrawerStore()
 
-  const [cashCardActive, setCashCardActive] = useState(true)
   const updatePaymentSettings = useUpdatePaymentSettings()
 
   const bankAccountCount = profile?.bankAccounts?.length ?? 0
-  const hasEnabledBankAccount = Boolean(
-    profile?.bankAccounts?.some((account) => account.isEnabled !== false),
-  )
   const qrKitCount = qrKitsData?.data?.length ?? 0
 
   const effectiveTier = profile?.effectiveTier
   const hasPlan = Boolean(effectiveTier)
-  const isOnLite = effectiveTier === 'LITE'
   const canCollect = profile?.canCollect ?? false
   const isProOrAbove = effectiveTier === 'PRO' || effectiveTier === 'PROMAX'
   const isKycIncomplete = profile?.collectBlockedReason === 'kyc_incomplete'
 
-  const availableOptionsCount = !hasPlan ? 0 : isOnLite ? 1 : 4
+  const availableOptionsCount = !hasPlan
+    ? 0
+    : effectiveTier === 'LITE'
+      ? 1
+      : 4
   const savedCardsActive =
     canCollect && profile?.savedCardsCheckoutEnabled !== false
   const multipleOptionsActive = Boolean(
     hasPlan &&
       canCollect &&
       profile?.hasPayoutAccount &&
-      profile?.paystackCollectionEnabled === true,
+      profile?.paystackCollectionEnabled === true &&
+      (profile?.paystackCollectionChannels?.length ?? 0) > 0,
   )
 
   const handleSavedCardsChange = (enabled: boolean) => {
@@ -112,26 +112,27 @@ export function PaymentMethodsActiveDrawer() {
 
   const handleMultipleOptionsRowClick = () => {
     closeDrawer('payment-methods-active')
-    if (!isProOrAbove) {
-      if (!hasPlan) {
-        router.push('/plans?tier=LITE')
-      } else {
-        router.push('/plans?tier=PRO')
-      }
-    } else {
-      openDrawer({
-        type: 'multiple-payment-options',
-        props: { fromActiveMethods: true },
-      })
-    }
+    openDrawer({
+      type: 'multiple-payment-options',
+      props: { fromActiveMethods: true },
+    })
   }
 
-  // Total active payment methods count
-  const activeCount =
-    (cashCardActive ? 1 : 0) +
-    (savedCardsActive ? 1 : 0) +
-    (isProOrAbove && multipleOptionsActive ? 1 : 0) +
-    (hasEnabledBankAccount ? 1 : 0)
+  const handleBankTransferChange = (enabled: boolean) => {
+    updatePaymentSettings.mutate(
+      { bankTransferEnabled: enabled },
+      {
+        onError: () => {
+          showNotificationToast({
+            message: 'Could not update bank transfer. Please try again.',
+            mode: 'error',
+          })
+        },
+      },
+    )
+  }
+
+  const activeCount = getActivePaymentMethodCount(profile)
 
   const handleAddCustomMethod = () => {
     showNotificationToast({
@@ -196,38 +197,6 @@ export function PaymentMethodsActiveDrawer() {
 
         {/* Card 2: Payment Methods & Add Custom */}
         <ActionList rounded="12">
-          {/* <ActionListItem
-            as="div"
-            icon={
-              <div className="w-9 h-9 rounded-[10px] bg-black flex items-center justify-center shadow-sm shrink-0 overflow-hidden">
-                <Image
-                  src="/images/firespot_personal_black.png"
-                  alt="Firespot Cash Card"
-                  width={20}
-                  height={20}
-                  className="object-cover"
-                />
-              </div>
-            }
-            title={
-              <span className="font-bold text-[14px] text-black">
-                Firespot Cash Card
-              </span>
-            }
-            subtitle={
-              <span className="font-medium text-xs text-[#64748B]">
-                Customers can earn and spend rewards
-              </span>
-            }
-            trailing={
-              <Switch
-                checked={cashCardActive}
-                onCheckedChange={setCashCardActive}
-              />
-            }
-            className="p-3"
-          /> */}
-
           {/* Row 2: Firespot Customer-saved cards */}
           <ActionListItem
             as="div"
@@ -364,7 +333,15 @@ export function PaymentMethodsActiveDrawer() {
               </span>
             }
             trailing={
-              <ChevronRight size={16} className="text-[#AEAEB2] stroke-[2px]" />
+              <div onClick={(event) => event.stopPropagation()}>
+                <Switch
+                  checked={profile?.bankTransferEnabled !== false}
+                  disabled={
+                    bankAccountCount < 1 || updatePaymentSettings.isPending
+                  }
+                  onCheckedChange={handleBankTransferChange}
+                />
+              </div>
             }
           />
         </ActionList>

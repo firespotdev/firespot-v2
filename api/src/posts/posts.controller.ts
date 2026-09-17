@@ -6,13 +6,19 @@ import {
   Param,
   Patch,
   Post as HttpPost,
+  Query,
   Request as NestRequest,
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
-import { CreatePostDto, PreviewPostDto, UpdatePostDto } from "./dto/post.dto";
+import {
+  CreatePostDto,
+  PostFeedQueryDto,
+  PreviewPostDto,
+  UpdatePostDto,
+} from "./dto/post.dto";
 import { PostsService } from "./posts.service";
 
 type AuthenticatedRequest = Request & { user: { userId: string } };
@@ -68,7 +74,7 @@ export class PublicPostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Get("feed")
-  feed() {
-    return this.postsService.feed();
+  feed(@Query() query: PostFeedQueryDto) {
+    return this.postsService.feed(query);
   }
 }

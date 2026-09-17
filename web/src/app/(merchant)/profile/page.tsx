@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
 import { MerchantQuickActionStack } from '@/components/merchant/merchant-quick-actions'
+import { getActivePaymentMethodCount } from '@/lib/utils/payment-methods'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -69,20 +70,7 @@ export default function ProfilePage() {
   }, [photoSuccess])
 
   const sortedBankAccounts = sortBankAccounts(profile?.bankAccounts || [])
-  const hasPlan = Boolean(profile?.effectiveTier)
-  const savedCardsActive =
-    profile?.canCollect === true &&
-    profile.savedCardsCheckoutEnabled !== false
-  const paystackPaymentsActive =
-    hasPlan &&
-    profile?.canCollect === true &&
-    profile.hasPayoutAccount === true &&
-    profile.paystackCollectionEnabled === true
-  const activePaymentMethodCount =
-    1 +
-    (savedCardsActive ? 1 : 0) +
-    (paystackPaymentsActive ? 1 : 0) +
-    (sortedBankAccounts.some((account) => account.isEnabled !== false) ? 1 : 0)
+  const activePaymentMethodCount = getActivePaymentMethodCount(profile)
 
   const handleCameraClick = () => {
     fileInputRef.current?.click()

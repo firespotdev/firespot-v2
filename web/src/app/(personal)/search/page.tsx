@@ -61,8 +61,7 @@ function knownMerchants(
       id: merchant.id,
       businessName: merchant.businessName || 'Merchant',
       merchantSlug: merchant.merchantSlug,
-      businessImageUrl:
-        merchant.businessImageUrl || merchant.profilePhotoUrl,
+      businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
       businessIndustry: merchant.businessIndustry,
       serialNumber: sale.serialNumber || '',
       purchaseCount: 1,
@@ -152,8 +151,9 @@ function MerchantResults({
               }
               title={merchant.businessName}
               subtitle={
-                [merchant.businessIndustry, location].filter(Boolean).join(' · ') ||
-                'Shop on Firespot'
+                [merchant.businessIndustry, location]
+                  .filter(Boolean)
+                  .join(' · ') || 'Shop on Firespot'
               }
             />
           )
@@ -251,8 +251,7 @@ function SearchPageContent() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const deferredSearch = useDeferredValue(search.trim())
-  const canDiscover =
-    deferredSearch.length === 0 || deferredSearch.length >= 2
+  const canDiscover = deferredSearch.length === 0 || deferredSearch.length >= 2
   const params = {
     search: deferredSearch || undefined,
     page: activeType === 'all' ? 1 : page,
@@ -370,7 +369,7 @@ function SearchPageContent() {
           </p>
         ) : isFetching ? (
           <div className="flex justify-center py-16">
-            <LoaderCircle />
+            <LoaderCircle innerBg="#f4f6f8" />
           </div>
         ) : isError ? (
           <p className="py-12 text-center text-sm font-medium text-[#00000080]">

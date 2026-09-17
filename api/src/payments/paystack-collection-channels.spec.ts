@@ -96,6 +96,23 @@ describe("Paystack collection channel entitlements", () => {
     ).toEqual(["card", "bank_transfer", "ussd"]);
   });
 
+  it("limits PRO channels to the merchant selection", () => {
+    expect(
+      getMerchantPaystackChannels(
+        {
+          ...verified,
+          planTier: "PRO",
+          paystackCollectionEnabled: true,
+          paystackCollectionChannels: ["card", "ussd"],
+        },
+        {
+          NODE_ENV: "production",
+          PAYSTACK_COLLECTION_CHANNELS: "card,bank_transfer,ussd",
+        },
+      ),
+    ).toEqual(["card", "ussd"]);
+  });
+
   it("returns no channels when the merchant disables Paystack collection", () => {
     expect(
       getMerchantPaystackChannels({

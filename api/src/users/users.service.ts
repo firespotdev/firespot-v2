@@ -42,6 +42,7 @@ import {
   UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
 import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
+import { getSelectablePaystackChannels } from "../payments/paystack-collection-channels";
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -212,11 +213,27 @@ export class UsersService {
       }
     }
 
+    if (dto.paystackCollectionChannels !== undefined) {
+      const effectiveTier = getEffectiveTier(user);
+      if (effectiveTier !== "PRO" && effectiveTier !== "PROMAX") {
+        throw new ForbiddenException({
+          message: "Upgrade to Firespot Pro to choose payment options.",
+          reason: "plan_required",
+        });
+      }
+    }
+
     if (dto.savedCardsCheckoutEnabled !== undefined) {
       user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
     }
     if (dto.paystackCollectionEnabled !== undefined) {
       user.paystackCollectionEnabled = dto.paystackCollectionEnabled;
+    }
+    if (dto.bankTransferEnabled !== undefined) {
+      user.bankTransferEnabled = dto.bankTransferEnabled;
+    }
+    if (dto.paystackCollectionChannels !== undefined) {
+      user.paystackCollectionChannels = dto.paystackCollectionChannels;
     }
     await user.save();
 
@@ -224,6 +241,8 @@ export class UsersService {
       message: "Payment settings updated",
       savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
       paystackCollectionEnabled: user.paystackCollectionEnabled === true,
+      bankTransferEnabled: user.bankTransferEnabled !== false,
+      paystackCollectionChannels: getSelectablePaystackChannels(user),
     };
   }
 
@@ -339,7 +358,25 @@ export class UsersService {
   async updateLocation(userId: string, dto: UpdateLocationDto) {
     const user = await this.getMerchantOrThrow(userId);
 
-    const { branchCount, ...address } = dto;
+    const {
+      branchCount,
+      latitude,
+      longitude,
+      locationAccuracyMeters,
+      ...address
+    } = dto;
+    if ((latitude === undefined) !== (longitude === undefined)) {
+      throw new HttpException(
+        "Latitude and longitude must be provided together",
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const addressChanged = (["state", "city", "address"] as const).some(
+      (field) =>
+        address[field] !== undefined &&
+        address[field] !== user.mainAddress?.[field],
+    );
     user.mainAddress = { ...(user.mainAddress || {}), ...address };
     if (dto.insideMarket === false) {
       user.mainAddress.market = undefined;
@@ -348,6 +385,18 @@ export class UsersService {
       user.mainAddress.landmark = undefined;
     }
     if (branchCount !== undefined) user.branchCount = branchCount;
+    if (latitude !== undefined && longitude !== undefined) {
+      user.mainLocation = {
+        type: "Point",
+        coordinates: [longitude, latitude],
+      };
+      user.mainLocationAccuracyMeters = locationAccuracyMeters;
+      user.mainLocationCapturedAt = new Date();
+    } else if (addressChanged) {
+      user.mainLocation = undefined;
+      user.mainLocationAccuracyMeters = undefined;
+      user.mainLocationCapturedAt = undefined;
+    }
 
     await user.save();
     return { user: this.sanitizeUser(user) };
@@ -1058,6 +1107,13 @@ export class UsersService {
       socialLinks: user.socialLinks || null,
       fulfillment: user.fulfillment || null,
       mainAddress: user.mainAddress || null,
+      mainLocation: user.mainLocation || null,
+      mainLocationAccuracyMeters: user.mainLocationAccuracyMeters ?? null,
+      mainLocationCapturedAt: user.mainLocationCapturedAt || null,
+      personalLocation: user.personalLocation || null,
+      personalLocationAccuracyMeters:
+        user.personalLocationAccuracyMeters ?? null,
+      personalLocationCapturedAt: user.personalLocationCapturedAt || null,
       branchCount: user.branchCount ?? null,
       employeeSetup: user.employeeSetup || null,
       shopPolicies: user.shopPolicies || null,
@@ -1096,6 +1152,8 @@ export class UsersService {
       hasPayoutAccount: Boolean(user.paystackSubaccountCode),
       savedCardsCheckoutEnabled: user.savedCardsCheckoutEnabled !== false,
       paystackCollectionEnabled: user.paystackCollectionEnabled === true,
+      bankTransferEnabled: user.bankTransferEnabled !== false,
+      paystackCollectionChannels: getSelectablePaystackChannels(user),
       savedCards: [...(user.savedCards || [])]
         .sort(
           (a, b) =>

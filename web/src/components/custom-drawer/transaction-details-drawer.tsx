@@ -32,6 +32,7 @@ import { Sale } from '@/services/sales/interface'
 import {
   getMerchantStatus,
   getSaleDetailDescription,
+  isCollectedSale,
 } from '@/lib/utils/sales'
 
 import { cn, formatCurrency } from '@/lib/utils'
@@ -64,6 +65,7 @@ const TransactionDetailsDrawer = ({
   const isConfirmed = merchantStatus === 'Paid'
   const isArchived = merchantStatus === 'Archived'
   const isUnconfirmed = merchantStatus === 'Unconfirmed'
+  const isCollected = isCollectedSale(sale)
 
   const amountPaid = useMemo(() => {
     if (sale.amountPaid !== undefined && sale.amountPaid !== null) {
@@ -349,16 +351,18 @@ const TransactionDetailsDrawer = ({
                 {isOutstanding ? <Bell size={16} /> : <PencilLine size={16} />}
                 {isOutstanding ? 'SEND REMINDER' : 'EDIT SALE'}
               </Button>
-              <Button
-                variant="outline"
-                className="h-9 w-fit shrink-0 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3.5 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
-                onClick={() =>
-                  openDrawer({ type: 'confirm-archive', props: { sale } })
-                }
-              >
-                <Archive size={16} />
-                ARCHIVE SALE
-              </Button>
+              {!isCollected && (
+                <Button
+                  variant="outline"
+                  className="h-9 w-fit shrink-0 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3.5 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
+                  onClick={() =>
+                    openDrawer({ type: 'confirm-archive', props: { sale } })
+                  }
+                >
+                  <Archive size={16} />
+                  ARCHIVE SALE
+                </Button>
+              )}
             </div>
           ) : isOutstanding ? (
             <div

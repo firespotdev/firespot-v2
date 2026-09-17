@@ -28,15 +28,14 @@ describe("PostsService", () => {
 
   beforeEach(() => {
     userModel = {
+      aggregate: jest.fn(),
       findOne: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
-          lean: jest
-            .fn()
-            .mockResolvedValue({
-              _id: merchantId,
-              role: "merchant",
-              businessName: "Test Shop",
-            }),
+          lean: jest.fn().mockResolvedValue({
+            _id: merchantId,
+            role: "merchant",
+            businessName: "Test Shop",
+          }),
         }),
       }),
     };
@@ -61,6 +60,10 @@ describe("PostsService", () => {
       productModel as any,
       userModel as any,
     );
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   describe("merchant authorization", () => {
@@ -296,6 +299,98 @@ describe("PostsService", () => {
       expect(postModel.find).toHaveBeenCalledWith({ status: "PUBLISHED" });
       expect(feedResult.data).toHaveLength(1);
       expect(feedResult.data[0].status).toBe("PUBLISHED");
+    });
+
+    it("returns only open merchants near the supplied customer location", async () => {
+      jest.useFakeTimers().setSystemTime(new Date("2026-09-15T12:00:00Z"));
+      const nearbyMerchantId = new Types.ObjectId();
+      const closedMerchantId = new Types.ObjectId();
+      const allDays = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+      userModel.aggregate.mockResolvedValue([
+        {
+          _id: nearbyMerchantId,
+          businessName: "Open Shop",
+          distanceMeters: 1240,
+          activeHoursSetup: {
+            openingHours: {
+              timezone: "Africa/Lagos",
+              days: allDays.map((day) => ({
+                day,
+                enabled: true,
+                opensAt: "08:00",
+                closesAt: "20:00",
+                closesNextDay: false,
+              })),
+            },
+          },
+        },
+        {
+          _id: closedMerchantId,
+          businessName: "Closed Shop",
+          distanceMeters: 500,
+          activeHoursSetup: {
+            openingHours: {
+              timezone: "Africa/Lagos",
+              days: allDays.map((day) => ({
+                day,
+                enabled: true,
+                opensAt: "20:00",
+                closesAt: "23:00",
+                closesNextDay: false,
+              })),
+            },
+          },
+        },
+      ]);
+      const publishedPost = {
+        _id: new Types.ObjectId(),
+        merchantId: nearbyMerchantId,
+        sourceUrl: "https://www.instagram.com/p/ABC123/",
+        platform: "instagram" as const,
+        status: "PUBLISHED" as const,
+        productIds: [],
+        publishedAt: new Date(),
+      };
+      postModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          limit: jest.fn().mockReturnValue({
+            populate: jest.fn().mockReturnValue({
+              lean: jest.fn().mockReturnValue({
+                exec: jest.fn().mockResolvedValue([publishedPost]),
+              }),
+            }),
+          }),
+        }),
+      });
+
+      const result = await service.feed({
+        mode: "open_now",
+        latitude: 6.524,
+        longitude: 3.379,
+      });
+
+      expect(userModel.aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            $geoNear: expect.objectContaining({
+              maxDistance: 25_000,
+              near: {
+                type: "Point",
+                coordinates: [3.379, 6.524],
+              },
+            }),
+          }),
+        ]),
+      );
+      expect(postModel.find).toHaveBeenCalledWith({
+        status: "PUBLISHED",
+        merchantId: { $in: [nearbyMerchantId] },
+      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]).toMatchObject({
+        merchant: { businessName: "Open Shop" },
+        distanceKm: 1.2,
+      });
     });
   });
 });

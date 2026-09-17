@@ -23,7 +23,7 @@ import { useDrawerStore } from '@/services/drawer'
 import { useArchiveCustomerOutstandingSales } from '@/services/sales/hooks'
 import type { Sale } from '@/services/sales/interface'
 import { formatCurrency } from '@/lib/utils'
-import { getSaleSubject } from '@/lib/utils/sales'
+import { getSaleSubject, isCollectedSale } from '@/lib/utils/sales'
 import { MerchantAvatar } from '@/components/layout'
 
 interface CustomerDebtListProps {
@@ -73,6 +73,7 @@ export function CustomerDebtList({
 
   const activeSales = activeTab === 'unpaid' ? unpaidSales : repaidSales
   const activeCount = activeSales.length
+  const archivableSales = unpaidSales.filter((sale) => !isCollectedSale(sale))
   const phoneHref = customerPhone
     ? `tel:${customerPhone.replace(/[^\d+]/g, '')}`
     : undefined
@@ -219,15 +220,17 @@ export function CustomerDebtList({
               <Bell size={18} />
               SEND REMINDER
             </button>
-            <button
-              type="button"
-              onClick={() => setArchiveDialogOpen(true)}
-              disabled={archiveOutstanding.isPending}
-              className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
-            >
-              <Archive size={18} />
-              ARCHIVE
-            </button>
+            {archivableSales.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setArchiveDialogOpen(true)}
+                disabled={archiveOutstanding.isPending}
+                className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
+              >
+                <Archive size={18} />
+                ARCHIVE
+              </button>
+            )}
           </div>
         )}
 
@@ -337,7 +340,7 @@ export function CustomerDebtList({
         open={archiveDialogOpen}
         onOpenChange={setArchiveDialogOpen}
         title="Archive outstanding payments?"
-        description={`This will remove ${unpaidSales.length} outstanding payment${unpaidSales.length === 1 ? '' : 's'} for ${customerName} from your active records.`}
+        description={`This will remove ${archivableSales.length} outstanding payment${archivableSales.length === 1 ? '' : 's'} for ${customerName} from your active records.`}
         confirmLabel="Archive"
         variant="danger"
         isLoading={archiveOutstanding.isPending}

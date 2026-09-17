@@ -136,40 +136,44 @@ export default function ActivityPage() {
           }
         />
 
-        <div className="flex gap-2 px-3 pb-4 overflow-x-auto scrollbar-hide">
-          {TABS.map((tab) => {
-            const active = tab === activeTab
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`shrink-0 px-4 h-9 rounded-full text-[10px] font-bold tracking-[1px] flex items-center transition-colors ${
-                  active
-                    ? 'bg-black text-white'
-                    : 'bg-[#E5E7EB99] text-[#000000]'
-                }`}
-              >
-                {tab}
-              </button>
-            )
-          })}
-        </div>
+        {!isLoading && (
+          <>
+            <div className="flex gap-2 px-3 pb-4 overflow-x-auto scrollbar-hide">
+              {TABS.map((tab) => {
+                const active = tab === activeTab
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`shrink-0 px-4 h-9 rounded-full text-[10px] font-bold tracking-[1px] flex items-center transition-colors ${
+                      active
+                        ? 'bg-black text-white'
+                        : 'bg-[#E5E7EB99] text-[#000000]'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                )
+              })}
+            </div>
 
-        {merchantFilter && (
-          <div className="mx-3 mb-4 flex items-center justify-between rounded-[12px] bg-[#F4F6F8] px-3 py-2">
-            <p className="min-w-0 truncate text-[13px] font-medium text-black">
-              Past activity with {merchantFilter.name}
-            </p>
-            <button
-              type="button"
-              onClick={() => setMerchantFilter(null)}
-              aria-label="Clear merchant filter"
-              className="ml-2 grid h-8 w-8 shrink-0 place-items-center rounded-full active:bg-black/5"
-            >
-              <X size={16} />
-            </button>
-          </div>
+            {merchantFilter && (
+              <div className="mx-3 mb-4 flex items-center justify-between rounded-[12px] bg-[#F4F6F8] px-3 py-2">
+                <p className="min-w-0 truncate text-[13px] font-medium text-black">
+                  Past activity with {merchantFilter.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMerchantFilter(null)}
+                  aria-label="Clear merchant filter"
+                  className="ml-2 grid h-8 w-8 shrink-0 place-items-center rounded-full active:bg-black/5"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex flex-col justify-center items-center">

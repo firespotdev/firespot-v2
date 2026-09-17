@@ -1,7 +1,11 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { PostsApi, type PostPayload } from './postsApi'
+import {
+  PostsApi,
+  type PostFeedParams,
+  type PostPayload,
+} from './postsApi'
 
 const invalidatePosts = (client: ReturnType<typeof useQueryClient>) => {
   client.invalidateQueries({ queryKey: ['posts'] })
@@ -14,10 +18,11 @@ export const usePosts = () =>
     queryFn: PostsApi.listMine,
   })
 
-export const usePostsFeed = () =>
+export const usePostsFeed = (params: PostFeedParams, enabled = true) =>
   useQuery({
-    queryKey: ['posts-feed'],
-    queryFn: PostsApi.feed,
+    queryKey: ['posts-feed', params],
+    queryFn: () => PostsApi.feed(params),
+    enabled,
   })
 
 export const usePostPreview = () =>
