@@ -97,6 +97,7 @@ export function AccountSwitchDrawer({
     !isHistoryLoading && !isHistoryError && paymentSummary.count < 1
       ? null
       : `🔥 ${paymentCount} payments in ${paymentPeriod}`
+  const locationLabel = currentLocation.data?.location?.label
 
   const handleUpdateCurrentLocation = async () => {
     if (isUpdatingLocation) return
@@ -170,14 +171,16 @@ export function AccountSwitchDrawer({
             <span className="text-[15px] font-medium">{personalName}</span>
           }
           subtitle={
-            <span className="mt-1 inline-block min-w-0 text-[13px] font-medium text-[#64748B]">
-              {paymentLine && <span className="block">{paymentLine}</span>}
-              {currentLocation.data?.location ? (
-                <span className="mt-1 flex max-w-full items-start gap-1 truncate">
-                  {currentLocation.data.location.label}
-                </span>
-              ) : null}
-            </span>
+            paymentLine || locationLabel ? (
+              <span className="mt-1 inline-block min-w-0 text-[13px] font-medium text-[#64748B]">
+                {paymentLine && <span className="block">{paymentLine}</span>}
+                {locationLabel && (
+                  <span className="mt-1 flex max-w-full items-start gap-1 truncate">
+                    {locationLabel}
+                  </span>
+                )}
+              </span>
+            ) : undefined
           }
           trailing={null}
           onClick={mode === 'merchant' ? handleSwitchToPersonal : undefined}

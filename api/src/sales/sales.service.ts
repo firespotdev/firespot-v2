@@ -2669,7 +2669,7 @@ export class SalesService {
       .sort({ createdAt: -1 })
       .populate(
         'merchantId',
-        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry',
+        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel',
       )
       .exec()
 
@@ -2687,6 +2687,8 @@ export class SalesService {
           businessImageUrl:
             merchant.businessImageUrl || merchant.profilePhotoUrl,
           businessIndustry: merchant.businessIndustry,
+          mainAddress: merchant.mainAddress,
+          verificationLevel: merchant.verificationLevel,
         },
       }
     })

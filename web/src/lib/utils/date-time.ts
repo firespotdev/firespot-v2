@@ -1,4 +1,9 @@
-import { format } from 'date-fns'
+import {
+  format,
+  formatDistanceToNowStrict,
+  isToday,
+  isYesterday,
+} from 'date-fns'
 
 interface FormatDateTimeOptions {
   ordinalDay?: boolean
@@ -36,5 +41,21 @@ export function formatDate(
     return `${shortMonthFormatter.format(date)} ${format(date, 'd, yyyy')}`
   } catch {
     return String(value)
+  }
+}
+
+export function formatRelativeDate(
+  value?: string | number | Date,
+  fallback = '',
+): string {
+  if (value === undefined || value === null) return fallback
+
+  try {
+    const date = value instanceof Date ? value : new Date(value)
+    if (isToday(date)) return 'Today'
+    if (isYesterday(date)) return 'Yesterday'
+    return formatDistanceToNowStrict(date, { addSuffix: true })
+  } catch {
+    return fallback
   }
 }

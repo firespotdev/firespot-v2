@@ -62,6 +62,18 @@ export interface PaymentVerificationResponse {
   alreadyActivated: boolean
 }
 
+export interface FavoriteMerchant {
+  id: string
+  businessName?: string
+  merchantSlug?: string
+  businessImageUrl?: string
+  businessIndustry?: string
+}
+
+export interface FavoriteMerchantsResponse {
+  favorites: FavoriteMerchant[]
+}
+
 export interface UpdateProfilePhotoResponse {
   message: string
   profilePhotoUrl: string

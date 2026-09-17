@@ -15,6 +15,7 @@ import type {
   BankAccount,
   CurrentLocationResponse,
   UpdateCurrentLocationPayload,
+  FavoriteMerchantsResponse,
 } from './interface'
 
 export interface AddBankAccountDto {
@@ -289,6 +290,31 @@ export const userApi = {
     return response.data
   },
 
+  getFavoriteMerchants: async (): Promise<FavoriteMerchantsResponse> => {
+    const response = await apiClient.get<FavoriteMerchantsResponse>(
+      '/users/favorites',
+    )
+    return response.data
+  },
+
+  addFavoriteMerchant: async (
+    merchantId: string,
+  ): Promise<FavoriteMerchantsResponse> => {
+    const response = await apiClient.post<FavoriteMerchantsResponse>(
+      `/users/favorites/${merchantId}`,
+    )
+    return response.data
+  },
+
+  removeFavoriteMerchant: async (
+    merchantId: string,
+  ): Promise<FavoriteMerchantsResponse> => {
+    const response = await apiClient.delete<FavoriteMerchantsResponse>(
+      `/users/favorites/${merchantId}`,
+    )
+    return response.data
+  },
+
   getIndustries: async (): Promise<{ industries: string[] }> => {
     const response = await apiClient.get<{ industries: string[] }>(
       '/users/industries',
@@ -333,6 +359,33 @@ export function useCurrentLocation() {
       : undefined,
     staleTime: CURRENT_LOCATION_CACHE_TTL_MS,
     gcTime: CURRENT_LOCATION_CACHE_TTL_MS,
+  })
+}
+
+export function useFavoriteMerchants() {
+  return useQuery({
+    queryKey: ['user', 'favorites'],
+    queryFn: userApi.getFavoriteMerchants,
+  })
+}
+
+export function useUpdateFavoriteMerchant() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      merchantId,
+      isFavorite,
+    }: {
+      merchantId: string
+      isFavorite: boolean
+    }) =>
+      isFavorite
+        ? userApi.removeFavoriteMerchant(merchantId)
+        : userApi.addFavoriteMerchant(merchantId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user', 'favorites'], data)
+    },
   })
 }
 

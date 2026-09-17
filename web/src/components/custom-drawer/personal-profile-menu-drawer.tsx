@@ -4,14 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useRef } from 'react'
 import { useRouter } from '@bprogress/next/app'
-import {
-  Camera,
-  ChevronRight,
-  Copy,
-  Maximize2,
-  Share,
-  X,
-} from 'lucide-react'
+import { Camera, ChevronRight, Copy, Maximize2, Share, X } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { logoutEverywhere, useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
@@ -54,7 +47,7 @@ export function PersonalProfileMenuDrawer({
   }, [customerHistory])
 
   const purchasesValue =
-    isHistoryLoading || isHistoryError ? '—' : customerHistory?.length ?? 0
+    isHistoryLoading || isHistoryError ? '—' : (customerHistory?.length ?? 0)
   const placesVisitedValue =
     isHistoryLoading || isHistoryError ? '—' : placesVisited
 
@@ -138,7 +131,7 @@ export function PersonalProfileMenuDrawer({
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-white font-satoshi text-black">
+    <div className="h-full overflow-y-auto bg-linear-to-b from-[#ffffff] to-[#f4f6f8] font-satoshi text-black">
       {/* Section A: Header Bar */}
       <header className="flex items-center justify-between px-4 py-2.5 bg-white">
         <div className="flex items-center gap-2">
@@ -209,7 +202,9 @@ export function PersonalProfileMenuDrawer({
           {/* Metrics Row */}
           <div className="mx-auto mt-4 grid w-full max-w-[280px] grid-cols-2 divide-x divide-[#0000001A] py-1.5">
             <div className="flex flex-col items-center">
-              <span className="text-[16px] font-bold text-black">{purchasesValue}</span>
+              <span className="text-[16px] font-bold text-black">
+                {purchasesValue}
+              </span>
               <span className="text-[13px] font-medium text-[#111827]">
                 Purchases
               </span>
@@ -226,7 +221,9 @@ export function PersonalProfileMenuDrawer({
             </div>
             */}
             <div className="flex flex-col items-center">
-              <span className="text-[16px] font-bold text-black">{placesVisitedValue}</span>
+              <span className="text-[16px] font-bold text-black">
+                {placesVisitedValue}
+              </span>
               <span className="text-[13px] font-medium text-[#111827]">
                 Places visited
               </span>
