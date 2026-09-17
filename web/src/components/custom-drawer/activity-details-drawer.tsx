@@ -36,6 +36,7 @@ import { useReceiptPNGShare } from '@/hooks/use-receipt-png-share'
 interface ActivityDetailsDrawerProps {
   sale: CustomerSale
   closeDrawer: () => void
+  onViewPastActivity?: () => void
 }
 
 const VIA_LABELS: Record<string, string> = {
@@ -63,7 +64,10 @@ function DetailRow({
   )
 }
 
-export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
+export function ActivityDetailsDrawer({
+  sale,
+  onViewPastActivity,
+}: ActivityDetailsDrawerProps) {
   const router = useRouter()
   const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
   const receiptRef = useRef<HTMLDivElement>(null)
@@ -96,25 +100,18 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
   const viaLabel =
     (sale.source && VIA_LABELS[sale.source]) || sale.qrKitName || 'Firespot'
   const reference = sale.reference || sale._id?.substring(0, 10).toUpperCase()
-  const {
-    shareReceipt,
-    isPreparingReceipt,
-    isSharingReceipt,
-    isReceiptReady,
-  } = useReceiptPNGShare({
-    receiptRef,
-    cacheKey: `${sale._id}:${sale.updatedAt || sale.recordedAt || sale.createdAt}`,
-    filename: `firespot-receipt-${reference || sale._id}.png`,
-    text: `Payment of NGN ${formatCurrency(amount)} to ${businessName}`,
-  })
+  const { shareReceipt, isPreparingReceipt, isSharingReceipt, isReceiptReady } =
+    useReceiptPNGShare({
+      receiptRef,
+      cacheKey: `${sale._id}:${sale.updatedAt || sale.recordedAt || sale.createdAt}`,
+      filename: `firespot-receipt-${reference || sale._id}.png`,
+      text: `Payment of NGN ${formatCurrency(amount)} to ${businessName}`,
+    })
 
   const handlePayAgain = () => {
-    if (sale.serialNumber) {
-      closeAllDrawers()
-      router.push(`/pay/${sale.serialNumber}`)
-    } else {
-      showNotificationToast({ message: 'Coming soon' })
-    }
+    if (!sale.serialNumber) return
+    closeAllDrawers()
+    router.push(`/pay/${sale.serialNumber}`)
   }
 
   const handleToggleFave = () => {
@@ -171,7 +168,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
     <div className="flex flex-col h-full font-satoshi bg-white">
       {/* Header */}
       <div className="shrink-0 p-3 border-b border-[#f1f1f1] w-full flex justify-between items-center bg-white">
-        <CircularIconButton icon="arrow-left" size="sm" onClick={closeDrawer} />
+        <CircularIconButton icon="arrow-left" size="md" onClick={closeDrawer} />
         <h2 className="text-base font-bold text-black">Transaction details</h2>
         <CircularIconButton
           icon={<MoreHorizontal size={20} />}
@@ -184,6 +181,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
                 onShareReceipt: shareReceipt,
                 onDownloadReceipt: handleDownloadReceipt,
                 isReceiptShareReady: isReceiptReady,
+                onViewPastActivity,
               },
             })
           }
@@ -230,8 +228,7 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
             {businessName}
           </h3>
           <p className="text-[14px] text-[#898A8D] font-medium text-center mt-1 px-6">
-            NGN {formatCurrency(amount)} payment
-            {slug ? ` to @${slug}` : ''} successful.
+            NGN {formatCurrency(amount)} payment successful.
           </p>
 
           {/* Action buttons */}
@@ -248,14 +245,16 @@ export function ActivityDetailsDrawer({ sale }: ActivityDetailsDrawerProps) {
               <Share size={16} className="text-black" />
               {isSharingReceipt ? 'SHARING…' : 'SHARE RECEIPT'}
             </Button>
-            <Button
-              variant="outline"
-              onClick={handlePayAgain}
-              className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
-            >
-              <RotateCcw size={16} className="text-black" />
-              PAY AGAIN
-            </Button>
+            {sale.serialNumber && (
+              <Button
+                variant="outline"
+                onClick={handlePayAgain}
+                className="w-fit shrink-0 rounded-full h-9 bg-[#F1F1F1] border-none px-3.5 text-[10px] font-bold text-black tracking-[1px] hover:bg-[#F1F1F1]/80 flex items-center gap-1.5"
+              >
+                <RotateCcw size={16} className="text-black" />
+                PAY AGAIN
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={handleToggleFave}

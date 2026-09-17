@@ -7,6 +7,7 @@ import { useArchiveSale } from '@/services/sales/hooks'
 import { Sale } from '@/services/sales/interface'
 import { Button } from '../ui'
 import { DrawerHeader, DrawerTitle } from '@/components/ui/drawer'
+import { isCollectedSale } from '@/lib/utils/sales'
 
 interface ConfirmArchiveDrawerProps {
   sale: Sale
@@ -20,8 +21,10 @@ export function ConfirmArchiveDrawer({
   const { openDrawer } = useDrawerStore()
   const archiveSaleMutation = useArchiveSale()
   const [isArchiving, setIsArchiving] = useState(false)
+  const isCollected = isCollectedSale(sale)
 
   const handleArchive = () => {
+    if (isCollected) return
     setIsArchiving(true)
     archiveSaleMutation.mutate(sale._id, {
       onSuccess: (updated) => {
@@ -56,30 +59,41 @@ export function ConfirmArchiveDrawer({
         </button>
       </DrawerHeader>
 
-      <div className="flex flex-col gap-6 text-center">
-        <p className="text-sm font-medium text-[#00000080]">
-          Are you sure you want to archive this transaction? This action will
-          mark the transaction as archived and cannot be undone.
-        </p>
-
-        <div className="flex gap-3">
-          <Button
-            disabled={isArchiving}
-            onClick={closeDrawer}
-            variant="outline"
-            className="flex-1 h-12 rounded-full font-bold"
-          >
-            Cancel
-          </Button>
-          <Button
-            disabled={isArchiving}
-            onClick={handleArchive}
-            className="flex-1 h-12 bg-[#FF3B30] hover:bg-[#E03126] text-white font-bold rounded-full"
-          >
-            {isArchiving ? 'Archiving...' : 'Confirm Archive'}
+      {isCollected ? (
+        <div className="flex flex-col gap-6 text-center">
+          <p className="text-sm font-medium text-[#00000080]">
+            Collected sales cannot be archived.
+          </p>
+          <Button onClick={closeDrawer} className="h-12 rounded-full font-bold">
+            Close
           </Button>
         </div>
-      </div>
+      ) : (
+        <div className="flex flex-col gap-6 text-center">
+          <p className="text-sm font-medium text-[#00000080]">
+            Are you sure you want to archive this transaction? This action will
+            mark the transaction as archived and cannot be undone.
+          </p>
+
+          <div className="flex gap-3">
+            <Button
+              disabled={isArchiving}
+              onClick={closeDrawer}
+              variant="outline"
+              className="flex-1 h-12 rounded-full font-bold"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={isArchiving}
+              onClick={handleArchive}
+              className="flex-1 h-12 bg-[#FF3B30] hover:bg-[#E03126] text-white font-bold rounded-full"
+            >
+              {isArchiving ? 'Archiving...' : 'Confirm Archive'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

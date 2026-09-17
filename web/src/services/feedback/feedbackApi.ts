@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiClient, publicApiClient } from '@/lib/utils/axios'
+import { apiClient } from '@/lib/utils/axios'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import type {
   CreateFeedbackPayload,
@@ -23,7 +23,7 @@ export const feedbackApi = {
     saleId: string,
     serialNumber: string,
   ): Promise<FeedbackEligibility> => {
-    const { data } = await publicApiClient.get<FeedbackEligibility>(
+    const { data } = await apiClient.get<FeedbackEligibility>(
       '/feedback/eligibility',
       {
         params: { saleId, serialNumber },
@@ -36,7 +36,7 @@ export const feedbackApi = {
   },
 
   create: async (payload: CreateFeedbackPayload) => {
-    const { data } = await publicApiClient.post('/feedback', payload, {
+    const { data } = await apiClient.post('/feedback', payload, {
       headers: {
         'x-customer-fingerprint': getCustomerFingerprint(),
       },
@@ -72,6 +72,7 @@ export const useSubmitFeedback = () => {
         ['feedback-eligibility', payload.saleId, payload.serialNumber],
         { eligible: false, reason: 'submitted' },
       )
+      queryClient.invalidateQueries({ queryKey: ['customer-actions'] })
     },
   })
 }

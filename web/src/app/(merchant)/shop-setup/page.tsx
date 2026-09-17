@@ -53,9 +53,13 @@ export default function ShopSetupPage() {
   const byKey = new Map<string, ShopSetupItem>(
     setup.items.map((i) => [i.key, i]),
   )
-  const pct = setup.total
-    ? Math.round((setup.completedCount / setup.total) * 100)
-    : 0
+  const visibleItems = CHECKLIST_ORDER.flatMap((key) => {
+    const state = byKey.get(key)
+    return state && !state.locked ? [{ key, state }] : []
+  })
+  const completedCount = visibleItems.filter(({ state }) => state.done).length
+  const total = visibleItems.length
+  const pct = total ? Math.round((completedCount / total) * 100) : 0
 
   const go = (destination: ChecklistDestination, requiredTier?: 'PROMAX') => {
     if (
@@ -97,7 +101,7 @@ export default function ShopSetupPage() {
               Set up your Shop
             </h1>
             <p className="text-xs text-[#00000080] font-medium mt-1">
-              {setup.completedCount} of {setup.total} done · Few minutes to
+              {completedCount} of {total} done · Few minutes to
               complete setup
             </p>
           </div>
@@ -124,13 +128,10 @@ export default function ShopSetupPage() {
         {/* Checklist */}
         <div className="flex-1 px-4 pt-4 pb-6">
           <ActionList rounded="16">
-            {CHECKLIST_ORDER.map((key) => {
+            {visibleItems.map(({ key, state }) => {
               const meta = CHECKLIST_META[key]
-              const state = byKey.get(key)
-              const done = state?.done === true
-              const locked = state?.locked === true
-
-              const tappable = !locked && meta.destination.kind !== 'none'
+              const done = state.done === true
+              const tappable = meta.destination.kind !== 'none'
 
               return (
                 <ActionListItem
@@ -148,11 +149,10 @@ export default function ShopSetupPage() {
                   }
                   subtitle={
                     <span className="font-medium text-[#64748B] text-xs">
-                      {locked ? 'Coming soon' : meta.subtitle}
+                      {meta.subtitle}
                     </span>
                   }
                   trailing={<StatusCircle state={done ? 'passed' : 'empty'} />}
-                  disabled={locked}
                   onClick={
                     tappable
                       ? () => go(meta.destination, meta.requiredTier)
@@ -167,18 +167,6 @@ export default function ShopSetupPage() {
               )
             })}
           </ActionList>
-
-          {/* Preview (inert for now) */}
-          <Button
-            variant="secondary"
-            onClick={() => showNotificationToast({ message: 'Coming soon' })}
-            className="w-full h-13 mt-5 font-bold bg-[#EDEFF2] text-black"
-          >
-            Preview Shop
-          </Button>
-          <p className="text-center text-sm text-[#00000080] mt-2">
-            See your shop as customers will
-          </p>
         </div>
 
         {/* Go live */}

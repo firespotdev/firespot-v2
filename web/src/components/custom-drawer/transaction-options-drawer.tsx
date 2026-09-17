@@ -11,13 +11,12 @@ import {
 import { useRouter } from '@bprogress/next/app'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
-import { getMerchantStatus } from '@/lib/utils/sales'
+import { getMerchantStatus, isCollectedSale } from '@/lib/utils/sales'
 import {
   ActionList,
   ActionListItem,
   CircularIconButton,
   TagFooter,
-  showNotificationToast,
 } from '../ui'
 
 interface TransactionOptionsDrawerProps {
@@ -43,17 +42,7 @@ export function TransactionOptionsDrawer({
   } = useDrawerStore()
 
   const merchantStatus = getMerchantStatus(sale)
-  const isPaidCollected =
-    (sale.isCollection ||
-      sale.source === 'QR scan' ||
-      sale.source === 'Link shared') &&
-    merchantStatus === 'Paid'
-
-  const isCollected = Boolean(
-    sale.isCollection ||
-      sale.paymentRail === 'paystack' ||
-      (sale.reference && sale.reference.startsWith('COL-')),
-  )
+  const isCollected = isCollectedSale(sale)
 
   const isConfirmed = sale.status === 'CONFIRMED' || !sale.status
   const isOutstanding =
@@ -167,9 +156,9 @@ export function TransactionOptionsDrawer({
           </ActionList>
         )}
 
-        {/* Card 2: Edit & Archive Actions */}
-        <ActionList>
-          {!isCollected && (
+        {/* Card 2: Recorded-sale actions */}
+        {!isCollected && (
+          <ActionList>
             <ActionListItem
               icon={
                 <PencilLine
@@ -191,30 +180,30 @@ export function TransactionOptionsDrawer({
                 })
               }}
             />
-          )}
-          <ActionListItem
-            icon={
-              <Archive
-                size={24}
-                className={
-                  isArchived
-                    ? 'text-red-200 stroke-[2.2px]'
-                    : 'text-[#FF3B30] stroke-[2.2px]'
-                }
-              />
-            }
-            title="Archive sale"
-            danger
-            disabled={isArchived}
-            onClick={() => {
-              storeCloseDrawer('transaction-options')
-              openDrawer({
-                type: 'confirm-archive',
-                props: { sale },
-              })
-            }}
-          />
-        </ActionList>
+            <ActionListItem
+              icon={
+                <Archive
+                  size={24}
+                  className={
+                    isArchived
+                      ? 'text-red-200 stroke-[2.2px]'
+                      : 'text-[#FF3B30] stroke-[2.2px]'
+                  }
+                />
+              }
+              title="Archive sale"
+              danger
+              disabled={isArchived}
+              onClick={() => {
+                storeCloseDrawer('transaction-options')
+                openDrawer({
+                  type: 'confirm-archive',
+                  props: { sale },
+                })
+              }}
+            />
+          </ActionList>
+        )}
       </div>
       <TagFooter />
     </div>

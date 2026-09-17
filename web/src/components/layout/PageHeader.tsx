@@ -11,9 +11,10 @@ import { cn } from '@/lib/utils'
 
 interface PageHeaderProps {
   title: string
-  subtitle?: string
+  subtitle?: React.ReactNode
   showDropdown?: boolean
   onTitleClick?: () => void
+  onSubtitleClick?: () => void
   onShareClick?: () => void
   onLogoClick?: () => void
   /** Custom right-side control; takes precedence over the share button */
@@ -30,6 +31,7 @@ export function PageHeader({
   subtitle,
   showDropdown = false,
   onTitleClick,
+  onSubtitleClick,
   onShareClick,
   onLogoClick,
   rightSlot,
@@ -102,12 +104,12 @@ export function PageHeader({
         )}
       </div>
 
-      <button
-        onClick={onTitleClick}
-        type="button"
-        className="flex flex-col items-center min-w-0 px-2"
-      >
-        <span className="flex items-center gap-1 text-[#000000] font-bold text-sm leading-[100%] max-w-full">
+      <div className="flex min-w-0 flex-col items-center px-2">
+        <button
+          onClick={onTitleClick}
+          type="button"
+          className="flex max-w-full items-center gap-1 text-sm font-bold leading-[100%] text-[#000000]"
+        >
           <span className="truncate">{title}</span>
           {titleAdornment}
           {showDropdown && (
@@ -117,13 +119,21 @@ export function PageHeader({
               strokeWidth={2}
             />
           )}
-        </span>
-        {subtitle && (
+        </button>
+        {subtitle && onSubtitleClick ? (
+          <button
+            type="button"
+            onClick={onSubtitleClick}
+            className="mt-1 flex max-w-full items-center overflow-hidden text-center text-xs font-medium leading-none text-[#00000066]"
+          >
+            {subtitle}
+          </button>
+        ) : subtitle ? (
           <span className="text-xs font-medium text-center text-[#00000066] leading-none mt-1 truncate max-w-full">
             {subtitle}
           </span>
-        )}
-      </button>
+        ) : null}
+      </div>
 
       {rightSlot}
 

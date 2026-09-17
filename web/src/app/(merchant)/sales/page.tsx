@@ -15,12 +15,14 @@ import { useRouter } from '@bprogress/next/app'
 import {
   useArchiveSale,
   useArchiveAllPendingSales,
+  useCancelSale,
   useConfirmSale,
   useInfiniteSales,
   useSalesStats,
 } from '@/services/sales/hooks'
 import { SaleItem } from '@/components/sales/SaleItem'
 import { cn, formatCurrency } from '@/lib/utils'
+import { isCollectedSale } from '@/lib/utils/sales'
 import type { Sale } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
 import {
@@ -72,6 +74,7 @@ function SalesPageContent() {
   const confirmSaleMutation = useConfirmSale()
   const archiveAllSalesMutation = useArchiveAllPendingSales()
   const archiveSaleMutation = useArchiveSale()
+  const cancelSaleMutation = useCancelSale()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
   const flatten = (query: typeof pendingQuery) =>
@@ -79,6 +82,9 @@ function SalesPageContent() {
 
   const pendingSales = flatten(pendingQuery)
   const confirmedSales = flatten(confirmedQuery)
+  const archivablePendingSales = pendingSales.filter(
+    (sale) => !isCollectedSale(sale),
+  )
 
   const activeQuery =
     activeTab === 'unconfirmed' ? pendingQuery : confirmedQuery
@@ -114,7 +120,8 @@ function SalesPageContent() {
   const hasMutationInProgress =
     archiveAllSalesMutation.isPending ||
     confirmSaleMutation.isPending ||
-    archiveSaleMutation.isPending
+    archiveSaleMutation.isPending ||
+    cancelSaleMutation.isPending
 
   const getMutationMessage = (error: unknown, fallback: string) => {
     const apiError = error as {
@@ -124,18 +131,26 @@ function SalesPageContent() {
     return Array.isArray(message) ? message[0] : message || fallback
   }
 
-  const handleArchive = (saleId: string) => {
+  const handleArchive = (sale: Sale) => {
     if (hasMutationInProgress) return
-    archiveSaleMutation.mutate(saleId, {
+    const mutation = isCollectedSale(sale)
+      ? cancelSaleMutation
+      : archiveSaleMutation
+    mutation.mutate(sale._id, {
       onSuccess: () => {
         showNotificationToast({
-          message: 'Sale archived',
+          message: isCollectedSale(sale) ? 'Sale cancelled' : 'Sale archived',
           mode: 'success',
         })
       },
       onError: (error) => {
         showNotificationToast({
-          message: getMutationMessage(error, 'Failed to archive sale.'),
+          message: getMutationMessage(
+            error,
+            isCollectedSale(sale)
+              ? 'Failed to cancel sale.'
+              : 'Failed to archive sale.',
+          ),
           mode: 'error',
         })
       },
@@ -162,7 +177,7 @@ function SalesPageContent() {
   }
 
   const handleArchiveAll = () => {
-    if (hasMutationInProgress || pendingSales.length === 0) return
+    if (hasMutationInProgress || archivablePendingSales.length === 0) return
 
     archiveAllSalesMutation.mutate(undefined, {
       onSuccess: ({ count }) => {
@@ -299,7 +314,9 @@ function SalesPageContent() {
                   type="button"
                   aria-label="Archive all unconfirmed sales"
                   onClick={handleArchiveAll}
-                  disabled={hasMutationInProgress || pendingSales.length === 0}
+                  disabled={
+                    hasMutationInProgress || archivablePendingSales.length === 0
+                  }
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-[#0000000A] bg-[#0000000A] text-black shadow-[0px_2.22px_4.44px_0px_#0000000A] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {archiveAllSalesMutation.isPending ? (
@@ -401,14 +418,17 @@ function SalesPageContent() {
                   sale={sale}
                   isSwipeable={activeTab === 'unconfirmed'}
                   onConfirm={() => handleConfirm(sale._id)}
-                  onArchive={() => handleArchive(sale._id)}
+                  onArchive={() => handleArchive(sale)}
+                  archiveText={isCollectedSale(sale) ? 'Cancel' : 'Archive'}
                   isConfirming={
                     confirmSaleMutation.isPending &&
                     confirmSaleMutation.variables === sale._id
                   }
                   isArchiving={
-                    archiveSaleMutation.isPending &&
-                    archiveSaleMutation.variables === sale._id
+                    (archiveSaleMutation.isPending &&
+                      archiveSaleMutation.variables === sale._id) ||
+                    (cancelSaleMutation.isPending &&
+                      cancelSaleMutation.variables === sale._id)
                   }
                   actionsDisabled={hasMutationInProgress}
                   onClick={() => handleOpenSaleDetails(sale, index)}

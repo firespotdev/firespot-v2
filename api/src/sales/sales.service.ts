@@ -2540,9 +2540,13 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
-    if (sale.status === 'PENDING' && sale.paymentRail === 'paystack') {
+    if (
+      sale.isCollection ||
+      sale.paymentRail === 'paystack' ||
+      sale.paystackReference
+    ) {
       throw new UnprocessableEntityException(
-        'A pending Paystack payment cannot be archived',
+        'Collected sales cannot be archived',
       )
     }
     sale.isArchived = true
@@ -2555,6 +2559,7 @@ export class SalesService {
         merchantId: new Types.ObjectId(merchantId),
         status: 'PENDING',
         isArchived: { $ne: true },
+        isCollection: { $ne: true },
         paymentRail: { $ne: 'paystack' },
       },
       { $set: { isArchived: true } },
@@ -2587,6 +2592,8 @@ export class SalesService {
         customerUserId: new Types.ObjectId(customerUserId.toString()),
         status: 'OUTSTANDING',
         isArchived: { $ne: true },
+        isCollection: { $ne: true },
+        paymentRail: { $ne: 'paystack' },
       },
       { $set: { isArchived: true } },
     )

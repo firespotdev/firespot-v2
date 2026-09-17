@@ -5,41 +5,35 @@ import Link from 'next/link'
 import { useRouter } from '@bprogress/next/app'
 import {
   ArrowLeft,
-  ChevronRight,
-  Loader2,
   Plus,
   Search,
-  SlidersHorizontal,
   Users,
 } from 'lucide-react'
 import { useCustomers } from '@/services/customers/hooks'
 import { useDrawerStore } from '@/services/drawer'
-import { useContactPicker } from '@/hooks/use-contact-picker'
 import {
   ActionList,
   ActionListItem,
   GreenSpinner,
   Input,
-  showNotificationToast,
 } from '@/components/ui'
 import type { Customer } from '@/services/customers/customersApi'
-import Image from 'next/image'
-
 import { MerchantAvatar } from '@/components/layout/MerchantAvatar'
-import {
-  AddNewCustomerCard,
-  SyncContactsCard,
-} from '@/components/customers'
+import { AddNewCustomerCard } from '@/components/customers'
 import { Sort } from 'iconsax-reactjs'
 
 import type { CustomerSortOption } from '@/components/custom-drawer'
+
+type CustomerWithStats = Customer & {
+  totalSpent?: number
+  visitCount?: number
+  lastVisitAt?: string | Date
+}
 
 export default function CustomersListPage() {
   const router = useRouter()
   const { data: customers = [], isLoading } = useCustomers()
   const { openDrawer } = useDrawerStore()
-  const { selectContacts } = useContactPicker()
-
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<CustomerSortOption>('spent_desc')
 
@@ -54,29 +48,6 @@ export default function CustomersListPage() {
     })
   }
 
-  const handleSyncContacts = async () => {
-    const result = await selectContacts()
-    if (result.status === 'selected' && result.contacts.length > 0) {
-      const contact = result.contacts[0]
-      openDrawer({
-        type: 'add-customer',
-        props: {
-          initialContact: contact,
-          onSelect: (newCustomer: Customer) => {
-            router.push(`/customers/${newCustomer._id}`)
-          },
-        },
-      })
-      return
-    }
-    if (result.status === 'error') {
-      showNotificationToast({
-        message: 'Unable to sync contacts. Enter customer details manually.',
-        mode: 'error',
-      })
-    }
-  }
-
   const handleOpenFilter = () => {
     openDrawer({
       type: 'customer-sort',
@@ -87,7 +58,7 @@ export default function CustomersListPage() {
     })
   }
 
-  const filteredCustomers = customers
+  const filteredCustomers = (customers as CustomerWithStats[])
     .filter((customer) => {
       const q = searchQuery.toLowerCase().trim()
       if (!q) return true
@@ -96,7 +67,7 @@ export default function CustomersListPage() {
         customer.phoneNumber.includes(q)
       )
     })
-    .sort((a: any, b: any) => {
+    .sort((a, b) => {
       switch (sortBy) {
         case 'spent_desc':
           return (b.totalSpent ?? 0) - (a.totalSpent ?? 0)
@@ -177,10 +148,6 @@ export default function CustomersListPage() {
         {/* Top Action Cards */}
         <div className="mb-6 flex flex-col gap-2.5">
           <AddNewCustomerCard onClick={handleOpenAddCustomer} />
-          <SyncContactsCard
-            onClick={handleSyncContacts}
-            title="Sync contacts"
-          />
         </div>
 
         {/* Content Body */}

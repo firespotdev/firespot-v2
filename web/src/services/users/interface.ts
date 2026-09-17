@@ -19,6 +19,26 @@ export interface UserProfile extends User {
   updatedAt: string
 }
 
+export interface CurrentLocation {
+  latitude: number
+  longitude: number
+  accuracyMeters: number | null
+  capturedAt: string | null
+  label: string
+  placeId: string
+  attribution: 'Google Maps'
+}
+
+export interface CurrentLocationResponse {
+  location: CurrentLocation | null
+}
+
+export interface UpdateCurrentLocationPayload {
+  latitude: number
+  longitude: number
+  accuracyMeters?: number
+}
+
 export interface QRKitActivationResponse {
   message: string
   serialNumber: string

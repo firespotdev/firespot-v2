@@ -65,6 +65,45 @@ describe('QRKitsService Paystack verification', () => {
     ])
   })
 
+  it('hides every bank account when manual bank transfer is disabled', async () => {
+    const merchant = {
+      _id: 'merchant-id',
+      businessName: 'Test Store',
+      bankTransferEnabled: false,
+      bankAccounts: [
+        {
+          bankName: 'Hidden Bank',
+          bankCode: '001',
+          accountNumber: '0123456789',
+          accountName: 'Test Store',
+          isPrimary: true,
+          isEnabled: true,
+        },
+      ],
+    }
+    const populate = jest.fn().mockResolvedValue({
+      activationStatus: 'activated',
+      merchantId: merchant,
+    })
+    const qrKitModel = {
+      findOne: jest.fn().mockReturnValue({ populate }),
+    }
+    const service = new QRKitsService(
+      qrKitModel as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    )
+
+    const result = await service.getQRKitBySerial('fs-test123')
+
+    expect(result.bankAccounts).toEqual([])
+  })
+
   it('does not activate a kit from a wrong-value success webhook', async () => {
     const qrKit = {
       activationStatus: 'pending',

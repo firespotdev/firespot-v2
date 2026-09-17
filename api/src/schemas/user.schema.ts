@@ -1,6 +1,18 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { BankAccount, BankAccountSchema } from "./bank-account.schema";
+import type { PaystackCollectionChannel } from "../payments/paystack-collection-channels";
+
+@Schema({ _id: false })
+export class GeoPoint {
+  @Prop({ required: true, enum: ["Point"], default: "Point" })
+  type: "Point";
+
+  @Prop({ type: [Number], required: true })
+  coordinates: [number, number];
+}
+
+export const GeoPointSchema = SchemaFactory.createForClass(GeoPoint);
 
 /** State of a single SmileID KYC check (bvn / nin / cac). */
 export interface KycCheckState {
@@ -47,7 +59,12 @@ export class User extends Document {
   @Prop({ required: true, unique: true, index: true })
   phoneNumber: string;
 
-  @Prop({ required: true, enum: ["merchant", "customer"], default: "merchant", index: true })
+  @Prop({
+    required: true,
+    enum: ["merchant", "customer"],
+    default: "merchant",
+    index: true,
+  })
   role: string;
 
   @Prop({ required: true, default: "+234" })
@@ -154,6 +171,10 @@ export class User extends Document {
       city: String,
       address: String,
       insideMarket: Boolean,
+      market: String,
+      shoppingComplex: String,
+      shopNumber: String,
+      landmark: String,
     },
   })
   mainAddress?: {
@@ -161,7 +182,32 @@ export class User extends Document {
     city?: string;
     address?: string;
     insideMarket?: boolean;
+    market?: string;
+    shoppingComplex?: string;
+    shopNumber?: string;
+    landmark?: string;
   };
+
+  @Prop({ type: GeoPointSchema })
+  mainLocation?: GeoPoint;
+
+  @Prop()
+  mainLocationAccuracyMeters?: number;
+
+  @Prop()
+  mainLocationCapturedAt?: Date;
+
+  @Prop({ type: GeoPointSchema })
+  personalLocation?: GeoPoint;
+
+  @Prop()
+  personalLocationPlaceId?: string;
+
+  @Prop()
+  personalLocationAccuracyMeters?: number;
+
+  @Prop()
+  personalLocationCapturedAt?: Date;
 
   @Prop()
   branchCount?: number;
@@ -418,8 +464,26 @@ export class User extends Document {
   // how it was proven, so a stronger tier can reopen a weaker pass.
   @Prop({
     type: {
-      bvn: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
-      nin: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      bvn: {
+        status: String,
+        jobId: String,
+        checkedAt: Date,
+        submittedAt: Date,
+        attempts: Number,
+        reason: String,
+        product: String,
+        smileUserId: String,
+      },
+      nin: {
+        status: String,
+        jobId: String,
+        checkedAt: Date,
+        submittedAt: Date,
+        attempts: Number,
+        reason: String,
+        product: String,
+        smileUserId: String,
+      },
       cac: {
         status: String,
         jobId: String,
@@ -592,6 +656,12 @@ export class User extends Document {
   @Prop({ default: false })
   paystackCollectionEnabled?: boolean;
 
+  @Prop({ default: true })
+  bankTransferEnabled?: boolean;
+
+  @Prop({ type: [String], default: undefined })
+  paystackCollectionChannels?: PaystackCollectionChannel[];
+
   /**
    * Personal customer-saved cards tokenized via Paystack.
    * Enables customers to pay merchants in one tap without re-entering numbers.
@@ -645,3 +715,4 @@ export type UserDocument = User & Document;
 // Indexes
 // Standard indexes are handled by @Prop annotations.
 // Custom composite indexes or options would go here.
+UserSchema.index({ mainLocation: "2dsphere" });

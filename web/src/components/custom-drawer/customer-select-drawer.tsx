@@ -2,16 +2,12 @@
 
 import { useState } from 'react'
 import { X, Search, ChevronRight, ArrowLeft } from 'lucide-react'
-import { showNotificationToast, Skeleton } from '@/components/ui'
+import { Skeleton } from '@/components/ui'
 import { useCustomers } from '@/services/customers/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import { MerchantAvatar } from '../layout/MerchantAvatar'
-import { PickedContact, useContactPicker } from '@/hooks/use-contact-picker'
 import type { Customer } from '@/services/customers/customersApi'
-import {
-  AddNewCustomerCard,
-  SyncContactsCard,
-} from '@/components/customers'
+import { AddNewCustomerCard } from '@/components/customers'
 
 interface Props {
   onSelect: (customer: Customer) => void
@@ -30,23 +26,13 @@ export function CustomerSelectDrawer({
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const { data: customers = [], isLoading } = useCustomers()
-  const { selectContacts } = useContactPicker()
-
   const [searchQuery, setSearchQuery] = useState('')
 
-  const handleOpenAddCustomer = ({
-    initialContact,
-    focusPhone = false,
-  }: {
-    initialContact?: PickedContact
-    focusPhone?: boolean
-  } = {}) => {
+  const handleOpenAddCustomer = () => {
     closeDrawer('customer-select')
     openDrawer({
       type: 'add-customer',
       props: {
-        initialContact,
-        focusPhone,
         onSelect: (newCust: Customer) => {
           closeDrawer('add-customer')
           onSelect(newCust)
@@ -59,25 +45,6 @@ export function CustomerSelectDrawer({
         },
       },
     })
-  }
-
-  const handleSelectFromContacts = async () => {
-    const result = await selectContacts()
-    if (result.status === 'selected') {
-      handleOpenAddCustomer({ initialContact: result.contacts[0] })
-      return
-    }
-    if (result.status === 'unsupported') {
-      handleOpenAddCustomer({ focusPhone: true })
-      return
-    }
-    if (result.status === 'error') {
-      showNotificationToast({
-        message: 'Unable to open your contacts. Enter the details manually.',
-        mode: 'error',
-      })
-      handleOpenAddCustomer({ focusPhone: true })
-    }
   }
 
   const filtered = customers.filter(
@@ -125,12 +92,7 @@ export function CustomerSelectDrawer({
           />
         </div>
 
-        {/* Add new customer & Contacts Cards */}
-        <AddNewCustomerCard onClick={() => handleOpenAddCustomer()} />
-        <SyncContactsCard
-          onClick={handleSelectFromContacts}
-          title="Select from contacts"
-        />
+        <AddNewCustomerCard onClick={handleOpenAddCustomer} />
 
         {requireCustomer && (
           <p className="border border-[#00000014] bg-[#F4F4F4] text-xs rounded-[12px] text-[#00000066] font-medium p-3">

@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from '@bprogress/next/app'
-import { Check, ChevronRight, CirclePlus, UserRound } from 'lucide-react'
+import { Check, ChevronRight, CirclePlus, MapPin } from 'lucide-react'
 import {
   ActionList,
   ActionListItem,
@@ -14,9 +14,14 @@ import {
 import { useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
 import { useCustomerHistory } from '@/services/sales/hooks'
-import { useUserProfile } from '@/services/users'
+import {
+  useCurrentLocation,
+  useUpdateCurrentLocation,
+  useUserProfile,
+} from '@/services/users'
 import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
+import { getCurrentBrowserLocation } from '@/lib/utils/current-location'
 
 interface AccountSwitchDrawerProps {
   closeDrawer: () => void
@@ -35,6 +40,9 @@ export function AccountSwitchDrawer({
     (state) => state.setActiveProfileMode,
   )
   const { data: profile } = useUserProfile()
+  const currentLocation = useCurrentLocation()
+  const updateCurrentLocation = useUpdateCurrentLocation()
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false)
   const {
     data: customerHistory,
     isLoading: isHistoryLoading,
@@ -87,8 +95,25 @@ export function AccountSwitchDrawer({
         : `${paymentSummary.months} months`
   const paymentLine =
     !isHistoryLoading && !isHistoryError && paymentSummary.count < 1
-      ? 'No payments yet'
+      ? null
       : `🔥 ${paymentCount} payments in ${paymentPeriod}`
+
+  const handleUpdateCurrentLocation = async () => {
+    if (isUpdatingLocation) return
+    setIsUpdatingLocation(true)
+    try {
+      const location = await getCurrentBrowserLocation()
+      await updateCurrentLocation.mutateAsync(location)
+    } catch {
+      showNotificationToast({
+        message:
+          'Could not update your location. Check browser permission and try again.',
+        mode: 'error',
+      })
+    } finally {
+      setIsUpdatingLocation(false)
+    }
+  }
 
   const handleSwitchToPersonal = () => {
     closeDrawer()
@@ -131,7 +156,13 @@ export function AccountSwitchDrawer({
                   className="object-cover w-full h-full"
                 />
               ) : (
-                <UserRound className="w-9 h-9 text-[#868788]" />
+                <Image
+                  src="/images/default_avatar.png"
+                  alt="default avatar"
+                  width={36}
+                  height={36}
+                  className="object-cover w-full h-full"
+                />
               )}
             </span>
           }
@@ -139,15 +170,21 @@ export function AccountSwitchDrawer({
             <span className="text-[15px] font-medium">{personalName}</span>
           }
           subtitle={
-            <span className="mt-1 inline-block text-[13px] font-medium text-[#64748B]">
-              {paymentLine}
+            <span className="mt-1 inline-block min-w-0 text-[13px] font-medium text-[#64748B]">
+              {paymentLine && <span className="block">{paymentLine}</span>}
+              {currentLocation.data?.location ? (
+                <span className="mt-1 flex max-w-full items-start gap-1 truncate">
+                  {currentLocation.data.location.label}
+                </span>
+              ) : null}
             </span>
           }
           trailing={null}
           onClick={mode === 'merchant' ? handleSwitchToPersonal : undefined}
+          as={mode === 'personal' ? 'div' : 'button'}
           className="p-3"
         />
-        {mode === 'merchant' && (
+        {mode === 'merchant' ? (
           <ActionListItem
             icon={
               <Image
@@ -160,6 +197,18 @@ export function AccountSwitchDrawer({
             title={<span className="ml-1">Switch to personal profile</span>}
             onClick={handleSwitchToPersonal}
             className="px-5 py-5"
+          />
+        ) : (
+          <ActionListItem
+            icon={<MapPin size={24} className="text-[#0075FF]" />}
+            title={
+              <span className="text-sm font-bold text-[#0075FF]">
+                {isUpdatingLocation ? 'Updating location…' : 'Update location'}
+              </span>
+            }
+            onClick={() => void handleUpdateCurrentLocation()}
+            disabled={isUpdatingLocation}
+            className="px-4 py-4.5"
           />
         )}
       </ActionList>

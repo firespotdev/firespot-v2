@@ -48,8 +48,11 @@ function MerchantOnboardingPageContent() {
 
   // Deep link back to where the user came from (e.g. QR kit activation)
   const redirectPath = searchParams.get('redirect')
+  const enteredFromPersonal = searchParams.get('from') === 'personal'
   const handlePageBack = useSafeBack(
-    redirectPath || '/onboarding/merchant/start',
+    enteredFromPersonal
+      ? '/home'
+      : redirectPath || '/onboarding/merchant/start',
   )
   // Agent referral from QR kit links — applied silently, no visible field
   const referralCode = searchParams.get('ref')?.toUpperCase()

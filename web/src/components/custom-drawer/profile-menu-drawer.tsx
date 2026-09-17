@@ -28,21 +28,11 @@ import { getBusinessImageUrl } from '@/lib/utils/business-image'
 import { ReactNode, useState } from 'react'
 import {
   ArrowCircleDown2,
-  BagTick,
   Bank,
   Box1,
-  BoxAdd,
-  Briefcase,
-  Calendar1,
-  CalendarTick,
   Clock,
-  DeviceMessage,
-  DocumentText,
   Graph,
   Location,
-  MessageSearch,
-  People,
-  PercentageSquare,
   Profile2User,
   ReceiveSquare,
   Scan,
@@ -52,7 +42,6 @@ import {
 import {
   GiftIcon,
   MonitorArrowUpIcon,
-  TrendUpIcon,
 } from '@phosphor-icons/react'
 
 interface ProfileMenuDrawerProps {
@@ -145,7 +134,15 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
       //   icon: <Calendar1 size={24} />,
       //   proGateLabel: 'Available in',
       // },
-      // { label: 'Posts', icon: <MonitorArrowUpIcon size={24} /> },
+      {
+        label: 'Posts',
+        icon: <MonitorArrowUpIcon size={24} />,
+        onClick: () => {
+          const { closeDrawer, openDrawer } = useDrawerStore.getState()
+          closeDrawer('profile-menu')
+          openDrawer({ type: 'post-composer' })
+        },
+      },
     ],
   },
   {
