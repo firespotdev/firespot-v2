@@ -33,11 +33,6 @@ export default function ProfilePage() {
   const { data: profile, isLoading } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
   const { data: salesStats } = useSalesStats(filter)
-  const { data: collectedStats } = useSalesStats({
-    ...filter,
-    mode: 'collected',
-  })
-  const { data: recordedStats } = useSalesStats({ ...filter, mode: 'recorded' })
   const { data: outstandingSummary } = useOutstandingSummary()
   const owingCount = outstandingSummary?.customers?.length ?? 0
   const updateBusinessImage = useUpdateBusinessImage()
@@ -175,13 +170,14 @@ export default function ProfilePage() {
               onCameraClick={handleCameraClick}
               isUploadingPhoto={updateBusinessImage.isPending}
               todaySalesAmount={salesStats?.todaySalesAmount ?? 0}
-              collectedAmount={collectedStats?.todaySalesAmount ?? 0}
-              recordedAmount={recordedStats?.todaySalesAmount ?? 0}
               confirmedAmount={salesStats?.todaySalesAmount ?? 0}
               unconfirmedAmount={salesStats?.pendingSalesAmount ?? 0}
               confirmedCount={salesStats?.todaySalesCount ?? 0}
               unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
-              salesCount={salesStats?.todaySalesCount ?? 0}
+              salesCount={
+                (salesStats?.todaySalesCount ?? 0) +
+                (salesStats?.pendingSalesCount ?? 0)
+              }
               ordersCount={0}
               owingCount={owingCount}
               quickActions={<MerchantQuickActionStack className="mb-4" />}

@@ -1909,6 +1909,7 @@ export class SalesService {
 
   async getSalesStats(merchantId: string, query?: SalesQueryDto) {
     const merchantObjectId = new Types.ObjectId(merchantId)
+    const dateRange = this.calculateDateRange(query || {})
     const pendingFilter: any = {
       merchantId: merchantObjectId,
       status: 'PENDING',
@@ -1919,6 +1920,12 @@ export class SalesService {
       pendingFilter.isCollection = { $ne: true }
     } else if (query?.mode === 'collected') {
       pendingFilter.isCollection = true
+    }
+    if (dateRange.startDate) {
+      pendingFilter.createdAt = {
+        $gte: dateRange.startDate,
+        $lte: dateRange.endDate || new Date(),
+      }
     }
     const [pendingSummary] = await this.saleModel
       .aggregate([
@@ -1947,9 +1954,6 @@ export class SalesService {
       }
       return 0
     }
-
-    // For filtered stats
-    const dateRange = this.calculateDateRange(query || {})
 
     const filter: Record<string, any> = {
       merchantId: merchantObjectId,
