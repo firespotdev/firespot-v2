@@ -299,7 +299,7 @@ function HomePageContent() {
             </div>
           </section>
         ) : (
-          <div className="border-t border-[#F1F3F5] px-8 pb-10 pt-16 text-center">
+          <div className="px-8 pb-10 pt-16 text-center">
             <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-[12px] bg-[#F1F1F1]">
               <Ghost className="h-7 w-7 text-[#9CA3AF]" strokeWidth={1.5} />
             </span>

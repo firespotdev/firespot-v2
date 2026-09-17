@@ -1069,6 +1069,33 @@ describe("SalesService amount invariants", () => {
         ]),
       );
     });
+
+    it("applies the selected date range to pending sales", async () => {
+      const aggregate = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      });
+      const find = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([]),
+        }),
+      });
+      const service = createService({ aggregate, find });
+
+      await service.getSalesStats(merchantId, { preset: "today" });
+
+      expect(aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          {
+            $match: expect.objectContaining({
+              createdAt: {
+                $gte: expect.any(Date),
+                $lte: expect.any(Date),
+              },
+            }),
+          },
+        ]),
+      );
+    });
   });
 
   describe("pending sale customer changes", () => {
