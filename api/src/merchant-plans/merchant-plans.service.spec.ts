@@ -50,9 +50,11 @@ const makeService = (overrides: Record<string, any> = {}) => {
   const storesService = {
     countActive: jest.fn().mockResolvedValue(1),
     findBySubscriptionCode: jest.fn().mockResolvedValue(null),
-    hasActiveStoreWithSubscription: jest.fn().mockResolvedValue(false),
     attachSubscriptionToPrimaryStore: jest.fn().mockResolvedValue(undefined),
+    resolveSubscriptionOwnership: jest.fn().mockResolvedValue(null),
+    claimPendingBranchSubscription: jest.fn().mockResolvedValue(null),
     deactivateStoreBySubscription: jest.fn().mockResolvedValue(undefined),
+    reactivateStoreBySubscription: jest.fn().mockResolvedValue(undefined),
     ...overrides.storesService,
   }
   const configService = {
@@ -173,6 +175,80 @@ describe('subscription lifecycle webhooks', () => {
       await service.handleSubscriptionLapse('CUS_1', 'SUB_1')
 
       expect(user.planGraceUntil).toBe(existing)
+    })
+  })
+
+  describe('attachSubscriptionByCustomer', () => {
+    it('attaches a fresh PRO MAX subscription to the primary store', async () => {
+      const primaryStoreId = new Types.ObjectId()
+      const user = makeUser({ planTier: 'PROMAX', subscriptions: [] })
+      const { service, userModel, storesService } = makeService({
+        storesService: {
+          attachSubscriptionToPrimaryStore: jest
+            .fn()
+            .mockResolvedValue({ _id: primaryStoreId }),
+        },
+      })
+      userModel.findOne.mockReturnValue(query(user))
+
+      await service.attachSubscriptionByCustomer(
+        'CUS_1',
+        'SUB_primary',
+        'TOK_primary',
+        { planCode: 'PLN_promax', interval: 'monthly' },
+      )
+
+      expect(
+        storesService.attachSubscriptionToPrimaryStore,
+      ).toHaveBeenCalledWith(user._id.toString(), 'SUB_primary', 'TOK_primary')
+      expect(user.subscriptions[0]).toEqual(
+        expect.objectContaining({
+          code: 'SUB_primary',
+          kind: 'primary',
+          storeId: primaryStoreId,
+          status: 'active',
+        }),
+      )
+    })
+
+    it('keeps an early subscription webhook retryable when its customer is not stored yet', async () => {
+      const { service, userModel } = makeService()
+      userModel.findOne.mockReturnValue(query(null))
+
+      await expect(
+        service.attachSubscriptionByCustomer('CUS_early', 'SUB_early'),
+      ).rejects.toThrow(ServiceUnavailableException)
+    })
+
+    it('claims a pending branch when its webhook arrives before store creation finishes', async () => {
+      const branchStoreId = new Types.ObjectId()
+      const user = makeUser({ planTier: 'PROMAX', subscriptions: [] })
+      const { service, userModel, storesService } = makeService({
+        storesService: {
+          claimPendingBranchSubscription: jest
+            .fn()
+            .mockResolvedValue({ _id: branchStoreId }),
+        },
+      })
+      userModel.findOne.mockReturnValue(query(user))
+
+      await service.attachSubscriptionByCustomer(
+        'CUS_1',
+        'SUB_branch',
+        undefined,
+        { planCode: 'PLN_promax', interval: 'monthly' },
+      )
+
+      expect(user.subscriptions[0]).toEqual(
+        expect.objectContaining({
+          code: 'SUB_branch',
+          kind: 'branch',
+          storeId: branchStoreId,
+        }),
+      )
+      expect(
+        storesService.attachSubscriptionToPrimaryStore,
+      ).not.toHaveBeenCalled()
     })
   })
 
@@ -300,7 +376,9 @@ describe('retiring a subscription records intent before calling Paystack', () =>
     userModel.findOne.mockReturnValue(query(user))
     paystackService.disableSubscription.mockRejectedValue(new Error('nope'))
 
-    await service.supersedePreviousSubscriptions('CUS_1', 'SUB_new')
+    await expect(
+      service.supersedePreviousSubscriptions('CUS_1', 'SUB_new'),
+    ).rejects.toThrow(ServiceUnavailableException)
 
     // Still live on Paystack, so it must not be treated as retired.
     expect(sub.status).toBe('active')
@@ -701,23 +779,24 @@ describe('MerchantPlansService recurring plan configuration', () => {
       planCurrentPeriodEnd: undefined,
       fullPhoneNumber: '+2348012345678',
     })
-    const { service, paystackService, storesService, configService } = makeService({
-      userModel: { findById: jest.fn(() => query(merchant)) },
-      storesService: { countActive: jest.fn().mockResolvedValue(3) },
-      configService: {
-        get: jest.fn((key: string) => {
-          if (key === 'PAYSTACK_PLAN_CODE_PROMAX') return 'PLN_promax'
-          return null
-        }),
-      },
-      paystackService: {
-        initializeTransaction: jest.fn().mockResolvedValue({
-          authorizationUrl: 'https://checkout.paystack.com/xyz',
-          reference: 'PLAN-ref-1',
-          accessCode: 'code-1',
-        }),
-      },
-    })
+    const { service, paystackService, storesService, configService } =
+      makeService({
+        userModel: { findById: jest.fn(() => query(merchant)) },
+        storesService: { countActive: jest.fn().mockResolvedValue(3) },
+        configService: {
+          get: jest.fn((key: string) => {
+            if (key === 'PAYSTACK_PLAN_CODE_PROMAX') return 'PLN_promax'
+            return null
+          }),
+        },
+        paystackService: {
+          initializeTransaction: jest.fn().mockResolvedValue({
+            authorizationUrl: 'https://checkout.paystack.com/xyz',
+            reference: 'PLAN-ref-1',
+            accessCode: 'code-1',
+          }),
+        },
+      })
 
     const result = await service.purchase(
       merchant._id.toString(),
@@ -737,19 +816,24 @@ describe('MerchantPlansService recurring plan configuration', () => {
   })
 
   it('preserves active store subscriptions on supersede when user is on PROMAX', async () => {
-    const storeSub = { code: 'SUB_store', status: 'active', emailToken: 'TOK1' }
-    const oldSub = { code: 'SUB_old', status: 'active', emailToken: 'TOK2' }
+    const storeSub = {
+      code: 'SUB_store',
+      kind: 'branch' as const,
+      status: 'active',
+      emailToken: 'TOK1',
+    }
+    const oldSub = {
+      code: 'SUB_old',
+      kind: 'primary' as const,
+      status: 'active',
+      emailToken: 'TOK2',
+    }
     const merchant = makeUser({
       planTier: 'PROMAX',
       subscriptions: [storeSub, oldSub],
     })
-    const { service, userModel, paystackService, storesService } = makeService({
+    const { service, userModel, paystackService } = makeService({
       userModel: { findOne: jest.fn(() => query(merchant)) },
-      storesService: {
-        hasActiveStoreWithSubscription: jest.fn().mockImplementation((_mId, code) => {
-          return Promise.resolve(code === 'SUB_store')
-        }),
-      },
       paystackService: {
         disableSubscription: jest.fn().mockResolvedValue({ success: true }),
       },
@@ -770,7 +854,10 @@ describe('MerchantPlansService recurring plan configuration', () => {
   it('deactivates store on subscription lapse if subscription matches an active store', async () => {
     const merchant = makeUser({
       planTier: 'PROMAX',
-      subscriptions: [{ code: 'SUB_store', status: 'active' }, { code: 'SUB_main', status: 'active' }],
+      subscriptions: [
+        { code: 'SUB_store', kind: 'branch', status: 'active' },
+        { code: 'SUB_main', kind: 'primary', status: 'active' },
+      ],
     })
     const { service, userModel, storesService } = makeService({
       userModel: { findOne: jest.fn(() => query(merchant)) },

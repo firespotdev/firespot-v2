@@ -9,36 +9,56 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common'
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger'
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator'
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger'
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { StoresService } from './stores.service'
 
 class CreateStoreDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   name: string
 
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   address?: string
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   location?: string
+
+  @IsUUID()
+  idempotencyKey: string
 }
 
 class UpdateStoreDto {
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   name?: string
 
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   address?: string
 
   @IsString()
   @IsOptional()
+  @MaxLength(100)
   location?: string
 }
 

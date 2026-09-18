@@ -145,9 +145,8 @@ export class User extends Document {
     delivery?: boolean;
   };
 
-  // Primary business location. Branches are stored as a flat count for now and
-  // are NOT materialised into Store docs, so they don't affect PRO MAX
-  // per-store billing — that wiring is a later task.
+  // Primary business address used by shop setup and customer discovery.
+  // Billable physical locations are materialised separately as Store docs.
   @Prop({
     type: {
       state: String,
@@ -163,6 +162,7 @@ export class User extends Document {
     insideMarket?: boolean;
   };
 
+  // Setup estimate only; never use this value for billing.
   @Prop()
   branchCount?: number;
 
@@ -490,6 +490,8 @@ export class User extends Document {
         emailToken: String,
         planCode: String,
         interval: String,
+        kind: { type: String, enum: ["primary", "branch"] },
+        storeId: { type: Types.ObjectId, ref: "Store" },
         status: String,
         createdAt: Date,
       },
@@ -501,6 +503,8 @@ export class User extends Document {
     emailToken?: string;
     planCode?: string;
     interval?: string;
+    kind?: "primary" | "branch";
+    storeId?: Types.ObjectId;
     status?: string;
     createdAt?: Date;
   }>;

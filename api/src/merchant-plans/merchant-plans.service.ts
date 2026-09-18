@@ -843,19 +843,12 @@ export class MerchantPlansService {
           user.paystackCustomerCode,
           created.subscriptionCode,
           created.emailToken,
-          { planCode, interval },
+          { planCode, interval, kind: 'primary' },
         )
         await this.supersedePreviousSubscriptions(
           user.paystackCustomerCode,
           created.subscriptionCode,
         )
-        if (tier === 'PROMAX') {
-          await this.storesService.attachSubscriptionToPrimaryStore(
-            user._id.toString(),
-            created.subscriptionCode,
-            created.emailToken,
-          )
-        }
       } catch (error) {
         this.logger.error(
           `Upgrade applied but subscription setup failed for ${user._id}: ${error}`,
@@ -1060,20 +1053,48 @@ export class MerchantPlansService {
     customerCode: string,
     subscriptionCode: string,
     emailToken?: string,
-    extra?: { planCode?: string; interval?: string },
+    extra?: {
+      planCode?: string
+      interval?: string
+      kind?: 'primary' | 'branch'
+      storeId?: Types.ObjectId
+    },
   ) {
     if (!customerCode || !subscriptionCode) return
 
     const user = await this.userModel
       .findOne({ paystackCustomerCode: customerCode })
       .exec()
-    if (!user) return
+    if (!user) {
+      throw new ServiceUnavailableException(
+        'Subscription owner is not available yet.',
+      )
+    }
 
     if (!user.subscriptions) user.subscriptions = []
     const existing = user.subscriptions.find((s) => s.code === subscriptionCode)
 
+    let inferredOwnership:
+      | { kind: 'primary' | 'branch'; storeId: Types.ObjectId }
+      | undefined
+    if (!extra?.kind && !existing) {
+      const claimedStore = await this.storesService.claimPendingBranchSubscription(
+        user._id.toString(),
+        subscriptionCode,
+        emailToken,
+      )
+      if (claimedStore?._id) {
+        inferredOwnership = {
+          kind: 'branch',
+          storeId: claimedStore._id as Types.ObjectId,
+        }
+      }
+    }
+
     if (existing) {
       if (emailToken) existing.emailToken = emailToken
+      if (extra?.kind) existing.kind = extra.kind
+      if (extra?.storeId) existing.storeId = extra.storeId
       existing.status = 'active'
     } else {
       user.subscriptions.push({
@@ -1081,9 +1102,42 @@ export class MerchantPlansService {
         emailToken,
         planCode: extra?.planCode,
         interval: extra?.interval,
+        kind: extra?.kind || inferredOwnership?.kind || 'primary',
+        storeId: extra?.storeId || inferredOwnership?.storeId,
         status: 'active',
         createdAt: new Date(),
       })
+    }
+
+    const attached =
+      existing || user.subscriptions[user.subscriptions.length - 1]
+    if (!attached.kind) {
+      const ownership = await this.storesService.resolveSubscriptionOwnership(
+        user._id.toString(),
+        subscriptionCode,
+      )
+      if (ownership) {
+        attached.kind = ownership.kind
+        attached.storeId = ownership.storeId
+      }
+    }
+    const promaxPlanCode = this.configService.get<string>(
+      'PAYSTACK_PLAN_CODE_PROMAX',
+    )
+    const isPromaxPrimary =
+      attached.kind !== 'branch' &&
+      (user.planTier === 'PROMAX' || extra?.planCode === promaxPlanCode)
+    if (isPromaxPrimary) {
+      const primaryStore =
+        await this.storesService.attachSubscriptionToPrimaryStore(
+          user._id.toString(),
+          subscriptionCode,
+          emailToken,
+        )
+      if (primaryStore?._id) {
+        attached.kind = 'primary'
+        attached.storeId = primaryStore._id as Types.ObjectId
+      }
     }
 
     // Keep the legacy array in sync for anything still reading it.
@@ -1113,26 +1167,38 @@ export class MerchantPlansService {
       .exec()
     if (!user?.subscriptions?.length) return
 
+    const keptSubscription = user.subscriptions.find(
+      (subscription) => subscription.code === keepCode,
+    )
+    if (keptSubscription?.kind === 'branch') return
+
     let superseded = 0
+    let failures = 0
     for (const sub of user.subscriptions) {
       if (this.isIntentionallyRetired(sub) || sub.code === keepCode) continue
 
-      // Active store subscriptions on PRO MAX should not be retired when sibling store
-      // subscriptions are created or renewed.
-      if (user.planTier === 'PROMAX') {
-        const isStoreActive =
-          await this.storesService.hasActiveStoreWithSubscription(
-            user._id.toString(),
-            sub.code,
-          )
-        if (isStoreActive) continue
+      if (!sub.kind) {
+        const ownership = await this.storesService.resolveSubscriptionOwnership(
+          user._id.toString(),
+          sub.code,
+        )
+        if (ownership) {
+          sub.kind = ownership.kind
+          sub.storeId = ownership.storeId
+          await user.save()
+        }
       }
+
+      // Branch subscriptions are independent. A new primary subscription only
+      // replaces the previous primary subscription, never its siblings.
+      if (sub.kind === 'branch') continue
 
       const token = await this.ensureEmailToken(sub)
       if (!token) {
         this.logger.error(
           `Cannot supersede ${sub.code} for ${user._id}: no email token`,
         )
+        failures += 1
         continue
       }
 
@@ -1145,15 +1211,19 @@ export class MerchantPlansService {
       await user.save()
 
       try {
-        await this.paystackService.disableSubscription({
+        const result = await this.paystackService.disableSubscription({
           code: sub.code,
           token,
         })
+        if (!result.success) {
+          throw new Error('Paystack did not confirm cancellation')
+        }
         sub.status = 'cancelled'
         superseded += 1
       } catch (error) {
         // Still live — restore the status so it is not wrongly ignored later.
         sub.status = previousStatus
+        failures += 1
         this.logger.error(`Failed to supersede ${sub.code}: ${error}`)
       }
       await user.save()
@@ -1162,6 +1232,11 @@ export class MerchantPlansService {
     if (superseded > 0) {
       this.logger.log(
         `Superseded ${superseded} old subscription(s) for ${user._id}`,
+      )
+    }
+    if (failures > 0) {
+      throw new ServiceUnavailableException(
+        'The previous subscription could not be retired yet. Please retry.',
       )
     }
   }
@@ -1232,10 +1307,13 @@ export class MerchantPlansService {
       await user.save()
 
       try {
-        await this.paystackService.disableSubscription({
+        const result = await this.paystackService.disableSubscription({
           code: sub.code,
           token,
         })
+        if (!result.success) {
+          throw new Error('Paystack did not confirm cancellation')
+        }
         sub.status = 'cancelled'
         cancelled += 1
       } catch (error) {
@@ -1286,6 +1364,16 @@ export class MerchantPlansService {
     const sub = subscriptionCode
       ? user.subscriptions?.find((s) => s.code === subscriptionCode)
       : undefined
+    if (sub && !sub.kind && subscriptionCode) {
+      const ownership = await this.storesService.resolveSubscriptionOwnership(
+        user._id.toString(),
+        subscriptionCode,
+      )
+      if (ownership) {
+        sub.kind = ownership.kind
+        sub.storeId = ownership.storeId
+      }
+    }
     const otherActive = Boolean(
       user.subscriptions?.some(
         (s) => s.code !== subscriptionCode && s.status === 'active',
@@ -1316,7 +1404,7 @@ export class MerchantPlansService {
       subscriptionCode,
     )
     if (!ctx) return
-    const { user, sub, otherActive } = ctx
+    const { user, sub } = ctx
 
     // A subscription we retired ourselves is not a lapse. Both the supersede
     // and cancel paths mark it before calling Paystack precisely so the
@@ -1328,7 +1416,12 @@ export class MerchantPlansService {
       return
     }
 
-    if (subscriptionCode) {
+    if (sub) {
+      sub.status = 'failed'
+      await user.save()
+    }
+
+    if (subscriptionCode && sub?.kind === 'branch') {
       const store =
         await this.storesService.findBySubscriptionCode(subscriptionCode)
       if (store && String(store.merchantId) === String(user._id)) {
@@ -1340,11 +1433,18 @@ export class MerchantPlansService {
           subscriptionCode,
         )
       }
+      return
     }
 
-    if (otherActive) {
+    const anotherPrimaryIsActive = user.subscriptions?.some(
+      (subscription) =>
+        subscription.code !== subscriptionCode &&
+        subscription.kind !== 'branch' &&
+        subscription.status === 'active',
+    )
+    if (anotherPrimaryIsActive) {
       this.logger.log(
-        `Ignoring lapse for ${subscriptionCode}: ${user._id} still has an active subscription`,
+        `Ignoring lapse for replaced primary ${subscriptionCode}: ${user._id} has another active primary subscription`,
       )
       return
     }
@@ -1395,7 +1495,7 @@ export class MerchantPlansService {
 
     // Only treat this as the merchant cancelling when nothing else is live;
     // otherwise it is just an upgrade retiring the subscription it replaced.
-    if (!otherActive) {
+    if (sub?.kind !== 'branch' && !otherActive) {
       user.cancelAtPeriodEnd = true
       this.logger.log(
         `Subscription ${subscriptionCode} non-renewing for ${user._id}; access runs to ${user.planCurrentPeriodEnd?.toISOString?.() ?? 'unknown'}`,
@@ -1430,7 +1530,7 @@ export class MerchantPlansService {
       sub.status = status === 'complete' ? 'complete' : 'cancelled'
     }
 
-    if (!otherActive) {
+    if (sub?.kind !== 'branch' && !otherActive) {
       user.cancelAtPeriodEnd = true
     }
 
@@ -1530,6 +1630,7 @@ export class MerchantPlansService {
     customerCode: string,
     invoiceReference?: string,
     nextPaymentDate?: string | Date | null,
+    subscriptionCode?: string,
   ) {
     if (!customerCode) return
 
@@ -1537,6 +1638,29 @@ export class MerchantPlansService {
       .findOne({ paystackCustomerCode: customerCode })
       .exec()
     if (!user) return
+
+    const subscription = subscriptionCode
+      ? user.subscriptions?.find((item) => item.code === subscriptionCode)
+      : undefined
+    if (subscription && !subscription.kind) {
+      const ownership = await this.storesService.resolveSubscriptionOwnership(
+        user._id.toString(),
+        subscription.code,
+      )
+      if (ownership) {
+        subscription.kind = ownership.kind
+        subscription.storeId = ownership.storeId
+      }
+    }
+    if (subscription?.kind === 'branch') {
+      subscription.status = 'active'
+      await user.save()
+      await this.storesService.reactivateStoreBySubscription(
+        user._id.toString(),
+        subscription.code,
+      )
+      return
+    }
 
     const now = new Date()
     const previousEnd = user.planCurrentPeriodEnd
