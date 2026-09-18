@@ -1,16 +1,20 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from '@bprogress/next/app'
 import { ChevronRight, X } from 'lucide-react'
-import { TabSwitch } from '@/components/ui'
+import { showNotificationToast, TabSwitch } from '@/components/ui'
 import { usePlanCatalog } from '@/services/merchant-plans'
 import {
   useSale,
   useSales,
   useOngoingSales,
+  useDeleteSaleDraft,
+  useSaleDrafts,
+  useSaveSaleDraft,
 } from '@/services/sales/hooks'
-import type { Sale } from '@/services/sales/interface'
+import type { Sale, SaleDraft } from '@/services/sales/interface'
+import type { SaveSaleDraftPayload } from '@/services/sales/salesApi'
 import { useProducts } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import { useDrawerStore } from '@/services/drawer'
@@ -18,7 +22,7 @@ import { AmountTab } from '@/components/sales/AmountTab'
 import { ItemsTab } from '@/components/sales/ItemsTab'
 import { useSaleCart } from '@/components/sales/use-sale-cart'
 import { useSaleCheckoutFlow } from '@/components/sales/use-sale-checkout-flow'
-import type { SaleMode } from '@/components/sales/types'
+import { DRAFT_ITEM_ID, type SaleMode } from '@/components/sales/types'
 import { BasketIcon } from '@phosphor-icons/react'
 
 interface Props {
@@ -36,6 +40,11 @@ const formatDisplayAmount = (val: string) => {
   const formattedInt = new Intl.NumberFormat('en-NG').format(Number(int))
   return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt
 }
+
+const makeDraftClientId = () =>
+  typeof crypto !== 'undefined'
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random()}`
 
 export function RecordSaleDrawer({
   editId,
@@ -57,7 +66,17 @@ export function RecordSaleDrawer({
   )
   const { data: recentSalesData } = useSales({ limit: 5 })
   const { data: ongoingSales = [] } = useOngoingSales()
-  const ongoingCount = ongoingSales.length
+  const { data: saleDrafts = [] } = useSaleDrafts()
+  const { mutateAsync: saveSaleDraft } = useSaveSaleDraft()
+  const { mutateAsync: deleteSaleDraft } = useDeleteSaleDraft()
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null)
+  const [activeDraftClientId, setActiveDraftClientId] = useState(
+    makeDraftClientId,
+  )
+  const activeDraftIdRef = useRef<string | null>(null)
+  const saveInFlightRef = useRef<Promise<SaleDraft> | null>(null)
+  const activeStartedAtRef = useRef(new Date().toISOString())
+  const shouldPreviewRestoredDraftRef = useRef(false)
   const recentDescriptions = useMemo(() => {
     const seen = new Set<string>()
 
@@ -89,11 +108,37 @@ export function RecordSaleDrawer({
 
   const cart = useSaleCart({ prefillSale })
 
+  useEffect(() => {
+    activeDraftIdRef.current = activeDraftId
+  }, [activeDraftId])
+
+  const removeActiveDraft = async () => {
+    try {
+      await saveInFlightRef.current
+    } catch {
+      // There is no persisted draft to remove when its save failed.
+    }
+    const draftId = activeDraftIdRef.current
+    activeDraftIdRef.current = null
+    setActiveDraftId(null)
+    setActiveDraftClientId(makeDraftClientId())
+    if (!draftId) return
+    try {
+      await deleteSaleDraft(draftId)
+    } catch {
+      // The completed sale remains valid even if its expired draft was already
+      // removed by MongoDB's TTL cleanup.
+    }
+  }
+
   const {
     handleRecordTapped,
     handleCollectTapped,
     openSelectionPreview,
     openPendingCollection,
+    resetSaleState,
+    restoreDraftCheckout,
+    checkoutDraftState,
   } = useSaleCheckoutFlow({
     cart,
     saleMode,
@@ -104,6 +149,8 @@ export function RecordSaleDrawer({
       useDrawerStore.getState().closeAllDrawers()
       router.push('/plans')
     },
+    onSaleSubmitted: removeActiveDraft,
+    onSaleDiscarded: removeActiveDraft,
   })
 
   const handleProductAddTapped = (product: Product) => {
@@ -154,23 +201,6 @@ export function RecordSaleDrawer({
     return groups
   }
 
-  const handleOpenOngoingSales = () => {
-    openDrawer({
-      type: 'ongoing-sales',
-      direction: 'left',
-      props: {
-        onSelectSale: (sale: Sale) => {
-          useDrawerStore.getState().closeDrawer('ongoing-sales')
-          openPendingCollection(sale)
-        },
-        onNewSale: () => {
-          cart.resetCart()
-          useDrawerStore.getState().closeDrawer('ongoing-sales')
-        },
-      },
-    })
-  }
-
   const effectiveItems = cart.getEffectiveItems()
   const selectedItemCount = effectiveItems.length
   const hasSaleValue =
@@ -180,6 +210,185 @@ export function RecordSaleDrawer({
       cart.amount !== '.' &&
       cart.amount !== '0.') ||
     effectiveItems.length > 0
+  const draftTotal = cart.getTotal()
+
+  const draftPayload = useMemo<SaveSaleDraftPayload>(
+    () => ({
+      clientId: activeDraftClientId,
+      amount: draftTotal,
+      activeTab: cart.activeTab,
+      amountInput: cart.amount,
+      description: cart.description,
+      items: cart.cartItems.map((item) => ({
+        clientId: item.id,
+        productId:
+          item.id.startsWith('custom') || item.id === DRAFT_ITEM_ID
+            ? undefined
+            : item.id.split('-')[0],
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl,
+        description: item.description,
+        selectedVariant: item.selectedVariant,
+      })),
+      paymentMethod: checkoutDraftState.paymentMethod || undefined,
+      installmentType: checkoutDraftState.installmentType,
+      amountPaid: checkoutDraftState.amountPaid,
+      hasSetInstallment: checkoutDraftState.hasSetInstallment,
+      customerId: checkoutDraftState.customer?._id,
+      dueDate: checkoutDraftState.dueDate || undefined,
+    }),
+    [
+      cart.activeTab,
+      activeDraftClientId,
+      cart.amount,
+      cart.cartItems,
+      cart.description,
+      draftTotal,
+      checkoutDraftState.amountPaid,
+      checkoutDraftState.customer,
+      checkoutDraftState.dueDate,
+      checkoutDraftState.hasSetInstallment,
+      checkoutDraftState.installmentType,
+      checkoutDraftState.paymentMethod,
+    ],
+  )
+
+  const persistDraftSnapshot = useCallback(
+    async (payload: SaveSaleDraftPayload) => {
+      try {
+        await saveInFlightRef.current
+      } catch {
+        // Retry the latest snapshot after a failed background save.
+      }
+      const request = saveSaleDraft({
+        draftId: activeDraftIdRef.current || undefined,
+        payload,
+      })
+      saveInFlightRef.current = request
+      try {
+        const savedDraft = await request
+        activeDraftIdRef.current = savedDraft._id
+        setActiveDraftId(savedDraft._id)
+        return savedDraft
+      } finally {
+        if (saveInFlightRef.current === request) saveInFlightRef.current = null
+      }
+    },
+    [saveSaleDraft],
+  )
+
+  useEffect(() => {
+    if (saleMode.kind !== 'create' || !hasSaleValue) return
+    const timeout = window.setTimeout(() => {
+      void persistDraftSnapshot(draftPayload).catch(() => undefined)
+    }, 15_000)
+    return () => window.clearTimeout(timeout)
+  }, [draftPayload, hasSaleValue, persistDraftSnapshot, saleMode.kind])
+
+  useEffect(() => {
+    if (!shouldPreviewRestoredDraftRef.current) return
+    shouldPreviewRestoredDraftRef.current = false
+    openSelectionPreview()
+  }, [
+    cart.amount,
+    cart.cartItems,
+    checkoutDraftState.amountPaid,
+    checkoutDraftState.customer,
+    checkoutDraftState.dueDate,
+    checkoutDraftState.installmentType,
+    checkoutDraftState.paymentMethod,
+    openSelectionPreview,
+  ])
+
+  const handleStartNewSale = async () => {
+    try {
+      if (hasSaleValue) await persistDraftSnapshot(draftPayload)
+    } catch {
+      showNotificationToast({
+        message: 'Could not hold this sale. Please try again.',
+        mode: 'error',
+      })
+      return
+    }
+    resetSaleState()
+    activeDraftIdRef.current = null
+    setActiveDraftId(null)
+    setActiveDraftClientId(makeDraftClientId())
+    activeStartedAtRef.current = new Date().toISOString()
+    useDrawerStore.getState().closeDrawer('ongoing-sales')
+  }
+
+  const handleResumeDraft = async (draft: SaleDraft) => {
+    try {
+      if (hasSaleValue) await persistDraftSnapshot(draftPayload)
+    } catch {
+      showNotificationToast({
+        message: 'Could not hold the current sale. Please try again.',
+        mode: 'error',
+      })
+      return
+    }
+    shouldPreviewRestoredDraftRef.current = true
+    cart.restoreDraft(draft)
+    restoreDraftCheckout(draft)
+    activeDraftIdRef.current = draft._id
+    setActiveDraftId(draft._id)
+    setActiveDraftClientId(draft.clientId || makeDraftClientId())
+    activeStartedAtRef.current = draft.createdAt
+    useDrawerStore.getState().closeDrawer('ongoing-sales')
+  }
+
+  const handleOpenOngoingSales = () => {
+    openDrawer({
+      type: 'ongoing-sales',
+      direction: 'left',
+      props: {
+        onSelectSale: (sale: Sale) => {
+          useDrawerStore.getState().closeDrawer('ongoing-sales')
+          openPendingCollection(sale)
+        },
+        activeDraftClientId,
+        activeDraft: hasSaleValue
+          ? {
+              ...draftPayload,
+              createdAt: activeStartedAtRef.current,
+            }
+          : undefined,
+        onSelectActiveDraft: () => {
+          useDrawerStore.getState().closeDrawer('ongoing-sales')
+          openSelectionPreview()
+        },
+        onSelectDraft: handleResumeDraft,
+        onNewSale: handleStartNewSale,
+        onClearActiveDraft: async () => {
+          await removeActiveDraft()
+          resetSaleState()
+        },
+      },
+    })
+  }
+  const heldDraftCount = saleDrafts.filter(
+    (draft) => draft.clientId !== activeDraftClientId,
+  ).length
+  const ongoingCount =
+    ongoingSales.length + heldDraftCount + (hasSaleValue ? 1 : 0)
+
+  const handleClose = async () => {
+    try {
+      if (saleMode.kind === 'create' && hasSaleValue) {
+        await persistDraftSnapshot(draftPayload)
+      }
+    } catch {
+      showNotificationToast({
+        message: 'Could not hold this sale. Please try again.',
+        mode: 'error',
+      })
+      return
+    }
+    closeDrawer()
+  }
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-white font-satoshi">
@@ -211,7 +420,7 @@ export function RecordSaleDrawer({
 
         <button
           type="button"
-          onClick={closeDrawer}
+          onClick={() => void handleClose()}
           aria-label="Close"
           className="p-2 -mr-2 rounded-full shrink-0 text-black"
         >

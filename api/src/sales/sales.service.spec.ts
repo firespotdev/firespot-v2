@@ -13,6 +13,7 @@ describe("SalesService amount invariants", () => {
     userModel: Record<string, jest.Mock> = {},
     qrKitModel: Record<string, jest.Mock> = {},
     cloudinaryService: Record<string, jest.Mock> = {},
+    merchantSaleDraftModel: Record<string, jest.Mock> = {},
   ) => {
     const server = {
       to: jest.fn(),
@@ -49,6 +50,7 @@ describe("SalesService amount invariants", () => {
         findOneAndUpdate: jest.fn(),
         updateOne: jest.fn(),
       } as any,
+      merchantSaleDraftModel as any,
     );
   };
 
@@ -1282,6 +1284,55 @@ describe("SalesService amount invariants", () => {
         status: "CONFIRMED",
       };
       expect(service.isSaleExpired(sale)).toBe(false);
+    });
+  });
+
+  describe("merchant sale drafts", () => {
+    it("expires abandoned drafts two days after their latest save", () => {
+      jest.useFakeTimers().setSystemTime(new Date("2026-09-18T12:00:00Z"));
+      const service = createService();
+
+      expect((service as any).saleDraftExpiry()).toEqual(
+        new Date("2026-09-20T12:00:00Z"),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("returns only the merchant's unexpired drafts", async () => {
+      const drafts = [{ _id: "507f1f77bcf86cd799439013" }];
+      const exec = jest.fn().mockResolvedValue(drafts);
+      const populate = jest.fn().mockReturnValue({ exec });
+      const sort = jest.fn().mockReturnValue({ populate });
+      const draftModel = {
+        find: jest.fn().mockReturnValue({ sort }),
+      };
+      const service = createService({}, {}, {}, {}, {}, {}, draftModel);
+
+      await expect(
+        service.getSaleDrafts("507f1f77bcf86cd799439012"),
+      ).resolves.toEqual(drafts);
+
+      expect(draftModel.find).toHaveBeenCalledWith({
+        merchantId: expect.objectContaining({ toString: expect.any(Function) }),
+        expiresAt: { $gt: expect.any(Date) },
+      });
+      expect(sort).toHaveBeenCalledWith({ updatedAt: -1 });
+      expect(populate).toHaveBeenCalledWith("customerId");
+    });
+
+    it("cannot delete another merchant's draft", async () => {
+      const draftModel = {
+        deleteOne: jest.fn().mockResolvedValue({ deletedCount: 0 }),
+      };
+      const service = createService({}, {}, {}, {}, {}, {}, draftModel);
+
+      await expect(
+        service.deleteSaleDraft(
+          "507f1f77bcf86cd799439012",
+          "507f1f77bcf86cd799439013",
+        ),
+      ).rejects.toThrow("Sale draft not found");
     });
   });
 });

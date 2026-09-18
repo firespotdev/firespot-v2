@@ -56,10 +56,16 @@ import {
 } from './dto/initialize-paystack-sale.dto'
 import { SmsService } from '../services/sms/sms.service'
 import { generateReference } from '../common/reference'
+import {
+  MerchantSaleDraft,
+  MerchantSaleDraftDocument,
+} from '../schemas/merchant-sale-draft.schema'
+import { SaveSaleDraftDto } from './dto/save-sale-draft.dto'
 
 const CUSTOMER_COLLECTION_UNAVAILABLE_MESSAGE =
   'Payment failed. Please try another payment method'
 const DAILY_LIMIT_ALERT_WINDOW_MS = 24 * 60 * 60 * 1000
+const SALE_DRAFT_LIFETIME_MS = 2 * 24 * 60 * 60 * 1000
 
 const saleCustomerPopulate = () => [
   { path: 'customerId' },
@@ -88,7 +94,118 @@ export class SalesService {
     private dailyCollectionUsageModel: Model<DailyCollectionUsageDocument>,
     @InjectModel(PaystackPaymentAttempt.name)
     private paystackPaymentAttemptModel: Model<PaystackPaymentAttemptDocument>,
+    @InjectModel(MerchantSaleDraft.name)
+    private merchantSaleDraftModel: Model<MerchantSaleDraftDocument>,
   ) {}
+
+  private saleDraftExpiry() {
+    return new Date(Date.now() + SALE_DRAFT_LIFETIME_MS)
+  }
+
+  private saleDraftId(value: string) {
+    if (!Types.ObjectId.isValid(value)) {
+      throw new BadRequestException('Sale draft id is invalid')
+    }
+    return new Types.ObjectId(value)
+  }
+
+  private validateSaleDraft(dto: SaveSaleDraftDto) {
+    for (const item of dto.items) {
+      if (
+        item.selectedVariant &&
+        JSON.stringify(item.selectedVariant).length > 4_000
+      ) {
+        throw new BadRequestException('Selected variant is too large')
+      }
+    }
+  }
+
+  async getSaleDrafts(merchantId: string) {
+    return this.merchantSaleDraftModel
+      .find({
+        merchantId: new Types.ObjectId(merchantId),
+        expiresAt: { $gt: new Date() },
+      })
+      .sort({ updatedAt: -1 })
+      .populate('customerId')
+      .exec()
+  }
+
+  async createSaleDraft(merchantId: string, dto: SaveSaleDraftDto) {
+    this.validateSaleDraft(dto)
+    if (dto.customerId) {
+      await this.requireMerchantRelationship(merchantId, dto.customerId)
+    }
+    const draft = new this.merchantSaleDraftModel({
+      ...dto,
+      description: this.normalizeDescription(dto.description) || '',
+      merchantId: new Types.ObjectId(merchantId),
+      customerId: dto.customerId
+        ? new Types.ObjectId(dto.customerId)
+        : undefined,
+      expiresAt: this.saleDraftExpiry(),
+    })
+    await draft.save()
+    return draft.populate('customerId')
+  }
+
+  async updateSaleDraft(
+    merchantId: string,
+    draftId: string,
+    dto: SaveSaleDraftDto,
+  ) {
+    this.validateSaleDraft(dto)
+    if (dto.customerId) {
+      await this.requireMerchantRelationship(merchantId, dto.customerId)
+    }
+    const values: Record<string, unknown> = {
+      ...dto,
+      description: this.normalizeDescription(dto.description) || '',
+      expiresAt: this.saleDraftExpiry(),
+    }
+    delete values.customerId
+    const unset: Record<string, 1> = {}
+    if (dto.customerId) {
+      values.customerId = new Types.ObjectId(dto.customerId)
+    } else {
+      unset.customerId = 1
+    }
+    if (!dto.paymentMethod) unset.paymentMethod = 1
+    if (!dto.dueDate) unset.dueDate = 1
+
+    const draft = await this.merchantSaleDraftModel
+      .findOneAndUpdate(
+        {
+          _id: this.saleDraftId(draftId),
+          merchantId: new Types.ObjectId(merchantId),
+        },
+        {
+          $set: values,
+          ...(Object.keys(unset).length ? { $unset: unset } : {}),
+        },
+        { new: true, runValidators: true },
+      )
+      .populate('customerId')
+      .exec()
+    if (!draft) throw new NotFoundException('Sale draft not found')
+    return draft
+  }
+
+  async deleteSaleDraft(merchantId: string, draftId: string) {
+    const result = await this.merchantSaleDraftModel.deleteOne({
+      _id: this.saleDraftId(draftId),
+      merchantId: new Types.ObjectId(merchantId),
+    })
+    if (!result.deletedCount) throw new NotFoundException('Sale draft not found')
+    return { success: true }
+  }
+
+  async clearSaleDrafts(merchantId: string) {
+    const result = await this.merchantSaleDraftModel.deleteMany({
+      merchantId: new Types.ObjectId(merchantId),
+    })
+    return { count: result.deletedCount }
+  }
 
   private evaluateReferralVolume(merchantId: string | Types.ObjectId) {
     void this.merchantReferralsService

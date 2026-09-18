@@ -85,6 +85,7 @@ function makeService(overrides: Record<string, any> = {}) {
     smsService as any,
     dailyUsageModel as any,
     paymentAttemptModel as any,
+    {} as any,
   )
   jest.spyOn((service as any).logger, 'error').mockImplementation(() => {})
   jest.spyOn((service as any).logger, 'log').mockImplementation(() => {})

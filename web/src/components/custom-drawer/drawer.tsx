@@ -128,6 +128,7 @@ const DRAWER_CONFIG: Record<
     direction: 'left',
     Content: OngoingSalesDrawer,
     noHeader: true,
+    dismissible: true,
   },
   'bank-transfer': {
     title: 'Send with bank app',

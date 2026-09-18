@@ -11,7 +11,7 @@ import {
   useRecordSale,
 } from '@/services/sales/hooks'
 import { useUserProfile } from '@/services/users'
-import type { Sale } from '@/services/sales/interface'
+import type { Sale, SaleDraft } from '@/services/sales/interface'
 import {
   DRAFT_ITEM_ID,
   type CartItem,
@@ -29,6 +29,8 @@ interface Options {
   onSaleModeSettled: () => void
   canCollect: boolean
   onCollectUnavailable: () => void
+  onSaleSubmitted?: () => Promise<void> | void
+  onSaleDiscarded?: () => Promise<void> | void
 }
 
 /**
@@ -47,6 +49,8 @@ export function useSaleCheckoutFlow({
   onSaleModeSettled,
   canCollect,
   onCollectUnavailable,
+  onSaleSubmitted,
+  onSaleDiscarded,
 }: Options) {
   const { openDrawer, closeDrawer, closeDrawersAbove } = useDrawerStore()
   const { data: profile } = useUserProfile()
@@ -91,6 +95,20 @@ export function useSaleCheckoutFlow({
     setCheckoutAmountPaid(0)
     setHasSetInstallment(false)
     setCheckoutDueDate('')
+    setStep('input')
+  }
+
+  const restoreDraftCheckout = (draft: SaleDraft) => {
+    setCheckoutPaymentMethod(draft.paymentMethod || '')
+    setCheckoutInstallmentType(draft.installmentType || 'full')
+    setCheckoutAmountPaid(draft.amountPaid || 0)
+    setHasSetInstallment(draft.hasSetInstallment)
+    setCheckoutCustomer(
+      draft.customerId && typeof draft.customerId === 'object'
+        ? draft.customerId
+        : null,
+    )
+    setCheckoutDueDate(draft.dueDate || '')
     setStep('input')
   }
 
@@ -215,6 +233,7 @@ export function useSaleCheckoutFlow({
           saleId: saleMode.id,
           payload,
         })
+        await onSaleSubmitted?.()
         onSaleModeSettled()
         openRecordedSaleDetails(data)
         return
@@ -225,12 +244,14 @@ export function useSaleCheckoutFlow({
           saleId: saleMode.id,
           payload,
         })
+        await onSaleSubmitted?.()
         onSaleModeSettled()
         openRecordedSaleDetails({ ...data, isEdit: true })
         return
       }
 
       const data = await createManualSaleMutation.mutateAsync(payload)
+      await onSaleSubmitted?.()
       openRecordedSaleDetails(data)
     } catch (error: unknown) {
       const fallbackMessage =
@@ -419,7 +440,7 @@ export function useSaleCheckoutFlow({
     })
   }
 
-  const submitCollectSale = (
+  const submitCollectSale = async (
     itemsList: CartItem[],
     totVal: number,
   ): Promise<void> => {
@@ -445,19 +466,18 @@ export function useSaleCheckoutFlow({
       })),
     }
 
-    return collectSaleMutation
-      .mutateAsync(payload)
-      .then((data) => {
-        openPendingCollection(data)
+    try {
+      const data = await collectSaleMutation.mutateAsync(payload)
+      await onSaleSubmitted?.()
+      openPendingCollection(data)
+    } catch (error: any) {
+      showNotificationToast({
+        message:
+          error?.response?.data?.message ||
+          'Failed to initiate collect payment.',
+        mode: 'error',
       })
-      .catch((error: any) => {
-        showNotificationToast({
-          message:
-            error?.response?.data?.message ||
-            'Failed to initiate collect payment.',
-          mode: 'error',
-        })
-      })
+    }
   }
 
   const openCheckoutSaleDrawer = (
@@ -499,6 +519,7 @@ export function useSaleCheckoutFlow({
       props: {
         cartItems: itemsList,
         onClear: () => {
+          void onSaleDiscarded?.()
           resetSaleState()
           closeDrawer()
         },
@@ -698,5 +719,14 @@ export function useSaleCheckoutFlow({
     handleCollectTapped,
     openSelectionPreview,
     openPendingCollection,
+    restoreDraftCheckout,
+    checkoutDraftState: {
+      paymentMethod: checkoutPaymentMethod,
+      installmentType: checkoutInstallmentType,
+      amountPaid: checkoutAmountPaid,
+      hasSetInstallment,
+      customer: checkoutCustomer,
+      dueDate: checkoutDueDate,
+    },
   }
 }

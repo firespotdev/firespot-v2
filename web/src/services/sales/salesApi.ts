@@ -6,10 +6,35 @@ import {
   CustomerSale,
   PublicSale,
   Sale,
+  SaleDraft,
   SaleItem,
   SalesStats,
   SalesResponse,
 } from './interface';
+
+export interface SaveSaleDraftPayload {
+  clientId: string;
+  amount: number;
+  activeTab: 'amount' | 'items';
+  amountInput: string;
+  description: string;
+  items: Array<{
+    clientId: string;
+    productId?: string;
+    name: string;
+    price: number;
+    quantity: number;
+    imageUrl?: string;
+    description?: string;
+    selectedVariant?: SaleItem['selectedVariant'];
+  }>;
+  paymentMethod?: string;
+  installmentType: 'full' | 'part';
+  amountPaid: number;
+  hasSetInstallment: boolean;
+  customerId?: string;
+  dueDate?: string;
+}
 
 export interface CreatePendingSalePayload {
   merchantId: string;
@@ -113,6 +138,35 @@ export const SalesApi = {
     payload: CreatePendingSalePayload,
   ): Promise<Sale> => {
     const { data } = await apiClient.post('/sales/collect', payload);
+    return data;
+  },
+
+  getSaleDrafts: async (): Promise<SaleDraft[]> => {
+    const { data } = await apiClient.get('/sales/drafts');
+    return data;
+  },
+
+  createSaleDraft: async (
+    payload: SaveSaleDraftPayload,
+  ): Promise<SaleDraft> => {
+    const { data } = await apiClient.post('/sales/drafts', payload);
+    return data;
+  },
+
+  updateSaleDraft: async (
+    draftId: string,
+    payload: SaveSaleDraftPayload,
+  ): Promise<SaleDraft> => {
+    const { data } = await apiClient.patch(`/sales/drafts/${draftId}`, payload);
+    return data;
+  },
+
+  deleteSaleDraft: async (draftId: string): Promise<void> => {
+    await apiClient.delete(`/sales/drafts/${draftId}`);
+  },
+
+  clearSaleDrafts: async (): Promise<{ count: number }> => {
+    const { data } = await apiClient.delete('/sales/drafts');
     return data;
   },
 

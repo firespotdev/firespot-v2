@@ -18,6 +18,37 @@ export interface SaleItem {
   };
 }
 
+export interface SaleDraftItem {
+  clientId: string;
+  productId?: string;
+  name: string;
+  price: number;
+  quantity: number;
+  imageUrl?: string;
+  description?: string;
+  selectedVariant?: SaleItem['selectedVariant'];
+}
+
+export interface SaleDraft {
+  _id: string;
+  clientId: string;
+  merchantId: string;
+  amount: number;
+  activeTab: 'amount' | 'items';
+  amountInput: string;
+  description: string;
+  items: SaleDraftItem[];
+  paymentMethod?: string;
+  installmentType: 'full' | 'part';
+  amountPaid: number;
+  hasSetInstallment: boolean;
+  customerId?: SaleCustomer | string;
+  dueDate?: string;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PublicSaleMerchant {
   businessName?: string;
   merchantSlug?: string;

@@ -1,17 +1,27 @@
 'use client'
 
+import { useState } from 'react'
 import { ChevronRight, Plus, Trash2, X } from 'lucide-react'
-import type { Sale } from '@/services/sales/interface'
+import type { Sale, SaleDraft } from '@/services/sales/interface'
+import type { SaveSaleDraftPayload } from '@/services/sales/salesApi'
 import {
   useOngoingSales,
   useClearAllOngoingSales,
   useCancelSale,
+  useClearSaleDrafts,
+  useDeleteSaleDraft,
+  useSaleDrafts,
 } from '@/services/sales/hooks'
 import { Label, showNotificationToast } from '@/components/ui'
 
 export interface OngoingSalesDrawerProps {
   onSelectSale: (sale: Sale) => void
-  onNewSale: () => void
+  activeDraftClientId: string
+  activeDraft?: SaveSaleDraftPayload & { createdAt: string }
+  onSelectActiveDraft: () => void
+  onSelectDraft: (draft: SaleDraft) => void
+  onNewSale: () => Promise<void> | void
+  onClearActiveDraft: () => Promise<void> | void
   closeDrawer: () => void
 }
 
@@ -36,12 +46,27 @@ const formatMoney = (val: number) =>
 
 export function OngoingSalesDrawer({
   onSelectSale,
+  activeDraftClientId,
+  activeDraft,
+  onSelectActiveDraft,
+  onSelectDraft,
   onNewSale,
+  onClearActiveDraft,
   closeDrawer,
 }: OngoingSalesDrawerProps) {
   const { data: sales = [], isLoading } = useOngoingSales()
+  const { data: drafts = [], isLoading: draftsLoading } = useSaleDrafts()
   const cancelSaleMutation = useCancelSale()
   const clearAllMutation = useClearAllOngoingSales()
+  const deleteDraftMutation = useDeleteSaleDraft()
+  const clearDraftsMutation = useClearSaleDrafts()
+  const heldDrafts = drafts.filter(
+    (draft) => draft.clientId !== activeDraftClientId,
+  )
+  const [activeDraftVisible, setActiveDraftVisible] = useState(
+    Boolean(activeDraft),
+  )
+  const visibleActiveDraft = activeDraftVisible ? activeDraft : undefined
 
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
@@ -65,18 +90,98 @@ export function OngoingSalesDrawer({
   }
 
   const handleClearAll = () => {
-    clearAllMutation.mutate(undefined, {
-      onSuccess: () => {
+    void Promise.all([
+      clearAllMutation.mutateAsync(),
+      clearDraftsMutation.mutateAsync(),
+      onClearActiveDraft(),
+    ]).then(
+      () => {
+        setActiveDraftVisible(false)
         showNotificationToast({
           message: 'All ongoing sales cleared',
           mode: 'success',
           duration: 1500,
         })
       },
-    })
+      () => {
+        showNotificationToast({
+          message: 'Some ongoing sales could not be cleared.',
+          mode: 'error',
+        })
+      },
+    )
   }
 
-  const openCount = sales.length
+  const openCount =
+    sales.length + heldDrafts.length + (visibleActiveDraft ? 1 : 0)
+  const loading = isLoading || draftsLoading
+
+  const renderDraft = (
+    draft: (SaveSaleDraftPayload & { createdAt: string }) | SaleDraft,
+    key: string,
+    isActive: boolean,
+  ) => {
+    const itemCount = draft.items.reduce(
+      (sum, item) => sum + (item.quantity || 1),
+      0,
+    )
+    const displayItemCount = itemCount || 1
+    const title =
+      draft.description ||
+      draft.items
+        .map((item) => item.name)
+        .filter(Boolean)
+        .join(', ') ||
+      'No description yet'
+
+    return (
+      <div
+        key={key}
+        onClick={() =>
+          isActive ? onSelectActiveDraft() : onSelectDraft(draft as SaleDraft)
+        }
+        className="group border-b border-[#F1F1F1] p-3 last:border-b-0 cursor-pointer"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-medium text-black">
+              {title}
+            </p>
+            <p className="mt-0.5 text-[13px] font-medium text-[#64748B]">
+              {displayItemCount} {displayItemCount === 1 ? 'item' : 'items'} ·{' '}
+              {formatSaleTime(draft.createdAt)}
+            </p>
+          </div>
+          <ChevronRight
+            size={16}
+            className="mt-0.5 shrink-0 text-[#9CA3AF] transition-transform group-hover:translate-x-0.5"
+          />
+        </div>
+        <div className="mt-3 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              if (isActive) {
+                setActiveDraftVisible(false)
+                void onClearActiveDraft()
+              } else {
+                deleteDraftMutation.mutate((draft as SaleDraft)._id)
+              }
+            }}
+            disabled={deleteDraftMutation.isPending}
+            aria-label="Delete draft"
+            className="grid size-9 place-items-center rounded-[10px] bg-[#F1F1F1] text-black"
+          >
+            <Trash2 size={16} strokeWidth={2} />
+          </button>
+          <p className="text-[14px] font-bold text-black">
+            NGN {formatMoney(draft.amount)}
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full w-full flex-col bg-[#F4F6F8] select-none">
@@ -95,7 +200,7 @@ export function OngoingSalesDrawer({
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto px-3 pb-4 font-family-satoshi">
-        {openCount === 0 && !isLoading ? (
+        {openCount === 0 && !loading ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-4 py-8">
             <div className="relative mb-10 text-[64px] flex items-center justify-center">
               🛍️
@@ -122,6 +227,10 @@ export function OngoingSalesDrawer({
           <div className="mb-3">
             <Label>{openCount} open</Label>
             <div className="overflow-hidden rounded-[12px] bg-white border border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
+              {visibleActiveDraft
+                ? renderDraft(visibleActiveDraft, 'active-draft', true)
+                : null}
+              {heldDrafts.map((draft) => renderDraft(draft, draft._id, false))}
               {sales.map((sale) => {
                 const totalQty = (sale.items || []).reduce(
                   (sum, item) => sum + (item.quantity || 1),
@@ -188,7 +297,9 @@ export function OngoingSalesDrawer({
             <button
               type="button"
               onClick={handleClearAll}
-              disabled={clearAllMutation.isPending}
+              disabled={
+                clearAllMutation.isPending || clearDraftsMutation.isPending
+              }
               className="inline-flex items-center gap-1.5 rounded-full border border-[#DFDFDF80] bg-[#EBEDF0] px-4 h-9 text-[10px] font-bold uppercase tracking-[1px] text-black transition-colors"
             >
               <Trash2 size={16} strokeWidth={2} />
@@ -197,7 +308,7 @@ export function OngoingSalesDrawer({
 
             <button
               type="button"
-              onClick={onNewSale}
+              onClick={() => void onNewSale()}
               className="inline-flex items-center gap-1.5 rounded-full border border-[#DFDFDF80] bg-[#EBEDF0] px-4 h-9 text-[10px] font-bold uppercase tracking-[1px] text-black transition-colors"
             >
               <Plus size={16} strokeWidth={2} />
@@ -207,7 +318,7 @@ export function OngoingSalesDrawer({
         )}
 
         <p className="text-center text-[11px] font-medium text-[#00000066]">
-          Disappears after midnight everyday
+          Unfinished drafts expire after 2 days
         </p>
       </div>
     </div>

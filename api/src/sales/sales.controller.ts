@@ -35,6 +35,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '../schemas/user.schema';
+import { SaveSaleDraftDto } from './dto/save-sale-draft.dto';
 
 @ApiTags('sales')
 @Controller('sales')
@@ -138,6 +139,60 @@ export class SalesController {
       (user as any).userId,
       dto,
     );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get merchant sale drafts' })
+  @Get('drafts')
+  getSaleDrafts(@GetUser() user: User) {
+    return this.salesService.getSaleDrafts((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Save a merchant sale draft' })
+  @Post('drafts')
+  createSaleDraft(@GetUser() user: User, @Body() dto: SaveSaleDraftDto) {
+    return this.salesService.createSaleDraft((user as any).userId, dto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update a merchant sale draft' })
+  @Patch('drafts/:draftId')
+  updateSaleDraft(
+    @GetUser() user: User,
+    @Param('draftId') draftId: string,
+    @Body() dto: SaveSaleDraftDto,
+  ) {
+    return this.salesService.updateSaleDraft(
+      (user as any).userId,
+      draftId,
+      dto,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Delete a merchant sale draft' })
+  @Delete('drafts/:draftId')
+  deleteSaleDraft(
+    @GetUser() user: User,
+    @Param('draftId') draftId: string,
+  ) {
+    return this.salesService.deleteSaleDraft(
+      (user as any).userId,
+      draftId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Clear merchant sale drafts' })
+  @Delete('drafts')
+  clearSaleDrafts(@GetUser() user: User) {
+    return this.salesService.clearSaleDrafts((user as any).userId);
   }
 
   @ApiBearerAuth('JWT-auth')

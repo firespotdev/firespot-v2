@@ -10,6 +10,7 @@ import {
   CreatePaystackCollectPayload,
   RecordSalePayload,
   EditSalePayload,
+  SaveSaleDraftPayload,
 } from './salesApi';
 import type { Sale } from './interface';
 
@@ -286,6 +287,52 @@ export const useCreatePendingCollectSale = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useSaleDrafts = () =>
+  useQuery({
+    queryKey: ['sales', 'drafts'],
+    queryFn: SalesApi.getSaleDrafts,
+    staleTime: 10 * 1000,
+  });
+
+export const useSaveSaleDraft = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      draftId,
+      payload,
+    }: {
+      draftId?: string;
+      payload: SaveSaleDraftPayload;
+    }) =>
+      draftId
+        ? SalesApi.updateSaleDraft(draftId, payload)
+        : SalesApi.createSaleDraft(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'drafts'] });
+    },
+  });
+};
+
+export const useDeleteSaleDraft = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.deleteSaleDraft,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'drafts'] });
+    },
+  });
+};
+
+export const useClearSaleDrafts = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.clearSaleDrafts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'drafts'] });
     },
   });
 };
