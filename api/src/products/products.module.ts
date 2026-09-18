@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { Product, ProductSchema } from "../schemas/product.schema";
+import { User, UserSchema } from "../schemas/user.schema";
+import { QRKit, QRKitSchema } from "../schemas/qrkit.schema";
 import {
   ProductCategory,
   ProductCategorySchema,
@@ -17,6 +19,8 @@ import { ProductsService } from "./products.service";
     MongooseModule.forFeature([
       { name: Product.name, schema: ProductSchema },
       { name: ProductCategory.name, schema: ProductCategorySchema },
+      { name: User.name, schema: UserSchema },
+      { name: QRKit.name, schema: QRKitSchema },
     ]),
   ],
   controllers: [ProductsController, PublicProductsController],

@@ -1,116 +1,133 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Types } from "mongoose";
-import { BankAccount, BankAccountSchema } from "./bank-account.schema";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
+import { Document, Types } from 'mongoose'
+import { BankAccount, BankAccountSchema } from './bank-account.schema'
+import type { PaystackCollectionChannel } from '../payments/paystack-collection-channels'
+
+@Schema({ _id: false })
+export class GeoPoint {
+  @Prop({ required: true, enum: ['Point'], default: 'Point' })
+  type: 'Point'
+
+  @Prop({ type: [Number], required: true })
+  coordinates: [number, number]
+}
+
+export const GeoPointSchema = SchemaFactory.createForClass(GeoPoint)
 
 /** State of a single SmileID KYC check (bvn / nin / cac). */
 export interface KycCheckState {
-  status?: "pending" | "passed" | "failed";
-  jobId?: string;
-  checkedAt?: Date;
+  status?: 'pending' | 'passed' | 'failed'
+  jobId?: string
+  checkedAt?: Date
   /**
    * Set only after the hosted SmileID flow reports a successful submission.
    * A job id without this timestamp is a created/abandoned session, not a job
    * that should leave the merchant behind a permanent loading state.
    */
-  submittedAt?: Date;
-  attempts?: number;
+  submittedAt?: Date
+  attempts?: number
   /** Why the check failed, surfaced to the merchant so they can correct it. */
-  reason?: string;
+  reason?: string
   /**
    * Which SmileID product proved this check (enhanced_kyc / biometric_kyc /
    * kyb). A tier requiring a stronger product than the one on record reopens
    * the step — e.g. a LITE enhanced BVN does not satisfy PRO's biometric BVN.
    */
-  product?: string;
+  product?: string
   /**
    * The SmileID user_id this check's job ran under. Stored rather than
    * re-derived, because the id encodes the product and generation in force at
    * submission time — either can change before the job is polled.
    */
-  smileUserId?: string;
+  smileUserId?: string
   /** CAC registration number submitted for this business-verification job. */
-  registrationNumber?: string;
+  registrationNumber?: string
   /** SmileID business type. CAC currently supports business names (`bn`). */
-  businessType?: "bn";
+  businessType?: 'bn'
   /** Business name snapshot used for the production registry-name comparison. */
-  submittedBusinessName?: string;
+  submittedBusinessName?: string
   /** Legal name returned by the business registry through SmileID. */
-  verifiedBusinessName?: string;
+  verifiedBusinessName?: string
   /** SmileID's internal job reference, retained for support and audit. */
-  smileJobId?: string;
+  smileJobId?: string
   /** Terminal SmileID result code retained for support and audit. */
-  resultCode?: string;
+  resultCode?: string
 }
 
 @Schema({ timestamps: true })
 export class User extends Document {
   @Prop({ required: true, unique: true, index: true })
-  phoneNumber: string;
+  phoneNumber: string
 
-  @Prop({ required: true, enum: ["merchant", "customer"], default: "merchant", index: true })
-  role: string;
+  @Prop({
+    required: true,
+    enum: ['merchant', 'customer'],
+    default: 'merchant',
+    index: true,
+  })
+  role: string
 
-  @Prop({ required: true, default: "+234" })
-  phoneCountryCode: string;
+  @Prop({ required: true, default: '+234' })
+  phoneCountryCode: string
 
   @Prop({ required: true, unique: true })
-  fullPhoneNumber: string;
+  fullPhoneNumber: string
 
   // OTP fields
   @Prop()
-  otpCode?: string;
+  otpCode?: string
 
   @Prop()
-  otpExpiresAt?: Date;
+  otpExpiresAt?: Date
 
   @Prop()
-  otpPinId?: string; // Termii pin_id for OTP verification
+  otpPinId?: string // Termii pin_id for OTP verification
 
   // Rate limiting for OTP requests
   @Prop({ default: 0 })
-  otpRequestCount?: number; // Number of OTP requests in the current window
+  otpRequestCount?: number // Number of OTP requests in the current window
 
   @Prop()
-  otpRequestWindowStart?: Date; // Start of the current rate limit window
+  otpRequestWindowStart?: Date // Start of the current rate limit window
 
   @Prop()
-  lastOtpRequestAt?: Date; // Timestamp of the last OTP request (for cooldown)
+  lastOtpRequestAt?: Date // Timestamp of the last OTP request (for cooldown)
 
   @Prop({ default: 0 })
-  otpFailedAttempts?: number; // Consecutive failed OTP verifications
+  otpFailedAttempts?: number // Consecutive failed OTP verifications
 
   @Prop()
-  otpLockedUntil?: Date; // Verification locked until this time after too many failures
+  otpLockedUntil?: Date // Verification locked until this time after too many failures
 
   // Personal profile
   @Prop()
-  firstName?: string;
+  firstName?: string
 
   @Prop()
-  lastName?: string;
+  lastName?: string
 
   // True once the user has completed post-signup onboarding (name entry).
   // Existing users are marked true via migration.
   @Prop({ default: false })
-  onboardingCompleted: boolean;
+  onboardingCompleted: boolean
 
   // Merchant info
   @Prop()
-  businessName?: string;
+  businessName?: string
 
   @Prop()
-  businessIndustry?: string;
+  businessIndustry?: string
 
   @Prop({ maxlength: 160 })
-  businessDescription?: string;
+  businessDescription?: string
 
   // ---- Shop setup ----
 
   @Prop()
-  businessEmail?: string;
+  businessEmail?: string
 
   @Prop()
-  website?: string;
+  website?: string
 
   @Prop({
     type: {
@@ -122,12 +139,12 @@ export class User extends Document {
     },
   })
   socialLinks?: {
-    instagram?: string;
-    facebook?: string;
-    whatsapp?: string;
-    tiktok?: string;
-    x?: string;
-  };
+    instagram?: string
+    facebook?: string
+    whatsapp?: string
+    tiktok?: string
+    x?: string
+  }
 
   // How customers get goods/services. Any flag set counts the step complete.
   @Prop({
@@ -139,11 +156,11 @@ export class User extends Document {
     },
   })
   fulfillment?: {
-    walkIn?: boolean;
-    reservations?: boolean;
-    homeService?: boolean;
-    delivery?: boolean;
-  };
+    walkIn?: boolean
+    reservations?: boolean
+    homeService?: boolean
+    delivery?: boolean
+  }
 
   // Primary business address used by shop setup and customer discovery.
   // Billable physical locations are materialised separately as Store docs.
@@ -153,18 +170,46 @@ export class User extends Document {
       city: String,
       address: String,
       insideMarket: Boolean,
+      market: String,
+      shoppingComplex: String,
+      shopNumber: String,
+      landmark: String,
     },
   })
   mainAddress?: {
-    state?: string;
-    city?: string;
-    address?: string;
-    insideMarket?: boolean;
-  };
+    state?: string
+    city?: string
+    address?: string
+    insideMarket?: boolean
+    market?: string
+    shoppingComplex?: string
+    shopNumber?: string
+    landmark?: string
+  }
 
-  // Setup estimate only; never use this value for billing.
+  @Prop({ type: GeoPointSchema })
+  mainLocation?: GeoPoint
+
   @Prop()
-  branchCount?: number;
+  mainLocationAccuracyMeters?: number
+
+  @Prop()
+  mainLocationCapturedAt?: Date
+
+  @Prop({ type: GeoPointSchema })
+  personalLocation?: GeoPoint
+
+  @Prop()
+  personalLocationPlaceId?: string
+
+  @Prop()
+  personalLocationAccuracyMeters?: number
+
+  @Prop()
+  personalLocationCapturedAt?: Date
+
+  @Prop()
+  branchCount?: number
 
   // Employee setup is intentionally a persisted roster draft for now. It does
   // not grant authentication or merchant permissions until the staff-access
@@ -178,8 +223,8 @@ export class User extends Document {
           phoneNumber: String,
           source: {
             type: String,
-            enum: ["contacts"],
-            default: "contacts",
+            enum: ['contacts'],
+            default: 'contacts',
           },
           _id: false,
         },
@@ -189,14 +234,14 @@ export class User extends Document {
     _id: false,
   })
   employeeSetup?: {
-    employeeCount: number;
+    employeeCount: number
     staff: Array<{
-      name: string;
-      phoneNumber: string;
-      source: "contacts";
-    }>;
-    configuredAt: Date;
-  };
+      name: string
+      phoneNumber: string
+      source: 'contacts'
+    }>
+    configuredAt: Date
+  }
 
   @Prop({
     type: {
@@ -209,12 +254,12 @@ export class User extends Document {
     _id: false,
   })
   shopPolicies?: {
-    returns: boolean;
-    exchanges: boolean;
-    cancellations: boolean;
-    refunds: boolean;
-    configuredAt: Date;
-  };
+    returns: boolean
+    exchanges: boolean
+    cancellations: boolean
+    refunds: boolean
+    configuredAt: Date
+  }
 
   @Prop({
     type: {
@@ -236,7 +281,7 @@ export class User extends Document {
       appointmentAndReservation: {
         bookingType: {
           type: String,
-          enum: ["SPACE", "APPOINTMENT"],
+          enum: ['SPACE', 'APPOINTMENT'],
         },
         bookableHours: {
           days: [
@@ -263,7 +308,7 @@ export class User extends Document {
           amount: Number,
           depositType: {
             type: String,
-            enum: ["FIXED", "PERCENTAGE"],
+            enum: ['FIXED', 'PERCENTAGE'],
           },
           _id: false,
         },
@@ -276,133 +321,133 @@ export class User extends Document {
   })
   activeHoursSetup?: {
     openingHours: {
-      useDifferentTimes: boolean;
-      timezone: string;
+      useDifferentTimes: boolean
+      timezone: string
       days: Array<{
-        day: string;
-        enabled: boolean;
-        opensAt?: string;
-        closesAt?: string;
-        closesNextDay: boolean;
-      }>;
-    };
+        day: string
+        enabled: boolean
+        opensAt?: string
+        closesAt?: string
+        closesNextDay: boolean
+      }>
+    }
     appointmentAndReservation: {
-      bookingType: "SPACE" | "APPOINTMENT";
+      bookingType: 'SPACE' | 'APPOINTMENT'
       bookableHours: {
         days: Array<{
-          day: string;
-          enabled: boolean;
-          opensAt?: string;
-          closesAt?: string;
-          closesNextDay: boolean;
-        }>;
-      };
+          day: string
+          enabled: boolean
+          opensAt?: string
+          closesAt?: string
+          closesNextDay: boolean
+        }>
+      }
       capacity: {
-        guestsAtOnce?: number;
-        largestGroup?: number;
-        customersAtOnce?: number;
-      };
-      instantConfirmation: boolean;
-      freeCancellations: boolean;
+        guestsAtOnce?: number
+        largestGroup?: number
+        customersAtOnce?: number
+      }
+      instantConfirmation: boolean
+      freeCancellations: boolean
       deposit: {
-        amount: number;
-        depositType: "FIXED" | "PERCENTAGE";
-      };
-      freeCancellationHours?: number;
-    };
-    configuredAt: Date;
-  };
+        amount: number
+        depositType: 'FIXED' | 'PERCENTAGE'
+      }
+      freeCancellationHours?: number
+    }
+    configuredAt: Date
+  }
 
   // Set once the merchant taps "Go live and start selling".
   @Prop({ default: false })
-  shopIsLive?: boolean;
+  shopIsLive?: boolean
 
   @Prop()
-  shopWentLiveAt?: Date;
+  shopWentLiveAt?: Date
 
   // Merchant slug (6 alphanumeric characters, editable, for direct sharing)
   @Prop({ unique: true, sparse: true, index: true, length: 6 })
-  merchantSlug?: string;
+  merchantSlug?: string
 
   @Prop({ unique: true, sparse: true, uppercase: true })
-  merchantReferralCode?: string;
+  merchantReferralCode?: string
 
   // Bank accounts (array of bank accounts)
   @Prop({ type: [BankAccountSchema], default: [] })
-  bankAccounts?: BankAccount[];
+  bankAccounts?: BankAccount[]
 
   // Editable fields
   @Prop()
-  profilePhotoUrl?: string;
+  profilePhotoUrl?: string
 
   @Prop()
-  profilePhotoPublicId?: string;
+  profilePhotoPublicId?: string
 
   // Merchant-facing business/logo image. Kept separate from the account
   // holder's personal profile photo.
   @Prop()
-  businessImageUrl?: string;
+  businessImageUrl?: string
 
   @Prop()
-  businessImagePublicId?: string;
+  businessImagePublicId?: string
 
   @Prop()
-  profileBannerUrl?: string;
+  profileBannerUrl?: string
 
   @Prop()
-  profileBannerPublicId?: string;
+  profileBannerPublicId?: string
 
   // Referral - now links to Agent who referred this merchant
-  @Prop({ type: Types.ObjectId, ref: "Agent" })
-  referredByAgent?: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'Agent' })
+  referredByAgent?: Types.ObjectId
 
-  @Prop({ type: Types.ObjectId, ref: "User" })
-  referredByMerchant?: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'User' })
+  referredByMerchant?: Types.ObjectId
 
-  @Prop({ enum: ["agent", "merchant"] })
-  referralSource?: "agent" | "merchant";
+  @Prop({ enum: ['agent', 'merchant'] })
+  referralSource?: 'agent' | 'merchant'
 
   @Prop({ default: 0 })
-  availableKitEntitlements?: number;
+  availableKitEntitlements?: number
 
   @Prop()
-  lastLoginAt?: Date;
+  lastLoginAt?: Date
 
   @Prop({ type: [String], default: [] })
-  fcmTokens?: string[];
+  fcmTokens?: string[]
 
   // Merchants this user has saved to their Faves (personal activity feature)
-  @Prop({ type: [{ type: Types.ObjectId, ref: "User" }], default: [] })
-  favoriteMerchants?: Types.ObjectId[];
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
+  favoriteMerchants?: Types.ObjectId[]
 
   // Pre-created by a merchant recording a sale before this person has ever
   // logged in. The real owner claims it on their first OTP verification, at
   // which point isPlaceholder is cleared.
   @Prop({ default: false, index: true })
-  isPlaceholder?: boolean;
+  isPlaceholder?: boolean
 
   @Prop()
-  placeholderCreatedAt?: Date;
+  placeholderCreatedAt?: Date
 
   // ---- Merchant plans (LITE / PRO / PROMAX) ----
 
   // Tier the merchant has paid for. Absent = grandfathered/never upgraded.
-  @Prop({ enum: ["LITE", "PRO", "PROMAX"], index: true })
-  planTier?: string;
+  @Prop({ enum: ['LITE', 'PRO', 'PROMAX'], index: true })
+  planTier?: string
 
   /** Rolling 24-hour, atomically claimed SMS throttle for collection-cap failures. */
   @Prop()
-  lastDailyLimitAlertAt?: Date;
+  lastDailyLimitAlertAt?: Date
 
   @Prop({
-    enum: ["none", "paid", "verifying", "verified", "failed"],
-    default: "none",
+    enum: ['none', 'paid', 'verifying', 'verified', 'failed'],
+    default: 'none',
   })
-  planStatus?: string;
+  planStatus?: string
 
   // Achieved verification badge. LITE grants none, so this is PRO/PROMAX only.
-  @Prop({ enum: ["PRO", "PROMAX"] })
-  verificationLevel?: string;
+  @Prop({ enum: ['PRO', 'PROMAX'] })
+  verificationLevel?: string
 
   /**
    * When the merchant first completed every KYC step for their tier. Durable:
@@ -411,15 +456,33 @@ export class User extends Document {
    * Gates the ability to collect payments.
    */
   @Prop()
-  kycCompletedAt?: Date;
+  kycCompletedAt?: Date
 
   // Per-check SmileID KYC state. Drives resumability: the first required step
   // not yet satisfied is where the merchant picks back up. `product` records
   // how it was proven, so a stronger tier can reopen a weaker pass.
   @Prop({
     type: {
-      bvn: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
-      nin: { status: String, jobId: String, checkedAt: Date, submittedAt: Date, attempts: Number, reason: String, product: String, smileUserId: String },
+      bvn: {
+        status: String,
+        jobId: String,
+        checkedAt: Date,
+        submittedAt: Date,
+        attempts: Number,
+        reason: String,
+        product: String,
+        smileUserId: String,
+      },
+      nin: {
+        status: String,
+        jobId: String,
+        checkedAt: Date,
+        submittedAt: Date,
+        attempts: Number,
+        reason: String,
+        product: String,
+        smileUserId: String,
+      },
       cac: {
         status: String,
         jobId: String,
@@ -440,10 +503,10 @@ export class User extends Document {
     default: {},
   })
   kyc?: {
-    bvn?: KycCheckState;
-    nin?: KycCheckState;
-    cac?: KycCheckState;
-  };
+    bvn?: KycCheckState
+    nin?: KycCheckState
+    cac?: KycCheckState
+  }
 
   /**
    * Salts the SmileID user_id. SmileID enrollments are permanent and there is
@@ -453,30 +516,30 @@ export class User extends Document {
    * SmileID identity stable.
    */
   @Prop({ default: 0 })
-  kycGeneration?: number;
+  kycGeneration?: number
 
   // Paystack billing refs for the recurring tiers
   @Prop()
-  paystackCustomerCode?: string;
+  paystackCustomerCode?: string
 
   // Paystack subaccount code for collection rail payouts
   @Prop({ index: true })
-  paystackSubaccountCode?: string;
+  paystackSubaccountCode?: string
 
   // Bank details attached to the subaccount (for drift detection)
   @Prop()
-  subaccountBankCode?: string;
+  subaccountBankCode?: string
 
   @Prop()
-  subaccountAccountNumber?: string;
+  subaccountAccountNumber?: string
 
   @Prop()
-  subaccountPercentageCharge?: number;
+  subaccountPercentageCharge?: number
 
   // Legacy: codes only. Kept readable so existing rows still resolve; new
   // subscriptions are written to `subscriptions` below.
   @Prop({ type: [String], default: [] })
-  subscriptionCodes?: string[];
+  subscriptionCodes?: string[]
 
   /**
    * Paystack subscriptions. `emailToken` is an opaque token Paystack issues
@@ -490,8 +553,8 @@ export class User extends Document {
         emailToken: String,
         planCode: String,
         interval: String,
-        kind: { type: String, enum: ["primary", "branch"] },
-        storeId: { type: Types.ObjectId, ref: "Store" },
+        kind: { type: String, enum: ['primary', 'branch'] },
+        storeId: { type: Types.ObjectId, ref: 'Store' },
         status: String,
         createdAt: Date,
       },
@@ -499,35 +562,35 @@ export class User extends Document {
     default: [],
   })
   subscriptions?: Array<{
-    code: string;
-    emailToken?: string;
-    planCode?: string;
-    interval?: string;
-    kind?: "primary" | "branch";
-    storeId?: Types.ObjectId;
-    status?: string;
-    createdAt?: Date;
-  }>;
+    code: string
+    emailToken?: string
+    planCode?: string
+    interval?: string
+    kind?: 'primary' | 'branch'
+    storeId?: Types.ObjectId
+    status?: string
+    createdAt?: Date
+  }>
 
   // Set when a merchant cancels; access runs to planCurrentPeriodEnd.
   @Prop({ default: false })
-  cancelAtPeriodEnd?: boolean;
+  cancelAtPeriodEnd?: boolean
 
   @Prop()
-  planCurrentPeriodEnd?: Date;
+  planCurrentPeriodEnd?: Date
 
   // Start of the current billing period. Needed so proration divides by the
   // real period length instead of assuming 30 days.
   @Prop()
-  planCurrentPeriodStart?: Date;
+  planCurrentPeriodStart?: Date
 
   /**
    * Billing cadence currently in force. Source of truth: a deferred change
    * can land without creating a PlanOrder, so deriving this from order
    * history alone goes stale.
    */
-  @Prop({ enum: ["monthly", "annually"] })
-  planInterval?: string;
+  @Prop({ enum: ['monthly', 'annually'] })
+  planInterval?: string
 
   /**
    * Paystack invoice the period was last renewed for. One renewal reaches us
@@ -536,12 +599,12 @@ export class User extends Document {
    * keeps extending the period idempotent.
    */
   @Prop()
-  lastRenewalReference?: string;
+  lastRenewalReference?: string
 
   // Set when a subscription charge fails. Full access continues until this
   // moment, after which the merchant is demoted to the LITE floor.
   @Prop()
-  planGraceUntil?: Date;
+  planGraceUntil?: Date
 
   /**
    * A downgrade scheduled for the end of the current period. Upgrades apply
@@ -556,11 +619,11 @@ export class User extends Document {
     },
   })
   pendingPlanChange?: {
-    tier: string;
-    interval?: string;
-    effectiveAt: Date;
-    planOrderId?: Types.ObjectId;
-  };
+    tier: string
+    interval?: string
+    effectiveAt: Date
+    planOrderId?: Types.ObjectId
+  }
 
   /**
    * Paystack authorization token for the merchant's saved card (not card
@@ -568,7 +631,7 @@ export class User extends Document {
    * the merchant through checkout.
    */
   @Prop()
-  paystackAuthorizationCode?: string;
+  paystackAuthorizationCode?: string
 
   @Prop({
     type: {
@@ -582,16 +645,25 @@ export class User extends Document {
     _id: false,
   })
   paystackAuthorizationDetails?: {
-    channel?: string;
-    brand?: string;
-    last4?: string;
-    bank?: string;
-    cardType?: string;
-    reusable?: boolean;
-  };
+    channel?: string
+    brand?: string
+    last4?: string
+    bank?: string
+    cardType?: string
+    reusable?: boolean
+  }
 
   @Prop({ default: true })
-  savedCardsCheckoutEnabled?: boolean;
+  savedCardsCheckoutEnabled?: boolean
+
+  @Prop({ default: false })
+  paystackCollectionEnabled?: boolean
+
+  @Prop({ default: true })
+  bankTransferEnabled?: boolean
+
+  @Prop({ type: [String], default: undefined })
+  paystackCollectionChannels?: PaystackCollectionChannel[]
 
   /**
    * Personal customer-saved cards tokenized via Paystack.
@@ -617,32 +689,33 @@ export class User extends Document {
     ],
     default: [],
   })
-  savedCards?: SavedCard[];
+  savedCards?: SavedCard[]
 
   // Timestamps (automatically added by Mongoose)
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface SavedCard {
-  _id?: Types.ObjectId;
-  authorizationCode: string;
-  email?: string;
-  brand?: string;
-  last4?: string;
-  expMonth?: string;
-  expYear?: string;
-  bank?: string;
-  cardType?: string;
-  reusable?: boolean;
-  signature?: string;
-  createdAt?: Date;
-  lastUsedAt?: Date;
+  _id?: Types.ObjectId
+  authorizationCode: string
+  email?: string
+  brand?: string
+  last4?: string
+  expMonth?: string
+  expYear?: string
+  bank?: string
+  cardType?: string
+  reusable?: boolean
+  signature?: string
+  createdAt?: Date
+  lastUsedAt?: Date
 }
 
-export const UserSchema = SchemaFactory.createForClass(User);
-export type UserDocument = User & Document;
+export const UserSchema = SchemaFactory.createForClass(User)
+export type UserDocument = User & Document
 
 // Indexes
 // Standard indexes are handled by @Prop annotations.
 // Custom composite indexes or options would go here.
+UserSchema.index({ mainLocation: '2dsphere' })

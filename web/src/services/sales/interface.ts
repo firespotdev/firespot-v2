@@ -154,6 +154,13 @@ export interface CustomerSaleMerchant {
   businessImageUrl?: string;
   profilePhotoUrl?: string;
   businessIndustry?: string;
+  mainAddress?: {
+    state?: string;
+    city?: string;
+    address?: string;
+    market?: string;
+  };
+  verificationLevel?: 'PRO' | 'PROMAX' | null;
 }
 
 /** A sale as seen from the paying customer's activity feed (merchant populated) */

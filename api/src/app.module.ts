@@ -1,40 +1,42 @@
-import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { MongooseModule } from "@nestjs/mongoose";
-import { ThrottlerModule, ThrottlerGuard } from "@nestjs/throttler";
-import { AppController } from "./app.controller";
-import { AppService } from "./app.service";
-import { AuthModule } from "./auth/auth.module";
-import { UsersModule } from "./users/users.module";
-import { QRKitsModule } from "./qr-kits/qr-kits.module";
-import { AdminModule } from "./admin/admin.module";
-import { PaymentsModule } from "./payments/payments.module";
-import { ScansModule } from "./scans/scans.module";
-import { SmsModule } from "./services/sms/sms.module";
-import { EmailModule } from "./services/email/email.module";
-import { NotificationModule } from "./services/notifications/notification.module";
-import { getDatabaseConfig } from "./config/database.config";
-import { SalesModule } from './sales/sales.module';
-import { QROrdersModule } from './qr-orders/qr-orders.module';
-import { EventsModule } from './events/events.module';
-import { FirebaseModule } from './services/firebase/firebase.module';
-import { CustomersModule } from './customers/customers.module';
-import { ProductsModule } from './products/products.module';
-import { ReportsModule } from './reports/reports.module';
-import { StoresModule } from './stores/stores.module';
-import { MerchantPlansModule } from './merchant-plans/merchant-plans.module';
-import { KycModule } from './kyc/kyc.module';
-import { FeedbackModule } from './feedback/feedback.module';
-import { MerchantReferralsModule } from './merchant-referrals/merchant-referrals.module';
-import { PayoutsModule } from './payouts/payouts.module';
-import { PaymentCasesModule } from './payment-cases/payment-cases.module';
+import { Module } from '@nestjs/common'
+import { APP_GUARD } from '@nestjs/core'
+import { ConfigModule, ConfigService } from '@nestjs/config'
+import { MongooseModule } from '@nestjs/mongoose'
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
+import { AppController } from './app.controller'
+import { AppService } from './app.service'
+import { AuthModule } from './auth/auth.module'
+import { UsersModule } from './users/users.module'
+import { QRKitsModule } from './qr-kits/qr-kits.module'
+import { AdminModule } from './admin/admin.module'
+import { PaymentsModule } from './payments/payments.module'
+import { ScansModule } from './scans/scans.module'
+import { SmsModule } from './services/sms/sms.module'
+import { EmailModule } from './services/email/email.module'
+import { NotificationModule } from './services/notifications/notification.module'
+import { getDatabaseConfig } from './config/database.config'
+import { SalesModule } from './sales/sales.module'
+import { QROrdersModule } from './qr-orders/qr-orders.module'
+import { EventsModule } from './events/events.module'
+import { FirebaseModule } from './services/firebase/firebase.module'
+import { CustomersModule } from './customers/customers.module'
+import { ProductsModule } from './products/products.module'
+import { ReportsModule } from './reports/reports.module'
+import { StoresModule } from './stores/stores.module'
+import { MerchantPlansModule } from './merchant-plans/merchant-plans.module'
+import { KycModule } from './kyc/kyc.module'
+import { FeedbackModule } from './feedback/feedback.module'
+import { MerchantReferralsModule } from './merchant-referrals/merchant-referrals.module'
+import { PayoutsModule } from './payouts/payouts.module'
+import { PaymentCasesModule } from './payment-cases/payment-cases.module'
+import { CustomerActionsModule } from './customer-actions/customer-actions.module'
+import { PostsModule } from './posts/posts.module'
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ".env",
+      envFilePath: '.env',
     }),
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
@@ -72,6 +74,8 @@ import { PaymentCasesModule } from './payment-cases/payment-cases.module';
     MerchantReferralsModule,
     PayoutsModule,
     PaymentCasesModule,
+    CustomerActionsModule,
+    PostsModule,
   ],
   controllers: [AppController],
   providers: [

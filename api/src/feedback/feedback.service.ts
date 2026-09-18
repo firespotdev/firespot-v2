@@ -13,6 +13,8 @@ import { User, UserDocument } from "../schemas/user.schema";
 import { getEffectiveTier } from "../merchant-plans/constants/plans";
 import { CreateFeedbackDto } from "./dto/create-feedback.dto";
 
+const FEEDBACK_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class FeedbackService {
   constructor(
@@ -32,11 +34,12 @@ export class FeedbackService {
     saleId: string,
     serialNumber: string,
     customerFingerprint?: string,
+    customerUserId?: string,
   ) {
     if (
       !Types.ObjectId.isValid(saleId) ||
       !serialNumber?.trim() ||
-      !customerFingerprint
+      (!customerFingerprint && !customerUserId)
     ) {
       return { eligible: false as const, reason: "not_eligible" as const };
     }
@@ -48,11 +51,26 @@ export class FeedbackService {
       status: "CONFIRMED",
       isPaidInFull: { $ne: false },
     });
+    const feedbackAt = sale?.recordedAt || sale?.createdAt;
+    const isWithinFeedbackWindow = Boolean(
+      feedbackAt &&
+      Date.now() - new Date(feedbackAt).getTime() < FEEDBACK_WINDOW_MS,
+    );
 
+    const matchesAuthenticatedCustomer = Boolean(
+      customerUserId &&
+      sale?.customerUserId &&
+      String(sale.customerUserId) === customerUserId,
+    );
+    const matchesFingerprint = Boolean(
+      customerFingerprint &&
+      sale?.customerFingerprint &&
+      sale.customerFingerprint === customerFingerprint,
+    );
     if (
       !sale ||
-      !sale.customerFingerprint ||
-      sale.customerFingerprint !== customerFingerprint
+      !isWithinFeedbackWindow ||
+      (!matchesAuthenticatedCustomer && !matchesFingerprint)
     ) {
       return { eligible: false as const, reason: "not_eligible" as const };
     }
@@ -86,11 +104,13 @@ export class FeedbackService {
     saleId: string,
     serialNumber: string,
     customerFingerprint?: string,
+    customerUserId?: string,
   ) {
     const result = await this.resolveEligibility(
       saleId,
       serialNumber,
       customerFingerprint,
+      customerUserId,
     );
 
     return {
@@ -99,11 +119,16 @@ export class FeedbackService {
     };
   }
 
-  async create(dto: CreateFeedbackDto, customerFingerprint?: string) {
+  async create(
+    dto: CreateFeedbackDto,
+    customerFingerprint?: string,
+    customerUserId?: string,
+  ) {
     const eligibility = await this.resolveEligibility(
       dto.saleId,
       dto.serialNumber,
       customerFingerprint,
+      customerUserId,
     );
 
     if (!eligibility.eligible) {
@@ -122,9 +147,7 @@ export class FeedbackService {
     }
     let customerName =
       sale.customerName?.trim() ||
-      (sale.customerType === "Repeat"
-        ? "Repeat customer"
-        : "New customer");
+      (sale.customerType === "Repeat" ? "Repeat customer" : "New customer");
     let customerPhotoUrl: string | undefined;
 
     if (sale.customerUserId) {
@@ -145,7 +168,10 @@ export class FeedbackService {
         qrKitId: qrKit._id,
         saleId: sale._id,
         customerUserId: sale.customerUserId,
-        customerFingerprint,
+        customerFingerprint:
+          sale.customerFingerprint ||
+          customerFingerprint ||
+          `user:${customerUserId}`,
         customerName,
         customerPhotoUrl,
         rating: dto.rating,

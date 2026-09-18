@@ -14,6 +14,8 @@ export function resolveSaleMerchant(sale: CustomerSale): {
   businessImageUrl?: string
   profilePhotoUrl?: string
   businessIndustry?: string
+  mainAddress?: CustomerSaleMerchant['mainAddress']
+  verificationLevel?: CustomerSaleMerchant['verificationLevel']
 } {
   const merchant = sale.merchantId
   if (merchant && typeof merchant === 'object') {
@@ -25,6 +27,8 @@ export function resolveSaleMerchant(sale: CustomerSale): {
       businessImageUrl: m.businessImageUrl,
       profilePhotoUrl: m.profilePhotoUrl,
       businessIndustry: m.businessIndustry,
+      mainAddress: m.mainAddress,
+      verificationLevel: m.verificationLevel,
     }
   }
   return { id: typeof merchant === 'string' ? merchant : undefined }
@@ -42,4 +46,17 @@ export function saleItemCount(sale: CustomerSale): number {
  */
 export function saleActivitySubtitle(sale: CustomerSale): string {
   return saleItemCount(sale) > 0 ? 'You ordered items' : 'You paid for a purchase'
+}
+
+export function formatMerchantLocation(
+  address?: CustomerSaleMerchant['mainAddress'],
+): string {
+  if (!address) return 'Visited in person'
+
+  const parts = [address.market, address.city, address.state].filter(
+    (part, index, values): part is string =>
+      Boolean(part) && values.indexOf(part) === index,
+  )
+
+  return parts.slice(0, 2).join(', ') || address.address || 'Visited in person'
 }

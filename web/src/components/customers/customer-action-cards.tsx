@@ -1,7 +1,6 @@
 'use client'
 
 import { ChevronRight } from 'lucide-react'
-import { AddressBookIcon } from '@phosphor-icons/react'
 
 interface CardProps {
   onClick: () => void
@@ -45,32 +44,6 @@ export function AddNewCustomerCard({ onClick }: CardProps) {
           </span>
           <span className="text-[12px] font-medium text-[#64748B]">
             Name &amp; phone number
-          </span>
-        </div>
-      </div>
-      <ChevronRight className="w-4 h-4 text-[#64748B]" />
-    </button>
-  )
-}
-
-export function SyncContactsCard({
-  onClick,
-  title = 'Sync contacts',
-}: CardProps & { title?: string }) {
-  return (
-    <button
-      onClick={onClick}
-      type="button"
-      className="w-full flex items-center justify-between p-3 bg-white border border-[#F4F6F8] rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] text-left hover:bg-gray-50/50 transition-colors cursor-pointer"
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#087CFF] text-white">
-          <AddressBookIcon size={24} weight="fill" color="white" />
-        </div>
-        <div className="flex flex-col text-left">
-          <span className="text-sm font-bold text-[#0F172A]">{title}</span>
-          <span className="text-[12px] font-medium text-[#64748B]">
-            See contacts already on firespot
           </span>
         </div>
       </div>

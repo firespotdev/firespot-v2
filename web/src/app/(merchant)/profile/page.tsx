@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { useUserProfile, useUpdateBusinessImage } from '@/services/users'
 import { Button } from '@/components/ui/button'
-import { LoaderCircle, VerifiedBadge } from '@/components/ui'
+import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
@@ -16,6 +16,7 @@ import Link from 'next/link'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
 import { MerchantQuickActionStack } from '@/components/merchant/merchant-quick-actions'
+import { getActivePaymentMethodCount } from '@/lib/utils/payment-methods'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_FILE_TYPES = [
@@ -32,11 +33,6 @@ export default function ProfilePage() {
   const { data: profile, isLoading } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
   const { data: salesStats } = useSalesStats(filter)
-  const { data: collectedStats } = useSalesStats({
-    ...filter,
-    mode: 'collected',
-  })
-  const { data: recordedStats } = useSalesStats({ ...filter, mode: 'recorded' })
   const { data: outstandingSummary } = useOutstandingSummary()
   const owingCount = outstandingSummary?.customers?.length ?? 0
   const updateBusinessImage = useUpdateBusinessImage()
@@ -69,6 +65,7 @@ export default function ProfilePage() {
   }, [photoSuccess])
 
   const sortedBankAccounts = sortBankAccounts(profile?.bankAccounts || [])
+  const activePaymentMethodCount = getActivePaymentMethodCount(profile)
 
   const handleCameraClick = () => {
     fileInputRef.current?.click()
@@ -173,13 +170,14 @@ export default function ProfilePage() {
               onCameraClick={handleCameraClick}
               isUploadingPhoto={updateBusinessImage.isPending}
               todaySalesAmount={salesStats?.todaySalesAmount ?? 0}
-              collectedAmount={collectedStats?.todaySalesAmount ?? 0}
-              recordedAmount={recordedStats?.todaySalesAmount ?? 0}
               confirmedAmount={salesStats?.todaySalesAmount ?? 0}
               unconfirmedAmount={salesStats?.pendingSalesAmount ?? 0}
               confirmedCount={salesStats?.todaySalesCount ?? 0}
               unconfirmedCount={salesStats?.pendingSalesCount ?? 0}
-              salesCount={salesStats?.todaySalesCount ?? 0}
+              salesCount={
+                (salesStats?.todaySalesCount ?? 0) +
+                (salesStats?.pendingSalesCount ?? 0)
+              }
               ordersCount={0}
               owingCount={owingCount}
               quickActions={<MerchantQuickActionStack className="mb-4" />}
@@ -212,7 +210,8 @@ export default function ProfilePage() {
                       height={16}
                       className="animate-pulse"
                     />
-                    4 payment methods active
+                    {activePaymentMethodCount} payment method
+                    {activePaymentMethodCount === 1 ? '' : 's'} active
                     <ChevronRight className="w-4 h-4 text-[#24C166] mt-[1%]" />
                   </button>
                 )
@@ -237,34 +236,46 @@ export default function ProfilePage() {
           {/* Stats Section - Inquiries, Bookings, New orders, Owing */}
           <div className="grid grid-cols-4 gap-2 w-full text-center">
             {/* Inquiries */}
-            <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => showNotificationToast({ message: 'Coming soon' })}
+              className="flex flex-col items-center cursor-pointer"
+            >
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 0
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 Inquiries
               </span>
-            </div>
+            </button>
 
             {/* Bookings */}
-            <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => showNotificationToast({ message: 'Coming soon' })}
+              className="flex flex-col items-center cursor-pointer"
+            >
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 0
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 Bookings
               </span>
-            </div>
+            </button>
 
             {/* New orders */}
-            <div className="flex flex-col items-center">
+            <button
+              type="button"
+              onClick={() => showNotificationToast({ message: 'Coming soon' })}
+              className="flex flex-col items-center cursor-pointer"
+            >
               <span className="text-xl font-bold text-black leading-none -tracking-[0.4px]">
                 0
               </span>
               <span className="text-[13px] text-[#00000080] font-medium mt-1.5">
                 New orders
               </span>
-            </div>
+            </button>
 
             {/* Owing */}
             <Link

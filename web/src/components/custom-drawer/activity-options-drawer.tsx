@@ -24,8 +24,6 @@ import {
   DownloadSimpleIcon,
   ExportIcon,
   HeartIcon,
-  InfoIcon,
-  FlagIcon,
 } from '@phosphor-icons/react'
 
 interface ActivityOptionsDrawerProps {
@@ -34,6 +32,7 @@ interface ActivityOptionsDrawerProps {
   onShareReceipt?: () => Promise<void> | void
   onDownloadReceipt?: () => Promise<void> | void
   isReceiptShareReady?: boolean
+  onViewPastActivity?: () => void
 }
 
 export function ActivityOptionsDrawer({
@@ -41,9 +40,14 @@ export function ActivityOptionsDrawer({
   onShareReceipt,
   onDownloadReceipt,
   isReceiptShareReady = false,
+  onViewPastActivity,
 }: ActivityOptionsDrawerProps) {
   const router = useRouter()
-  const { closeDrawer: storeCloseDrawer, closeAllDrawers } = useDrawerStore()
+  const {
+    openDrawer,
+    closeDrawer: storeCloseDrawer,
+    closeAllDrawers,
+  } = useDrawerStore()
 
   const merchant = resolveSaleMerchant(sale)
   const businessName = merchant.businessName || 'this business'
@@ -86,19 +90,20 @@ export function ActivityOptionsDrawer({
   }
 
   const handlePayAgain = () => {
-    if (sale.serialNumber) {
-      closeAllDrawers()
-      router.push(`/pay/${sale.serialNumber}`)
-    } else {
-      showNotificationToast({ message: 'Coming soon' })
-      close()
-    }
+    if (!sale.serialNumber) return
+    closeAllDrawers()
+    router.push(`/pay/${sale.serialNumber}`)
   }
 
   const handleShareReceipt = async () => {
     if (!onShareReceipt || !isReceiptShareReady) return
     await onShareReceipt()
     close()
+  }
+
+  const handleViewPastActivity = () => {
+    closeAllDrawers()
+    onViewPastActivity?.()
   }
 
   return (
@@ -114,21 +119,24 @@ export function ActivityOptionsDrawer({
 
       <div className="flex flex-col gap-4 px-3 pb-2">
         <ActionList>
-          <ActionListItem
-            icon={<CubeIcon size={24} className="text-[#111827]" />}
-            title="View items"
-            onClick={() => {
-              showNotificationToast({ message: 'Coming soon' })
-              close()
-            }}
-            className="py-[13.5px]"
-          />
-          <ActionListItem
-            icon={<ArrowClockwiseIcon size={24} className="text-[#111827]" />}
-            title={`Pay ${businessName} again`}
-            onClick={handlePayAgain}
-            className="py-[13.5px]"
-          />
+          {Boolean(sale.items?.length) && (
+            <ActionListItem
+              icon={<CubeIcon size={24} className="text-[#111827]" />}
+              title="View items"
+              onClick={() =>
+                openDrawer({ type: 'sale-items', props: { items: sale.items } })
+              }
+              className="py-[13.5px]"
+            />
+          )}
+          {sale.serialNumber && (
+            <ActionListItem
+              icon={<ArrowClockwiseIcon size={24} className="text-[#111827]" />}
+              title={`Pay ${businessName} again`}
+              onClick={handlePayAgain}
+              className="py-[13.5px]"
+            />
+          )}
           <ActionListItem
             icon={
               <HeartIcon
@@ -139,15 +147,6 @@ export function ActivityOptionsDrawer({
             }
             title={isFaved ? 'Remove from Faves' : 'Add business to Faves'}
             onClick={handleToggleFave}
-            className="py-[13.5px]"
-          />
-          <ActionListItem
-            icon={<InfoIcon size={24} className="text-[#111827] " />}
-            title={`About ${businessName}`}
-            onClick={() => {
-              showNotificationToast({ message: 'Coming soon' })
-              close()
-            }}
             className="py-[13.5px]"
           />
         </ActionList>
@@ -167,25 +166,18 @@ export function ActivityOptionsDrawer({
               close()
             }}
           />
-          <ActionListItem
-            icon={
-              <ClockCounterClockwiseIcon
-                size={24}
-                className="text-[#111827] "
-              />
-            }
-            title="View past activity"
-            onClick={close}
-          />
-          <ActionListItem
-            icon={<FlagIcon size={24} color="black" />}
-            title="Report issue"
-            danger
-            onClick={() => {
-              showNotificationToast({ message: 'Coming soon' })
-              close()
-            }}
-          />
+          {onViewPastActivity && (
+            <ActionListItem
+              icon={
+                <ClockCounterClockwiseIcon
+                  size={24}
+                  className="text-[#111827] "
+                />
+              }
+              title="View past activity"
+              onClick={handleViewPastActivity}
+            />
+          )}
         </ActionList>
       </div>
       <TagFooter />

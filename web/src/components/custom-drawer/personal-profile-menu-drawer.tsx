@@ -3,14 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useRef } from 'react'
-import {
-  Camera,
-  ChevronRight,
-  Copy,
-  Maximize2,
-  Share,
-  X,
-} from 'lucide-react'
+import { useRouter } from '@bprogress/next/app'
+import { Camera, ChevronRight, Copy, Maximize2, Share, X } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { logoutEverywhere, useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
@@ -18,7 +12,7 @@ import { useCustomerHistory } from '@/services/sales/hooks'
 import { useUpdateProfilePhoto, useUserProfile } from '@/services/users'
 import { MerchantAvatar } from '@/components/layout'
 import { Button, showNotificationToast, VerifiedBadge } from '@/components/ui'
-import { AddressBookIcon, StorefrontIcon } from '@phosphor-icons/react'
+import { StorefrontIcon } from '@phosphor-icons/react'
 
 interface PersonalProfileMenuDrawerProps {
   closeDrawer: () => void
@@ -27,6 +21,7 @@ interface PersonalProfileMenuDrawerProps {
 export function PersonalProfileMenuDrawer({
   closeDrawer,
 }: PersonalProfileMenuDrawerProps) {
+  const router = useRouter()
   const authUser = useAuthStore((state) => state.user)
   const { data: profile } = useUserProfile()
   const {
@@ -52,13 +47,18 @@ export function PersonalProfileMenuDrawer({
   }, [customerHistory])
 
   const purchasesValue =
-    isHistoryLoading || isHistoryError ? '—' : customerHistory?.length ?? 0
+    isHistoryLoading || isHistoryError ? '—' : (customerHistory?.length ?? 0)
   const placesVisitedValue =
     isHistoryLoading || isHistoryError ? '—' : placesVisited
 
   const handleLogout = () => {
     closeDrawer()
     void logoutEverywhere()
+  }
+
+  const handlePay = () => {
+    closeDrawer()
+    router.push('/')
   }
 
   const displayName =
@@ -131,7 +131,7 @@ export function PersonalProfileMenuDrawer({
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-white font-satoshi text-black">
+    <div className="h-full overflow-y-auto bg-linear-to-b from-[#ffffff] to-[#f4f6f8] font-satoshi text-black">
       {/* Section A: Header Bar */}
       <header className="flex items-center justify-between px-4 py-2.5 bg-white">
         <div className="flex items-center gap-2">
@@ -202,7 +202,9 @@ export function PersonalProfileMenuDrawer({
           {/* Metrics Row */}
           <div className="mx-auto mt-4 grid w-full max-w-[280px] grid-cols-2 divide-x divide-[#0000001A] py-1.5">
             <div className="flex flex-col items-center">
-              <span className="text-[16px] font-bold text-black">{purchasesValue}</span>
+              <span className="text-[16px] font-bold text-black">
+                {purchasesValue}
+              </span>
               <span className="text-[13px] font-medium text-[#111827]">
                 Purchases
               </span>
@@ -219,7 +221,9 @@ export function PersonalProfileMenuDrawer({
             </div>
             */}
             <div className="flex flex-col items-center">
-              <span className="text-[16px] font-bold text-black">{placesVisitedValue}</span>
+              <span className="text-[16px] font-bold text-black">
+                {placesVisitedValue}
+              </span>
               <span className="text-[13px] font-medium text-[#111827]">
                 Places visited
               </span>
@@ -228,7 +232,9 @@ export function PersonalProfileMenuDrawer({
 
           {/* Action Buttons Row */}
           <div className="mt-4 w-full flex items-center gap-3">
-            <Button className="h-11">Pay</Button>
+            <Button onClick={handlePay} className="h-11">
+              Pay
+            </Button>
           </div>
         </div>
 
@@ -343,25 +349,6 @@ export function PersonalProfileMenuDrawer({
         </div>
 
         {/* Section F: Core Account & Navigation Cards */}
-        {/* Find Contacts Card */}
-        <div className="rounded-[12px] border border-[#F4F6F8] p-3 shadow-[0px_2px_8px_0px_#0000000A] flex items-center gap-3 cursor-pointer">
-          <div className="w-12 h-12 rounded-full border-2 p-0.5 border-[#D1D5DB] flex items-center justify-center shrink-0">
-            <div className="bg-[#0075FF] w-10 h-10 rounded-full flex items-center justify-center">
-              <AddressBookIcon size={20} color="white" weight="fill" />
-            </div>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-[14px] font-bold text-black leading-tight">
-              Find contacts
-            </h4>
-            <p className="text-xs font-medium text-[#00000080] truncate mt-0.5">
-              Sync or find your contacts that are on firespot to enrich your
-              experience
-            </p>
-          </div>
-          <ChevronRight size={18} className="text-[#C7C7CC] shrink-0" />
-        </div>
-
         {/* Navigation List Card */}
         <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
           <Link
@@ -442,39 +429,6 @@ export function PersonalProfileMenuDrawer({
 
         {/* Section I: System Links & Sign Out */}
         <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
-          <Link
-            href="#"
-            onClick={closeDrawer}
-            className="flex min-h-13 w-full items-center justify-between gap-3 px-4 py-3 border-b border-[#F4F6F8]"
-          >
-            <div className="flex items-center gap-3">
-              <Image
-                src="/images/firespot_logo.png"
-                alt=""
-                width={24}
-                height={24}
-                className="w-6 h-6 object-contain"
-              />
-              <span className="text-[16px] font-medium text-black">
-                About Firespot
-              </span>
-            </div>
-            <ChevronRight size={18} className="text-[#C7C7CC]" />
-          </Link>
-
-          <button
-            type="button"
-            className="flex min-h-13 w-full items-center justify-between gap-3 px-4 py-3 border-b border-[#F4F6F8] transition-colors text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-[24px]">⭐️</span>
-              <span className="text-[16px] font-medium text-black">
-                Rate the app
-              </span>
-            </div>
-            <ChevronRight size={18} className="text-[#C7C7CC]" />
-          </button>
-
           <a
             href="https://twitter.com"
             target="_blank"

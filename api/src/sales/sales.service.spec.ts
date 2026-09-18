@@ -617,7 +617,7 @@ describe("SalesService amount invariants", () => {
       );
     });
 
-    it("archives every active pending sale with one bulk action", async () => {
+    it("archives every active recorded pending sale with one bulk action", async () => {
       const updateMany = jest.fn().mockResolvedValue({ modifiedCount: 3 });
       const service = createService({ updateMany });
 
@@ -628,6 +628,7 @@ describe("SalesService amount invariants", () => {
         expect.objectContaining({
           status: "PENDING",
           isArchived: { $ne: true },
+          isCollection: { $ne: true },
           paymentRail: { $ne: "paystack" },
         }),
         { $set: { isArchived: true } },
@@ -651,9 +652,30 @@ describe("SalesService amount invariants", () => {
       ).rejects.toThrow("Paystack payments are confirmed automatically");
     });
 
-    it("does not let a merchant archive a pending Paystack payment", async () => {
+    it("does not let a merchant archive a collected payment", async () => {
       const sale = {
-        status: "PENDING",
+        status: "CONFIRMED",
+        isCollection: true,
+        paymentRail: "manual_transfer",
+        save: jest.fn(),
+      };
+      const service = createService({
+        findOne: jest.fn().mockResolvedValue(sale),
+      });
+
+      await expect(
+        service.archiveSale(
+          "507f1f77bcf86cd799439012",
+          "507f1f77bcf86cd799439013",
+        ),
+      ).rejects.toThrow("Collected sales cannot be archived");
+      expect(sale.save).not.toHaveBeenCalled();
+    });
+
+    it("does not let a merchant archive a Paystack-processed payment", async () => {
+      const sale = {
+        status: "CONFIRMED",
+        isCollection: false,
         paymentRail: "paystack",
         save: jest.fn(),
       };
@@ -666,7 +688,7 @@ describe("SalesService amount invariants", () => {
           "507f1f77bcf86cd799439012",
           "507f1f77bcf86cd799439013",
         ),
-      ).rejects.toThrow("A pending Paystack payment cannot be archived");
+      ).rejects.toThrow("Collected sales cannot be archived");
       expect(sale.save).not.toHaveBeenCalled();
     });
   });
@@ -916,6 +938,8 @@ describe("SalesService amount invariants", () => {
           customerUserId: expect.anything(),
           status: "OUTSTANDING",
           isArchived: { $ne: true },
+          isCollection: { $ne: true },
+          paymentRail: { $ne: "paystack" },
         },
         { $set: { isArchived: true } },
       );
@@ -1040,6 +1064,33 @@ describe("SalesService amount invariants", () => {
               status: "PENDING",
               isArchived: { $ne: true },
               paymentRail: { $ne: "paystack" },
+            }),
+          },
+        ]),
+      );
+    });
+
+    it("applies the selected date range to pending sales", async () => {
+      const aggregate = jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue([]),
+      });
+      const find = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue([]),
+        }),
+      });
+      const service = createService({ aggregate, find });
+
+      await service.getSalesStats(merchantId, { preset: "today" });
+
+      expect(aggregate).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          {
+            $match: expect.objectContaining({
+              createdAt: {
+                $gte: expect.any(Date),
+                $lte: expect.any(Date),
+              },
             }),
           },
         ]),

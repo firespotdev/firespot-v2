@@ -7,9 +7,7 @@ import {
   MagnifyingGlassIcon,
   BarcodeIcon,
   ClockCounterClockwiseIcon,
-  ChatsCircleIcon,
 } from '@phosphor-icons/react'
-import { showNotificationToast } from '@/components/ui'
 
 const NAV_ITEMS = [
   { key: 'home', Icon: HouseIcon, href: '/home', label: 'Home' },
@@ -26,7 +24,6 @@ const NAV_ITEMS = [
     href: '/activity',
     label: 'History',
   },
-  { key: 'chat', Icon: ChatsCircleIcon, href: '#', label: 'Chat' },
 ] as const
 
 // The nav only shows on the pages it can navigate to. The scan target ('/')
@@ -65,10 +62,6 @@ interface BottomNavProps {
   variant?: BottomNavVariant
 }
 
-function comingSoon() {
-  showNotificationToast({ message: 'Coming soon' })
-}
-
 export function BottomNav({ variant = 'light' }: BottomNavProps) {
   const pathname = usePathname()
   const styles = VARIANTS[variant]
@@ -78,12 +71,12 @@ export function BottomNav({ variant = 'light' }: BottomNavProps) {
   }
 
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-[420px] z-40">
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-fit max-w-[420px] z-40">
       <div
         className={`glass-border rounded-full h-12 flex items-center p-1 justify-between ${styles.container}`}
       >
         {NAV_ITEMS.map(({ key, Icon, href, label }) => {
-          const active = href !== '#' && pathname === href
+          const active = pathname === href
           const itemClassName = `${
             active ? styles.itemActive : styles.itemInactive
           } px-4 h-full flex justify-center items-center rounded-4xl min-w-[65px]`
@@ -93,20 +86,6 @@ export function BottomNav({ variant = 'light' }: BottomNavProps) {
               color={active ? styles.iconActive : styles.iconInactive}
             />
           )
-
-          if (href === '#') {
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={comingSoon}
-                aria-label={label}
-                className={itemClassName}
-              >
-                {icon}
-              </button>
-            )
-          }
 
           return (
             <Link key={key} href={href} className={itemClassName}>

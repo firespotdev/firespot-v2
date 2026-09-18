@@ -16,6 +16,7 @@ interface PurchaseCartState {
   updateQuantity: (id: string, delta: number) => void
   setSelectedRail: (rail: PaymentRail) => void
   setSelectedBankIndex: (index: number) => void
+  replaceItems: (items: CartItem[]) => void
   clear: () => void
   reset: () => void
 }
@@ -75,6 +76,7 @@ export const usePurchaseCartStore = create<PurchaseCartState>((set) => ({
     })),
   setSelectedRail: (selectedRail) => set({ selectedRail }),
   setSelectedBankIndex: (selectedBankIndex) => set({ selectedBankIndex }),
+  replaceItems: (items) => set({ items }),
   clear: () => set({ items: [] }),
   reset: () =>
     set({ items: [], selectedRail: 'multiple', selectedBankIndex: 0 }),

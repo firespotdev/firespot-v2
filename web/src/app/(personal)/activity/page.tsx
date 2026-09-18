@@ -2,64 +2,60 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Settings } from 'lucide-react'
+import { X } from 'lucide-react'
 import { isToday, isYesterday, format } from 'date-fns'
 import { EmptyState, LoaderCircle } from '@/components/ui'
 import { useCustomerHistory } from '@/services/sales/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import type { CustomerSale } from '@/services/sales/interface'
-import { saleItemCount } from '@/lib/utils/customer-sale'
+import {
+  resolveSaleMerchant,
+  saleItemCount,
+} from '@/lib/utils/customer-sale'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ActivityRow, NeedsYouSection } from '@/components/activity'
 import { Map1, Scan, Setting2 } from 'iconsax-reactjs'
 
-type ActivityTab =
-  | 'ALL'
-  | 'ORDERS'
-  | 'PAYMENTS'
-  | 'BOOKINGS'
-  | 'REWARDS'
-  | 'COMMENTS'
-  | 'ISSUES'
-  | 'REPOSTS'
-const TABS: ActivityTab[] = [
-  'ALL',
-  'ORDERS',
-  'PAYMENTS',
-  'BOOKINGS',
-  'REWARDS',
-  'COMMENTS',
-  'ISSUES',
-  'REPOSTS',
-]
+type ActivityTab = 'ALL' | 'ORDERS' | 'PAYMENTS'
 
-interface DayGroup {
+const TABS: ActivityTab[] = ['ALL', 'ORDERS', 'PAYMENTS']
+
+interface DayGroup<T> {
   key: string
   label: string
-  sales: CustomerSale[]
+  items: T[]
 }
 
-function groupByDay(sales: CustomerSale[]): DayGroup[] {
-  const groups: DayGroup[] = []
-  const index = new Map<string, DayGroup>()
+interface MerchantFilter {
+  id: string
+  name: string
+}
 
-  for (const sale of sales) {
-    const raw = sale.recordedAt || sale.createdAt
-    const date = raw ? new Date(raw) : new Date()
-    const key = format(date, 'yyyy-MM-dd')
-    const label = isToday(date)
+const dayDetails = (raw?: string | Date) => {
+  const date = raw ? new Date(raw) : new Date()
+  return {
+    key: format(date, 'yyyy-MM-dd'),
+    label: isToday(date)
       ? 'Today'
       : isYesterday(date)
         ? 'Yesterday'
-        : format(date, 'MMMM d')
+        : format(date, 'MMMM d'),
+  }
+}
 
+function groupByDay<T>(items: T[], getDate: (item: T) => string | Date) {
+  const groups: DayGroup<T>[] = []
+  const index = new Map<string, DayGroup<T>>()
+
+  for (const item of items) {
+    const { key, label } = dayDetails(getDate(item))
     let group = index.get(key)
     if (!group) {
-      group = { key, label, sales: [] }
+      group = { key, label, items: [] }
       index.set(key, group)
       groups.push(group)
     }
-    group.sales.push(sale)
+    group.items.push(item)
   }
 
   return groups
@@ -67,29 +63,59 @@ function groupByDay(sales: CustomerSale[]): DayGroup[] {
 
 export default function ActivityPage() {
   const { data: sales, isLoading, isError } = useCustomerHistory()
-  const openDrawer = useDrawerStore((s) => s.openDrawer)
-
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
   const [activeTab, setActiveTab] = useState<ActivityTab>('ALL')
+  const [merchantFilter, setMerchantFilter] = useState<MerchantFilter | null>(
+    null,
+  )
 
   const allSales = useMemo(() => sales || [], [sales])
-
+  const scopedSales = useMemo(
+    () =>
+      merchantFilter
+        ? allSales.filter(
+            (sale) => resolveSaleMerchant(sale).id === merchantFilter.id,
+          )
+        : allSales,
+    [allSales, merchantFilter],
+  )
   const filteredSales = useMemo(() => {
     switch (activeTab) {
       case 'ORDERS':
-        return allSales.filter((s) => saleItemCount(s) > 0)
-      case 'BOOKINGS':
-        return []
-      case 'ALL':
+        return scopedSales.filter((sale) => saleItemCount(sale) > 0)
       case 'PAYMENTS':
+        return scopedSales.filter((sale) => saleItemCount(sale) === 0)
+      case 'ALL':
       default:
-        return allSales
+        return scopedSales
     }
-  }, [allSales, activeTab])
+  }, [scopedSales, activeTab])
 
-  const groups = useMemo(() => groupByDay(filteredSales), [filteredSales])
-
+  const saleGroups = useMemo(
+    () =>
+      groupByDay(
+        filteredSales,
+        (sale) => sale.recordedAt || sale.createdAt,
+      ),
+    [filteredSales],
+  )
   const handleOpen = (sale: CustomerSale) => {
-    openDrawer({ type: 'activity-details', props: { sale } })
+    const merchant = resolveSaleMerchant(sale)
+    openDrawer({
+      type: 'activity-details',
+      props: {
+        sale,
+        onViewPastActivity: merchant.id
+          ? () => {
+              setMerchantFilter({
+                id: merchant.id!,
+                name: merchant.businessName || 'this business',
+              })
+              setActiveTab('ALL')
+            }
+          : undefined,
+      },
+    })
   }
 
   return (
@@ -110,26 +136,45 @@ export default function ActivityPage() {
           }
         />
 
-        {/* Tabs */}
-        <div className="flex gap-2 px-3 pb-4 overflow-x-auto scrollbar-hide">
-          {TABS.map((tab) => {
-            const active = tab === activeTab
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`shrink-0 px-4 h-9 rounded-full text-[10px] font-bold tracking-[1px] flex items-center transition-colors ${
-                  active
-                    ? 'bg-black text-white'
-                    : 'bg-[#E5E7EB99] text-[#000000]'
-                }`}
-              >
-                {tab}
-              </button>
-            )
-          })}
-        </div>
+        {!isLoading && (
+          <>
+            <div className="flex gap-2 px-3 pb-4 overflow-x-auto scrollbar-hide">
+              {TABS.map((tab) => {
+                const active = tab === activeTab
+                return (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`shrink-0 px-4 h-9 rounded-full text-[10px] font-bold tracking-[1px] flex items-center transition-colors ${
+                      active
+                        ? 'bg-black text-white'
+                        : 'bg-[#E5E7EB99] text-[#000000]'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                )
+              })}
+            </div>
+
+            {merchantFilter && (
+              <div className="mx-3 mb-4 flex items-center justify-between rounded-[12px] bg-[#F4F6F8] px-3 py-2">
+                <p className="min-w-0 truncate text-[13px] font-medium text-black">
+                  Past activity with {merchantFilter.name}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setMerchantFilter(null)}
+                  aria-label="Clear merchant filter"
+                  className="ml-2 grid h-8 w-8 shrink-0 place-items-center rounded-full active:bg-black/5"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+          </>
+        )}
 
         <div className="flex flex-col justify-center items-center">
           {isLoading ? (
@@ -153,8 +198,12 @@ export default function ActivityPage() {
                   🕗
                 </span>
               }
-              title="No Activity yet"
-              details="Your orders, bookings, payments, feedback, issues, refunds etc would be listed here."
+              title="No activity yet"
+              details={
+                merchantFilter
+                  ? `No matching activity with ${merchantFilter.name}.`
+                  : 'Your completed payments and orders will appear here.'
+              }
               cta={
                 <div className="flex items-center gap-3 mt-6">
                   <Link
@@ -176,17 +225,14 @@ export default function ActivityPage() {
             />
           ) : (
             <div className="px-3 w-full h-full">
-              {/* Needs You Section */}
-              <NeedsYouSection />
-
-              {/* Grouped list */}
-              {groups.map((group) => (
-                <div key={group.key} className="mb-5">
+              {activeTab === 'ALL' && !merchantFilter && <NeedsYouSection />}
+              {saleGroups.map((group) => (
+                <section key={group.key} className="mb-5">
                   <h2 className="text-[15px] font-bold text-black mb-2">
                     {group.label}
                   </h2>
                   <div className="space-y-2 overflow-hidden">
-                    {group.sales.map((sale) => (
+                    {group.items.map((sale) => (
                       <ActivityRow
                         key={sale._id}
                         sale={sale}
@@ -194,7 +240,7 @@ export default function ActivityPage() {
                       />
                     ))}
                   </div>
-                </div>
+                </section>
               ))}
 
               <p className="text-center text-xs text-[#00000066] font-medium py-4">

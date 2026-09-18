@@ -36,7 +36,9 @@ describe('UsersService - updatePaymentSettings', () => {
       service.updatePaymentSettings('unknown-user', {
         savedCardsCheckoutEnabled: true,
       }),
-    ).rejects.toThrow(new HttpException('User not found', HttpStatus.NOT_FOUND));
+    ).rejects.toThrow(
+      new HttpException('User not found', HttpStatus.NOT_FOUND),
+    );
   });
 
   it('rejects enabling savedCardsCheckoutEnabled when merchant has no plan', async () => {
@@ -100,10 +102,14 @@ describe('UsersService - updatePaymentSettings', () => {
       savedCardsCheckoutEnabled: false,
     });
 
-    expect(res).toEqual({
-      message: 'Payment settings updated',
-      savedCardsCheckoutEnabled: false,
-    });
+    expect(res).toEqual(
+      expect.objectContaining({
+        message: 'Payment settings updated',
+        savedCardsCheckoutEnabled: false,
+        paystackCollectionEnabled: false,
+        bankTransferEnabled: true,
+      }),
+    );
     expect(user.savedCardsCheckoutEnabled).toBe(false);
     expect(user.save).toHaveBeenCalled();
   });
@@ -126,11 +132,134 @@ describe('UsersService - updatePaymentSettings', () => {
       savedCardsCheckoutEnabled: true,
     });
 
-    expect(res).toEqual({
-      message: 'Payment settings updated',
-      savedCardsCheckoutEnabled: true,
-    });
+    expect(res).toEqual(
+      expect.objectContaining({
+        message: 'Payment settings updated',
+        savedCardsCheckoutEnabled: true,
+        paystackCollectionEnabled: false,
+        bankTransferEnabled: true,
+      }),
+    );
     expect(user.savedCardsCheckoutEnabled).toBe(true);
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('persists Paystack collection changes for a verified PRO merchant', async () => {
+    const user = {
+      _id: new Types.ObjectId(),
+      planTier: 'PRO',
+      planStatus: 'verified',
+      kycCompletedAt: new Date(),
+      savedCardsCheckoutEnabled: true,
+      paystackCollectionEnabled: true,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    userModel.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(user),
+    });
+
+    const res = await service.updatePaymentSettings(String(user._id), {
+      paystackCollectionEnabled: false,
+    });
+
+    expect(res).toEqual(
+      expect.objectContaining({
+        message: 'Payment settings updated',
+        savedCardsCheckoutEnabled: true,
+        paystackCollectionEnabled: false,
+        bankTransferEnabled: true,
+      }),
+    );
+    expect(user.paystackCollectionEnabled).toBe(false);
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('allows a verified LITE merchant to enable Paystack payments', async () => {
+    const user = {
+      _id: new Types.ObjectId(),
+      planTier: 'LITE',
+      planStatus: 'verified',
+      kycCompletedAt: new Date(),
+      paystackCollectionEnabled: false,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    userModel.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(user),
+    });
+
+    const res = await service.updatePaymentSettings(String(user._id), {
+      paystackCollectionEnabled: true,
+    });
+
+    expect(res.paystackCollectionEnabled).toBe(true);
+    expect(user.paystackCollectionEnabled).toBe(true);
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('allows a merchant to disable manual bank transfer without a plan', async () => {
+    const user = {
+      _id: new Types.ObjectId(),
+      planTier: undefined,
+      bankTransferEnabled: true,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    userModel.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(user),
+    });
+
+    const res = await service.updatePaymentSettings(String(user._id), {
+      bankTransferEnabled: false,
+    });
+
+    expect(res.bankTransferEnabled).toBe(false);
+    expect(user.bankTransferEnabled).toBe(false);
+    expect(user.save).toHaveBeenCalled();
+  });
+
+  it('rejects channel selection for a LITE merchant', async () => {
+    const user = {
+      _id: new Types.ObjectId(),
+      planTier: 'LITE',
+      planStatus: 'verified',
+      kycCompletedAt: new Date(),
+      save: jest.fn(),
+    };
+
+    userModel.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(user),
+    });
+
+    await expect(
+      service.updatePaymentSettings(String(user._id), {
+        paystackCollectionChannels: ['card', 'ussd'],
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
+  it('persists channel selection for a PRO merchant', async () => {
+    const user = {
+      _id: new Types.ObjectId(),
+      planTier: 'PRO',
+      planStatus: 'verified',
+      kycCompletedAt: new Date(),
+      paystackCollectionChannels: [] as string[],
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
+    userModel.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(user),
+    });
+
+    const res = await service.updatePaymentSettings(String(user._id), {
+      paystackCollectionChannels: ['card', 'ussd'],
+    });
+
+    expect(res.paystackCollectionChannels).toEqual(['card', 'ussd']);
+    expect(user.paystackCollectionChannels).toEqual(['card', 'ussd']);
     expect(user.save).toHaveBeenCalled();
   });
 });

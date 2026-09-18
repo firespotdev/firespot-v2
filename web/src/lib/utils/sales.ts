@@ -3,6 +3,13 @@ import { formatCurrency } from '@/lib/utils'
 
 export type MerchantStatus = 'Paid' | 'Owing' | 'Unconfirmed' | 'Archived'
 
+export const isCollectedSale = (sale?: Sale | null) =>
+  Boolean(
+    sale?.isCollection ||
+      sale?.paymentRail === 'paystack' ||
+      sale?.reference?.startsWith('COL-'),
+  )
+
 export const getMerchantStatus = (sale?: Sale | null): MerchantStatus => {
   if (!sale) return 'Unconfirmed'
   if (

@@ -4,7 +4,6 @@ import * as React from 'react'
 import {
   ChevronRight,
   Camera,
-  Clock,
   PieChart,
   ChevronDown,
   Eye,
@@ -16,11 +15,7 @@ import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { useDrawerStore } from '@/services/drawer'
-import {
-  type InsightsQuery,
-  DATE_RANGE_LABELS,
-  type DateRangePreset,
-} from '@/services/insights'
+import { type InsightsQuery, type DateRangePreset } from '@/services/insights'
 import { VerifiedBadge } from '../ui'
 
 interface MerchantInfo {
@@ -39,8 +34,6 @@ interface MerchantInfoStatProps {
   qrKitStatus?: React.ReactNode
   quickActions?: React.ReactNode
   todaySalesAmount?: number
-  collectedAmount?: number
-  recordedAmount?: number
   confirmedAmount?: number
   unconfirmedAmount?: number
   confirmedCount?: number
@@ -61,6 +54,16 @@ const formatCurrency = (value: number) => {
   }).format(value)
 }
 
+const SALES_PERIOD_LABELS: Record<DateRangePreset, string> = {
+  all_time: 'All-time sales',
+  today: 'Today’s sales',
+  this_week: 'This week’s sales',
+  last_7_days: 'Last 7 days’ sales',
+  last_30_days: 'Last 30 days’ sales',
+  last_90_days: 'Last 90 days’ sales',
+  custom: 'Custom sales',
+}
+
 export function MerchantInfoStat({
   merchantInfo,
   className,
@@ -70,8 +73,6 @@ export function MerchantInfoStat({
   qrKitStatus,
   quickActions,
   todaySalesAmount = 0,
-  collectedAmount = 0,
-  recordedAmount = 0,
   confirmedAmount,
   unconfirmedAmount,
   confirmedCount,
@@ -94,7 +95,7 @@ export function MerchantInfoStat({
     })
   }
 
-  const filterLabel = (() => {
+  const salesPeriodLabel = (() => {
     if (
       currentFilter?.preset === 'custom' &&
       currentFilter.startDate &&
@@ -103,14 +104,12 @@ export function MerchantInfoStat({
       try {
         const start = format(new Date(currentFilter.startDate), 'MMM d')
         const end = format(new Date(currentFilter.endDate), 'MMM d')
-        return `${start} - ${end}`
+        return `${start} - ${end} sales`
       } catch {
-        return 'Custom'
+        return SALES_PERIOD_LABELS.custom
       }
     }
-    return (
-      DATE_RANGE_LABELS[currentFilter?.preset as DateRangePreset] || 'Today'
-    )
+    return SALES_PERIOD_LABELS[currentFilter?.preset || 'today']
   })()
 
   return (
@@ -198,7 +197,8 @@ export function MerchantInfoStat({
               className="flex items-center gap-1 mb-2"
             >
               <span className="text-[#00000066] text-xs font-medium">
-                {filterLabel}
+                {salesPeriodLabel}
+                {salesCount > 1 ? ` (${salesCount})` : ''}
               </span>{' '}
               <ChevronDown size={14} strokeWidth={2} color="#00000066" />
             </button>
@@ -217,20 +217,13 @@ export function MerchantInfoStat({
               </button>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/history"
-              className="flex justify-center items-center p-2.5 rounded-full bg-[#E5E7EB]"
-            >
-              <Clock size={20} strokeWidth={2} color="#6B7280" />
-            </Link>
-            <Link
-              href="/insights"
-              className="flex justify-center items-center p-2.5 rounded-full bg-[#26B2FF]"
-            >
-              <PieChart size={20} strokeWidth={2} color="#ffffff" />
-            </Link>
-          </div>
+          <Link
+            href="/insights"
+            className="flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#F1F1F1] px-4 text-[10px] font-bold tracking-[1px] text-black"
+          >
+            <PieChart size={18} strokeWidth={2} />
+            INSIGHTS
+          </Link>
         </div>
 
         <div className="grid grid-cols-2 divide-x divide-[#F1F1F1] text-left">
@@ -241,16 +234,14 @@ export function MerchantInfoStat({
             <div className="flex items-center gap-1">
               <span className="text-[#00000066] text-xs font-medium">
                 Confirmed{' '}
-                {confirmedCount && confirmedCount > 0
-                  ? `(${confirmedCount})`
-                  : ''}
+                {(confirmedCount ?? 0) > 1 ? `(${confirmedCount})` : ''}
               </span>{' '}
               <ChevronRight size={12} strokeWidth={2} color="#00000066" />
             </div>
             <h4 className="font-bold text-[14px] text-black leading-none mt-2">
               {isAmountHidden
                 ? '₦ ••••••••'
-                : `₦ ${formatCurrency(confirmedAmount ?? todaySalesAmount ?? collectedAmount)}`}
+                : `₦ ${formatCurrency(confirmedAmount ?? todaySalesAmount)}`}
             </h4>
           </Link>
 
@@ -259,18 +250,16 @@ export function MerchantInfoStat({
             className="px-4 py-3.5 transition-colors group"
           >
             <div className="flex items-center gap-1">
-              <span className="text-[#00000066] text-xs font-medium">
+              <span className="inline-block text-xs font-medium text-[#BB8123B2]">
                 Unconfirmed{' '}
-                {unconfirmedCount && unconfirmedCount > 0
-                  ? `(${unconfirmedCount})`
-                  : ''}
+                {(unconfirmedCount ?? 0) > 1 ? `(${unconfirmedCount})` : ''}
               </span>{' '}
-              <ChevronRight size={12} strokeWidth={2} color="#00000066" />
+              <ChevronRight size={12} strokeWidth={2} color="#BB8123" />
             </div>
-            <h4 className="font-bold text-[14px] text-[#BB8123] leading-none mt-2">
+            <h4 className="mt-2 text-[#BB8123] text-[14px] font-bold leading-none">
               {isAmountHidden
                 ? '₦ ••••••••'
-                : `₦ ${formatCurrency(unconfirmedAmount ?? recordedAmount)}`}
+                : `₦ ${formatCurrency(unconfirmedAmount ?? 0)}`}
             </h4>
           </Link>
         </div>

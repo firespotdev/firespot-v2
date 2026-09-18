@@ -4,8 +4,10 @@ import type { ButtonHTMLAttributes } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface BackButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {
+interface BackButtonProps extends Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  'children'
+> {
   label?: string
   iconSize?: number
   iconClassName?: string
@@ -13,7 +15,7 @@ interface BackButtonProps
 
 export function BackButton({
   label = 'Back',
-  iconSize = 24,
+  iconSize = 22,
   iconClassName,
   className,
   type = 'button',
@@ -24,7 +26,7 @@ export function BackButton({
       type={type}
       aria-label={label}
       className={cn(
-        'inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2',
+        'inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center focus-visible:outline-none',
         className,
       )}
       {...props}

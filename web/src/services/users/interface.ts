@@ -6,6 +6,7 @@ export interface BankAccount {
   accountNumber: string
   accountName: string
   isPrimary: boolean
+  isEnabled?: boolean
   createdAt?: string
   updatedAt?: string
 }
@@ -16,6 +17,26 @@ export interface UserProfile extends User {
   availableKitEntitlements?: number
   createdAt: string
   updatedAt: string
+}
+
+export interface CurrentLocation {
+  latitude: number
+  longitude: number
+  accuracyMeters: number | null
+  capturedAt: string | null
+  label: string
+  placeId: string
+  attribution: 'Google Maps'
+}
+
+export interface CurrentLocationResponse {
+  location: CurrentLocation | null
+}
+
+export interface UpdateCurrentLocationPayload {
+  latitude: number
+  longitude: number
+  accuracyMeters?: number
 }
 
 export interface QRKitActivationResponse {
@@ -39,6 +60,18 @@ export interface PaymentVerificationResponse {
   serialNumber: string
   merchantId: string
   alreadyActivated: boolean
+}
+
+export interface FavoriteMerchant {
+  id: string
+  businessName?: string
+  merchantSlug?: string
+  businessImageUrl?: string
+  businessIndustry?: string
+}
+
+export interface FavoriteMerchantsResponse {
+  favorites: FavoriteMerchant[]
 }
 
 export interface UpdateProfilePhotoResponse {

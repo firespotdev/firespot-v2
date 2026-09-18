@@ -1,6 +1,9 @@
 import { Module, forwardRef } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
-import { UsersController } from "./users.controller";
+import {
+  PublicMerchantsController,
+  UsersController,
+} from "./users.controller";
 import { UsersService } from "./users.service";
 import { PaystackService } from "./services/paystack.service";
 import { CloudinaryService } from "./services/cloudinary.service";
@@ -10,6 +13,8 @@ import { Product, ProductSchema } from "../schemas/product.schema";
 import { AuthModule } from "../auth/auth.module";
 import { MerchantReferralsModule } from "../merchant-referrals/merchant-referrals.module";
 import { PaystackSubaccountsService } from "./services/paystack-subaccounts.service";
+import { GoogleGeocodingService } from "./services/google-geocoding.service";
+import { CurrentLocationService } from "./current-location.service";
 
 @Module({
   imports: [
@@ -21,12 +26,14 @@ import { PaystackSubaccountsService } from "./services/paystack-subaccounts.serv
     forwardRef(() => AuthModule),
     MerchantReferralsModule,
   ],
-  controllers: [UsersController],
+  controllers: [UsersController, PublicMerchantsController],
   providers: [
     UsersService,
     PaystackService,
     PaystackSubaccountsService,
     CloudinaryService,
+    GoogleGeocodingService,
+    CurrentLocationService,
   ],
   exports: [
     UsersService,

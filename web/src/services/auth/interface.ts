@@ -18,6 +18,15 @@ export interface ShopMainAddress {
   city?: string
   address?: string
   insideMarket?: boolean
+  market?: string
+  shoppingComplex?: string
+  shopNumber?: string
+  landmark?: string
+}
+
+export interface ShopLocationPoint {
+  type: 'Point'
+  coordinates: [number, number]
 }
 
 export type ShopDay = 'SUN' | 'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT'
@@ -92,6 +101,12 @@ export interface User {
   socialLinks?: ShopSocialLinks | null
   fulfillment?: ShopFulfillment | null
   mainAddress?: ShopMainAddress | null
+  mainLocation?: ShopLocationPoint | null
+  mainLocationAccuracyMeters?: number | null
+  mainLocationCapturedAt?: string | null
+  personalLocation?: ShopLocationPoint | null
+  personalLocationAccuracyMeters?: number | null
+  personalLocationCapturedAt?: string | null
   branchCount?: number | null
   employeeSetup?: EmployeeSetup | null
   shopPolicies?: ShopPolicies | null
@@ -121,6 +136,9 @@ export interface User {
   collectBlockedReason?: 'no_plan' | 'kyc_incomplete' | null
   hasPayoutAccount?: boolean
   savedCardsCheckoutEnabled?: boolean
+  paystackCollectionEnabled?: boolean
+  bankTransferEnabled?: boolean
+  paystackCollectionChannels?: string[]
   isLapsed?: boolean
   savedCards?: Array<{
     id: string

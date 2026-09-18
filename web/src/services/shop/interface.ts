@@ -51,6 +51,9 @@ export type UpdateFulfillmentPayload = ShopFulfillment
 
 export interface UpdateLocationPayload extends ShopMainAddress {
   branchCount?: number
+  latitude?: number
+  longitude?: number
+  locationAccuracyMeters?: number
 }
 
 export type UpdateEmployeeSetupPayload = Omit<EmployeeSetup, 'configuredAt'>

@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { format, isToday, isYesterday } from 'date-fns'
+import { format } from 'date-fns'
 import { useSearchParams } from 'next/navigation'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useSales, useSalesStats } from '@/services/sales/hooks'
@@ -38,12 +38,8 @@ import { Input } from '@/components/ui'
 type HistoryMode = 'all' | 'collected' | 'recorded'
 type FilterId = 'mode' | 'status' | 'method' | 'qrKit' | 'location'
 
-const getDateGroupLabel = (dateStr: string | Date) => {
-  const date = new Date(dateStr)
-  if (isToday(date)) return 'Today'
-  if (isYesterday(date)) return 'Yesterday'
-  return format(date, 'MMMM d, yyyy')
-}
+const getMonthGroupLabel = (dateStr: string | Date) =>
+  format(new Date(dateStr), 'MMMM yyyy')
 
 function HistoryContent() {
   const { openDrawer } = useDrawerStore()
@@ -165,7 +161,7 @@ function HistoryContent() {
   const sales: Sale[] = useMemo(() => salesData?.data ?? [], [salesData?.data])
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
 
-  // Group sales by day with merchant status filtering
+  // Group sales by transaction month with merchant status filtering
   const groupedSales = useMemo(() => {
     let filtered = sales
     if (selectedStatus !== 'ALL' && selectedStatus !== 'RECORDED') {
@@ -196,7 +192,7 @@ function HistoryContent() {
 
     const groups: Record<string, Sale[]> = {}
     for (const sale of filtered) {
-      const key = getDateGroupLabel(sale.createdAt)
+      const key = getMonthGroupLabel(sale.recordedAt || sale.createdAt)
       if (!groups[key]) groups[key] = []
       groups[key].push(sale)
     }
@@ -345,7 +341,7 @@ function HistoryContent() {
   }
 
   return (
-    <div className="h-dvh bg-[#F4F6F8] flex flex-col font-satoshi overflow-hidden relative">
+    <div className="relative mx-auto flex h-dvh w-full max-w-125 flex-col overflow-hidden bg-[#F4F6F8]">
       {/* Click outside overlay to close dropdowns */}
       {openDropdown && (
         <div className="fixed inset-0 z-10" onClick={closeDropdown} />

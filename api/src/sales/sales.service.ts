@@ -942,7 +942,6 @@ export class SalesService {
       })
 
       await sale.populate(saleCustomerPopulate())
-      this.eventsGateway.server.to(merchantId).emit('sale.pending', sale)
       return initialized
     } catch (error) {
       if (sale._id && sale.status === 'PENDING') {
@@ -1910,6 +1909,7 @@ export class SalesService {
 
   async getSalesStats(merchantId: string, query?: SalesQueryDto) {
     const merchantObjectId = new Types.ObjectId(merchantId)
+    const dateRange = this.calculateDateRange(query || {})
     const pendingFilter: any = {
       merchantId: merchantObjectId,
       status: 'PENDING',
@@ -1920,6 +1920,12 @@ export class SalesService {
       pendingFilter.isCollection = { $ne: true }
     } else if (query?.mode === 'collected') {
       pendingFilter.isCollection = true
+    }
+    if (dateRange.startDate) {
+      pendingFilter.createdAt = {
+        $gte: dateRange.startDate,
+        $lte: dateRange.endDate || new Date(),
+      }
     }
     const [pendingSummary] = await this.saleModel
       .aggregate([
@@ -1948,9 +1954,6 @@ export class SalesService {
       }
       return 0
     }
-
-    // For filtered stats
-    const dateRange = this.calculateDateRange(query || {})
 
     const filter: Record<string, any> = {
       merchantId: merchantObjectId,
@@ -2541,9 +2544,13 @@ export class SalesService {
     if (!sale) {
       throw new NotFoundException('Sale not found')
     }
-    if (sale.status === 'PENDING' && sale.paymentRail === 'paystack') {
+    if (
+      sale.isCollection ||
+      sale.paymentRail === 'paystack' ||
+      sale.paystackReference
+    ) {
       throw new UnprocessableEntityException(
-        'A pending Paystack payment cannot be archived',
+        'Collected sales cannot be archived',
       )
     }
     sale.isArchived = true
@@ -2556,6 +2563,7 @@ export class SalesService {
         merchantId: new Types.ObjectId(merchantId),
         status: 'PENDING',
         isArchived: { $ne: true },
+        isCollection: { $ne: true },
         paymentRail: { $ne: 'paystack' },
       },
       { $set: { isArchived: true } },
@@ -2588,6 +2596,8 @@ export class SalesService {
         customerUserId: new Types.ObjectId(customerUserId.toString()),
         status: 'OUTSTANDING',
         isArchived: { $ne: true },
+        isCollection: { $ne: true },
+        paymentRail: { $ne: 'paystack' },
       },
       { $set: { isArchived: true } },
     )
@@ -2663,7 +2673,7 @@ export class SalesService {
       .sort({ createdAt: -1 })
       .populate(
         'merchantId',
-        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry',
+        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel',
       )
       .exec()
 
@@ -2681,6 +2691,8 @@ export class SalesService {
           businessImageUrl:
             merchant.businessImageUrl || merchant.profilePhotoUrl,
           businessIndustry: merchant.businessIndustry,
+          mainAddress: merchant.mainAddress,
+          verificationLevel: merchant.verificationLevel,
         },
       }
     })

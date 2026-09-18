@@ -25,6 +25,7 @@ interface SaleItemProps {
   isConfirming?: boolean
   isArchiving?: boolean
   actionsDisabled?: boolean
+  archiveText?: string
   className?: string
   variant?:
     | 'default'
@@ -43,6 +44,7 @@ export function SaleItem({
   isConfirming = false,
   isArchiving = false,
   actionsDisabled = false,
+  archiveText,
   className,
   variant = 'default',
 }: SaleItemProps) {
@@ -119,6 +121,7 @@ export function SaleItem({
       <SwipeableItem
         onConfirm={onConfirm}
         onArchive={onArchive}
+        archiveText={archiveText}
         disabled={actionsDisabled || isConfirming || isArchiving}
         className={className}
       >

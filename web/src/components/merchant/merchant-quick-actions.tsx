@@ -21,6 +21,13 @@ export interface MerchantQuickAction {
   icon: ReactNode
 }
 
+const QUICK_ACTION_PRIORITY: MerchantQuickAction['id'][] = [
+  'report',
+  'recent',
+  'outstanding',
+  'setup',
+]
+
 export function useMerchantQuickActions(): MerchantQuickAction[] {
   const yesterday = useMemo(() => subDays(new Date(), 1), [])
   const date = format(yesterday, 'yyyy-MM-dd')
@@ -99,7 +106,11 @@ export function useMerchantQuickActions(): MerchantQuickAction[] {
     })
   }
 
-  return actions
+  return actions.sort(
+    (a, b) =>
+      QUICK_ACTION_PRIORITY.indexOf(a.id) -
+      QUICK_ACTION_PRIORITY.indexOf(b.id),
+  )
 }
 
 export function MerchantQuickActionCard({
@@ -167,7 +178,7 @@ export function MerchantQuickActionStack({
 }) {
   const actions = useMerchantQuickActions()
   const [isExpanded, setIsExpanded] = useState(false)
-  const report = actions.find((action) => action.id === 'report') ?? actions[0]
+  const report = actions[0]
   const layers = actions
     .filter((action) => action.id !== report?.id)
     .slice(0, 3)
@@ -185,15 +196,9 @@ export function MerchantQuickActionStack({
   if (!report) return null
 
   if (isExpanded) {
-    const expandedActions = [...actions].sort(
-      (a, b) =>
-        ['outstanding', 'recent', 'setup', 'report'].indexOf(a.id) -
-        ['outstanding', 'recent', 'setup', 'report'].indexOf(b.id),
-    )
-
     return (
       <div className={cn('space-y-0 w-full', className)}>
-        {expandedActions.map((action, index) => (
+        {actions.map((action, index) => (
           <MerchantQuickActionCard
             key={action.id}
             action={action}

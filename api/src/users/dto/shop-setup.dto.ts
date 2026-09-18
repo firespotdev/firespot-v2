@@ -121,11 +121,58 @@ export class UpdateLocationDto {
   @IsBoolean()
   insideMarket?: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  market?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  shoppingComplex?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  shopNumber?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  landmark?: string;
+
   @ApiPropertyOptional({ minimum: 1 })
   @IsOptional()
   @IsInt()
   @Min(1)
   branchCount?: number;
+
+  @ApiPropertyOptional({ minimum: -90, maximum: 90 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-90)
+  @Max(90)
+  latitude?: number;
+
+  @ApiPropertyOptional({ minimum: -180, maximum: 180 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(-180)
+  @Max(180)
+  longitude?: number;
+
+  @ApiPropertyOptional({ minimum: 0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  locationAccuracyMeters?: number;
 }
 
 class EmployeeContactDto {

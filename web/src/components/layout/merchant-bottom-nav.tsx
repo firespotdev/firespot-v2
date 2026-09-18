@@ -3,9 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  ChatsCircleIcon,
   ClockCounterClockwiseIcon,
-  MagnifyingGlassIcon,
   PlusIcon,
   StorefrontIcon,
 } from '@phosphor-icons/react'
@@ -21,7 +19,6 @@ interface MerchantNavItem {
 
 const ITEMS: MerchantNavItem[] = [
   { key: 'shop', label: 'Shop', href: '/profile', Icon: StorefrontIcon },
-  { key: 'search', label: 'Search', Icon: MagnifyingGlassIcon },
   // Recording a sale opens a bottom sheet over the current page.
   { key: 'new-sale', label: 'New sale', Icon: PlusIcon },
   {
@@ -30,7 +27,6 @@ const ITEMS: MerchantNavItem[] = [
     href: '/history',
     Icon: ClockCounterClockwiseIcon,
   },
-  { key: 'messages', label: 'Messages', Icon: ChatsCircleIcon },
 ]
 
 // The nav only shows on the pages it can navigate to. Add Search and Messages
@@ -55,7 +51,8 @@ const VARIANTS: Record<
   }
 > = {
   light: {
-    container: 'bg-white/80 backdrop-blur-sm shadow-[0px_4px_12px_0px_#00000014]',
+    container:
+      'bg-white/80 backdrop-blur-sm shadow-[0px_4px_12px_0px_#00000014]',
     itemActive: 'bg-[#3333331A]',
     primaryButton: 'bg-black text-white',
     primaryIcon: 'text-white',
@@ -72,7 +69,9 @@ const VARIANTS: Record<
   },
 }
 
-export function MerchantBottomNav({ variant = 'light' }: MerchantBottomNavProps) {
+export function MerchantBottomNav({
+  variant = 'light',
+}: MerchantBottomNavProps) {
   const pathname = usePathname()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const styles = VARIANTS[variant]
@@ -84,11 +83,11 @@ export function MerchantBottomNav({ variant = 'light' }: MerchantBottomNavProps)
   return (
     <nav
       aria-label="Merchant navigation"
-      className="fixed bottom-4 left-1/2 z-40 w-[calc(100%-2rem)] max-w-[420px] -translate-x-1/2"
+      className="fixed bottom-4 left-1/2 z-40 w-fit max-w-[420px] -translate-x-1/2"
     >
       <div
         className={cn(
-          'glass-border flex gap-0.5 h-12 items-center justify-between rounded-full p-1',
+          'glass-border flex gap-2 h-12 items-center justify-between rounded-full p-1',
           styles.container,
         )}
       >

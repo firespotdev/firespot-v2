@@ -2,6 +2,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/utils/axios'
+import { safeSessionStorage } from '@/lib/utils/storage'
+import { useAuthStore } from '@/services/auth/authSlice'
 import type {
   UserProfile,
   QRKitActivationResponse,
@@ -11,6 +13,9 @@ import type {
   SerialCheckResponse,
   PaymentVerificationResponse,
   BankAccount,
+  CurrentLocationResponse,
+  UpdateCurrentLocationPayload,
+  FavoriteMerchantsResponse,
 } from './interface'
 
 export interface AddBankAccountDto {
@@ -37,6 +42,79 @@ export interface DeleteBankAccountResponse {
   message: string
 }
 
+export interface PaymentSettings {
+  savedCardsCheckoutEnabled?: boolean
+  paystackCollectionEnabled?: boolean
+  bankTransferEnabled?: boolean
+  paystackCollectionChannels?: string[]
+}
+
+const CURRENT_LOCATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+
+interface CachedCurrentLocation {
+  expiresAt: number
+  data: CurrentLocationResponse
+}
+
+const currentLocationCacheKey = (userId: string) =>
+  `firespot:current-location:${userId}`
+
+const readCachedCurrentLocation = (
+  userId: string,
+  persistedCoordinates?: [number, number],
+) => {
+  const key = currentLocationCacheKey(userId)
+  const raw = safeSessionStorage.getItem(key)
+  if (!raw) return null
+
+  try {
+    const cached = JSON.parse(raw) as CachedCurrentLocation
+    const location = cached.data?.location
+    const isValidLocation =
+      location !== null &&
+      typeof location === 'object' &&
+      typeof location.latitude === 'number' &&
+      typeof location.longitude === 'number' &&
+      typeof location.label === 'string' &&
+      location.attribution === 'Google Maps'
+    const coordinatesMatch =
+      !persistedCoordinates ||
+      (location?.longitude === persistedCoordinates[0] &&
+        location.latitude === persistedCoordinates[1])
+    if (
+      typeof cached.expiresAt !== 'number' ||
+      cached.expiresAt <= Date.now() ||
+      !isValidLocation ||
+      !coordinatesMatch
+    ) {
+      safeSessionStorage.removeItem(key)
+      return null
+    }
+    return cached
+  } catch {
+    safeSessionStorage.removeItem(key)
+    return null
+  }
+}
+
+const cacheCurrentLocation = (
+  userId: string,
+  data: CurrentLocationResponse,
+) => {
+  if (!data.location) {
+    safeSessionStorage.removeItem(currentLocationCacheKey(userId))
+    return
+  }
+  const cached: CachedCurrentLocation = {
+    expiresAt: Date.now() + CURRENT_LOCATION_CACHE_TTL_MS,
+    data,
+  }
+  safeSessionStorage.setItem(
+    currentLocationCacheKey(userId),
+    JSON.stringify(cached),
+  )
+}
+
 // API functions
 export const userApi = {
   getProfile: async (): Promise<UserProfile> => {
@@ -44,15 +122,35 @@ export const userApi = {
     return response.data
   },
 
+  getCurrentLocation: async (): Promise<CurrentLocationResponse> => {
+    const response = await apiClient.get<CurrentLocationResponse>(
+      '/users/me/current-location',
+    )
+    return response.data
+  },
+
+  updateCurrentLocation: async (
+    payload: UpdateCurrentLocationPayload,
+  ): Promise<CurrentLocationResponse> => {
+    const response = await apiClient.patch<CurrentLocationResponse>(
+      '/users/me/current-location',
+      payload,
+    )
+    return response.data
+  },
+
   updatePaymentSettings: async (
-    savedCardsCheckoutEnabled: boolean,
+    settings: PaymentSettings,
   ): Promise<{
     message: string
     savedCardsCheckoutEnabled: boolean
+    paystackCollectionEnabled: boolean
+    bankTransferEnabled: boolean
+    paystackCollectionChannels: string[]
   }> => {
     const response = await apiClient.patch(
       '/users/me/payment-settings',
-      { savedCardsCheckoutEnabled },
+      settings,
     )
     return response.data
   },
@@ -161,6 +259,20 @@ export const userApi = {
     return response.data
   },
 
+  setBankAccountEnabled: async ({
+    accountNumber,
+    enabled,
+  }: {
+    accountNumber: string
+    enabled: boolean
+  }): Promise<SetPrimaryResponse> => {
+    const response = await apiClient.patch<SetPrimaryResponse>(
+      `/users/bank-accounts/${accountNumber}/visibility`,
+      { enabled },
+    )
+    return response.data
+  },
+
   deleteBankAccount: async (
     accountNumber: string,
   ): Promise<DeleteBankAccountResponse> => {
@@ -174,6 +286,31 @@ export const userApi = {
     const response = await apiClient.post<{ message: string }>(
       '/users/fcm-token',
       { token },
+    )
+    return response.data
+  },
+
+  getFavoriteMerchants: async (): Promise<FavoriteMerchantsResponse> => {
+    const response = await apiClient.get<FavoriteMerchantsResponse>(
+      '/users/favorites',
+    )
+    return response.data
+  },
+
+  addFavoriteMerchant: async (
+    merchantId: string,
+  ): Promise<FavoriteMerchantsResponse> => {
+    const response = await apiClient.post<FavoriteMerchantsResponse>(
+      `/users/favorites/${merchantId}`,
+    )
+    return response.data
+  },
+
+  removeFavoriteMerchant: async (
+    merchantId: string,
+  ): Promise<FavoriteMerchantsResponse> => {
+    const response = await apiClient.delete<FavoriteMerchantsResponse>(
+      `/users/favorites/${merchantId}`,
     )
     return response.data
   },
@@ -194,6 +331,98 @@ export function useUserProfile() {
   })
 }
 
+export function useCurrentLocation() {
+  const user = useAuthStore((state) => state.user)
+  const userId = user?.id
+  const persistedCoordinates = user?.personalLocation?.coordinates
+  const cached = userId
+    ? readCachedCurrentLocation(userId, persistedCoordinates)
+    : null
+
+  return useQuery({
+    queryKey: ['user', 'current-location', userId],
+    queryFn: async () => {
+      if (!userId) return { location: null }
+      const sessionCache = readCachedCurrentLocation(
+        userId,
+        persistedCoordinates,
+      )
+      if (sessionCache) return sessionCache.data
+      const data = await userApi.getCurrentLocation()
+      cacheCurrentLocation(userId, data)
+      return data
+    },
+    enabled: Boolean(userId),
+    initialData: cached?.data,
+    initialDataUpdatedAt: cached
+      ? cached.expiresAt - CURRENT_LOCATION_CACHE_TTL_MS
+      : undefined,
+    staleTime: CURRENT_LOCATION_CACHE_TTL_MS,
+    gcTime: CURRENT_LOCATION_CACHE_TTL_MS,
+  })
+}
+
+export function useFavoriteMerchants() {
+  return useQuery({
+    queryKey: ['user', 'favorites'],
+    queryFn: userApi.getFavoriteMerchants,
+  })
+}
+
+export function useUpdateFavoriteMerchant() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      merchantId,
+      isFavorite,
+    }: {
+      merchantId: string
+      isFavorite: boolean
+    }) =>
+      isFavorite
+        ? userApi.removeFavoriteMerchant(merchantId)
+        : userApi.addFavoriteMerchant(merchantId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['user', 'favorites'], data)
+    },
+  })
+}
+
+export function useUpdateCurrentLocation() {
+  const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
+  const updateUser = useAuthStore((state) => state.updateUser)
+
+  return useMutation({
+    mutationFn: userApi.updateCurrentLocation,
+    onSuccess: (data) => {
+      if (user?.id) {
+        cacheCurrentLocation(user.id, data)
+        queryClient.setQueryData(
+          ['user', 'current-location', user.id],
+          data,
+        )
+        if (data.location) {
+          updateUser({
+            ...user,
+            personalLocation: {
+              type: 'Point',
+              coordinates: [
+                data.location.longitude,
+                data.location.latitude,
+              ],
+            },
+            personalLocationAccuracyMeters: data.location.accuracyMeters,
+            personalLocationCapturedAt: data.location.capturedAt,
+          })
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
 export function useUpdatePaymentSettings() {
   const queryClient = useQueryClient()
 
@@ -208,6 +437,11 @@ export function useUpdatePaymentSettings() {
                 ...profile,
                 savedCardsCheckoutEnabled:
                   data.savedCardsCheckoutEnabled,
+                paystackCollectionEnabled:
+                  data.paystackCollectionEnabled,
+                bankTransferEnabled: data.bankTransferEnabled,
+                paystackCollectionChannels:
+                  data.paystackCollectionChannels,
               }
             : profile,
       )
@@ -327,6 +561,17 @@ export function useSetPrimaryBankAccount() {
 
   return useMutation({
     mutationFn: userApi.setPrimaryBankAccount,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+    },
+  })
+}
+
+export function useSetBankAccountEnabled() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: userApi.setBankAccountEnabled,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', 'bank-accounts'] })
       queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })

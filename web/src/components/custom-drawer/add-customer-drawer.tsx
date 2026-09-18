@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { ArrowLeft, ChevronRight, X } from 'lucide-react'
+import { useState } from 'react'
+import { ArrowLeft, X } from 'lucide-react'
 import {
   Button,
   Input,
@@ -13,70 +13,22 @@ import {
 import { useCreateCustomer } from '@/services/customers/hooks'
 import { useDrawerStore } from '@/services/drawer'
 import Image from 'next/image'
-import {
-  PickedContact,
-  splitContactName,
-  toLocalNigerianPhoneNumber,
-  useContactPicker,
-} from '@/hooks/use-contact-picker'
 import type { Customer } from '@/services/customers/customersApi'
 
 interface AddCustomerDrawerProps {
   onSelect: (customer: Customer) => void
   onBack?: () => void
-  initialContact?: PickedContact
-  focusPhone?: boolean
 }
 
 export function AddCustomerDrawer({
   onSelect,
   onBack,
-  initialContact,
-  focusPhone = false,
 }: AddCustomerDrawerProps) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const createCustomerMutation = useCreateCustomer()
-  const { selectContacts } = useContactPicker()
-  const phoneFieldRef = useRef<HTMLDivElement>(null)
-  const initialName = splitContactName(
-    initialContact?.name === initialContact?.phoneNumber
-      ? ''
-      : initialContact?.name || '',
-  )
-
-  const [firstName, setFirstName] = useState(initialName.firstName)
-  const [lastName, setLastName] = useState(initialName.lastName)
-  const [phoneValue, setPhoneValue] = useState(
-    toLocalNigerianPhoneNumber(initialContact?.phoneNumber || ''),
-  )
-
-  const applyContact = (contact: PickedContact) => {
-    const name = splitContactName(
-      contact.name === contact.phoneNumber ? '' : contact.name,
-    )
-    setFirstName(name.firstName)
-    setLastName(name.lastName)
-    setPhoneValue(toLocalNigerianPhoneNumber(contact.phoneNumber))
-  }
-
-  const handleSelectContact = async () => {
-    const result = await selectContacts()
-    if (result.status === 'selected') {
-      applyContact(result.contacts[0])
-      return
-    }
-    if (result.status === 'unsupported') {
-      phoneFieldRef.current?.querySelector('input')?.focus()
-      return
-    }
-    if (result.status === 'error') {
-      showNotificationToast({
-        message: 'Unable to open your contacts. Enter the details manually.',
-        mode: 'error',
-      })
-      phoneFieldRef.current?.querySelector('input')?.focus()
-    }
-  }
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [phoneValue, setPhoneValue] = useState('')
 
   const handleCreateCustomer = () => {
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim()
@@ -193,25 +145,15 @@ export function AddCustomerDrawer({
               />
             </div>
 
-            <div ref={phoneFieldRef}>
+            <div>
               <PhoneInput
                 className="w-full"
                 inputClassName="w-full font-medium h-12 border-[#0000001A] border-t-[0.5px] rounded-none rounded-b-[8px] focus-visible:z-10 focus-visible:relative"
                 value={phoneValue}
                 onChange={setPhoneValue}
-                autoFocus={focusPhone}
               />
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={handleSelectContact}
-            className="mx-auto mt-4 flex items-center gap-1 text-[13px] font-medium text-[#64748B] underline underline-offset-2"
-          >
-            Select from contacts
-            <ChevronRight className="h-4 w-4" />
-          </button>
         </div>
 
         <Button

@@ -50,6 +50,7 @@ import { AccountSwitchDrawer } from './account-switch-drawer'
 import { SaleReceiptDrawer } from './sale-receipt-drawer'
 import { ActivityDetailsDrawer } from './activity-details-drawer'
 import { ActivityOptionsDrawer } from './activity-options-drawer'
+import { CustomerActionsDrawer } from './customer-actions-drawer'
 import { VerifyIdentityDrawer } from './verify-identity-drawer'
 import { PlanCheckoutDrawer } from './plan-checkout-drawer'
 import { CancelPlanDrawer } from './cancel-plan-drawer'
@@ -72,6 +73,8 @@ import { PayCurrentPurchaseDrawer } from './pay-current-purchase-drawer'
 import { UnconfirmedDetailsDrawer } from './unconfirmed-details-drawer'
 import { PaymentMethodsActiveDrawer } from './payment-methods-active-drawer'
 import { MultiplePaymentOptionsDrawer } from './multiple-payment-options-drawer'
+import { PostComposerDrawer } from '@/components/posts/post-composer-drawer'
+import { PostProductPickerDrawer } from '@/components/posts/post-product-picker-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -79,7 +82,7 @@ const DRAWER_CONFIG: Record<
   {
     title: string
     direction?: DrawerDirection
-    HeaderLeft?: React.ComponentType<any>
+    HeaderLeft?: React.ElementType
     Content: React.ElementType
     fullScreen?: boolean
     noHeader?: boolean
@@ -248,6 +251,13 @@ const DRAWER_CONFIG: Record<
     Content: ActivityOptionsDrawer,
     noHeader: true,
     direction: 'bottom',
+  },
+  'customer-actions': {
+    title: '',
+    Content: CustomerActionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    contentClassName: 'bg-white',
   },
   'verify-identity': {
     title: '',
@@ -499,6 +509,23 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     fullScreen: false,
     contentClassName: 'bg-[#F4F6F8]',
+  },
+  'post-composer': {
+    title: 'Posts',
+    Content: PostComposerDrawer,
+    noHeader: true,
+    fullScreen: true,
+    hideHandle: true,
+    dismissible: false,
+    contentClassName:
+      'h-dvh bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
+  },
+  'post-product-select': {
+    title: 'Select items',
+    Content: PostProductPickerDrawer,
+    noHeader: true,
+    dismissible: false,
+    contentClassName: 'h-[80dvh] overflow-hidden bg-white',
   },
   custom: {
     title: '',

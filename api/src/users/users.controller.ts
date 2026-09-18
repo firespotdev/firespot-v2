@@ -13,6 +13,7 @@ import {
   ParseFilePipe,
   FileTypeValidator,
   MaxFileSizeValidator,
+  Query,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -32,6 +33,7 @@ import { BUSINESS_INDUSTRIES } from "./constants/business-industries";
 import { SetupProfileDto } from "./dto/setup-profile.dto";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
 import { UpdatePaymentSettingsDto } from "./dto/update-payment-settings.dto";
+import { UpdateBankAccountVisibilityDto } from "./dto/update-bank-account-visibility.dto";
 import { UpdateMerchantSlugDto } from "./dto/update-merchant-slug.dto";
 import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
@@ -44,6 +46,21 @@ import {
   UpdateLocationDto,
   UpdateShopPoliciesDto,
 } from "./dto/shop-setup.dto";
+import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
+import { UpdateCurrentLocationDto } from "./dto/update-current-location.dto";
+import { CurrentLocationService } from "./current-location.service";
+
+@ApiTags("public-merchants")
+@Controller("public/merchants")
+export class PublicMerchantsController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  @ApiOperation({ summary: "Discover live merchants" })
+  discover(@Query() query: PublicDiscoveryQueryDto) {
+    return this.usersService.discoverMerchants(query);
+  }
+}
 
 @ApiTags("users")
 @Controller("users")
@@ -51,6 +68,7 @@ export class UsersController {
   constructor(
     private readonly usersService: UsersService,
     private readonly paystackService: PaystackService,
+    private readonly currentLocationService: CurrentLocationService,
   ) {}
 
   @Get("industries")
@@ -254,6 +272,24 @@ export class UsersController {
     );
   }
 
+  @Patch("bank-accounts/:accountNumber/visibility")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Set whether customers can see a bank account" })
+  @ApiResponse({ status: 200, description: "Bank account visibility updated" })
+  @ApiResponse({ status: 404, description: "Bank account not found" })
+  async setBankAccountEnabled(
+    @Request() req,
+    @Param("accountNumber") accountNumber: string,
+    @Body() dto: UpdateBankAccountVisibilityDto,
+  ) {
+    return this.usersService.setBankAccountEnabled(
+      req.user.userId,
+      accountNumber,
+      dto.enabled,
+    );
+  }
+
   @Delete("bank-accounts/:accountNumber")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")
@@ -400,7 +436,8 @@ export class UsersController {
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
     summary: "Register FCM token",
-    description: "Registers a browser/device FCM token for the authenticated user to receive push notifications.",
+    description:
+      "Registers a browser/device FCM token for the authenticated user to receive push notifications.",
   })
   @ApiResponse({
     status: 201,
@@ -452,8 +489,14 @@ export class UsersController {
   @ApiParam({ name: "merchantId", description: "Merchant user id" })
   @ApiResponse({ status: 200, description: "Merchant removed from Faves" })
   @ApiResponse({ status: 401, description: "Unauthorized" })
-  async removeFavorite(@Request() req, @Param("merchantId") merchantId: string) {
-    return this.usersService.removeFavoriteMerchant(req.user.userId, merchantId);
+  async removeFavorite(
+    @Request() req,
+    @Param("merchantId") merchantId: string,
+  ) {
+    return this.usersService.removeFavoriteMerchant(
+      req.user.userId,
+      merchantId,
+    );
   }
 
   @Patch("me/profile")
@@ -523,6 +566,25 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "Location saved" })
   async updateLocation(@Request() req, @Body() dto: UpdateLocationDto) {
     return this.usersService.updateLocation(req.user.userId, dto);
+  }
+
+  @Get("me/current-location")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Get the user's current personal location" })
+  async getCurrentLocation(@Request() req) {
+    return this.currentLocationService.get(req.user.userId);
+  }
+
+  @Patch("me/current-location")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Save the user's current personal location" })
+  async updateCurrentLocation(
+    @Request() req,
+    @Body() dto: UpdateCurrentLocationDto,
+  ) {
+    return this.currentLocationService.update(req.user.userId, dto);
   }
 
   @Patch("me/employees")
@@ -826,7 +888,8 @@ export class UsersController {
   @ApiBearerAuth("JWT-auth")
   @ApiOperation({
     summary: "Get saved cards",
-    description: "Retrieves tokenized cards saved by the customer for 1-tap checkout.",
+    description:
+      "Retrieves tokenized cards saved by the customer for 1-tap checkout.",
   })
   @ApiResponse({
     status: 200,

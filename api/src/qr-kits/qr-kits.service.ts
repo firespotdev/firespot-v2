@@ -88,7 +88,7 @@ export class QRKitsService {
       .findOne({ serialNumber: serialNumber.toUpperCase() })
       .populate(
         'merchantId',
-        'businessName bankAccounts businessImageUrl profilePhotoUrl merchantSlug paystackSubaccountCode savedCardsCheckoutEnabled planTier planStatus planGraceUntil cancelAtPeriodEnd planCurrentPeriodEnd kycCompletedAt',
+        'businessName bankAccounts bankTransferEnabled businessImageUrl profilePhotoUrl merchantSlug paystackSubaccountCode savedCardsCheckoutEnabled paystackCollectionEnabled paystackCollectionChannels planTier planStatus planGraceUntil cancelAtPeriodEnd planCurrentPeriodEnd kycCompletedAt',
       )
 
     if (!qrKit) {
@@ -130,14 +130,18 @@ export class QRKitsService {
     }
 
     const bankAccounts =
-      merchant.bankAccounts && merchant.bankAccounts.length > 0
-        ? merchant.bankAccounts.map((acc) => ({
-            bankName: acc.bankName,
-            bankCode: acc.bankCode,
-            accountNumber: acc.accountNumber,
-            accountName: acc.accountName,
-            isPrimary: acc.isPrimary,
-          }))
+      merchant.bankTransferEnabled !== false &&
+      merchant.bankAccounts &&
+      merchant.bankAccounts.length > 0
+        ? merchant.bankAccounts
+            .filter((acc) => acc.isEnabled !== false)
+            .map((acc) => ({
+              bankName: acc.bankName,
+              bankCode: acc.bankCode,
+              accountNumber: acc.accountNumber,
+              accountName: acc.accountName,
+              isPrimary: acc.isPrimary,
+            }))
         : []
 
     const canCollect = getCollectEligibility(merchant).canCollect

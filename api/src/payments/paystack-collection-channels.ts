@@ -33,6 +33,11 @@ interface ChannelEnvironment {
   PAYSTACK_LITE_CHANNEL?: string;
 }
 
+type CollectionMerchant = PlanStateLike & {
+  paystackCollectionEnabled?: boolean;
+  paystackCollectionChannels?: PaystackCollectionChannel[];
+};
+
 function configuredCollectionChannels(
   environment: ChannelEnvironment,
 ): PaystackCollectionChannel[] {
@@ -70,12 +75,28 @@ export function getLitePaystackChannel(
   return environment.NODE_ENV === "production" ? "bank_transfer" : "card";
 }
 
-export function getMerchantPaystackChannels(
-  merchant: PlanStateLike,
+export function getSelectablePaystackChannels(
+  merchant: CollectionMerchant,
   environment: ChannelEnvironment = process.env,
 ): PaystackCollectionChannel[] {
   const tier = getEffectiveTier(merchant);
   if (!tier) return [];
   if (tier === "LITE") return [getLitePaystackChannel(environment)];
-  return configuredCollectionChannels(environment);
+
+  const availableChannels = configuredCollectionChannels(environment);
+  if (!Array.isArray(merchant.paystackCollectionChannels)) {
+    return availableChannels;
+  }
+
+  return availableChannels.filter((channel) =>
+    merchant.paystackCollectionChannels?.includes(channel),
+  );
+}
+
+export function getMerchantPaystackChannels(
+  merchant: CollectionMerchant,
+  environment: ChannelEnvironment = process.env,
+): PaystackCollectionChannel[] {
+  if (merchant.paystackCollectionEnabled !== true) return [];
+  return getSelectablePaystackChannels(merchant, environment);
 }

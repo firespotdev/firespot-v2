@@ -1,16 +1,10 @@
 'use client'
 
-import { ChevronRight, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import Image from 'next/image'
 import { useState } from 'react'
-import {
-  Button,
-  Label,
-  PhoneInput,
-  showNotificationToast,
-} from '@/components/ui'
+import { Button, Label, PhoneInput } from '@/components/ui'
 import { ShopAdd } from 'iconsax-reactjs'
-import { useContactPicker } from '@/hooks/use-contact-picker'
 
 interface RecommendBusinessSmsDrawerProps {
   recommendUrl: string
@@ -24,31 +18,9 @@ export function RecommendBusinessSmsDrawer({
   closeDrawer,
 }: RecommendBusinessSmsDrawerProps) {
   const [phoneNumber, setPhoneNumber] = useState('')
-  const { selectContacts } = useContactPicker()
   const isValid = phoneNumber.length >= 10
 
   const smsBody = `${businessName} recommends Firespot for your business. Continue here: ${recommendUrl}`
-
-  const handleSelectContact = async () => {
-    const result = await selectContacts()
-    if (result.status === 'unsupported') {
-      showNotificationToast({
-        message: 'Contact selection is not supported on this device',
-        mode: 'error',
-      })
-      return
-    }
-    if (result.status === 'error') {
-      showNotificationToast({
-        message: 'Could not select contact',
-        mode: 'error',
-      })
-      return
-    }
-    if (result.status === 'selected') {
-      setPhoneNumber(result.contacts[0].phoneNumber.replace(/^\+234/, ''))
-    }
-  }
 
   const handleContinue = () => {
     if (!isValid) return
@@ -107,20 +79,11 @@ export function RecommendBusinessSmsDrawer({
         />
       </div>
 
-      <button
-        type="button"
-        onClick={handleSelectContact}
-        className="mx-auto mt-4 flex items-center gap-0.5 text-xs font-medium text-[#6B7280] underline underline-offset-4"
-      >
-        <span>Select from contacts</span>
-        <ChevronRight className="h-4 w-4 mt-1" strokeWidth={2} />
-      </button>
-
       <Button
         type="button"
         onClick={handleContinue}
         disabled={!isValid}
-        className="mt-4 mb-6"
+        className="mt-6 mb-6"
       >
         Continue
       </Button>
