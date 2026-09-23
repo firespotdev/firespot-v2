@@ -61,6 +61,8 @@ export type DrawerContentType =
   | 'ongoing-sales'
   | 'post-composer'
   | 'post-product-select'
+  | 'business-locations'
+  | 'business-options'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 

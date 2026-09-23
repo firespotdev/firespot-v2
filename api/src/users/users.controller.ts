@@ -60,6 +60,26 @@ export class PublicMerchantsController {
   discover(@Query() query: PublicDiscoveryQueryDto) {
     return this.usersService.discoverMerchants(query);
   }
+
+  @Get(":identifier/feedback")
+  @ApiOperation({ summary: "Get public feedback for a live merchant" })
+  getFeedback(
+    @Param("identifier") identifier: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.usersService.getPublicMerchantFeedback(
+      identifier,
+      Number(page) || 1,
+      Number(limit) || 20,
+    );
+  }
+
+  @Get(":identifier")
+  @ApiOperation({ summary: "Get a live merchant's public business profile" })
+  getProfile(@Param("identifier") identifier: string) {
+    return this.usersService.getPublicMerchantProfile(identifier);
+  }
 }
 
 @ApiTags("users")

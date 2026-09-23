@@ -75,6 +75,8 @@ import { PaymentMethodsActiveDrawer } from './payment-methods-active-drawer'
 import { MultiplePaymentOptionsDrawer } from './multiple-payment-options-drawer'
 import { PostComposerDrawer } from '@/components/posts/post-composer-drawer'
 import { PostProductPickerDrawer } from '@/components/posts/post-product-picker-drawer'
+import { LocationsContent } from '@/components/personal/business/locations-content'
+import { OptionsDrawer } from '@/components/personal/business/options-drawer'
 
 // Configuration for each drawer type
 const DRAWER_CONFIG: Record<
@@ -527,6 +529,20 @@ const DRAWER_CONFIG: Record<
     noHeader: true,
     dismissible: false,
     contentClassName: 'h-[80dvh] overflow-hidden bg-white',
+  },
+  'business-locations': {
+    title: '',
+    Content: LocationsContent,
+    noHeader: true,
+    dismissible: true,
+    contentClassName: 'bg-[#F4F6F8]',
+  },
+  'business-options': {
+    title: '',
+    Content: OptionsDrawer,
+    noHeader: true,
+    dismissible: true,
+    contentClassName: 'bg-[#F4F6F8]',
   },
   custom: {
     title: '',

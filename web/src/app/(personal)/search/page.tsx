@@ -102,7 +102,7 @@ function KnownMerchantStrip({
           return merchant.serialNumber ? (
             <Link
               key={merchant.id}
-              href={`/pay/${merchant.serialNumber}`}
+              href={`/business?businessId=${merchant.id}`}
               className="flex w-20 shrink-0 flex-col items-center"
             >
               {content}
@@ -141,7 +141,7 @@ function MerchantResults({
           return (
             <ActionListItem
               key={merchant.id}
-              href={`/pay/${merchant.serialNumber}`}
+              href={`/business?businessId=${merchant.id}`}
               icon={
                 <MerchantAvatar
                   profilePhotoUrl={merchant.businessImageUrl}

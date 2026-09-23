@@ -49,7 +49,7 @@ export default function PersonalLayout({
   return (
     <>
       {children}
-      <BottomNav variant="light" />
+      {pathname !== '/business' && <BottomNav variant="light" />}
     </>
   )
 }

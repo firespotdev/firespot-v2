@@ -9,6 +9,9 @@ import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { Product, ProductDocument } from "../schemas/product.schema";
+import { Store, StoreDocument } from "../schemas/store.schema";
+import { Sale, SaleDocument } from "../schemas/sale.schema";
+import { Feedback, FeedbackDocument } from "../schemas/feedback.schema";
 import { PaystackService } from "./services/paystack.service";
 import { PaystackSubaccountsService } from "./services/paystack-subaccounts.service";
 import { CloudinaryService } from "./services/cloudinary.service";
@@ -55,6 +58,13 @@ interface PublicMerchantRecord {
   profilePhotoUrl?: string;
   businessIndustry?: string;
   mainAddress?: { state?: string; city?: string };
+  businessDescription?: string;
+  fullPhoneNumber?: string;
+  website?: string;
+  socialLinks?: Record<string, string>;
+  activeHoursSetup?: UserDocument["activeHoursSetup"];
+  profileBannerUrl?: string;
+  verificationLevel?: "PRO" | "PROMAX";
 }
 
 @Injectable()
@@ -63,6 +73,10 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    @InjectModel(Store.name) private storeModel: Model<StoreDocument>,
+    @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
+    @InjectModel(Feedback.name)
+    private feedbackModel: Model<FeedbackDocument>,
     private paystackService: PaystackService,
     private cloudinaryService: CloudinaryService,
     private merchantReferralsService: MerchantReferralsService,
@@ -165,6 +179,240 @@ export class UsersService {
         limit,
         total,
         lastPage: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  private publicMerchantFilter(identifier: string) {
+    const normalized = identifier.trim();
+    const identity = Types.ObjectId.isValid(normalized)
+      ? { _id: new Types.ObjectId(normalized) }
+      : { merchantSlug: normalized.toUpperCase() };
+
+    return {
+      ...identity,
+      role: "merchant",
+      businessName: { $exists: true, $ne: "" },
+    };
+  }
+
+  private async findPublicMerchant(identifier: string) {
+    if (!identifier?.trim()) {
+      throw new HttpException("Merchant not found", HttpStatus.NOT_FOUND);
+    }
+
+    const merchant = await this.userModel
+      .findOne(this.publicMerchantFilter(identifier))
+      .select(
+        "businessName merchantSlug businessImageUrl profilePhotoUrl profileBannerUrl businessIndustry businessDescription fullPhoneNumber mainAddress website socialLinks activeHoursSetup verificationLevel planStatus planGraceUntil",
+      )
+      .lean()
+      .exec();
+
+    if (!merchant) {
+      throw new HttpException("Merchant not found", HttpStatus.NOT_FOUND);
+    }
+
+    return merchant as unknown as PublicMerchantRecord & {
+      _id: Types.ObjectId;
+      planStatus?: string;
+      planGraceUntil?: Date;
+      profilePhotoUrl?: string;
+      mainAddress?: {
+        state?: string;
+        city?: string;
+        address?: string;
+        market?: string;
+        shoppingComplex?: string;
+        shopNumber?: string;
+        landmark?: string;
+      };
+    };
+  }
+
+  async getPublicMerchantProfile(identifier: string) {
+    const merchant = await this.findPublicMerchant(identifier);
+    const merchantId = merchant._id;
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      qrKit,
+      stores,
+      favoriteCount,
+      monthlyVisits,
+      salesSummary,
+      feedbackSummary,
+    ] = await Promise.all([
+      this.qrKitModel
+        .findOne({ merchantId, activationStatus: "activated" })
+        .select("serialNumber isDigital createdAt")
+        .sort({ isDigital: -1, createdAt: 1 })
+        .lean()
+        .exec(),
+      this.storeModel
+        .find({ merchantId, isActive: true })
+        .select("name address location isPrimary")
+        .sort({ isPrimary: -1, createdAt: 1 })
+        .lean()
+        .exec(),
+      this.userModel.countDocuments({ favoriteMerchants: merchantId }).exec(),
+      this.saleModel
+        .countDocuments({
+          merchantId,
+          status: "CONFIRMED",
+          createdAt: { $gte: thirtyDaysAgo },
+        })
+        .exec(),
+      this.saleModel
+        .aggregate<{ averageSpend: number; orderCount: number }>([
+          { $match: { merchantId, status: "CONFIRMED" } },
+          {
+            $group: {
+              _id: null,
+              averageSpend: {
+                $avg: {
+                  $cond: [
+                    { $gt: [{ $ifNull: ["$amountPaid", 0] }, 0] },
+                    "$amountPaid",
+                    { $ifNull: ["$amount", 0] },
+                  ],
+                },
+              },
+              orderCount: {
+                $sum: {
+                  $cond: [
+                    { $gt: [{ $size: { $ifNull: ["$items", []] } }, 0] },
+                    1,
+                    0,
+                  ],
+                },
+              },
+            },
+          },
+        ])
+        .exec(),
+      this.feedbackModel
+        .aggregate<{ count: number; averageRating: number }>([
+          { $match: { merchantId } },
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              averageRating: { $avg: "$rating" },
+            },
+          },
+        ])
+        .exec(),
+    ]);
+
+    const locations = stores.length
+      ? stores.map((store) => ({
+          id: String(store._id),
+          name: store.name,
+          address: store.address,
+          location: store.location,
+          isPrimary: store.isPrimary === true,
+        }))
+      : merchant.mainAddress
+        ? [
+            {
+              id: `main-${String(merchantId)}`,
+              name: merchant.businessName,
+              address: [
+                merchant.mainAddress.address,
+                merchant.mainAddress.city,
+                merchant.mainAddress.state,
+              ]
+                .filter(Boolean)
+                .join(", "),
+              location: [
+                merchant.mainAddress.market,
+                merchant.mainAddress.shoppingComplex,
+                merchant.mainAddress.shopNumber,
+                merchant.mainAddress.landmark,
+              ]
+                .filter(Boolean)
+                .join(", "),
+              isPrimary: true,
+            },
+          ]
+        : [];
+
+    const summary = salesSummary[0];
+    const reviews = feedbackSummary[0];
+
+    return {
+      id: String(merchantId),
+      businessName: merchant.businessName,
+      merchantSlug: merchant.merchantSlug,
+      businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
+      profileBannerUrl:
+        merchant.profileBannerUrl ||
+        merchant.businessImageUrl ||
+        merchant.profilePhotoUrl,
+      businessIndustry: merchant.businessIndustry,
+      businessDescription: merchant.businessDescription,
+      phoneNumber: merchant.fullPhoneNumber,
+      mainAddress: merchant.mainAddress,
+      website: merchant.website,
+      socialLinks: merchant.socialLinks || {},
+      openingHours: merchant.activeHoursSetup?.openingHours || null,
+      verificationLevel:
+        merchant.planStatus === "verified" ? merchant.verificationLevel : null,
+      serialNumber: qrKit?.serialNumber,
+      locations,
+      stats: {
+        monthlyVisits,
+        favoriteCount,
+        averageSpend: Math.round((summary?.averageSpend || 0) * 100) / 100,
+        orderCount: summary?.orderCount || 0,
+        feedbackCount: reviews?.count || 0,
+        averageRating: Math.round((reviews?.averageRating || 0) * 100) / 100,
+      },
+    };
+  }
+
+  async getPublicMerchantFeedback(identifier: string, page = 1, limit = 20) {
+    const merchant = await this.findPublicMerchant(identifier);
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(50, Math.max(1, limit));
+    const merchantId = merchant._id;
+
+    const [data, total, summary] = await Promise.all([
+      this.feedbackModel
+        .find({ merchantId })
+        .select("customerName customerPhotoUrl rating comment createdAt")
+        .sort({ createdAt: -1 })
+        .skip((safePage - 1) * safeLimit)
+        .limit(safeLimit)
+        .lean()
+        .exec(),
+      this.feedbackModel.countDocuments({ merchantId }).exec(),
+      this.feedbackModel
+        .aggregate<{ averageRating: number }>([
+          { $match: { merchantId } },
+          { $group: { _id: null, averageRating: { $avg: "$rating" } } },
+        ])
+        .exec(),
+    ]);
+
+    return {
+      data: data.map((feedback) => ({
+        id: String(feedback._id),
+        customerName: feedback.customerName,
+        customerPhotoUrl: feedback.customerPhotoUrl,
+        rating: feedback.rating,
+        comment: feedback.comment,
+        createdAt: feedback.createdAt,
+      })),
+      summary: {
+        count: total,
+        averageRating: Math.round((summary[0]?.averageRating || 0) * 100) / 100,
+      },
+      meta: {
+        page: safePage,
+        lastPage: Math.ceil(total / safeLimit) || 1,
+        total,
       },
     };
   }
