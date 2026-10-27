@@ -77,4 +77,9 @@ export class PublicPostsController {
   feed(@Query() query: PostFeedQueryDto) {
     return this.postsService.feed(query);
   }
+
+  @Get("merchant/:merchantId")
+  listByMerchant(@Param("merchantId") merchantId: string) {
+    return this.postsService.listPublicByMerchant(merchantId);
+  }
 }

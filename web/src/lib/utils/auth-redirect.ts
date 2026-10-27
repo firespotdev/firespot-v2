@@ -11,7 +11,7 @@ interface PostAuthDestinationParams {
 
 /** A merchant may complete business setup before ever setting a personal name. */
 export function hasPersonalIdentity(user: User | null | undefined): boolean {
-  return Boolean(user?.firstName?.trim() && user?.lastName?.trim())
+  return Boolean(user?.fullName?.trim())
 }
 
 /**

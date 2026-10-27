@@ -79,7 +79,7 @@ export function Activity({ business }: ActivityProps) {
         <div className="flex -space-x-3">
           <MerchantAvatar
             profilePhotoUrl={user?.profilePhotoUrl}
-            alt={[user?.firstName, user?.lastName].filter(Boolean).join(' ')}
+            alt={user?.fullName}
             size={36}
             className="rounded-full border-2 border-white"
           />

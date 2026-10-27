@@ -477,7 +477,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
   const businessName =
     profile?.businessName ||
-    [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') ||
+    profile?.fullName ||
     'Your Business'
   const businessImageUrl = getBusinessImageUrl(profile)
 

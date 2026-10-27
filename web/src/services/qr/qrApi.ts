@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { publicApiClient, apiClient } from '@/lib/utils/axios'
+import { useAuthStore } from '@/services/auth/authSlice'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import type {
   QRKit,
@@ -10,9 +11,10 @@ import type {
 export const publicQrApi = {
   getMerchantBySerial: async (
     serialNumber: string,
+    authenticated = false,
   ): Promise<MerchantProfile> => {
     const fingerprint = getCustomerFingerprint()
-    const response = await publicApiClient.get<MerchantProfile>(
+    const response = await (authenticated ? apiClient : publicApiClient).get<MerchantProfile>(
       `/qr-kits/${serialNumber}`,
       {
         headers: {
@@ -82,11 +84,12 @@ export const useQRCodeSVG = (url: string | null | undefined) => {
 }
 
 export const useMerchantBySerial = (serialNumber: string | null) => {
+  const identity = useAuthStore((s) => s.isAuthenticated && s.user?.fullName?.trim() ? s.user.id : null)
   return useQuery({
-    queryKey: ['merchant', serialNumber],
+    queryKey: ['merchant', serialNumber, identity],
     queryFn: () => {
       if (!serialNumber) throw new Error('Serial number is required')
-      return publicQrApi.getMerchantBySerial(serialNumber)
+      return publicQrApi.getMerchantBySerial(serialNumber, Boolean(identity))
     },
     enabled: !!serialNumber,
     retry: false,

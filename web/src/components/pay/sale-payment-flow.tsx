@@ -20,6 +20,10 @@ import {
   useCustomerSavedCards,
   usePayWithSavedCard,
 } from '@/services/sales/hooks'
+import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
+import { usePaymentAuth } from '@/hooks/use-payment-auth'
+import { publicQrApi } from '@/services/qr/qrApi'
+import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
 import { useAuthStore } from '@/services/auth'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
@@ -72,6 +76,8 @@ export function SalePaymentFlow({
   onTrackCopy,
 }: SalePaymentFlowProps) {
   const router = useRouter()
+  const ensureIdentity = usePaymentAuth()
+  const copyBusy = useRef(false)
   const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
@@ -109,15 +115,11 @@ export function SalePaymentFlow({
   const sortedBankAccounts = sortBankAccounts(
     merchant.bankAccounts || [],
   ) as BankAccount[]
-  const initialAccountIndex = Math.max(
-    0,
-    sortedBankAccounts.findIndex(
-      (bankAccount) =>
-        bankAccount.accountNumber === sale.targetAccountNumber ||
-        (!sale.targetAccountNumber &&
-          bankAccount.bankName === sale.targetBankName),
-    ),
-  )
+  const rememberedBankIndex = usePurchaseCartStore.getState().selectedBankIndex
+  const initialAccountIndex = sortedBankAccounts[rememberedBankIndex]?.bankName === sale.targetBankName
+    ? rememberedBankIndex
+    : Math.max(0, sortedBankAccounts.findIndex((bankAccount) => bankAccount.bankName === sale.targetBankName))
+
 
   const [hasCopiedAccount, setHasCopiedAccount] = useState(false)
   const [selectedRail, setSelectedRail] = useState<PaymentRail>(() =>
@@ -138,7 +140,7 @@ export function SalePaymentFlow({
   const hasReconciledReturn = useRef(false)
   const saleStep = deriveStep(sale)
   const step =
-    saleStep === 'request' && hasCopiedAccount ? 'waiting' : saleStep
+    saleStep === 'request' && (hasCopiedAccount || searchParams.get('payment') === 'copy-account') ? 'waiting' : saleStep
   const shouldLoadFeedbackEligibility =
     step === 'success' && sale.status === 'CONFIRMED'
   const feedbackEligibility = useFeedbackEligibility(
@@ -270,55 +272,67 @@ export function SalePaymentFlow({
     }, 1200)
   }
 
-  const handleCopy = () => {
-    if (!account) return
-    navigator.clipboard.writeText(account.accountNumber)
-    showNotificationToast({
-      message: 'Account number copied',
-      mode: 'success',
-      duration: 2000,
-    })
-    void onTrackCopy(account.accountNumber, account.bankName)
-    setHasCopiedAccount(true)
+  const copyAccount = async (selected: BankAccount | undefined = account) => {
+    if (!selected || copyBusy.current) return
+    copyBusy.current = true
+    try {
+      if (!(await ensureIdentity())) return
+      let target = selected
+      // Loaded authenticated accounts can be copied directly on the retry tap,
+      // keeping clipboard access within the browser's user activation.
+      if (!target.accountNumber) {
+        const fresh = await publicQrApi.getMerchantBySerial(serialNumber, true)
+        target = fresh.bankAccounts.find((bank) => bank.id === selected.id) || target
+      }
+      if (!target.accountNumber) throw new Error('Account unavailable')
+      await navigator.clipboard.writeText(target.accountNumber)
+      await onTrackCopy(target.accountNumber, target.bankName, fromBankName || undefined)
+      setHasCopiedAccount(true)
+      showNotificationToast({ message: 'Account number copied', mode: 'success' })
+    } catch (error) {
+      showNotificationToast({ message: (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Could not copy the account number. Tap copy to try again.', mode: 'error' })
+    } finally {
+      copyBusy.current = false
+    }
   }
+  const handleCopy = () => { void copyAccount() }
 
-  const startPaystackPayment = (channel: string) => {
+  const startPaystackPayment = async (channel: string) => {
+    if (!(await ensureIdentity())) return
     if (initializePaystack.isPending || isRedirectingToPaystack) return
     startPaystackRedirect()
-    initializePaystack.mutate(
-      {
+    try {
+      // Authentication can unmount this flow while merchant data reloads.
+      // Await the result so navigation survives losing the mutation observer.
+      const result = await initializePaystack.mutateAsync({
         saleId: sale.id,
         serialNumber,
         channel,
         customerFingerprint: getCustomerFingerprint(),
-      },
-      {
-        onSuccess: (result) => {
-          if (result.authorizationUrl) {
-            window.location.href = result.authorizationUrl
-            return
-          }
-          cancelPaystackRedirect()
-          showNotificationToast({
-            message: 'Failed to start Paystack payment. Please try again.',
-            mode: 'error',
-          })
-        },
-        onError: (error: unknown) => {
-          cancelPaystackRedirect()
-          showNotificationToast({
-            message:
-              (error as { response?: { data?: { message?: string } } })
-                ?.response?.data?.message ||
-              'Failed to start Paystack payment. Please try again.',
-            mode: 'error',
-          })
-        },
-      },
-    )
+      })
+      if (result.authorizationUrl) {
+        window.location.href = result.authorizationUrl
+        return
+      }
+      cancelPaystackRedirect()
+      showNotificationToast({
+        message: 'Failed to start Paystack payment. Please try again.',
+        mode: 'error',
+      })
+    } catch (error: unknown) {
+      cancelPaystackRedirect()
+      showNotificationToast({
+        message:
+          (error as { response?: { data?: { message?: string } } })
+            ?.response?.data?.message ||
+          'Failed to start Paystack payment. Please try again.',
+        mode: 'error',
+      })
+    }
   }
 
-  const handlePayInstantly = () => {
+  const handlePayInstantly = async (rail = selectedRail, selectedCard = defaultSavedCard) => {
+    if (!(await ensureIdentity())) return
     if (
       initializePaystack.isPending ||
       isRedirectingToPaystack ||
@@ -326,8 +340,8 @@ export function SalePaymentFlow({
     )
       return
 
-    if (selectedRail === 'saved') {
-      const cardToUse = defaultSavedCard
+    if (rail === 'saved') {
+      const cardToUse = selectedCard
       if (!cardToUse) {
         showNotificationToast({
           message: 'No saved card found. Please choose another payment method.',
@@ -393,6 +407,7 @@ export function SalePaymentFlow({
         onSelectCard: (card: SavedCard) => {
           setSelectedCardId(card.id)
           setSelectedRail('saved')
+          if (step === 'waiting') void handlePayInstantly('saved', card)
         },
         onAddNewCard: () => {
           setSelectedRail('multiple')
@@ -417,23 +432,12 @@ export function SalePaymentFlow({
             ? handleChangePaymentMethod
             : undefined,
         onSelectBank: (bank: BankAccount) => {
-          const index = sortedBankAccounts.findIndex(
-            (acc) => acc.accountNumber === bank.accountNumber,
-          )
+          const index = sortedBankAccounts.findIndex((acc) => acc.id === bank.id)
           if (index !== -1) {
             setSelectedAccountIndex(index)
+            usePurchaseCartStore.getState().setSelectedBankIndex(index)
             setSelectedRail('transfer')
-            navigator.clipboard.writeText(bank.accountNumber)
-            showNotificationToast({
-              message: 'Account number copied',
-              mode: 'success',
-              duration: 1500,
-            })
-            void onTrackCopy(
-              bank.accountNumber,
-              bank.bankName,
-              fromBankName || undefined,
-            )
+            if (step === 'waiting') void copyAccount(bank)
           }
         },
       },
@@ -452,6 +456,7 @@ export function SalePaymentFlow({
         paystackChannels,
         onSelectRail: (rail: PaymentRail) => {
           setSelectedRail(rail)
+          if (step === 'waiting' && rail === 'multiple') void handlePayInstantly(rail)
           if (
             rail === 'multiple' &&
             !paystackChannels.includes(selectedChannel) &&
@@ -531,15 +536,22 @@ export function SalePaymentFlow({
     )
   }
 
+  if (step === 'waiting' && (!isAuthenticated || !hasPersonalIdentity(authUser))) {
+    return <SaleRequestScreen sale={sale} merchant={merchant} account={account} selectedRail="transfer" onCopy={handleCopy} onPayInstantly={handlePayInstantly} onChangeAccount={() => handleChangeAccount(true)} onChangePaymentMethod={handleChangePaymentMethod} onShare={handleShare} onClose={handleClose} />
+  }
+
   if (step === 'waiting') {
     return (
       <SaleWaitingScreen
         sale={sale}
+        merchant={merchant}
         account={account}
+        copied={Boolean(sale.isCopied || hasCopiedAccount)}
+        onCopy={handleCopy}
         fromBankName={fromBankName}
         serialNumber={serialNumber}
         onOpenBankApp={handleOpenBankApp}
-        onChangeMethod={handleChangeAccount}
+        onChangeMethod={() => merchant.hasPaystackCollection ? handleChangePaymentMethod() : handleChangeAccount(false)}
         onClose={handleClose}
         onMinimize={handleMinimize}
         isClosing={cancelSale.isPending}

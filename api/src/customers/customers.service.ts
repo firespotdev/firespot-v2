@@ -86,7 +86,7 @@ export class CustomersService {
 
     const identity = await this.userModel
       .findById(new Types.ObjectId(userId.toString()))
-      .select("firstName lastName phoneNumber fullPhoneNumber")
+      .select("fullName phoneNumber fullPhoneNumber")
       .exec();
     if (!identity) return undefined;
 
@@ -99,7 +99,7 @@ export class CustomersService {
 
     const phoneNumber = identity.fullPhoneNumber || identity.phoneNumber;
     const name =
-      [identity.firstName, identity.lastName].filter(Boolean).join(" ") ||
+      identity.fullName ||
       phoneNumber;
 
     return this.customerModel

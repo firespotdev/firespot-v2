@@ -17,6 +17,7 @@ import {
   ApiBearerAuth,
 } from "@nestjs/swagger";
 import { QRKitsService } from "./qr-kits.service";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @ApiTags("qr-kits")
@@ -74,6 +75,7 @@ export class QRKitsController {
   }
 
   @Get(":serialNumber")
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary: "Get merchant profile by QR kit serial number",
     description:
@@ -136,6 +138,7 @@ export class QRKitsController {
       ipAddress,
       userAgent,
       customerFingerprint,
+      Boolean(req.user?.fullName?.trim()),
     );
   }
 

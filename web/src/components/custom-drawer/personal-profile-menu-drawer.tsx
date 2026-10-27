@@ -62,7 +62,7 @@ export function PersonalProfileMenuDrawer({
   }
 
   const displayName =
-    [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'
+    user?.fullName || 'Customer'
 
   const qrUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lite.firespot.co'
 

@@ -53,7 +53,7 @@ export class PaystackSubaccountsService {
 
     const businessName =
       user.businessName ||
-      `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+      user.fullName ||
       "Firespot Merchant";
 
     try {

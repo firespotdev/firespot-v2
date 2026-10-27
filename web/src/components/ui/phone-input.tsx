@@ -5,6 +5,10 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 interface PhoneInputProps {
+  id?: string
+  disabled?: boolean
+  autoComplete?: string
+  'aria-describedby'?: string
   value?: string
   onChange?: (value: string) => void
   className?: string
@@ -45,6 +49,10 @@ function formatPhoneNumber(input: string) {
 }
 
 export function PhoneInput({
+  id,
+  disabled,
+  autoComplete,
+  'aria-describedby': ariaDescribedBy,
   value,
   onChange,
   className,
@@ -117,6 +125,11 @@ export function PhoneInput({
       </div>
 
       <Input
+        id={id}
+        disabled={disabled}
+        autoComplete={autoComplete}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={error || undefined}
         ref={inputRef}
         autoFocus={autoFocus}
         type="tel"

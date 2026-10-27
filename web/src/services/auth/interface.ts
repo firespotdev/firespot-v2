@@ -89,8 +89,7 @@ export interface User {
   phoneNumber: string
   phoneCountryCode?: string
   fullPhoneNumber: string
-  firstName?: string
-  lastName?: string
+  fullName?: string
   role?: 'merchant' | 'customer'
   businessName?: string
   businessIndustry?: string
@@ -213,8 +212,7 @@ export interface VerifyOtpPayload {
 }
 
 export interface UpdateProfilePayload {
-  firstName: string
-  lastName: string
+  fullName: string
 }
 
 export interface UpdateProfileResponse {

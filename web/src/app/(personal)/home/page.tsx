@@ -95,7 +95,7 @@ function HomePageContent() {
   // Auth + onboarding are enforced by the (personal) route-group layout.
 
   const displayName =
-    [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+    user?.fullName ||
     user?.businessName ||
     user?.fullPhoneNumber ||
     ''

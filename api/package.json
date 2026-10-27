@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "nest build",
+    "users:migrate-full-names": "ts-node -T src/migrations/migrate-user-full-names.ts",
     "plans:create": "ts-node -T scripts/create-paystack-plans.ts",
     "merchant:reset": "ts-node -T scripts/reset-merchant-verification.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

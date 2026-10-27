@@ -23,7 +23,7 @@ describe("SalesService amount invariants", () => {
 
     return new SalesService(
       saleModel as any,
-      userModel as any,
+      { findById: jest.fn(() => ({ exec: jest.fn().mockResolvedValue({ _id: customerUserId, fullName: 'Test Customer', fullPhoneNumber: '+2348011112222' }) })), ...userModel } as any,
       qrKitModel as any,
       customerModel as any,
       {
@@ -32,7 +32,7 @@ describe("SalesService amount invariants", () => {
       {} as any,
       cloudinaryService as any,
       {} as any,
-      customersService as any,
+      { findOrCreateForUser: jest.fn().mockResolvedValue({ _id: customerId, userId: customerUserId, name: 'Test Customer' }), ...customersService } as any,
       { evaluateReferredMerchant: jest.fn().mockResolvedValue(null) } as any,
       { initializeTransaction: jest.fn() } as any,
       { sendSms: jest.fn().mockResolvedValue({ status: "sent" }) } as any,
@@ -53,6 +53,52 @@ describe("SalesService amount invariants", () => {
       merchantSaleDraftModel as any,
     );
   };
+
+  describe('authenticated payment identity', () => {
+    const sale = () => ({ _id: '507f1f77bcf86cd799439013', merchantId: '507f1f77bcf86cd799439012', status: 'PENDING' })
+    it('rejects anonymous payment commits', async () => {
+      await expect((createService() as any).attachPaymentPayer(sale())).rejects.toThrow('Sign in')
+    })
+    it('does not allow a different user to take over a payment', async () => {
+      await expect((createService() as any).attachPaymentPayer({ ...sale(), customerUserId: 'another-user' }, customerUserId)).rejects.toThrow('another customer')
+    })
+    it('requires a personal name for merchant-first payers', async () => {
+      const service = createService({}, {}, {}, { findById: jest.fn(() => ({ exec: jest.fn().mockResolvedValue({ role: 'merchant', onboardingCompleted: true, businessName: 'Ada Store' }) })) })
+      await expect((service as any).attachPaymentPayer(sale(), customerUserId)).rejects.toThrow('full name')
+    })
+    it('blocks proceeding when the customer relationship cannot be created', async () => {
+      const service = createService({}, {}, { findOrCreateForUser: jest.fn().mockResolvedValue(undefined) })
+      await expect((service as any).attachPaymentPayer(sale(), customerUserId)).rejects.toThrow('Could not link')
+    })
+    it('attaches the server identity and verified phone rather than a client name', async () => {
+      const payment = { ...sale(), customerName: 'Spoofed name' }
+      await (createService() as any).attachPaymentPayer(payment, customerUserId)
+      expect(payment).toEqual(expect.objectContaining({ customerName: 'Test Customer', customerPhone: '+2348011112222', customerUserId }))
+    })
+    it('rejects a competing claim atomically', async () => {
+      const updateOne = jest.fn(() => ({ exec: jest.fn().mockResolvedValue({ matchedCount: 0 }) }))
+      const service = createService({ updateOne })
+      await expect((service as any).attachPaymentPayer({ ...sale(), isNew: false }, customerUserId)).rejects.toThrow('another customer')
+      expect(updateOne).toHaveBeenCalledWith(expect.objectContaining({ status: 'PENDING', $or: expect.any(Array) }), expect.anything())
+    })
+    it('never returns a destination account number in the public sale view', async () => {
+      const payment = { ...sale(), targetAccountNumber: '0123456789', createdAt: new Date(), merchantId: { businessName: 'Test Store' } }
+      const query: any = { exec: jest.fn().mockResolvedValue(payment) }
+      query.select = jest.fn(() => query)
+      query.populate = jest.fn(() => query)
+      const service = createService({ findOne: jest.fn(() => query) })
+      const result = await service.getPublicSaleById(payment._id, 'FS-QR-1')
+      expect(result.targetAccountNumber).toBeUndefined()
+      expect(JSON.stringify(result)).not.toContain('0123456789')
+    })
+    it('publishes only status into the unauthenticated sale room', () => {
+      const service = createService()
+      const payment = { ...sale(), targetAccountNumber: '0123456789', customerName: 'Private customer' }
+      ;(service as any).emitSaleEvent('sale.copied', payment)
+      const server = (service as any).eventsGateway.server
+      expect(server.emit).toHaveBeenLastCalledWith('sale.copied', { id: payment._id, status: 'PENDING', cancelledBy: undefined })
+    })
+  })
 
   describe("recorded sale normalization", () => {
     const normalize = (
@@ -352,6 +398,7 @@ describe("SalesService amount invariants", () => {
           "GTBank",
           "0651234567",
           "Moniepoint",
+          customerUserId,
         ),
       ).resolves.toBe(sale);
 
@@ -460,6 +507,7 @@ describe("SalesService amount invariants", () => {
           saleId,
           "FS-QR-1",
           "customer-fingerprint",
+          customerUserId,
         ),
       ).resolves.toBe(sale);
 

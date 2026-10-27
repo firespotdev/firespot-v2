@@ -1,38 +1,32 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import { MerchantAvatar } from '@/components/layout/MerchantAvatar'
+import { ArrowUpRight, Check, ChevronRight, Copy, X } from 'lucide-react'
 import {
-  ArrowUpRight,
-  Check,
-  ChevronDown,
-  Copy,
-  Landmark,
-  Loader,
-  Paperclip,
-  Trash2,
-  X,
-} from 'lucide-react'
-import {
+  AppCard,
+  BankLogo,
   Button,
-  GreenSpinner,
-  showNotificationToast,
   Spinner,
   TagFooter,
+  showNotificationToast,
 } from '@/components/ui'
-import { BankLogo } from '@/components/ui/bank-logo'
-import { useDeleteReceipt, useUploadReceipt } from '@/services/sales/hooks'
+import { CopySuccess } from 'iconsax-reactjs'
+import { BankIcon } from '@phosphor-icons/react'
 import { useMarkSalePaidByCustomer } from '@/services/sales/hooks'
 import type { PublicSale } from '@/services/sales/interface'
 import type { MerchantProfile } from '@/services/qr/interface'
-import { maskAccountNumber } from '@/lib/utils'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
 interface SaleWaitingScreenProps {
   sale: PublicSale
+  merchant: MerchantProfile
   account?: BankAccount
+  copied: boolean
   fromBankName: string | null
   serialNumber: string
+  onCopy: () => void
   onOpenBankApp: () => void
   onChangeMethod: () => void
   onClose: () => void
@@ -42,381 +36,229 @@ interface SaleWaitingScreenProps {
 
 export function SaleWaitingScreen({
   sale,
+  merchant,
   account,
+  copied,
   fromBankName,
   serialNumber,
+  onCopy,
   onOpenBankApp,
   onChangeMethod,
   onClose,
   onMinimize,
   isClosing = false,
 }: SaleWaitingScreenProps) {
-  const uploadReceipt = useUploadReceipt()
-  const deleteReceipt = useDeleteReceipt()
   const markPaid = useMarkSalePaidByCustomer()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const uploadAbortControllerRef = useRef<AbortController | null>(null)
-  const [receiptName, setReceiptName] = useState<string | null>(null)
-
-  const hasReceipt = Boolean(sale.receiptUrl) || uploadReceipt.isSuccess
-  const hasDeclaredPayment =
-    Boolean(sale.customerMarkedPaidAt) || markPaid.isSuccess
-  const hasPaymentEvidence = hasReceipt || hasDeclaredPayment
-  const isUploading = uploadReceipt.isPending
-
-  const title = hasPaymentEvidence
-    ? 'Waiting for confirmation...'
-    : fromBankName
-      ? 'Still checking...'
-      : 'Waiting for your payment...'
-  const subtitle = hasPaymentEvidence
-    ? 'Your vendor may still be reviewing this.'
-    : fromBankName
-      ? 'You can paste or upload your transfer receipt to speed this up.'
-      : 'Confirmation usually takes anywhere from a few seconds to some minutes after you transfer.'
-
-  const displayedReceiptName =
-    receiptName || `Receipt_${sale.reference?.replace('FS-', '') || 'transfer'}`
-
-  useEffect(
-    () => () => {
-      uploadAbortControllerRef.current?.abort()
-    },
-    [],
-  )
-
-  const handleFile = (file: File) => {
-    uploadAbortControllerRef.current?.abort()
-    const controller = new AbortController()
-    uploadAbortControllerRef.current = controller
-    setReceiptName(file.name.replace(/\.[^.]+$/, ''))
-    uploadReceipt.mutate(
-      {
-        saleId: sale.id,
-        serialNumber,
-        file,
-        signal: controller.signal,
-      },
-      {
-        onError: () => {
-          if (controller.signal.aborted) return
-          setReceiptName(null)
-          showNotificationToast({
-            message: 'Failed to upload receipt. Please try again.',
-            mode: 'error',
-            duration: 2500,
-          })
-        },
-        onSettled: () => {
-          if (uploadAbortControllerRef.current === controller) {
-            uploadAbortControllerRef.current = null
-          }
-        },
-      },
-    )
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) handleFile(file)
-    e.target.value = ''
-  }
-
-  const handlePaste = async () => {
-    try {
-      const clipboardItems = await navigator.clipboard.read()
-      for (const item of clipboardItems) {
-        const imageType = item.types.find((type) => type.startsWith('image/'))
-        if (imageType) {
-          const blob = await item.getType(imageType)
-          const file = new File([blob], 'pasted-receipt.png', {
-            type: imageType,
-          })
-          handleFile(file)
-          return
-        }
-      }
-      showNotificationToast({
-        message: 'No image found in your clipboard',
-        duration: 2000,
-      })
-    } catch {
-      showNotificationToast({
-        message: 'Could not read your clipboard',
-        mode: 'error',
-        duration: 2000,
-      })
-    }
-  }
-
-  const handleDeleteReceipt = () => {
-    deleteReceipt.mutate(
-      { saleId: sale.id, serialNumber },
-      {
-        onSuccess: () => {
-          setReceiptName(null)
-          uploadReceipt.reset()
-        },
-        onError: () => {
-          showNotificationToast({
-            message: 'Failed to remove receipt',
-            mode: 'error',
-            duration: 2000,
-          })
-        },
-      },
-    )
-  }
-
-  const handleCancelUpload = () => {
-    uploadAbortControllerRef.current?.abort()
-    uploadAbortControllerRef.current = null
-    setReceiptName(null)
-    uploadReceipt.reset()
-  }
-
-  const handleMarkPaid = () => {
-    markPaid.mutate(
-      { saleId: sale.id, serialNumber },
-      {
-        onError: (error: unknown) => {
-          showNotificationToast({
-            message:
-              (error as { response?: { data?: { message?: string } } })
-                ?.response?.data?.message ||
-              'Could not notify the merchant. Please try again.',
-            mode: 'error',
-          })
-        },
-      },
-    )
-  }
+  const notified = Boolean(sale.customerMarkedPaidAt) || markPaid.isSuccess
+  const merchantName = sale.merchant?.businessName || merchant.businessName
 
   return (
-    <div className="h-dvh overflow-hidden">
-      <div className="max-w-125 mx-auto h-full flex flex-col bg-[#f4f6f8]">
-        {/* Header */}
-        <header className="flex items-center justify-between px-4 py-3 shrink-0">
+    <div className="h-dvh overflow-hidden bg-linear-to-b from-white to-[#F4F6F8]">
+      <div className="mx-auto flex h-full max-w-125 flex-col">
+        <header className="flex shrink-0 items-center justify-end px-3 py-3">
           <button
             type="button"
-            onClick={onMinimize}
-            aria-label="Minimize payment"
-            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
-          >
-            <ChevronDown size={18} color="#868788" />
-          </button>
-          <button
-            type="button"
-            onClick={hasPaymentEvidence ? onMinimize : onClose}
+            onClick={notified ? onMinimize : onClose}
             disabled={isClosing}
-            aria-label={
-              hasPaymentEvidence ? 'Minimize payment' : 'Cancel payment'
-            }
-            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center"
+            aria-label={notified ? 'Close' : 'Cancel payment'}
+            className="flex size-9 items-center justify-center rounded-[12px] bg-[#00000014] outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
-            <X size={16} color="#868788" />
+            <X size={24} color="#868788" />
           </button>
         </header>
-
-        <div className="flex-1 overflow-y-auto px-4 flex flex-col justify-center items-center">
-          <div className="h-16 w-16 shrink-0">
-            <GreenSpinner size={16} innerBg="#f4f6f8" />
-          </div>
-
-          <h1 className="font-bold text-[20px] text-black -tracking-[0.4px] text-center mt-6">
-            {title}
-          </h1>
-          <p className="text-sm text-[#6B7280] font-medium text-center mt-2 max-w-85">
-            {subtitle}
-          </p>
-
-          {/* Transfer details (hidden once receipt is uploaded, per design) */}
-          {!hasReceipt && account && (
-            <div className="w-full bg-white border border-[#F1F1F1] rounded-[12px] divide-y divide-[#F1F1F1] mt-4">
-              <div className="flex items-center gap-3 p-4">
-                <BankLogo
-                  bankName={account.bankName}
-                  size={24}
-                  className="rounded-[6px] border border-[#0000001A]"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-[#64748B]">
-                    Transferring to
-                  </p>
-                  <p className="font-bold text-sm text-black truncate uppercase">
-                    {account.bankName} (
-                    {maskAccountNumber(account.accountNumber)})
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Copy account number"
-                  onClick={() => {
-                    navigator.clipboard.writeText(account.accountNumber)
-                    showNotificationToast({
-                      message: 'Account number copied',
-                      mode: 'success',
-                      duration: 1500,
-                    })
-                  }}
-                  className="h-9 w-9 rounded-full bg-[#0000000A] border border-[#0000000A] flex items-center justify-center shrink-0 shadow-[0px_2px_4px_0px_#0000000A]"
-                >
-                  <Copy size={16} className="text-black" />
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={onOpenBankApp}
-                className="w-full flex items-center gap-3 p-4 text-left"
-              >
-                {fromBankName ? (
-                  <BankLogo
-                    bankName={fromBankName}
-                    size={24}
-                    className="rounded-[6px] border border-[#0000001A]"
-                  />
-                ) : (
-                  <span className="w-6 h-6 rounded-[6px] bg-[#5C5C7A] flex items-center justify-center shrink-0">
-                    <Landmark size={16} className="text-white" />
-                  </span>
-                )}
-                <span className="flex-1 min-w-0">
-                  <span className="block text-xs font-medium text-[#64748B]">
-                    Transferring from
-                  </span>
-                  <span className="block font-bold text-sm text-black truncate">
-                    {fromBankName || 'Open your bank app'}
-                  </span>
-                </span>
-                <span className="h-9 w-9 rounded-full bg-[#0000000A] border border-[#0000000A] flex items-center justify-center shrink-0 shadow-[0px_2px_4px_0px_#0000000A]">
-                  <ArrowUpRight size={16} className="text-black" />
-                </span>
-              </button>
+        <main
+          className={`flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-4 text-center ${notified ? 'py-8' : 'pb-8 pt-6'}`}
+        >
+          <div className="my-auto flex w-full shrink-0 flex-col items-center">
+            <div
+              className={
+                notified
+                  ? 'flex size-[68px] shrink-0 items-center justify-center rounded-full border-4 border-[#24C166] text-[#24C166]'
+                  : 'flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-[#E7E7E7] bg-[#F4F4F4] text-black shadow-[0px_4px_8px_0px_#0000000A]'
+              }
+            >
+              {notified ? (
+                <Check size={34} strokeWidth={3} />
+              ) : copied ? (
+                <CopySuccess size={28} color="currentColor" />
+              ) : (
+                <Copy size={28} />
+              )}
             </div>
-          )}
-
-          {/* Receipt card */}
-          <div
-            className={`w-full bg-white border-[0.5px] border-[#0000000A] rounded-[12px] shadow-[0px_0px_0px_1px_#E5E7EB] mt-9 ${hasReceipt ? 'mt-8' : ''}`}
-          >
-            {hasReceipt ? (
-              <div className="flex items-center gap-3 p-4">
-                <span className="w-4 h-4 rounded-full bg-[#24C166] flex items-center justify-center shrink-0">
-                  <Check size={12} className="text-white" strokeWidth={3} />
+            <h1
+              className={`${notified ? 'mt-6 max-w-75' : 'mt-3'} text-xl font-bold leading-[130%] -tracking-[0.4px] text-black`}
+            >
+              {notified
+                ? `${merchantName} has been notified about your payment.`
+                : copied
+                  ? 'Account number copied'
+                  : 'Copy account number to continue'}
+            </h1>
+            <p
+              className={`${notified ? 'mt-2 text-[#00000080]' : 'mt-1.5 text-[#6B7280]'} max-w-90 text-sm font-medium leading-5`}
+            >
+              {notified
+                ? 'You will get a transaction receipt when the seller confirms the payment on their end.'
+                : 'Seller usually takes anywhere from a few seconds to some minutes after you transfer to confirm.'}
+            </p>
+            {notified ? (
+              <>
+                {/* Receipt requests are paused for now.
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled
+                  aria-describedby="pending-receipt-description"
+                  title="Receipt requests are not available yet. Your receipt arrives after seller confirmation."
+                  className="mt-6 h-9 w-fit gap-1.5 border border-[#0000000A] bg-[#0000000A] px-3.5 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A] disabled:cursor-not-allowed disabled:opacity-100"
+                >
+                  <Receipt1 size={16} color="currentColor" />
+                  REQUEST A RECEIPT
+                </Button>
+                <span id="pending-receipt-description" className="sr-only">
+                  Receipt requests are not available yet. Your receipt arrives
+                  after seller confirmation.
                 </span>
-                <p className="flex-1 min-w-0 font-medium text-sm text-black truncate">
-                  {displayedReceiptName} uploaded
-                </p>
-                <button
-                  type="button"
-                  aria-label="Delete receipt"
-                  onClick={handleDeleteReceipt}
-                  disabled={deleteReceipt.isPending}
-                  className="h-9 w-9 rounded-full bg-[#0000000A] border border-[#0000000A] flex items-center justify-center shrink-0 disabled:opacity-50"
-                >
-                  {deleteReceipt.isPending ? (
-                    <Loader size={16} className="animate-spin text-red-500" />
-                  ) : (
-                    <Trash2 size={16} color="black" />
-                  )}
-                </button>
-              </div>
-            ) : isUploading ? (
-              <div className="flex items-center gap-3 p-4">
-                <Loader
-                  size={20}
-                  className="animate-spin text-[#0075FF] shrink-0"
-                />
-                <p className="flex-1 text-sm text-[#6B7280]">Uploading...</p>
-                <button
-                  type="button"
-                  aria-label="Cancel upload"
-                  onClick={handleCancelUpload}
-                  className="h-9 w-9 rounded-full bg-[#0000000A] border border-[0000000A] flex items-center justify-center shrink-0 shadow-[0px_2px_4px_0px_#0000000A]"
-                >
-                  <X size={16} color="black" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3 p-4">
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 min-w-0 flex items-center gap-3 text-left"
-                >
-                  <Paperclip
-                    size={20}
-                    className="text-[#6B7280] shrink-0 -rotate-5"
-                  />
-                  <span className="text-sm font-medium text-[#6B7280] truncate">
-                    Tap to upload receipt
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePaste}
-                  className="bg-[#0000000A] rounded-full h-9 px-4 flex items-center gap-1.5 text-[10px] font-bold border border-[#0000000A] tracking-[1px] text-black uppercase shrink-0"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
+                */}
+                <AppCard className="mt-6 w-full text-left">
+                  <Link
+                    href={`/business?businessId=${encodeURIComponent(merchant.id)}`}
+                    className="flex items-center gap-3 p-3 outline-none transition-colors hover:bg-[#FAFAFA] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   >
-                    <path
-                      d="M8 12.2h7M8 16.2h4.38M10 6h4c2 0 2-1 2-2 0-2-1-2-2-2h-4C9 2 8 2 8 4s1 2 2 2Z"
-                      stroke="#000000"
-                      strokeWidth="1.5"
-                      strokeMiterlimit="10"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    ></path>
-                    <path
-                      d="M16 4.02c3.33.18 5 1.41 5 5.98v6c0 4-1 6-6 6H9c-5 0-6-2-6-6v-6c0-4.56 1.67-5.8 5-5.98"
-                      stroke="#000000"
-                      strokeWidth="1.5"
-                      strokeMiterlimit="10"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    ></path>
-                  </svg>
-                  Paste
-                </button>
-              </div>
+                    <MerchantAvatar
+                      profilePhotoUrl={
+                        merchant.businessImageUrl || merchant.profilePhotoUrl
+                      }
+                      alt={merchantName}
+                      size={36}
+                      className="rounded-full ring-2 ring-[#F1F1F1]"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-black">
+                        {merchantName}
+                      </span>
+                      <span className="mt-0.5 block text-[13px] font-medium leading-[140%] text-[#00000080]">
+                        Get updates from this seller
+                      </span>
+                    </span>
+                    <ChevronRight
+                      size={16}
+                      className="shrink-0 text-[#B8B8B8]"
+                    />
+                  </Link>
+                </AppCard>
+              </>
+            ) : (
+              <>
+                {account?.accountNumber && (
+                  <div className="mt-4 w-full divide-y divide-[#F1F1F1] rounded-[12px] border border-[#F1F1F1] bg-white text-left shadow-[0px_4px_8px_0px_#0000000A]">
+                    <div className="flex items-center gap-3.5 px-5 py-4">
+                      <BankLogo
+                        bankName={account.bankName}
+                        size={24}
+                        className="shrink-0 rounded-[6px]"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-[#64748B]">
+                          Transferring to
+                        </p>
+                        <p className="truncate text-sm font-bold uppercase text-[#0F172A]">
+                          {account.bankName} ({account.accountNumber})
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Copy account number"
+                        onClick={onCopy}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full border border-[#0000000A] bg-[#F5F5F5] shadow-[0px_2px_4px_0px_#0000000A] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {copied ? (
+                          <CopySuccess size={16} color="currentColor" />
+                        ) : (
+                          <Copy size={16} />
+                        )}
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={!copied}
+                      onClick={onOpenBankApp}
+                      className="flex w-full items-center gap-3.5 px-5 py-4 text-left outline-none hover:bg-[#FAFAFA] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring disabled:opacity-50"
+                    >
+                      {fromBankName ? (
+                        <BankLogo
+                          bankName={fromBankName}
+                          size={24}
+                          className="shrink-0 rounded-[6px]"
+                        />
+                      ) : (
+                        <span className="flex size-6 shrink-0 items-center justify-center rounded-[6px] bg-[#737C8C]">
+                          <BankIcon
+                            size={18}
+                            weight="fill"
+                            className="text-white"
+                          />
+                        </span>
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-medium text-[#64748B]">
+                          Transferring from
+                        </span>
+                        <span className="block truncate text-sm font-bold text-[#0F172A]">
+                          {fromBankName || 'Open your bank app'}
+                        </span>
+                      </span>
+                      <span className="flex size-9 items-center justify-center rounded-full border border-[#0000000A] bg-[#F5F5F5] shadow-[0px_2px_4px_0px_#0000000A] outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        <ArrowUpRight size={16} />
+                      </span>
+                    </button>
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  disabled={markPaid.isPending || !copied}
+                  className="mt-4 h-13 rounded-[12px] border border-[#F4F6F8] bg-white text-sm text-[#0075FF] shadow-[0px_4px_8px_0px_#0000000A] hover:bg-white/90"
+                  onClick={() => {
+                    if (markPaid.isPending) return
+                    markPaid.mutate(
+                      { saleId: sale.id, serialNumber },
+                      {
+                        onError: (error) =>
+                          showNotificationToast({
+                            message:
+                              (
+                                error as {
+                                  response?: { data?: { message?: string } }
+                                }
+                              )?.response?.data?.message ||
+                              'Could not notify the merchant. Please try again.',
+                            mode: 'error',
+                          }),
+                      },
+                    )
+                  }}
+                >
+                  {markPaid.isPending ? <Spinner /> : 'I have sent the money'}
+                </Button>
+              </>
             )}
           </div>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-
-          {!hasPaymentEvidence && (
-            <div className="mt-4 flex w-full flex-col gap-3">
-              <Button
-                onClick={handleMarkPaid}
-                disabled={markPaid.isPending}
-                className="w-full"
-              >
-                {markPaid.isPending ? <Spinner /> : 'I have paid'}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={onChangeMethod}
-                className="w-full bg-[#F1F1F1] hover:bg-[#F1F1F1]/90 text-black font-bold text-base rounded-full h-12 shrink-0"
-              >
-                Change payment method
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <TagFooter className="py-8" />
+        </main>
+        {!notified && (
+          <div className="flex shrink-0 justify-center px-4 pt-3">
+            <button
+              type="button"
+              onClick={onChangeMethod}
+              className="h-9 rounded-full bg-[#F1F1F1] px-4 text-[10px] font-bold uppercase tracking-[1px] text-black"
+            >
+              Change payment method
+            </button>
+          </div>
+        )}
+        <TagFooter
+          color="#999999"
+          className="shrink-0 pb-[max(2rem,env(safe-area-inset-bottom))] pt-8"
+        />
       </div>
     </div>
   )

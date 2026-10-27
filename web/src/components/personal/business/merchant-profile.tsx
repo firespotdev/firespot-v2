@@ -3,29 +3,40 @@
 import { useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from '@bprogress/next/app'
 import {
   ArrowUpRight,
-  Banknote,
+  Bookmark,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  Heart,
+  FileText,
   MapPin,
   MessageCircle,
+  Package,
   Phone,
+  Plus,
+  ScanBarcode,
+  Search,
   Share,
   ShoppingBag,
-  Star,
-  Store,
-  UserRound,
+  X,
 } from 'lucide-react'
 import { LoaderCircle } from '@/components/ui'
 import type { PublicBusinessProfile } from '@/services/business-profile'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
+import { usePublicCatalogue } from '@/services/products/hooks'
+import { useMerchantPosts } from '@/services/posts/hooks'
+import type { Product } from '@/services/products/productsApi'
 import { Activity } from './activity'
 import { Feedback } from './feedback'
 
-export type BusinessTab = 'about' | 'activity' | 'feedback'
+export type BusinessTab =
+  | 'items'
+  | 'posts'
+  | 'feedback'
+  | 'activity'
+  | 'about'
 
 interface MerchantProfileProps {
   business: PublicBusinessProfile
@@ -35,6 +46,7 @@ interface MerchantProfileProps {
   isFavoritePending: boolean
   onToggleFavorite: () => void
   onShare: () => Promise<void>
+  isScrolled?: boolean
 }
 
 const compactNumber = new Intl.NumberFormat('en', {
@@ -131,6 +143,466 @@ function OpeningHours({ business }: { business: PublicBusinessProfile }) {
   )
 }
 
+function ProductCard({
+  product,
+  serialNumber,
+  onAdd,
+}: {
+  product: Product
+  serialNumber?: string
+  onAdd: () => void
+}) {
+  const router = useRouter()
+
+  const formattedPrice =
+    product.price % 1 === 0
+      ? new Intl.NumberFormat('en-NG').format(product.price)
+      : formatCurrency(product.price)
+
+  const hasMultiplePrices = (product.variantPriceOverrides?.length ?? 0) > 0
+  const maxVariantPrice = hasMultiplePrices
+    ? Math.max(...product.variantPriceOverrides.map((v) => v.price))
+    : null
+  const strikePrice =
+    maxVariantPrice && maxVariantPrice > product.price
+      ? maxVariantPrice % 1 === 0
+        ? new Intl.NumberFormat('en-NG').format(maxVariantPrice)
+        : formatCurrency(maxVariantPrice)
+      : null
+
+  return (
+    <div
+      onClick={() => {
+        if (serialNumber) router.push(`/pay/${serialNumber}`)
+      }}
+      className="group flex cursor-pointer flex-col"
+    >
+      <div className="relative aspect-square w-full overflow-hidden rounded-[14px] bg-[#F4F6F8]">
+        {product.imageUrl ? (
+          <Image
+            src={product.imageUrl}
+            alt={product.name}
+            fill
+            sizes="(max-width: 640px) 50vw, 240px"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-[#9CA3AF]">
+            <Package size={32} strokeWidth={1.5} />
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onAdd()
+          }}
+          aria-label={`Add ${product.name}`}
+          className="absolute bottom-2.5 right-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-black shadow-[0_2px_8px_rgba(0,0,0,0.18)] transition-transform active:scale-90 hover:bg-gray-50"
+        >
+          <Plus size={18} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      <h3 className="mt-2 line-clamp-1 text-[14px] font-bold leading-snug text-black">
+        {product.name}
+      </h3>
+
+      <div className="mt-0.5 flex items-baseline gap-1.5">
+        <span className="text-[14px] font-bold text-[#00BA55]">
+          ₦ {formattedPrice}
+        </span>
+        {strikePrice && (
+          <span className="text-[12px] font-medium text-[#9CA3AF] line-through">
+            ₦ {strikePrice}
+          </span>
+        )}
+      </div>
+
+      {product.description && (
+        <p className="mt-1 line-clamp-2 text-xs font-normal leading-[1.35] text-[#6B7280]">
+          {product.description}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function ItemsTab({
+  merchantId,
+  serialNumber,
+}: {
+  merchantId: string
+  serialNumber?: string
+}) {
+  const router = useRouter()
+  const { data, isLoading, isError } = usePublicCatalogue(merchantId)
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <LoaderCircle />
+      </div>
+    )
+  }
+
+  const allProducts =
+    data?.products?.filter((product) => !product.isArchived) || []
+  const categories = data?.categories || []
+
+  if (isError || allProducts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]">
+          <ShoppingBag size={24} strokeWidth={1.5} />
+        </div>
+        <p className="mt-3 text-[15px] font-bold text-black">No items listed</p>
+        <p className="mt-1 max-w-[260px] text-xs font-medium text-[#00000080]">
+          This merchant hasn’t added any products to their showcase yet.
+        </p>
+      </div>
+    )
+  }
+
+  const queryTrimmed = searchQuery.trim().toLowerCase()
+  const searchFilteredProducts = queryTrimmed
+    ? allProducts.filter(
+        (p) =>
+          p.name.toLowerCase().includes(queryTrimmed) ||
+          p.description?.toLowerCase().includes(queryTrimmed),
+      )
+    : allProducts
+
+  return (
+    <div className="pb-8">
+      {/* Category Pills & Search Bar */}
+      <div className="hide-scrollbar flex items-center gap-2 overflow-x-auto px-4 py-3">
+        <button
+          type="button"
+          onClick={() => {
+            setIsSearchOpen(!isSearchOpen)
+            if (isSearchOpen) setSearchQuery('')
+          }}
+          aria-label={isSearchOpen ? 'Close search' : 'Search items'}
+          className={cn(
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-black shadow-2xs transition-colors hover:bg-gray-50',
+            (isSearchOpen || searchQuery) &&
+              'border-black bg-black text-white hover:bg-black',
+          )}
+        >
+          <Search size={18} strokeWidth={2} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveCategoryId('all')
+          }}
+          className={cn(
+            'h-10 shrink-0 rounded-full px-5 text-[13px] font-bold transition-colors',
+            activeCategoryId === 'all' && !searchQuery
+              ? 'bg-black text-white'
+              : 'bg-[#F1F3F5] text-black hover:bg-[#E5E7EB]',
+          )}
+        >
+          All
+        </button>
+
+        {categories.map((category) => {
+          const isCatActive = activeCategoryId === category._id && !searchQuery
+          return (
+            <button
+              key={category._id}
+              type="button"
+              onClick={() => {
+                setActiveCategoryId(category._id)
+                setSearchQuery('')
+              }}
+              className={cn(
+                'h-10 shrink-0 rounded-full px-5 text-[13px] font-semibold transition-colors',
+                isCatActive
+                  ? 'bg-black text-white'
+                  : 'bg-[#F1F3F5] text-black hover:bg-[#E5E7EB]',
+              )}
+            >
+              {category.name}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Expandable Search Input */}
+      {isSearchOpen && (
+        <div className="px-4 pb-2">
+          <div className="relative flex items-center">
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3.5 text-gray-400"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search items..."
+              autoFocus
+              className="h-10 w-full rounded-full border border-gray-200 bg-[#F9FAFB] pl-9 pr-9 text-sm text-black outline-none focus:border-black"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 text-gray-400 hover:text-black"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Product Groupings */}
+      {queryTrimmed ? (
+        <div className="pt-2">
+          <h2 className="mb-3 px-4 text-[18px] font-bold text-black">
+            Search Results ({searchFilteredProducts.length})
+          </h2>
+          {searchFilteredProducts.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm font-medium text-[#6B7280]">
+              No items match &quot;{searchQuery}&quot;.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3.5 px-4">
+              {searchFilteredProducts.map((product) => (
+                <ProductCard
+                  key={product._id}
+                  product={product}
+                  serialNumber={serialNumber}
+                  onAdd={() => {
+                    if (serialNumber) router.push(`/pay/${serialNumber}`)
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : activeCategoryId === 'all' ? (
+        categories.length > 0 ? (
+          <div>
+            {categories.map((category) => {
+              const categoryProducts = allProducts.filter((product) => {
+                const catId =
+                  typeof product.categoryId === 'object'
+                    ? product.categoryId?._id
+                    : product.categoryId
+                return catId === category._id
+              })
+
+              if (categoryProducts.length === 0) return null
+
+              return (
+                <div key={category._id} className="mt-5 first:mt-2">
+                  <h2 className="mb-3 px-4 text-[18px] font-bold text-black">
+                    {category.name}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-3.5 px-4">
+                    {categoryProducts.map((product) => (
+                      <ProductCard
+                        key={product._id}
+                        product={product}
+                        serialNumber={serialNumber}
+                        onAdd={() => {
+                          if (serialNumber) router.push(`/pay/${serialNumber}`)
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+
+            {(() => {
+              const uncategorized = allProducts.filter((product) => {
+                const catId =
+                  typeof product.categoryId === 'object'
+                    ? product.categoryId?._id
+                    : product.categoryId
+                return !catId || !categories.some((c) => c._id === catId)
+              })
+              if (uncategorized.length === 0) return null
+              return (
+                <div className="mt-6">
+                  <h2 className="mb-3 px-4 text-[18px] font-bold text-black">
+                    Other Items
+                  </h2>
+                  <div className="grid grid-cols-2 gap-3.5 px-4">
+                    {uncategorized.map((product) => (
+                      <ProductCard
+                        key={product._id}
+                        product={product}
+                        serialNumber={serialNumber}
+                        onAdd={() => {
+                          if (serialNumber) router.push(`/pay/${serialNumber}`)
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )
+            })()}
+          </div>
+        ) : (
+          <div className="pt-2">
+            <div className="grid grid-cols-2 gap-3.5 px-4">
+              {allProducts.map((product) => (
+                <ProductCard
+                  key={product._id}
+                  product={product}
+                  serialNumber={serialNumber}
+                  onAdd={() => {
+                    if (serialNumber) router.push(`/pay/${serialNumber}`)
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      ) : (
+        (() => {
+          const selectedCategory = categories.find(
+            (c) => c._id === activeCategoryId,
+          )
+          const filtered = allProducts.filter((product) => {
+            const catId =
+              typeof product.categoryId === 'object'
+                ? product.categoryId?._id
+                : product.categoryId
+            return catId === activeCategoryId
+          })
+
+          return (
+            <div className="pt-2">
+              <h2 className="mb-3 px-4 text-[18px] font-bold text-black">
+                {selectedCategory?.name || 'Items'}
+              </h2>
+              {filtered.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm font-medium text-[#6B7280]">
+                  No items in this category yet.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3.5 px-4">
+                  {filtered.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      serialNumber={serialNumber}
+                      onAdd={() => {
+                        if (serialNumber) router.push(`/pay/${serialNumber}`)
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()
+      )}
+    </div>
+  )
+}
+
+function PostsTab({
+  merchantId,
+  businessName,
+}: {
+  merchantId: string
+  businessName: string
+}) {
+  const { data, isLoading, isError } = useMerchantPosts(merchantId)
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <LoaderCircle />
+      </div>
+    )
+  }
+
+  const posts = data || []
+
+  if (isError || posts.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#F3F4F6] text-[#6B7280]">
+          <FileText size={24} strokeWidth={1.5} />
+        </div>
+        <p className="mt-3 text-[15px] font-bold text-black">No posts yet</p>
+        <p className="mt-1 max-w-[260px] text-xs font-medium text-[#00000080]">
+          When this merchant publishes posts or social updates, they’ll show up
+          here.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="pt-3">
+      <div className="grid grid-cols-2 gap-3 px-4">
+        {posts.map((post) => {
+          const captionText = post.productIds?.length
+            ? `${post.productIds.length} item${post.productIds.length === 1 ? '' : 's'} in this post`
+            : post.caption ||
+              post.preview?.description ||
+              post.preview?.title ||
+              ''
+
+          return (
+            <article
+              key={post._id}
+              onClick={() => {
+                if (post.sourceUrl) {
+                  window.open(post.sourceUrl, '_blank', 'noopener,noreferrer')
+                }
+              }}
+              className="group relative aspect-[0.62] w-full cursor-pointer overflow-hidden rounded-[14px] bg-[#1F2937] shadow-xs transition-transform active:scale-[0.98]"
+            >
+              {post.preview?.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={post.preview.imageUrl}
+                  alt={post.caption || 'Post image'}
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-linear-to-br from-[#FB5012] via-[#D72483] to-[#6D3CE8]" />
+              )}
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
+
+              <div className="absolute inset-x-3 bottom-3 text-left text-white">
+                <p className="truncate text-[14px] font-bold leading-tight drop-shadow-xs">
+                  {post.merchant?.businessName || businessName}
+                </p>
+                <p className="mt-1 truncate text-[12px] font-medium leading-tight text-white/85 drop-shadow-xs">
+                  {captionText}
+                </p>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+
+      <div className="py-8 text-center text-xs font-medium text-[#9CA3AF]">
+        You’ve reached the end of the list
+      </div>
+    </div>
+  )
+}
+
 export function MerchantProfile({
   business,
   activeTab,
@@ -139,6 +611,7 @@ export function MerchantProfile({
   isFavoritePending,
   onToggleFavorite,
   onShare,
+  isScrolled,
 }: MerchantProfileProps) {
   const statsContainerRef = useRef<HTMLDivElement>(null)
   const [showLeftArrow, setShowLeftArrow] = useState(false)
@@ -161,9 +634,11 @@ export function MerchantProfile({
   }
 
   const tabItems: Array<{ value: BusinessTab; label: string }> = [
-    { value: 'about', label: 'About' },
-    { value: 'activity', label: 'Activity' },
+    { value: 'items', label: 'Items' },
+    { value: 'posts', label: 'Posts' },
     { value: 'feedback', label: 'Feedback' },
+    { value: 'activity', label: 'Activity' },
+    { value: 'about', label: 'About' },
   ]
   const hasOpeningHours = Boolean(
     business.openingHours?.days.some((day) => day.enabled),
@@ -283,89 +758,163 @@ export function MerchantProfile({
         </Link>
       )}
 
-      <div className="mt-10 mb-4 flex justify-center gap-2">
-        {business.serialNumber && (
+      <div className="mt-6 mb-6 flex items-center justify-center gap-2.5">
+        {business.serialNumber ? (
           <Link
             href={`/pay/${business.serialNumber}`}
-            className="flex h-11 w-full items-center justify-center rounded-full bg-black px-6 py-2 text-center text-[15px] font-medium text-white"
+            className="flex h-11 min-w-[70px] items-center justify-center rounded-full bg-[#00C060] px-5 text-[15px] font-bold text-white shadow-xs transition-transform active:scale-95"
           >
             Pay
           </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            className="flex h-11 min-w-[70px] items-center justify-center rounded-full bg-[#00C060]/50 px-5 text-[15px] font-bold text-white opacity-50"
+          >
+            Pay
+          </button>
         )}
+
         <button
           type="button"
           onClick={onToggleFavorite}
           disabled={isFavoritePending}
-          aria-label={isFavorite ? 'Remove from Faves' : 'Add to Faves'}
-          className={`flex min-w-11 items-center justify-center rounded-full p-2 disabled:opacity-60 ${
-            isFavorite ? 'bg-[#FF002E1A]' : 'border border-[#0000001F] bg-white'
-          }`}
+          aria-label={isFavorite ? 'Remove from Saved' : 'Save to Faves'}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black shadow-xs transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-60"
         >
           {isFavoritePending ? (
-            <span className="h-6 w-6">
-              <LoaderCircle size={6} />
+            <span className="h-5 w-5">
+              <LoaderCircle size={5} />
             </span>
           ) : (
-            <Heart
-              color={isFavorite ? '#FF002E' : 'currentColor'}
-              fill={isFavorite ? '#FF002E' : 'none'}
-              size={24}
-              strokeWidth={1.5}
+            <Bookmark
+              size={18}
+              strokeWidth={2}
+              className={isFavorite ? 'fill-black text-black' : 'text-black'}
             />
           )}
         </button>
-        {business.phoneNumber && (
-          <>
-            <Link
-              href={`tel:${business.phoneNumber}`}
-              aria-label={`Call ${business.businessName}`}
-              className="flex min-w-11 items-center justify-center rounded-full border border-[#0000001F] bg-white p-2"
-            >
-              <Phone size={24} strokeWidth={1.5} />
-            </Link>
-            <Link
-              href={`sms:${business.phoneNumber}`}
-              aria-label={`Message ${business.businessName}`}
-              className="flex min-w-11 items-center justify-center rounded-full border border-[#0000001F] bg-white p-2"
-            >
-              <MessageCircle size={24} strokeWidth={1.5} />
-            </Link>
-          </>
+
+        {business.serialNumber ? (
+          <Link
+            href={`/pay/${business.serialNumber}`}
+            aria-label="Scan in store"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black shadow-xs transition-colors hover:bg-gray-50 active:scale-95"
+          >
+            <ScanBarcode size={18} strokeWidth={2} />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-label="Scan in store"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black/30 shadow-xs"
+          >
+            <ScanBarcode size={18} strokeWidth={2} />
+          </button>
         )}
+
+        {business.phoneNumber ? (
+          <Link
+            href={`tel:${business.phoneNumber}`}
+            aria-label={`Call ${business.businessName}`}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black shadow-xs transition-colors hover:bg-gray-50 active:scale-95"
+          >
+            <Phone size={18} strokeWidth={2} />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-label="No phone number"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black/30 shadow-xs"
+          >
+            <Phone size={18} strokeWidth={2} />
+          </button>
+        )}
+
+        {business.socialLinks?.whatsapp || business.phoneNumber ? (
+          <Link
+            href={
+              business.socialLinks?.whatsapp
+                ? externalHref(business.socialLinks.whatsapp)
+                : `https://wa.me/${business.phoneNumber?.replace(/\D/g, '')}`
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Chat with ${business.businessName}`}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black shadow-xs transition-colors hover:bg-gray-50 active:scale-95"
+          >
+            <MessageCircle size={18} strokeWidth={2} />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            disabled
+            aria-label="No chat link"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black/30 shadow-xs"
+          >
+            <MessageCircle size={18} strokeWidth={2} />
+          </button>
+        )}
+
         <button
           type="button"
           onClick={() => void onShare()}
           aria-label="Share business profile"
-          className="flex min-w-11 items-center justify-center rounded-full border border-[#0000001F] bg-white p-2"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-black shadow-xs transition-colors hover:bg-gray-50 active:scale-95"
         >
-          <Share size={24} strokeWidth={1.5} />
+          <Share size={18} strokeWidth={2} />
         </button>
       </div>
 
       <div className="-mx-4">
         <div
-          className="flex justify-center border-b border-[#F1F1F1]"
+          className={cn(
+            'sticky z-30 hide-scrollbar flex items-center justify-between overflow-x-auto border-b border-[#E5E7EB] bg-white px-2 transition-[top] duration-150',
+            isScrolled ? 'top-13' : 'top-0',
+          )}
           role="tablist"
           aria-label="Business profile sections"
         >
-          {tabItems.map((tab) => (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.value}
-              key={tab.value}
-              onClick={() => onTabChange(tab.value)}
-              className={`relative flex-1 px-3 py-3 text-[13px] font-bold ${
-                activeTab === tab.value ? 'text-black' : 'text-[#00000066]'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.value && (
-                <span className="absolute inset-x-[28%] bottom-0 h-0.5 bg-black" />
-              )}
-            </button>
-          ))}
+          {tabItems.map((tab) => {
+            const isActive = activeTab === tab.value
+            return (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                key={tab.value}
+                onClick={() => onTabChange(tab.value)}
+                className={`relative shrink-0 px-3.5 py-3 text-[14px] whitespace-nowrap transition-colors ${
+                  isActive
+                    ? 'font-bold text-black'
+                    : 'font-medium text-[#8E8E93] hover:text-black'
+                }`}
+              >
+                {tab.label}
+                {isActive && (
+                  <span className="absolute inset-x-2 bottom-0 h-[2.5px] rounded-full bg-black" />
+                )}
+              </button>
+            )
+          })}
         </div>
+
+        {activeTab === 'items' && (
+          <ItemsTab
+            merchantId={business.id}
+            serialNumber={business.serialNumber}
+          />
+        )}
+
+        {activeTab === 'posts' && (
+          <PostsTab
+            merchantId={business.id}
+            businessName={business.businessName}
+          />
+        )}
 
         {activeTab === 'about' && (
           <div className="overflow-hidden rounded-lg bg-white px-4">

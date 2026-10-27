@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import {
   useInfiniteQuery,
   useMutation,
@@ -383,8 +384,17 @@ export const usePublicSale = (saleId?: string, serialNumber?: string) => {
     queryKey: ['public-sale', saleId, serialNumber],
     queryFn: () => SalesApi.getPublicSale(saleId!, serialNumber!),
     enabled: !!saleId && !!serialNumber,
-    refetchInterval: (query) =>
-      query.state.data?.status === 'PENDING' ? 5000 : false,
+    retry: (failureCount, error) =>
+      !(isAxiosError(error) && error.response?.status === 404) &&
+      failureCount < 3,
+    refetchInterval: (query) => {
+      // A cached pending sale may have been removed (or belong to a different
+      // API environment). Its old status must not keep a 404 polling forever.
+      if (isAxiosError(query.state.error) && query.state.error.response?.status === 404) {
+        return false;
+      }
+      return query.state.data?.status === 'PENDING' ? 5000 : false;
+    },
   });
 };
 

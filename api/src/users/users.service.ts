@@ -428,8 +428,7 @@ export class UsersService {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
 
-    user.firstName = dto.firstName.trim();
-    user.lastName = dto.lastName.trim();
+    user.fullName = dto.fullName.trim();
     user.onboardingCompleted = true;
     await user.save();
 
@@ -1342,8 +1341,7 @@ export class UsersService {
       phoneNumber: user.phoneNumber,
       phoneCountryCode: user.phoneCountryCode,
       fullPhoneNumber: user.fullPhoneNumber,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      fullName: user.fullName,
       role: user.role,
       onboardingCompleted: user.onboardingCompleted === true,
       businessName: user.businessName,

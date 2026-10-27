@@ -153,10 +153,10 @@ export class FeedbackService {
     if (sale.customerUserId) {
       const customer = await this.userModel
         .findById(sale.customerUserId)
-        .select("firstName lastName profilePhotoUrl");
+        .select("fullName profilePhotoUrl");
       if (customer) {
         customerName =
-          [customer.firstName, customer.lastName].filter(Boolean).join(" ") ||
+          customer.fullName ||
           customerName;
         customerPhotoUrl = customer.profilePhotoUrl;
       }

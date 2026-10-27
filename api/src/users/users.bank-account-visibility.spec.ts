@@ -26,6 +26,13 @@ describe("UsersService - bank account visibility", () => {
 
   beforeEach(() => jest.clearAllMocks());
 
+  it('saves a personal full name without replacing merchant identity', async () => {
+    const user = { role: 'merchant', businessName: 'Ada Store', bankAccounts: [{ accountName: 'ADA STORE LTD' }], onboardingCompleted: true, save: jest.fn() }
+    userModel.findById.mockResolvedValue(user)
+    await service.updateProfile('merchant-id', { fullName: '  Ada Okafor  ' })
+    expect(user).toMatchObject({ fullName: 'Ada Okafor', role: 'merchant', businessName: 'Ada Store', bankAccounts: [{ accountName: 'ADA STORE LTD' }], onboardingCompleted: true })
+  })
+
   it("persists whether customers can see a bank account", async () => {
     const account = {
       accountNumber: "0123456789",

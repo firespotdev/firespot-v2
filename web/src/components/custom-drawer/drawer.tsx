@@ -1,5 +1,7 @@
 'use client'
 
+import { PaymentAuthDrawer } from './payment-auth-drawer'
+
 import { useEffect, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import {
@@ -96,6 +98,15 @@ const DRAWER_CONFIG: Record<
     animateOnClose?: boolean
   }
 > = {
+  'payment-auth': {
+    title: 'Enter phone number to continue',
+    direction: 'bottom',
+    Content: PaymentAuthDrawer,
+    noHeader: true,
+    dismissible: true,
+    contentClassName: 'bg-white overflow-hidden',
+  },
+  'payment-verify': { title: '', direction: 'right', Content: PaymentAuthDrawer, noHeader: true, fullScreen: true, hideHandle: true, dismissible: false },
   'bank-accounts': {
     title: 'Bank accounts',
     HeaderLeft: BankDrawerHeaderLeft,
@@ -596,6 +607,9 @@ export function CustomDrawer() {
     const isOpen = exitingConfig !== config
 
     const handleClose = () => {
+      if (config.type === 'payment-auth' || config.type === 'payment-verify') {
+        (config.props?.onCancel as (() => void) | undefined)?.()
+      }
       if (animateOnClose) {
         setExitingConfig(config)
         return

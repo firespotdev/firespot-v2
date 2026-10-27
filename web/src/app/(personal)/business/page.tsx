@@ -1,8 +1,8 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Image from 'next/image'
-import { ChevronDown } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Ellipsis, Share } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { useRouter } from '@bprogress/next/app'
 import {
@@ -22,13 +22,15 @@ import {
   useRemoveFavorite,
 } from '@/services/favorites'
 import { useBusinessProfile } from '@/services/business-profile'
+import { cn } from '@/lib/utils'
 
 function BusinessPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const identifier =
     searchParams.get('businessId') || searchParams.get('merchantSlug') || ''
-  const [activeTab, setActiveTab] = useState<BusinessTab>('about')
+  const [activeTab, setActiveTab] = useState<BusinessTab>('items')
+  const [isScrolled, setIsScrolled] = useState(false)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const profileQuery = useBusinessProfile(identifier)
   const favoritesQuery = useFavorites()
@@ -42,6 +44,14 @@ function BusinessPageContent() {
     ),
   )
   const isFavoritePending = addFavorite.isPending || removeFavorite.isPending
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 180)
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const toggleFavorite = () => {
     if (!business || isFavoritePending) return
@@ -145,6 +155,75 @@ function BusinessPageContent() {
 
   return (
     <div className="min-h-dvh bg-white font-satoshi">
+      {/* Sticky Header when scrolled beyond banner and avatar */}
+      <div
+        className={cn(
+          'fixed top-0 left-0 right-0 z-40 bg-white transition-all duration-200',
+          isScrolled
+            ? 'translate-y-0 opacity-100 shadow-2xs'
+            : '-translate-y-full opacity-0 pointer-events-none',
+        )}
+      >
+        <div className="relative mx-auto flex h-13 max-w-125 items-center justify-between border-b border-[#F1F3F5] px-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="Go back"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-black transition-colors active:bg-gray-100"
+          >
+            <ArrowLeft size={22} strokeWidth={2} />
+          </button>
+
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+            <div className="h-8.5 w-8.5 overflow-hidden rounded-full border border-gray-200 bg-gray-100">
+              {business.businessImageUrl ? (
+                <Image
+                  src={business.businessImageUrl}
+                  alt={business.businessName}
+                  width={34}
+                  height={34}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <Image
+                  src="/icons/store_solid.svg"
+                  alt=""
+                  width={34}
+                  height={34}
+                />
+              )}
+            </div>
+            {business.verificationLevel && (
+              <span className="absolute -bottom-1 -right-1">
+                <VerifiedBadge
+                  level={business.verificationLevel}
+                  className="[&_svg]:h-3.5 [&_svg]:w-3.5"
+                />
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1 text-black">
+            <button
+              type="button"
+              onClick={shareProfile}
+              aria-label="Share profile"
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-gray-100"
+            >
+              <Share size={20} strokeWidth={1.75} />
+            </button>
+            <button
+              type="button"
+              onClick={openOptions}
+              aria-label="More options"
+              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-gray-100"
+            >
+              <Ellipsis size={22} strokeWidth={2} />
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="mx-auto min-h-dvh max-w-125 bg-white">
         <Banner
           business={business}
@@ -207,6 +286,7 @@ function BusinessPageContent() {
               isFavoritePending={isFavoritePending}
               onToggleFavorite={toggleFavorite}
               onShare={shareProfile}
+              isScrolled={isScrolled}
             />
           </div>
         </main>

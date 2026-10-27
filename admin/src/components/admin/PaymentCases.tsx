@@ -519,7 +519,7 @@ function ReportQueue({
               </td>
               <td className="px-4 py-4">
                 <p className="font-medium text-gray-900">
-                  {[item.customerId?.firstName, item.customerId?.lastName].filter(Boolean).join(' ') || item.customerId?.fullPhoneNumber || 'Customer'}
+                  {item.customerId?.fullName || item.customerId?.fullPhoneNumber || 'Customer'}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">to {item.merchantId?.businessName || 'merchant'}</p>
               </td>

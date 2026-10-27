@@ -86,6 +86,7 @@ export interface MerchantProfile {
   merchantSlug: string
   businessName: string
   bankAccounts: {
+    id?: string
     bankName: string
     bankCode: string
     accountNumber: string

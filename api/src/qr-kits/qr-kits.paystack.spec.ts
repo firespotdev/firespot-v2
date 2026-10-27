@@ -51,13 +51,18 @@ describe('QRKitsService Paystack verification', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { get: jest.fn().mockReturnValue('test-secret') } as any,
       {} as any,
       {} as any,
       {} as any,
     )
 
-    const result = await service.getQRKitBySerial('fs-test123')
+    const publicResult = await service.getQRKitBySerial('fs-test123')
+    expect(publicResult.bankAccounts).toHaveLength(2)
+    expect(publicResult.bankAccounts.every((account) => account.accountNumber === '')).toBe(true)
+    expect(new Set(publicResult.bankAccounts.map((account) => account.id)).size).toBe(2)
+    expect(publicResult.bankAccounts[0].id).not.toContain('0123456789')
+    const result = await service.getQRKitBySerial('fs-test123', undefined, undefined, undefined, true)
 
     expect(result.bankAccounts).toEqual([
       expect.objectContaining({ accountNumber: '0123456789' }),

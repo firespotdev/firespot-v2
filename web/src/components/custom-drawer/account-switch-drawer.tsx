@@ -49,10 +49,7 @@ export function AccountSwitchDrawer({
     isError: isHistoryError,
   } = useCustomerHistory()
 
-  const firstName = profile?.firstName ?? authUser?.firstName
-  const lastName = profile?.lastName ?? authUser?.lastName
-  const personalName =
-    [firstName, lastName].filter(Boolean).join(' ') || 'Personal account'
+  const personalName = profile?.fullName || authUser?.fullName || 'Personal account'
   const businessName = profile?.businessName ?? authUser?.businessName
   const isMerchant =
     (profile?.role ?? authUser?.role) === 'merchant' || Boolean(businessName)

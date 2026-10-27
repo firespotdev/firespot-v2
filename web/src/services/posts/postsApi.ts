@@ -107,4 +107,11 @@ export const PostsApi = {
     )
     return data
   },
+
+  listByMerchant: async (merchantId: string): Promise<MerchantPost[]> => {
+    const { data } = await publicApiClient.get<MerchantPost[]>(
+      `/public/posts/merchant/${encodeURIComponent(merchantId)}`,
+    )
+    return data
+  },
 }

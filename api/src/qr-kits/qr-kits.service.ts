@@ -1,3 +1,4 @@
+import { createHmac } from 'crypto'
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { ConfigService } from '@nestjs/config'
@@ -83,6 +84,7 @@ export class QRKitsService {
     ipAddress?: string,
     userAgent?: string,
     customerFingerprint?: string,
+    revealAccounts = false,
   ) {
     const qrKit = await this.qrKitModel
       .findOne({ serialNumber: serialNumber.toUpperCase() })
@@ -136,9 +138,10 @@ export class QRKitsService {
         ? merchant.bankAccounts
             .filter((acc) => acc.isEnabled !== false)
             .map((acc) => ({
+              id: createHmac('sha256', this.configService.get<string>('JWT_SECRET')!).update(`${merchant._id}:${acc.bankCode}:${acc.accountNumber}`).digest('hex'),
               bankName: acc.bankName,
               bankCode: acc.bankCode,
-              accountNumber: acc.accountNumber,
+              accountNumber: revealAccounts ? acc.accountNumber : '',
               accountName: acc.accountName,
               isPrimary: acc.isPrimary,
             }))

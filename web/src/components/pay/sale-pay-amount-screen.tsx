@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
 import Image from 'next/image'
 import { Plus, Share, X } from 'lucide-react'
 import { showNotificationToast } from '@/components/ui'
@@ -55,8 +55,10 @@ export function SalePayAmountScreen({
   savedCard,
 }: SalePayAmountScreenProps) {
 
-  const [amountDigits, setAmountDigits] = useState('')
-  const [description, setDescription] = useState('')
+  const amountDigits = usePurchaseCartStore((s) => s.amountDigits)
+  const setAmountDigits = usePurchaseCartStore((s) => s.setAmountDigits)
+  const description = usePurchaseCartStore((s) => s.description)
+  const setDescription = usePurchaseCartStore((s) => s.setDescription)
 
   const hasSelectedItems = selectedItemsCount > 0
   const amountValue = hasSelectedItems

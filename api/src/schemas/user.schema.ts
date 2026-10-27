@@ -101,10 +101,7 @@ export class User extends Document {
 
   // Personal profile
   @Prop()
-  firstName?: string
-
-  @Prop()
-  lastName?: string
+  fullName?: string
 
   // True once the user has completed post-signup onboarding (name entry).
   // Existing users are marked true via migration.

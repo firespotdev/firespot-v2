@@ -1,4 +1,6 @@
 export type DrawerContentType =
+  | 'payment-auth'
+  | 'payment-verify'
   | 'bank-accounts'
   | 'profile-menu'
   | 'personal-profile-menu'

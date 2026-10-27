@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { safeLocalStorage } from '@/lib/utils/storage'
@@ -66,6 +66,16 @@ export const useAuthStore = create<AuthState>()(
 
     {
       name: 'auth-storage',
+      version: 1,
+      migrate: (persisted) => {
+        const state = persisted as AuthState & { user: (User & { firstName?: string; lastName?: string }) | null }
+        if (state.user) {
+          state.user.fullName ||= [state.user.firstName, state.user.lastName].filter(Boolean).join(' ') || undefined
+          delete state.user.firstName
+          delete state.user.lastName
+        }
+        return state
+      },
     },
   ),
 )
@@ -75,16 +85,14 @@ export const useAuthStore = create<AuthState>()(
  * Auth guards must wait for this — running them before hydration sees a
  * logged-out store and redirects authenticated users to /login.
  */
+const subscribeHydration = (listener: () => void) =>
+  useAuthStore.persist?.onFinishHydration(listener) || (() => {})
+const getHydrated = () => useAuthStore.persist?.hasHydrated() ?? false
+
 export function useAuthHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(false)
-
-  useEffect(() => {
-    const unsubscribe = useAuthStore.persist.onFinishHydration(() =>
-      setHydrated(true),
-    )
-    setHydrated(useAuthStore.persist.hasHydrated())
-    return unsubscribe
-  }, [])
-
-  return hydrated
+  return useSyncExternalStore(
+    subscribeHydration,
+    getHydrated,
+    () => false,
+  )
 }

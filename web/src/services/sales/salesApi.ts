@@ -91,7 +91,7 @@ export const SalesApi = {
   createPendingSale: async (
     payload: CreatePendingSalePayload,
   ): Promise<Sale> => {
-    const { data } = await publicApiClient.post('/sales/pending', payload);
+    const { data } = await apiClient.post('/sales/pending', payload);
     return data;
   },
 
@@ -329,7 +329,7 @@ export const SalesApi = {
     saleId: string,
     serialNumber: string,
   ): Promise<PublicSale> => {
-    const { data } = await publicApiClient.patch(
+    const { data } = await apiClient.patch(
       `/sales/${saleId}/customer-paid`,
       { serialNumber },
       {
@@ -391,7 +391,7 @@ export const SalesApi = {
       sourceBankName?: string;
     },
   ): Promise<Sale> => {
-    const { data } = await publicApiClient.patch(
+    const { data } = await apiClient.patch(
       `/sales/${saleId}/copy`,
       payload,
       {

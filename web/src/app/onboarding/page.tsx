@@ -11,8 +11,7 @@ import { hasPersonalIdentity } from '@/lib/utils/auth-redirect'
 function OnboardingPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [error, setError] = useState<string | undefined>()
 
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -60,13 +59,13 @@ function OnboardingPageContent() {
     e.preventDefault()
     setError(undefined)
 
-    if (!firstName.trim() || !lastName.trim()) {
-      setError('Please enter your first and last name')
+    if (!fullName.trim()) {
+      setError('Please enter your full name')
       return
     }
 
     updateProfile.mutate(
-      { firstName: firstName.trim(), lastName: lastName.trim() },
+      { fullName: fullName.trim() },
       {
         onSuccess: () => {
           // Deep links (e.g. a scanned payment QR) take priority; otherwise
@@ -115,33 +114,21 @@ function OnboardingPageContent() {
             className="w-full flex-1 min-h-0 flex flex-col"
           >
             <div className="flex-1 min-h-0 overflow-y-auto">
-              <Label>Full name</Label>
-              <div className="flex">
-                <Input
-                  type="text"
-                  placeholder="First name"
-                  autoComplete="given-name"
-                  value={firstName}
-                  disabled={updateProfile.isPending}
-                  className={`font-medium rounded-r-none border-r-0 ${errorInputClassName}`}
-                  onChange={(e) => {
-                    setFirstName(e.target.value)
-                    if (error) setError(undefined)
-                  }}
-                />
-                <Input
-                  type="text"
-                  placeholder="Last name"
-                  autoComplete="family-name"
-                  value={lastName}
-                  disabled={updateProfile.isPending}
-                  className={`font-medium rounded-l-none ${errorInputClassName}`}
-                  onChange={(e) => {
-                    setLastName(e.target.value)
-                    if (error) setError(undefined)
-                  }}
-                />
-              </div>
+              <Label htmlFor="full-name">Full name</Label>
+              <Input
+                id="full-name"
+                type="text"
+                placeholder="Full name"
+                autoComplete="name"
+                maxLength={101}
+                value={fullName}
+                disabled={updateProfile.isPending}
+                className={`font-medium ${errorInputClassName}`}
+                onChange={(e) => {
+                  setFullName(e.target.value)
+                  if (error) setError(undefined)
+                }}
+              />
               {error && (
                 <p className="text-[#FF002E] text-xs font-medium flex items-center gap-1 mt-1.5">
                   <span className="w-3 h-3 rounded-full bg-[#FF002E] text-white text-xs flex items-center justify-center">
