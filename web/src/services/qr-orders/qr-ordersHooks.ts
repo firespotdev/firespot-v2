@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QROrdersApi } from './qr-ordersApi';
 import type {
   CreateQROrderPayload,
@@ -27,9 +27,18 @@ export const useVerifyQROrderPayment = (
   reference: string,
   options?: Record<string, unknown>,
 ) => {
+  const client = useQueryClient();
   return useQuery<VerifyQROrderResponse>({
     queryKey: ['qr-order-payment', reference],
-    queryFn: () => QROrdersApi.verifyOrderPayment(reference),
+    queryFn: async () => {
+      const order = await QROrdersApi.verifyOrderPayment(reference);
+      if (order.paymentStatus === 'SUCCESSFUL') {
+        await Promise.all([
+          ['merchant-plans'], ['kyc-status'], ['user', 'profile'], ['user', 'qr-kits'],
+        ].map(queryKey => client.invalidateQueries({ queryKey })));
+      }
+      return order;
+    },
     enabled: !!reference,
     ...options,
   });
@@ -39,9 +48,8 @@ export const useVerifyQROrderPayment = (
  * Server-authoritative QR kit pricing.
  *
  * `pricing` is never undefined so screens can render without a loading branch;
- * check `isLoading` before showing an amount, since the fallback reads as free
- * and quietly showing "free" for something chargeable would be worse than a
- * spinner.
+ * check `isLoading` before showing an amount. The server rejects checkout
+ * when the configured unit price is unavailable or zero.
  */
 export const useQRKitPricing = () => {
   const query = useQuery({

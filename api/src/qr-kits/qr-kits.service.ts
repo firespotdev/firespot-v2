@@ -23,6 +23,8 @@ import {
 import { getMerchantPaystackChannels } from '../payments/paystack-collection-channels'
 import { customAlphabet } from 'nanoid'
 import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
+import { grantKitLite } from '../merchant-plans/kit-lite'
+import { PaystackSubaccountsService } from '../users/services/paystack-subaccounts.service'
 import { validatePaystackPaidValue } from '../payments/payment-validation'
 
 const generateDigitalSerial = customAlphabet(
@@ -44,6 +46,7 @@ export class QRKitsService {
     private scansService: ScansService,
     private smsService: SmsService,
     private qrCodeService: QRCodeService,
+    private paystackSubaccountsService: PaystackSubaccountsService,
   ) {}
 
   async checkSerialNumber(serialNumber: string) {
@@ -234,10 +237,13 @@ export class QRKitsService {
       (!!user.availableKitEntitlements && user.availableKitEntitlements > 0) ||
       isReservedForThisMerchant
 
-    // Free activation, either because it's free for everyone or because this
-    // merchant pre-paid via an order. No Paystack round trip in either case.
-    if (activationAmount === 0 || hasEntitlement) {
+    // An online order already paid for activation. Do not charge twice.
+    if (hasEntitlement) {
       return this.activateKitFree(qrKit, user, reference)
+    }
+
+    if (activationAmount <= 0) {
+      throw new HttpException('QR kit activation pricing is unavailable. Please try again later.', HttpStatus.BAD_REQUEST)
     }
 
     const frontendUrl =
@@ -322,8 +328,8 @@ export class QRKitsService {
   /**
    * Activate a kit without payment.
    *
-   * Reached when activation is priced at zero, or when the merchant pre-paid
-   * for kits via an order and holds an entitlement. Note that no agent
+   * Reached when the merchant prepaid for kits via an order and holds an
+   * entitlement or a reserved kit. Note that no agent
    * commission is settled through Paystack on this path — the agent is still
    * notified so the commission can be reconciled out of band.
    */
@@ -332,8 +338,7 @@ export class QRKitsService {
     user: UserDocument,
     reference: string,
   ) {
-    // Only consume an entitlement if one exists: when activation is free for
-    // everyone the counter stays put, so it keeps meaning "kits still owed".
+    // Reservations can prove prepayment even if the legacy counter is empty.
     if (user.availableKitEntitlements && user.availableKitEntitlements > 0) {
       user.availableKitEntitlements -= 1
     }
@@ -369,6 +374,8 @@ export class QRKitsService {
 
     await user.save()
 
+    await this.grantLite(qrKit.merchantId.toString())
+
     return {
       message: 'QR kit activated',
       serialNumber: qrKit.serialNumber,
@@ -391,6 +398,7 @@ export class QRKitsService {
     }
 
     if (qrKit.activationStatus === 'activated') {
+      await this.grantLite(qrKit.merchantId.toString())
       return {
         message: 'QR kit is already activated',
         serialNumber: qrKit.serialNumber,
@@ -457,6 +465,8 @@ export class QRKitsService {
       await user.save()
     }
 
+    await this.grantLite(qrKit.merchantId.toString())
+
     return {
       message: 'QR kit activated successfully',
       serialNumber: qrKit.serialNumber,
@@ -478,6 +488,7 @@ export class QRKitsService {
     }
 
     if (qrKit.activationStatus === 'activated') {
+      await this.grantLite(qrKit.merchantId.toString())
       return { success: true, message: 'Already activated' }
     }
 
@@ -536,6 +547,7 @@ export class QRKitsService {
       await user.save()
     }
 
+    await this.grantLite(qrKit.merchantId.toString())
     return { success: true, message: 'Activated via webhook' }
   }
 
@@ -742,114 +754,75 @@ export class QRKitsService {
   }
 
   /**
-   * Claim a digital QR kit if the user has entitlements but no kits yet (Recovery)
+   * Recover an existing paid digital kit without creating another one.
    */
   async claimDigitalKit(merchantId: string) {
-    const user = await this.userModel.findById(merchantId)
-    if (!user) {
-      throw new HttpException('Merchant not found', HttpStatus.NOT_FOUND)
-    }
-
-    // Check if user has any kits (digital or physical)
-    const existingKit = await this.qrKitModel.findOne({ merchantId: user._id })
-    if (existingKit) {
-      throw new HttpException(
-        'Merchant already has a QR kit',
-        HttpStatus.BAD_REQUEST,
-      )
-    }
-
-    // Entitlements only gate the digital kit while kits cost money. Once
-    // activation is free, requiring a prior paid order would lock out every
-    // merchant who never ordered.
-    const { activationAmount } = getQRKitPricing(this.configService)
-    const requiresEntitlement = activationAmount > 0
-
-    if (
-      requiresEntitlement &&
-      (!user.availableKitEntitlements || user.availableKitEntitlements <= 0)
-    ) {
-      throw new HttpException(
-        'No available kit entitlements found. Please order a kit first.',
-        HttpStatus.BAD_REQUEST,
-      )
-    }
-
-    // Create a digital kit (does not consume an entitlement)
-    return this.createDigitalKit(merchantId, 'online-order')
-  }
-
-  /**
-   * Generate a new digital kit directly on a merchant's account.
-   *
-   * This is the "proceed without linking" path. It intentionally creates a
-   * fresh kit on every successful request so merchants can run separate QR
-   * kits for separate counters or locations.
-   */
-  async generateDigitalKit(merchantId: string) {
-    const user = await this.userModel.findById(merchantId)
-
-    if (
-      !user ||
-      !user.businessName ||
-      !user.bankAccounts ||
-      user.bankAccounts.length === 0
-    ) {
-      throw new HttpException(
-        'Please complete your profile setup before generating a QR kit',
-        HttpStatus.BAD_REQUEST,
-      )
-    }
-
-    const qrKit = await this.createDigitalKit(merchantId)
-
-    return {
-      message: 'QR kit generated successfully',
-      qrKit,
-    }
-  }
-
-  /**
-   * Create a digital QR kit for immediate use
-   */
-  private async createDigitalKit(
-    merchantId: string,
-    source: 'self-generated' | 'online-order' = 'self-generated',
-  ): Promise<QRKitDocument> {
-    const user = await this.userModel.findById(merchantId)
-    const serialNumber = await this.generateUniqueDigitalSerialNumber()
-
-    // Generate and upload QR code
-    const svgString = await this.qrCodeService.generateQRCodeSVG(serialNumber)
-    const { url, publicId } = await this.qrCodeService.uploadQRCodeSVG(
-      svgString,
-      serialNumber,
-    )
-
-    const digitalKit = new this.qrKitModel({
-      serialNumber,
-      merchantId: user?._id,
-      isDigital: true,
-      activationStatus: 'activated',
-      linkStatus: 'unlinked',
-      source,
-      paymentStatus: 'successful',
-      qrCodeSvgUrl: url,
-      qrCodeSvgPublicId: publicId,
-      paidAt: new Date(),
-      activatedAt: new Date(),
-      activationAmount: 0, // Digital kit is free with order
+    const kit = await this.qrKitModel.findOne({
+      merchantId, isDigital: true, activationStatus: 'activated', paymentStatus: 'successful',
     })
-
-    await digitalKit.save()
-
-    // Ensure user has merchantSlug
-    if (user && !user.merchantSlug) {
-      user.merchantSlug = nanoid(6).toUpperCase()
-      await user.save()
+    if (!kit) {
+      throw new HttpException('Purchase a digital QR kit to continue.', HttpStatus.BAD_REQUEST)
     }
+    return kit
+  }
 
-    return digitalKit
+  generateDigitalKit() {
+    throw new HttpException('Purchase a digital QR kit to continue.', HttpStatus.BAD_REQUEST)
+  }
+
+  private async grantLite(merchantId: string) {
+    await grantKitLite(this.userModel, merchantId)
+    await this.paystackSubaccountsService.ensureForUserId(merchantId)
+  }
+
+  /** Called only for a verified first PRO/PRO MAX purchase. */
+  async ensureFirstPlanDigitalKit(merchantId: string) {
+    const existing = await this.qrKitModel.findOne({
+      $or: [{ merchantId }, { reservedForMerchantId: merchantId }],
+    })
+    if (existing && (existing._id.toString() !== merchantId || !existing.isDigital)) {
+      return existing
+    }
+    // A stable merchant-based ID prevents two paid callbacks or two first-plan
+    // orders from issuing multiple included kits. Retries also repair the SVG.
+    return this.createPaidDigitalKit(merchantId, merchantId)
+  }
+
+  /** Only called after verified payment, with a stable issuance ID. */
+  async createPaidDigitalKit(merchantId: string, issuanceId: string): Promise<QRKitDocument> {
+    const kitId = new Types.ObjectId(issuanceId)
+    const user = await this.userModel.findById(merchantId)
+    if (!user) throw new HttpException('Merchant not found', HttpStatus.NOT_FOUND)
+    let kit = await this.qrKitModel.findById(kitId)
+    if (!kit) {
+      const serialNumber = await this.generateUniqueDigitalSerialNumber()
+      // Paid kit orders use their order ID; included first-plan kits use the
+      // merchant ID. Atomic upsert covers callback/webhook races and retries.
+      kit = await this.qrKitModel.findOneAndUpdate(
+        { _id: kitId },
+        { $setOnInsert: {
+          serialNumber, merchantId: user._id, isDigital: true,
+          activationStatus: 'activated', linkStatus: 'unlinked', source: 'online-order',
+          paymentStatus: 'successful', paidAt: new Date(), activatedAt: new Date(), activationAmount: 0,
+        } },
+        { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
+      )
+    }
+    if (!kit.qrCodeSvgUrl) {
+      const svgString = await this.qrCodeService.generateQRCodeSVG(kit.serialNumber)
+      const { url, publicId } = await this.qrCodeService.uploadQRCodeSVG(svgString, kit.serialNumber)
+      await this.qrKitModel.updateOne({ _id: kitId }, {
+        $set: { qrCodeSvgUrl: url, qrCodeSvgPublicId: publicId },
+      })
+      kit.qrCodeSvgUrl = url
+      kit.qrCodeSvgPublicId = publicId
+    }
+    if (!user.merchantSlug) {
+      await this.userModel.updateOne({ _id: user._id, merchantSlug: { $in: [null, ''] } }, {
+        $set: { merchantSlug: nanoid(6).toUpperCase() },
+      })
+    }
+    return kit
   }
 
   /**

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common'
+import { QRKitsModule } from '../qr-kits/qr-kits.module'
 import { MongooseModule } from '@nestjs/mongoose'
 import { PlanOrder, PlanOrderSchema } from '../schemas/plan-order.schema'
 import { User, UserSchema } from '../schemas/user.schema'
@@ -15,6 +16,7 @@ import { MerchantReferralsModule } from '../merchant-referrals/merchant-referral
       { name: User.name, schema: UserSchema },
     ]),
     UsersModule,
+    QRKitsModule,
     StoresModule,
     MerchantReferralsModule,
   ],

@@ -37,10 +37,10 @@ export const CircularIconButton = React.forwardRef<
     }[size]
 
     const variantClasses = {
-      ghost: 'hover:bg-gray-100 active:bg-gray-200 text-black',
-      filled: 'bg-gray-100 hover:bg-gray-200 text-black',
+      ghost: 'text-black',
+      filled: 'bg-gray-100 text-black',
       bordered:
-        'border border-[#F1F1F1] bg-white hover:bg-gray-50 text-black shadow-sm',
+        'border border-[#F1F1F1] bg-white text-black shadow-sm',
     }[variant]
 
     const renderIcon = () => {
@@ -62,8 +62,16 @@ export const CircularIconButton = React.forwardRef<
       <button
         ref={ref}
         type="button"
+        aria-label={
+          icon === 'x' ? 'Close' : icon === 'arrow-left' ? 'Go back' : icon === 'chevron-down' ? 'Collapse' : undefined
+        }
         onClick={onClick}
-        className={cn(sizeClasses, variantClasses, className)}
+        className={cn(
+          'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed',
+          sizeClasses,
+          variantClasses,
+          className,
+        )}
         {...props}
       >
         {renderIcon()}

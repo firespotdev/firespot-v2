@@ -69,7 +69,7 @@ export function SalePayAmountScreen({
     : amountDigits
       ? formatInt(Number(amountDigits))
       : ''
-  const accountName = account?.accountName || merchant.businessName
+  const merchantName = merchant.businessName || account?.accountName
   const hasPaystackCollection = Boolean(merchant.hasPaystackCollection)
   const businessImageUrl = getBusinessImageUrl(merchant)
 
@@ -138,7 +138,7 @@ export function SalePayAmountScreen({
               )}
             </div>
             <h2 className="font-bold text-[20px] text-black -tracking-[0.4px] mt-4 uppercase leading-[120%]">
-              {accountName}
+              {merchantName}
             </h2>
             <p className="text-sm text-[#00000080] font-medium mt-1">
               Typically confirms payments after a few minutes

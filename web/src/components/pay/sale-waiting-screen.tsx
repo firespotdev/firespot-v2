@@ -61,7 +61,7 @@ export function SaleWaitingScreen({
             onClick={notified ? onMinimize : onClose}
             disabled={isClosing}
             aria-label={notified ? 'Close' : 'Cancel payment'}
-            className="flex size-9 items-center justify-center rounded-[12px] bg-[#00000014] outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="flex size-9 items-center justify-center rounded-[12px] bg-[#00000014] cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           >
             <X size={24} color="#868788" />
           </button>
@@ -122,7 +122,8 @@ export function SaleWaitingScreen({
                 */}
                 <AppCard className="mt-6 w-full text-left">
                   <Link
-                    href={`/business?businessId=${encodeURIComponent(merchant.id)}`}
+                    replace
+                    href={`/home?viewBusiness=${encodeURIComponent(merchant.id)}`}
                     className="flex items-center gap-3 p-3 outline-none transition-colors hover:bg-[#FAFAFA] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
                   >
                     <MerchantAvatar

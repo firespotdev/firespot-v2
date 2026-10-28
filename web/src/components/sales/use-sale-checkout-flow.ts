@@ -31,6 +31,7 @@ interface Options {
   onCollectUnavailable: () => void
   onSaleSubmitted?: () => Promise<void> | void
   onSaleDiscarded?: () => Promise<void> | void
+  onSaleSubmissionFailed?: () => Promise<void> | void
 }
 
 /**
@@ -51,6 +52,7 @@ export function useSaleCheckoutFlow({
   onCollectUnavailable,
   onSaleSubmitted,
   onSaleDiscarded,
+  onSaleSubmissionFailed,
 }: Options) {
   const { openDrawer, closeDrawer, closeDrawersAbove } = useDrawerStore()
   const { data: profile } = useUserProfile()
@@ -254,6 +256,7 @@ export function useSaleCheckoutFlow({
       await onSaleSubmitted?.()
       openRecordedSaleDetails(data)
     } catch (error: unknown) {
+      await onSaleSubmissionFailed?.()
       const fallbackMessage =
         saleMode.kind === 'confirm'
           ? 'Failed to confirm payment.'
@@ -468,9 +471,12 @@ export function useSaleCheckoutFlow({
 
     try {
       const data = await collectSaleMutation.mutateAsync(payload)
+      resetSaleState()
       await onSaleSubmitted?.()
+      collapseToSheet()
       openPendingCollection(data)
     } catch (error: any) {
+      await onSaleSubmissionFailed?.()
       showNotificationToast({
         message:
           error?.response?.data?.message ||
@@ -518,10 +524,14 @@ export function useSaleCheckoutFlow({
       dismissible: mode === 'preview',
       props: {
         cartItems: itemsList,
-        onClear: () => {
-          void onSaleDiscarded?.()
-          resetSaleState()
-          closeDrawer()
+        onClear: async () => {
+          try {
+            await onSaleDiscarded?.()
+            resetSaleState()
+            closeDrawer()
+          } catch {
+            showNotificationToast({ message: 'Could not clear this draft. Please try again.', mode: 'error' })
+          }
         },
         onUpdateQty: (id: string, delta: number) =>
           updateCartQtyAndSyncDrawer(

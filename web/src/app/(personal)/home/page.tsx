@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Search, Mic, Ghost } from 'lucide-react'
@@ -43,6 +44,9 @@ interface CustomerLocation {
 
 function HomePageContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const isOpeningBusiness = useRef(false)
+  const businessToOpen = searchParams.get('viewBusiness')
   const isHandlingIntro = useRef(false)
   const user = useAuthStore((state) => state.user)
   const openDrawer = useDrawerStore((state) => state.openDrawer)
@@ -80,6 +84,19 @@ function HomePageContent() {
     !needsLocation || Boolean(activeLocation),
   )
   const posts = postsFeed.data?.data || []
+
+  useEffect(() => {
+    if (!businessToOpen) {
+      isOpeningBusiness.current = false
+      return
+    }
+    if (isOpeningBusiness.current) return
+    isOpeningBusiness.current = true
+    // Commit a real home entry before pushing the profile, so browser Back
+    // restores home rather than the completed payment route.
+    window.history.replaceState(null, '', '/home')
+    router.push(`/business?businessId=${encodeURIComponent(businessToOpen)}`)
+  }, [businessToOpen, router])
 
   useEffect(() => {
     const isIntro = searchParams.get('businessIntro') === '1'
@@ -153,6 +170,14 @@ function HomePageContent() {
     )
   const canRequestLocationFromHeader =
     !currentLocation.isLoading && !isProfileLoading && !hasPersistedLocation
+
+  if (businessToOpen) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-white">
+        <LoaderCircle />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-dvh bg-linear-to-b from-[#ffffff] to-[#f4f6f8]">

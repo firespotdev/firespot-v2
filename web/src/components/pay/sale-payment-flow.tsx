@@ -569,7 +569,7 @@ export function SalePaymentFlow({
       onChangeSavedCard={() => handleOpenSavedCards(true)}
       selectedRail={selectedRail}
       onCopy={handleCopy}
-      onPayInstantly={handlePayInstantly}
+      onPayInstantly={() => handlePayInstantly()}
       onShare={handleShare}
       onClose={handleClose}
       hasPaystackCollection={merchant.hasPaystackCollection}

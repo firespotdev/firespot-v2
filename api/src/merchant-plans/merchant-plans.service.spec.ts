@@ -1,6 +1,10 @@
 import { NotFoundException, ServiceUnavailableException } from '@nestjs/common'
 import { Types } from 'mongoose'
+import { grantKitLite } from './kit-lite'
+import { getCollectEligibility } from './constants/plans'
 import { MerchantPlansService } from './merchant-plans.service'
+
+jest.mock('../qr-kits/qr-kits.service', () => ({ QRKitsService: class {} }))
 
 const query = <T>(value: T) => ({
   exec: jest.fn().mockResolvedValue(value),
@@ -70,6 +74,11 @@ const makeService = (overrides: Record<string, any> = {}) => {
     ...overrides.paystackSubaccountsService,
   }
 
+  const qrKitsService = {
+    ensureFirstPlanDigitalKit: jest.fn().mockResolvedValue(undefined),
+    ...overrides.qrKitsService,
+  }
+
   const service = new MerchantPlansService(
     planOrderModel as any,
     userModel as any,
@@ -78,6 +87,7 @@ const makeService = (overrides: Record<string, any> = {}) => {
     configService as any,
     merchantReferralsService as any,
     paystackSubaccountsService as any,
+    qrKitsService as unknown as ConstructorParameters<typeof MerchantPlansService>[7],
   )
   // Silence expected error/warn logging in tests.
   jest.spyOn((service as any).logger, 'error').mockImplementation(() => {})
@@ -93,6 +103,7 @@ const makeService = (overrides: Record<string, any> = {}) => {
     configService,
     merchantReferralsService,
     paystackSubaccountsService,
+    qrKitsService,
   }
 }
 
@@ -877,5 +888,107 @@ describe('MerchantPlansService recurring plan configuration', () => {
       merchant._id.toString(),
       'SUB_store',
     )
+  })
+})
+
+describe('LITE bundled with QR kits', () => {
+  it('rejects a standalone LITE purchase without initializing checkout', async () => {
+    const initializeTransaction = jest.fn()
+    const chargeAuthorization = jest.fn()
+    const { service } = makeService({
+      paystackService: { initializeTransaction, chargeAuthorization },
+      userModel: { findById: jest.fn(() => query(makeUser({ planTier: undefined, planStatus: 'none' }))) },
+    })
+    await expect(service.purchase('merchant-id', 'LITE')).rejects.toThrow('included with a QR kit purchase')
+    expect(initializeTransaction).not.toHaveBeenCalled()
+    expect(chargeAuthorization).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('Kit LITE grants', () => {
+  it.each([false, true])('preserves the KYC gate (completed=%s)', async (completed) => {
+    const users = {
+      findOne: jest.fn().mockResolvedValue({ kyc: completed ? { bvn: { status: 'passed' }, nin: { status: 'passed' } } : {} }),
+      updateOne: jest.fn().mockResolvedValue({ modifiedCount: 1 }),
+    }
+    await expect(grantKitLite(users as unknown as Parameters<typeof grantKitLite>[0], 'merchant-id')).resolves.toBe(true)
+    expect(users.findOne).toHaveBeenCalledWith(expect.objectContaining({
+      role: 'merchant', planTier: { $in: [null, '', 'LITE'] },
+      planStatus: { $in: [null, 'none'] }, pendingPlanChange: null,
+    }))
+    expect(users.updateOne).toHaveBeenCalledWith(users.findOne.mock.calls[0][0], {
+      $set: { planTier: 'LITE', planStatus: completed ? 'verified' : 'paid' },
+    })
+    expect(getCollectEligibility({ planTier: 'LITE', planStatus: completed ? 'verified' : 'paid' }).canCollect).toBe(completed)
+  })
+
+  it('does not report a grant when eligibility changes before the update', async () => {
+    const users = {
+      findOne: jest.fn().mockResolvedValue({ kyc: {} }),
+      updateOne: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
+    }
+    await expect(grantKitLite(users as unknown as Parameters<typeof grantKitLite>[0], 'merchant-id')).resolves.toBe(false)
+  })
+
+  it('does not change higher plans, pending changes or an existing LITE grant', async () => {
+    const users = { findOne: jest.fn().mockResolvedValue(null), updateOne: jest.fn() }
+    await grantKitLite(users as unknown as Parameters<typeof grantKitLite>[0], 'merchant-id')
+    expect(users.updateOne).not.toHaveBeenCalled()
+  })
+})
+
+
+describe('First paid plan includes a digital kit', () => {
+  it.each(['PRO', 'PROMAX'])('records the entitlement on a first %s checkout without issuing a kit before payment', async (tier) => {
+    const merchant = makeUser({ planTier: undefined, planStatus: 'none', planInterval: 'monthly', planCurrentPeriodEnd: undefined, fullPhoneNumber: '+2348012345678' })
+    const { service, planOrderModel, qrKitsService } = makeService({
+      userModel: { findById: jest.fn(() => query(merchant)) },
+      configService: { get: jest.fn((key: string) => key.startsWith('PAYSTACK_PLAN_CODE') ? 'PLN-test' : null) },
+      paystackService: { initializeTransaction: jest.fn().mockResolvedValue({ authorizationUrl: 'https://checkout.paystack.com/test', reference: 'PLAN-test' }) },
+    })
+    await service.purchase(merchant._id.toString(), tier, 'monthly')
+    expect(planOrderModel).toHaveBeenCalledWith(expect.objectContaining({ includesDigitalKit: true }))
+    expect(qrKitsService.ensureFirstPlanDigitalKit).not.toHaveBeenCalled()
+  })
+
+  it.each(['PRO', 'PROMAX'])('issues the included kit after verified %s payment and repairs repeated callbacks', async (tier) => {
+    const order = makeOrder({ tier, includesDigitalKit: true })
+    const { service, planOrderModel, paystackService, qrKitsService, userModel } = makeService()
+    paystackService.verifyTransaction.mockResolvedValue({ status: 'success', reference: 'PLAN-initial', currency: 'NGN', amount: order.amount * 100 })
+    planOrderModel.findOne.mockReturnValue(query(order))
+    planOrderModel.findOneAndUpdate.mockReturnValueOnce(query(order)).mockReturnValueOnce(query(null))
+    await service.verifyPayment('PLAN-initial')
+    await service.verifyPayment('PLAN-initial')
+    expect(qrKitsService.ensureFirstPlanDigitalKit.mock.calls).toEqual([[order.merchantId.toString()], [order.merchantId.toString()]])
+    expect(userModel.updateOne).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['failed', 'abandoned'])('does not issue an included kit for %s payment', async (status) => {
+    const { service, paystackService, qrKitsService } = makeService()
+    paystackService.verifyTransaction.mockResolvedValue({ status })
+    await service.verifyPayment('PLAN-initial')
+    expect(qrKitsService.ensureFirstPlanDigitalKit).not.toHaveBeenCalled()
+  })
+
+  it('does not issue an included kit on ordinary renewals or upgrades', async () => {
+    const order = makeOrder({ includesDigitalKit: false })
+    const { service, planOrderModel, paystackService, qrKitsService } = makeService()
+    paystackService.verifyTransaction.mockResolvedValue({ status: 'success', reference: 'PLAN-renewal', currency: 'NGN', amount: order.amount * 100 })
+    planOrderModel.findOne.mockReturnValue(query(order))
+    planOrderModel.findOneAndUpdate.mockReturnValue(query(order))
+    await service.verifyPayment('PLAN-renewal')
+    expect(qrKitsService.ensureFirstPlanDigitalKit).not.toHaveBeenCalled()
+  })
+
+  it('includes a first kit when the initial plan is paid with a saved authorization', async () => {
+    const merchant = makeUser({ planTier: undefined, planStatus: 'none', planInterval: 'monthly', planCurrentPeriodEnd: undefined, fullPhoneNumber: '+2348012345678', paystackAuthorizationCode: 'AUTH-test' })
+    const { service, qrKitsService } = makeService({
+      userModel: { findById: jest.fn(() => query(merchant)) },
+      configService: { get: jest.fn((key: string) => key.startsWith('PAYSTACK_PLAN_CODE') ? 'PLN-test' : null) },
+      paystackService: { chargeAuthorization: jest.fn().mockResolvedValue({ success: true, reference: 'PLAN-saved' }) },
+    })
+    await service.purchase(merchant._id.toString(), 'PRO', 'monthly', 'SAVED_AUTHORIZATION')
+    expect(qrKitsService.ensureFirstPlanDigitalKit).toHaveBeenCalledWith(merchant._id.toString())
   })
 })

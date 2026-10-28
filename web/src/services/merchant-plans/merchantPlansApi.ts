@@ -112,6 +112,7 @@ export const usePurchasePlan = () => {
         // A tier change moves the goalposts for verification, so /verify must
         // not render the previous tier's step list on arrival.
         queryClient.invalidateQueries({ queryKey: KYC_STATUS_KEY })
+        queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
       }
     },
   })
@@ -134,6 +135,7 @@ export const useVerifyPlanPayment = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PLAN_CATALOG_KEY })
       queryClient.invalidateQueries({ queryKey: ['kyc-status'] })
+      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
     },
   })
 }

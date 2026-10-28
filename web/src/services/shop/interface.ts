@@ -41,6 +41,10 @@ export interface ShopSetupResponse {
   isLive: boolean
 }
 
+export interface UpdateBusinessNamePayload {
+  businessName: string
+}
+
 export interface UpdateContactPayload {
   businessEmail?: string
   website?: string

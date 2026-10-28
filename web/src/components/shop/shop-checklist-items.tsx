@@ -44,7 +44,7 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
     subtitle: 'Set a business name and description',
     Icon: <StorefrontIcon weight="fill" size={24} color="white" />,
     bg: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
-    destination: { kind: 'none' },
+    destination: { kind: 'route', href: '/settings/about' },
   },
   bank: {
     title: 'Where money lands',

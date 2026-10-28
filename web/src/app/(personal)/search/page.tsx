@@ -308,7 +308,8 @@ function SearchPageContent() {
             />
             <input
               type="search"
-              placeholder="Search shops or products"
+              placeholder="Shop, product or phone number"
+              aria-label="Search shops, products or phone numbers"
               value={search}
               onChange={(event) => {
                 setSearch(event.target.value)

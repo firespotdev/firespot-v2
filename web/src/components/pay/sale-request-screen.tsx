@@ -102,7 +102,7 @@ export function SaleRequestScreen({
           </div>
 
           <h2 className="font-bold text-[20px] text-black -tracking-[0.4px] mt-4 uppercase leading-[125%]">
-            {accountName}
+            {merchantName}
           </h2>
           {merchantName && (
             <p className="text-sm text-[#00000080] font-medium mt-1">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from '@bprogress/next/app'
+import { isAxiosError } from 'axios'
 import { ChevronRight, X } from 'lucide-react'
 import { showNotificationToast, TabSwitch } from '@/components/ui'
 import { usePlanCatalog } from '@/services/merchant-plans'
@@ -74,7 +75,10 @@ export function RecordSaleDrawer({
     makeDraftClientId,
   )
   const activeDraftIdRef = useRef<string | null>(null)
-  const saveInFlightRef = useRef<Promise<SaleDraft> | null>(null)
+  const saveInFlightRef = useRef<Promise<SaleDraft | undefined> | null>(null)
+  const preserveFailedDraftRef = useRef<(() => Promise<void>) | null>(null)
+  const draftGenerationRef = useRef(0)
+  const autosaveTimeoutRef = useRef<number | undefined>(undefined)
   const activeStartedAtRef = useRef(new Date().toISOString())
   const shouldPreviewRestoredDraftRef = useRef(false)
   const recentDescriptions = useMemo(() => {
@@ -113,22 +117,27 @@ export function RecordSaleDrawer({
   }, [activeDraftId])
 
   const removeActiveDraft = async () => {
+    // Invalidate queued snapshots before waiting for the current save.
+    draftGenerationRef.current += 1
+    window.clearTimeout(autosaveTimeoutRef.current)
+    cart.resetCart()
     try {
       await saveInFlightRef.current
     } catch {
-      // There is no persisted draft to remove when its save failed.
+      // A failed save may still leave an earlier persisted draft to remove.
     }
     const draftId = activeDraftIdRef.current
+    if (draftId) {
+      try {
+        await deleteSaleDraft(draftId)
+      } catch (error) {
+        if (!isAxiosError(error) || error.response?.status !== 404) throw error
+      }
+    }
     activeDraftIdRef.current = null
     setActiveDraftId(null)
     setActiveDraftClientId(makeDraftClientId())
-    if (!draftId) return
-    try {
-      await deleteSaleDraft(draftId)
-    } catch {
-      // The completed sale remains valid even if its expired draft was already
-      // removed by MongoDB's TTL cleanup.
-    }
+    activeStartedAtRef.current = new Date().toISOString()
   }
 
   const {
@@ -149,8 +158,18 @@ export function RecordSaleDrawer({
       useDrawerStore.getState().closeAllDrawers()
       router.push('/plans')
     },
-    onSaleSubmitted: removeActiveDraft,
+    onSaleSubmitted: async () => {
+      try {
+        await removeActiveDraft()
+      } catch {
+        showNotificationToast({
+          message: 'Sale saved, but its held draft could not be removed. Please remove it from ongoing sales.',
+          mode: 'error',
+        })
+      }
+    },
     onSaleDiscarded: removeActiveDraft,
+    onSaleSubmissionFailed: () => preserveFailedDraftRef.current?.(),
   })
 
   const handleProductAddTapped = (product: Product) => {
@@ -256,35 +275,50 @@ export function RecordSaleDrawer({
   )
 
   const persistDraftSnapshot = useCallback(
-    async (payload: SaveSaleDraftPayload) => {
-      try {
-        await saveInFlightRef.current
-      } catch {
-        // Retry the latest snapshot after a failed background save.
-      }
-      const request = saveSaleDraft({
-        draftId: activeDraftIdRef.current || undefined,
-        payload,
-      })
-      saveInFlightRef.current = request
-      try {
-        const savedDraft = await request
+    (payload: SaveSaleDraftPayload) => {
+      const generation = draftGenerationRef.current
+      const previousSave = saveInFlightRef.current
+      const request = (async () => {
+        try {
+          await previousSave
+        } catch {
+          // Retry the latest snapshot after a failed background save.
+        }
+        if (generation !== draftGenerationRef.current) return
+        const savedDraft = await saveSaleDraft({
+          draftId: activeDraftIdRef.current || undefined,
+          payload,
+        })
         activeDraftIdRef.current = savedDraft._id
         setActiveDraftId(savedDraft._id)
         return savedDraft
-      } finally {
-        if (saveInFlightRef.current === request) saveInFlightRef.current = null
-      }
+      })()
+      saveInFlightRef.current = request
+      return request
     },
     [saveSaleDraft],
   )
 
   useEffect(() => {
+    preserveFailedDraftRef.current = async () => {
+      if (saleMode.kind !== 'create') return
+      try {
+        await persistDraftSnapshot(draftPayload)
+      } catch {
+        showNotificationToast({
+          message: 'Could not hold this unfinished sale. Please keep it open and try again.',
+          mode: 'error',
+        })
+      }
+    }
+  }, [draftPayload, persistDraftSnapshot, saleMode.kind])
+
+  useEffect(() => {
     if (saleMode.kind !== 'create' || !hasSaleValue) return
-    const timeout = window.setTimeout(() => {
+    autosaveTimeoutRef.current = window.setTimeout(() => {
       void persistDraftSnapshot(draftPayload).catch(() => undefined)
     }, 15_000)
-    return () => window.clearTimeout(timeout)
+    return () => window.clearTimeout(autosaveTimeoutRef.current)
   }, [draftPayload, hasSaleValue, persistDraftSnapshot, saleMode.kind])
 
   useEffect(() => {
@@ -303,6 +337,7 @@ export function RecordSaleDrawer({
   ])
 
   const handleStartNewSale = async () => {
+    window.clearTimeout(autosaveTimeoutRef.current)
     try {
       if (hasSaleValue) await persistDraftSnapshot(draftPayload)
     } catch {
@@ -312,6 +347,8 @@ export function RecordSaleDrawer({
       })
       return
     }
+    draftGenerationRef.current += 1
+    window.clearTimeout(autosaveTimeoutRef.current)
     resetSaleState()
     activeDraftIdRef.current = null
     setActiveDraftId(null)
@@ -321,6 +358,7 @@ export function RecordSaleDrawer({
   }
 
   const handleResumeDraft = async (draft: SaleDraft) => {
+    window.clearTimeout(autosaveTimeoutRef.current)
     try {
       if (hasSaleValue) await persistDraftSnapshot(draftPayload)
     } catch {
@@ -330,6 +368,8 @@ export function RecordSaleDrawer({
       })
       return
     }
+    draftGenerationRef.current += 1
+    window.clearTimeout(autosaveTimeoutRef.current)
     shouldPreviewRestoredDraftRef.current = true
     cart.restoreDraft(draft)
     restoreDraftCheckout(draft)
@@ -376,6 +416,7 @@ export function RecordSaleDrawer({
     ongoingSales.length + heldDraftCount + (hasSaleValue ? 1 : 0)
 
   const handleClose = async () => {
+    window.clearTimeout(autosaveTimeoutRef.current)
     try {
       if (saleMode.kind === 'create' && hasSaleValue) {
         await persistDraftSnapshot(draftPayload)
@@ -398,7 +439,7 @@ export function RecordSaleDrawer({
           type="button"
           onClick={handleOpenOngoingSales}
           aria-label="Ongoing sales"
-          className="relative -ml-2 shrink-0 rounded-full p-2 text-black transition-colors hover:bg-black/5 active:scale-95 cursor-pointer"
+          className="relative -ml-2 shrink-0 rounded-full p-2 text-black cursor-pointer"
         >
           <BasketIcon className="w-6 h-6" />
           {ongoingCount > 0 && (
@@ -422,7 +463,7 @@ export function RecordSaleDrawer({
           type="button"
           onClick={() => void handleClose()}
           aria-label="Close"
-          className="p-2 -mr-2 rounded-full shrink-0 text-black"
+          className="p-2 -mr-2 rounded-full shrink-0 text-black cursor-pointer"
         >
           <X className="w-6 h-6" />
         </button>

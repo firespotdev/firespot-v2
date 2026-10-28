@@ -28,6 +28,10 @@ export class PlanOrder extends Document {
   @Prop({ enum: ['monthly', 'annually'], default: 'monthly' })
   interval: string
 
+  // Only a merchant's first plan purchase can include an initial digital kit.
+  @Prop({ default: false })
+  includesDigitalKit?: boolean
+
   // True when this order is the prorated difference for a mid-cycle upgrade
   // rather than a full period's price.
   @Prop({ default: false })

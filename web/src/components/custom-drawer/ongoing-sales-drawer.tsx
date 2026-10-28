@@ -160,13 +160,17 @@ export function OngoingSalesDrawer({
         <div className="mt-3 flex items-center justify-between">
           <button
             type="button"
-            onClick={(event) => {
+            onClick={async (event) => {
               event.stopPropagation()
-              if (isActive) {
-                setActiveDraftVisible(false)
-                void onClearActiveDraft()
-              } else {
-                deleteDraftMutation.mutate((draft as SaleDraft)._id)
+              try {
+                if (isActive) {
+                  await onClearActiveDraft()
+                  setActiveDraftVisible(false)
+                } else {
+                  await deleteDraftMutation.mutateAsync((draft as SaleDraft)._id)
+                }
+              } catch {
+                showNotificationToast({ message: 'Could not delete this draft. Please try again.', mode: 'error' })
               }
             }}
             disabled={deleteDraftMutation.isPending}
@@ -192,7 +196,7 @@ export function OngoingSalesDrawer({
           type="button"
           onClick={closeDrawer}
           aria-label="Close"
-          className=" text-black flex justify-center items-center"
+          className="text-black flex justify-center items-center cursor-pointer"
         >
           <X size={24} strokeWidth={2} />
         </button>

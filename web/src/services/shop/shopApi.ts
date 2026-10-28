@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/utils/axios'
 import type {
+  UpdateBusinessNamePayload,
   GoLiveResponse,
   ShopSetupResponse,
   UpdateActiveHoursSetupPayload,
@@ -19,6 +20,13 @@ const USER_PROFILE_KEY = ['user', 'profile']
 export const shopApi = {
   getSetup: async (): Promise<ShopSetupResponse> => {
     const res = await apiClient.get<ShopSetupResponse>('/users/me/shop-setup')
+    return res.data
+  },
+  updateBusinessName: async (payload: UpdateBusinessNamePayload) => {
+    const res = await apiClient.patch<{ businessName: string }>(
+      '/users/me/business-name',
+      payload,
+    )
     return res.data
   },
   updateContact: async (payload: UpdateContactPayload) => {
@@ -69,6 +77,9 @@ const useShopMutation = <T>(fn: (payload: T) => Promise<unknown>) => {
     },
   })
 }
+
+export const useUpdateBusinessName = () =>
+  useShopMutation<UpdateBusinessNamePayload>(shopApi.updateBusinessName)
 
 export const useUpdateContact = () =>
   useShopMutation<UpdateContactPayload>(shopApi.updateContact)

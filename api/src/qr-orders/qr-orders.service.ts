@@ -14,6 +14,8 @@ import { ConfigService } from '@nestjs/config'
 import { QRKitsService } from '../qr-kits/qr-kits.service'
 import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
 import { SmsService } from '../services/sms/sms.service'
+import { PaystackSubaccountsService } from '../users/services/paystack-subaccounts.service'
+import { grantKitLite } from '../merchant-plans/kit-lite'
 import { validatePaystackPaidValue } from '../payments/payment-validation'
 
 @Injectable()
@@ -26,6 +28,7 @@ export class QROrdersService {
     private configService: ConfigService,
     private qrKitsService: QRKitsService,
     private smsService: SmsService,
+    private paystackSubaccountsService: PaystackSubaccountsService,
   ) {}
 
   getPricing() {
@@ -43,9 +46,18 @@ export class QROrdersService {
   async createOrder(merchantId: string, dto: CreateQROrderDto) {
     const user = await this.userModel
       .findById(merchantId)
-      .select('fullPhoneNumber')
+      .select('fullPhoneNumber businessName bankAccounts')
     if (!user) {
       throw new NotFoundException('User not found')
+    }
+
+    const kitType = dto.kitType || 'physical'
+    if (kitType === 'digital' && (dto.quantity !== 1 || dto.qrKitId)) {
+      throw new BadRequestException('Digital orders require one new QR kit')
+    }
+
+    if (kitType === 'digital' && (!user.businessName || !user.bankAccounts?.length)) {
+      throw new BadRequestException('Please complete your profile setup before purchasing a digital QR kit')
     }
 
     const qrKit = dto.qrKitId
@@ -63,6 +75,9 @@ export class QROrdersService {
     }
 
     const pricing = this.getPricing()
+    if (!Number.isFinite(pricing.kitPrice) || pricing.kitPrice <= 0) {
+      throw new BadRequestException('QR kit pricing is unavailable. Please try again later.')
+    }
     const maximumQuantity = qrKit ? 1 : pricing.maxKitsPerOrder
 
     // A selected/self-generated kit is ordered one at a time. Direct online
@@ -76,40 +91,25 @@ export class QROrdersService {
     const email = `${user.fullPhoneNumber.replace('+', '')}@firespot.co`
 
     const subtotal = pricing.kitPrice * dto.quantity
-    const totalAmount = subtotal + pricing.deliveryFee
+    const deliveryFee = kitType === 'digital' ? 0 : pricing.deliveryFee
+    const totalAmount = subtotal + deliveryFee
 
     // Create DB Record
     const order = new this.orderModel({
       merchantId: new Types.ObjectId(merchantId),
       ...(qrKit && { qrKitId: qrKit._id }),
+      kitType,
       quantity: dto.quantity,
       phoneNumber: dto.phoneNumber,
       state: dto.state,
       lga: dto.lga,
       deliveryAddress: dto.deliveryAddress,
       subtotal,
-      deliveryFee: pricing.deliveryFee,
+      deliveryFee,
       totalAmount,
       paymentStatus: 'PENDING',
       assignedKitIds: qrKit ? [qrKit._id] : [],
     })
-
-    // Free order: no Paystack hop at all. Mark it settled and fulfil inline so
-    // the merchant lands straight on the success screen.
-    if (totalAmount === 0) {
-      order.paymentStatus = 'SUCCESSFUL'
-      order.orderStatus = 'PROCESSING'
-      order.paidAt = new Date()
-      await order.save()
-
-      await this.fulfilOrder(order)
-
-      return {
-        orderId: order._id,
-        isFree: true,
-        totalAmount: 0,
-      }
-    }
 
     await order.save()
 
@@ -122,7 +122,7 @@ export class QROrdersService {
         email,
         amount: nairaToKobo(totalAmount),
         reference: `ORD-${order._id}-${Date.now()}`,
-        callbackUrl: `${frontendUrl}/order-status`, // Or wherever they verify
+        callbackUrl: `${frontendUrl}/order-status?kitType=${kitType}`,
         metadata: {
           merchantId,
           orderId: order._id.toString(),
@@ -145,6 +145,14 @@ export class QROrdersService {
     }
   }
 
+  private async grantOrderLite(order: QROrderDocument) {
+    if (await grantKitLite(this.userModel, order.merchantId)) {
+      order.liteGranted = true
+      await order.save()
+    }
+    await this.paystackSubaccountsService.ensureForUserId(order.merchantId.toString())
+  }
+
   /**
    * Reserve physical inventory for a settled direct online order.
    *
@@ -153,6 +161,17 @@ export class QROrdersService {
    * kits and tell the merchant which serials to activate after delivery.
    */
   private async fulfilOrder(order: QROrderDocument) {
+    await this.grantOrderLite(order)
+    if (order.kitType === 'digital') {
+      const kit = await this.qrKitsService.createPaidDigitalKit(
+        order.merchantId.toString(), order._id.toString(),
+      )
+      order.assignedKitIds = [kit._id]
+      order.orderStatus = 'COMPLETED'
+      await order.save()
+      return
+    }
+
     // The ordered physical unit is a print of an existing merchant-owned QR
     // kit. It is already linked on the order and must not grant a new kit or
     // entitlement.
@@ -269,7 +288,15 @@ export class QROrdersService {
     if (!existingOrder) {
       throw new NotFoundException('QR order not found')
     }
-    if (existingOrder.paymentStatus === 'SUCCESSFUL') return existingOrder
+    if (existingOrder.paymentStatus === 'SUCCESSFUL') {
+      // Digital fulfilment uses the order ID as the kit ID, so retries repair
+      // interrupted fulfilment without ever issuing a second kit.
+      if (existingOrder.kitType === 'digital') await this.fulfilOrder(existingOrder)
+      else {
+        await this.grantOrderLite(existingOrder)
+      }
+      return existingOrder
+    }
 
     const verification = await this.paystackService.verifyTransaction(reference)
 
@@ -296,7 +323,9 @@ export class QROrdersService {
 
       // Already settled by a previous call — return it without re-fulfilling.
       if (!order) {
-        return this.orderModel.findOne({ paystackReference: reference })
+        const settled = await this.orderModel.findOne({ paystackReference: reference })
+        if (settled?.kitType === 'digital') await this.fulfilOrder(settled)
+        return settled
       }
 
       await this.fulfilOrder(order)

@@ -1,44 +1,18 @@
 'use client'
 
-import { useEffect } from 'react'
 import { ArrowLeft, ChevronRight, CirclePlus, Plus } from 'lucide-react'
 import Link from 'next/link'
-import { Button, LoaderCircle } from '@/components/ui'
-import { useUserQRKits, useClaimDigitalKit } from '@/services/qr'
+import { useUserQRKits } from '@/services/qr'
 import Image from 'next/image'
 import { useDrawerStore } from '@/services/drawer'
-import { useUserProfile } from '@/services/users'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 
 export default function QRKitsPage() {
   const { openDrawer } = useDrawerStore()
-  const { data: user } = useUserProfile()
   const { data: qrKitsData, isLoading: isLoadingKits } = useUserQRKits()
-  const { mutate: claimDigital, isPending: isClaiming } = useClaimDigitalKit()
-
   const qrKits = qrKitsData?.data || []
-  const hasEntitlements = (user?.availableKitEntitlements || 0) > 0
 
-  // Auth + merchant capability are enforced by the (merchant) layout.
-
-  useEffect(() => {
-    if (
-      !isLoadingKits &&
-      qrKits.length === 0 &&
-      hasEntitlements &&
-      !isClaiming
-    ) {
-      claimDigital()
-    }
-  }, [isLoadingKits, qrKits.length, hasEntitlements, isClaiming, claimDigital])
-
-  if (isLoadingKits || isClaiming) {
-    return (
-      <LoadingPage
-        message={isClaiming ? 'Setting up your digital QR kit...' : undefined}
-      />
-    )
-  }
+  if (isLoadingKits) return <LoadingPage />
 
   return (
     <div className="min-h-dvh bg-[#F4F6F8]">

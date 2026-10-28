@@ -37,6 +37,7 @@ import {
 import { MerchantReferralsService } from '../merchant-referrals/merchant-referrals.service'
 import { PaystackSubaccountsService } from '../users/services/paystack-subaccounts.service'
 import { validatePaystackPaidValue } from '../payments/payment-validation'
+import { QRKitsService } from '../qr-kits/qr-kits.service'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
@@ -65,6 +66,7 @@ export class MerchantPlansService {
     private configService: ConfigService,
     private merchantReferralsService: MerchantReferralsService,
     private paystackSubaccountsService: PaystackSubaccountsService,
+    private qrKitsService: QRKitsService,
   ) {}
 
   private reevaluateReferralEligibility(merchantId: string | Types.ObjectId) {
@@ -423,6 +425,12 @@ export class MerchantPlansService {
       periodEnd && new Date(periodEnd).getTime() > Date.now(),
     )
 
+    // LITE is bundled with kits. An active recurring plan can still cancel
+    // down to LITE through the existing plan-change classification below.
+    if (plan.tier === 'LITE' && !(hasLiveSubscription && ['PRO', 'PROMAX'].includes(user.planTier))) {
+      throw new BadRequestException('LITE is included with a QR kit purchase. Activate or buy a QR kit to continue.')
+    }
+
     // Cadence dominates tier: scaling a yearly price by the fraction left of
     // a monthly period is meaningless, so classification decides everything.
     const kind = classifyPlanChange({
@@ -487,6 +495,7 @@ export class MerchantPlansService {
       billingType: plan.billingType,
       interval: effectiveInterval,
       paymentStatus: 'PENDING',
+      includesDigitalKit: !user.planTier && ['PRO', 'PROMAX'].includes(plan.tier),
     })
     await order.save()
 
@@ -535,6 +544,10 @@ export class MerchantPlansService {
         await this.applyUpgrade(user, plan.tier, effectiveInterval, {
           resetsPeriod: plan.billingType === 'monthly',
         })
+
+        if (order.includesDigitalKit) {
+          await this.qrKitsService.ensureFirstPlanDigitalKit(merchantId)
+        }
 
         return {
           type: 'purchased' as const,
@@ -953,6 +966,9 @@ export class MerchantPlansService {
       .exec()
 
     if (!claimed) {
+      if (order.includesDigitalKit) {
+        await this.qrKitsService.ensureFirstPlanDigitalKit(order.merchantId.toString())
+      }
       return {
         success: true,
         status: 'SUCCESSFUL',
@@ -1032,6 +1048,9 @@ export class MerchantPlansService {
     const updatedUser = userQuery ? await userQuery.exec() : null
     if (updatedUser) {
       await this.paystackSubaccountsService.ensureForUser(updatedUser)
+    }
+    if (order.includesDigitalKit) {
+      await this.qrKitsService.ensureFirstPlanDigitalKit(order.merchantId.toString())
     }
 
     return {

@@ -55,16 +55,7 @@ export const userQrApi = {
     return response.data
   },
 
-  generateDigitalQRKit: async (): Promise<{
-    message: string
-    qrKit: QRKit
-  }> => {
-    const response = await apiClient.post<{
-      message: string
-      qrKit: QRKit
-    }>('/qr-kits/generate-digital')
-    return response.data
-  },
+
 }
 
 // Hooks
@@ -135,42 +126,10 @@ export const useUpdateQRKit = () => {
   })
 }
 
-export const useGenerateDigitalQRKit = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: userQrApi.generateDigitalQRKit,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
-    },
-  })
-}
-
 export const useQRAvailability = () => {
   return useQuery({
     queryKey: ['qr-kits', 'availability'],
     queryFn: () => publicQrApi.getAvailability(),
     refetchInterval: 30000, // Refresh every 30 seconds
-  })
-}
-
-export const useClaimDigitalKit = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (): Promise<{
-      message: string
-      qrKit: QRKit
-    }> => {
-      const response = await apiClient.post<{
-        message: string
-        qrKit: QRKit
-      }>('/qr-kits/claim-digital')
-      return response.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
-    },
   })
 }

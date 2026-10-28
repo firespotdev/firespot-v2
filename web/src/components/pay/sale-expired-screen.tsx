@@ -32,7 +32,7 @@ export function SaleExpiredScreen({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+            className="h-9 w-9 bg-[#00000014] rounded-[12px] flex items-center justify-center cursor-pointer"
           >
             <X size={16} color="#868788" />
           </button>

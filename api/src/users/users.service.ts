@@ -37,6 +37,7 @@ import {
   PlanTier,
 } from "../merchant-plans/constants/plans";
 import {
+  UpdateBusinessNameDto,
   UpdateContactDto,
   UpdateActiveHoursSetupDto,
   UpdateEmployeeSetupDto,
@@ -46,6 +47,7 @@ import {
 } from "./dto/shop-setup.dto";
 import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
 import { getSelectablePaystackChannels } from "../payments/paystack-collection-channels";
+import { normalizeNigerianPhone } from "../common/phone";
 
 const escapeRegExp = (value: string) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -99,27 +101,37 @@ export class UsersService {
     const search = query.search?.trim();
     const page = query.page || 1;
     const limit = query.limit || 20;
-    const merchantIdsWithActiveKits = await this.qrKitModel.distinct(
-      "merchantId",
-      {
-        activationStatus: "activated",
-        merchantId: { $ne: null },
-      },
-    );
+    const phoneNumber =
+      search && /^[+\d\s()-]+$/.test(search)
+        ? normalizeNigerianPhone(search)
+        : "";
+    const isPhoneSearch = /^[789]\d{9}$/.test(phoneNumber);
     const filter: Record<string, unknown> = {
-      _id: { $in: merchantIdsWithActiveKits },
       role: "merchant",
-      shopIsLive: true,
       businessName: { $exists: true, $ne: "" },
     };
 
-    if (search) {
-      const pattern = new RegExp(escapeRegExp(search), "i");
-      filter.$or = [
-        { businessName: pattern },
-        { merchantSlug: pattern },
-        { businessIndustry: pattern },
-      ];
+    if (isPhoneSearch) {
+      filter.phoneNumber = phoneNumber;
+      filter.phoneCountryCode = "+234";
+    } else {
+      const merchantIdsWithActiveKits = await this.qrKitModel.distinct(
+        "merchantId",
+        {
+          activationStatus: "activated",
+          merchantId: { $ne: null },
+        },
+      );
+      filter._id = { $in: merchantIdsWithActiveKits };
+      filter.shopIsLive = true;
+      if (search) {
+        const pattern = new RegExp(escapeRegExp(search), "i");
+        filter.$or = [
+          { businessName: pattern },
+          { merchantSlug: pattern },
+          { businessIndustry: pattern },
+        ];
+      }
     }
 
     const [merchantRecords, total] = await Promise.all([
@@ -158,7 +170,7 @@ export class UsersService {
     return {
       data: merchants.flatMap((merchant) => {
         const serialNumber = serialByMerchant.get(String(merchant._id));
-        if (!serialNumber) return [];
+        if (!serialNumber && !isPhoneSearch) return [];
 
         return [
           {
@@ -170,7 +182,7 @@ export class UsersService {
             businessIndustry: merchant.businessIndustry,
             state: merchant.mainAddress?.state,
             city: merchant.mainAddress?.city,
-            serialNumber,
+            serialNumber: serialNumber || "",
           },
         ];
       }),
@@ -576,6 +588,16 @@ export class UsersService {
       throw new HttpException("User not found", HttpStatus.NOT_FOUND);
     }
     return user;
+  }
+
+  async updateBusinessName(userId: string, dto: UpdateBusinessNameDto) {
+    const user = await this.getMerchantOrThrow(userId);
+    if (user.role !== "merchant") {
+      throw new ForbiddenException("Only merchants can update a business name");
+    }
+    user.businessName = dto.businessName.trim();
+    await user.save();
+    return { businessName: user.businessName };
   }
 
   /** Contact details step: business email, website, social links. */

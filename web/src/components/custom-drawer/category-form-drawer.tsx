@@ -190,8 +190,8 @@ export function CategoryFormDrawer({
   }
 
   return (
-    <div className="flex flex-col">
-      <header className="flex items-center justify-between border-b border-[#F1F1F1] px-4 py-2">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between border-b border-[#F1F1F1] px-4 py-2">
         <span className="w-8" aria-hidden="true" />
         <h2 className="text-[16px] font-bold">
           {editing ? 'Edit category' : 'Add a category'}
@@ -206,7 +206,7 @@ export function CategoryFormDrawer({
         </button>
       </header>
 
-      <div className="flex-1 p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
         {!editing && (
           <p className="mb-4 text-[14px] font-medium text-[#111827] leading-[140%]">
             Group your products or services into categories for faster and
@@ -249,7 +249,7 @@ export function CategoryFormDrawer({
         )}
       </div>
 
-      <footer className="flex justify-end gap-4 border-t border-[#F1F1F1] px-4 py-3">
+      <footer className="flex shrink-0 justify-end gap-4 border-t border-[#F1F1F1] px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <Button
           variant="ghost"
           onClick={closeDrawer}

@@ -256,7 +256,8 @@ function PaystackSaleSuccessScreen({
             {/* Card 2: Merchant Profile & Feedback */}
             <div className="w-full bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden text-left">
               <Link
-                href={`/business?businessId=${encodeURIComponent(merchant.id)}`}
+                replace
+                href={`/home?viewBusiness=${encodeURIComponent(merchant.id)}`}
                 className="flex items-center gap-3 p-3 transition-colors active:bg-[#FAFAFA]"
               >
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F1F1F1] bg-[#E9EDF1]">
@@ -390,7 +391,8 @@ function ManualTransferSaleSuccessScreen({
 
           <div className="mt-6 w-full max-w-[390px] overflow-hidden rounded-[12px] border border-[#F1F1F1] bg-white text-left shadow-[0px_4px_8px_0px_#0000000A]">
             <Link
-              href={`/business?businessId=${encodeURIComponent(merchant.id)}`}
+              replace
+              href={`/home?viewBusiness=${encodeURIComponent(merchant.id)}`}
               className="flex items-center gap-3 p-3 transition-colors active:bg-[#FAFAFA]"
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-[#F1F1F1] bg-[#E9EDF1]">

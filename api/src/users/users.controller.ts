@@ -39,6 +39,7 @@ import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
 import { RegisterFcmTokenDto } from "./dto/register-fcm-token.dto";
 import {
+  UpdateBusinessNameDto,
   UpdateActiveHoursSetupDto,
   UpdateContactDto,
   UpdateEmployeeSetupDto,
@@ -56,7 +57,9 @@ export class PublicMerchantsController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: "Discover live merchants" })
+  @ApiOperation({
+    summary: "Discover live shops or find a merchant by phone number",
+  })
   discover(@Query() query: PublicDiscoveryQueryDto) {
     return this.usersService.discoverMerchants(query);
   }
@@ -559,6 +562,17 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "Checklist returned" })
   async getShopSetup(@Request() req) {
     return this.usersService.getShopSetup(req.user.userId);
+  }
+
+  @Patch("me/business-name")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Update the merchant's business display name" })
+  async updateBusinessName(
+    @Request() req: { user: { userId: string } },
+    @Body() dto: UpdateBusinessNameDto,
+  ) {
+    return this.usersService.updateBusinessName(req.user.userId, dto);
   }
 
   @Patch("me/contact")
