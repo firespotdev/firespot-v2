@@ -1,21 +1,21 @@
 import { Module } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
-import { Store, StoreSchema } from '../schemas/store.schema'
+import { Spot, SpotSchema } from '../schemas/spot.schema'
 import { User, UserSchema } from '../schemas/user.schema'
 import { UsersModule } from '../users/users.module'
-import { StoresController } from './stores.controller'
-import { StoresService } from './stores.service'
+import { SpotsController } from './spots.controller'
+import { SpotsService } from './spots.service'
 
 @Module({
   imports: [
     MongooseModule.forFeature([
-      { name: Store.name, schema: StoreSchema },
+      { name: Spot.name, schema: SpotSchema },
       { name: User.name, schema: UserSchema },
     ]),
     UsersModule,
   ],
-  controllers: [StoresController],
-  providers: [StoresService],
-  exports: [StoresService],
+  controllers: [SpotsController],
+  providers: [SpotsService],
+  exports: [SpotsService],
 })
-export class StoresModule {}
+export class SpotsModule {}

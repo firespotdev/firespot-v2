@@ -22,7 +22,7 @@ import { FirebaseModule } from './services/firebase/firebase.module'
 import { CustomersModule } from './customers/customers.module'
 import { ProductsModule } from './products/products.module'
 import { ReportsModule } from './reports/reports.module'
-import { StoresModule } from './stores/stores.module'
+import { SpotsModule } from './spots/spots.module'
 import { MerchantPlansModule } from './merchant-plans/merchant-plans.module'
 import { KycModule } from './kyc/kyc.module'
 import { FeedbackModule } from './feedback/feedback.module'
@@ -67,7 +67,7 @@ import { PostsModule } from './posts/posts.module'
     CustomersModule,
     ProductsModule,
     ReportsModule,
-    StoresModule,
+    SpotsModule,
     MerchantPlansModule,
     KycModule,
     FeedbackModule,

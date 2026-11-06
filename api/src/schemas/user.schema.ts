@@ -160,7 +160,7 @@ export class User extends Document {
   }
 
   // Primary business address used by shop setup and customer discovery.
-  // Billable physical locations are materialised separately as Store docs.
+  // Billable physical locations are materialised separately as Spot docs.
   @Prop({
     type: {
       state: String,
@@ -551,7 +551,7 @@ export class User extends Document {
         planCode: String,
         interval: String,
         kind: { type: String, enum: ['primary', 'branch'] },
-        storeId: { type: Types.ObjectId, ref: 'Store' },
+        spotId: { type: Types.ObjectId, ref: 'Spot' },
         status: String,
         createdAt: Date,
       },
@@ -564,7 +564,7 @@ export class User extends Document {
     planCode?: string
     interval?: string
     kind?: 'primary' | 'branch'
-    storeId?: Types.ObjectId
+    spotId?: Types.ObjectId
     status?: string
     createdAt?: Date
   }>

@@ -245,7 +245,7 @@ describe("UsersService public merchant discovery", () => {
           }),
         }),
       };
-      const storeModel = {
+      const spotModel = {
         find: jest.fn().mockReturnValue({
           select: jest.fn().mockReturnValue({
             sort: jest.fn().mockReturnValue({
@@ -275,7 +275,7 @@ describe("UsersService public merchant discovery", () => {
       Object.assign(service, {
         userModel,
         qrKitModel,
-        storeModel,
+        spotModel,
         saleModel,
         feedbackModel,
       });

@@ -9,7 +9,7 @@ import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { Product, ProductDocument } from "../schemas/product.schema";
-import { Store, StoreDocument } from "../schemas/store.schema";
+import { Spot, SpotDocument } from "../schemas/spot.schema";
 import { Sale, SaleDocument } from "../schemas/sale.schema";
 import { Feedback, FeedbackDocument } from "../schemas/feedback.schema";
 import { PaystackService } from "./services/paystack.service";
@@ -75,7 +75,7 @@ export class UsersService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
-    @InjectModel(Store.name) private storeModel: Model<StoreDocument>,
+    @InjectModel(Spot.name) private spotModel: Model<SpotDocument>,
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(Feedback.name)
     private feedbackModel: Model<FeedbackDocument>,
@@ -249,7 +249,7 @@ export class UsersService {
 
     const [
       qrKit,
-      stores,
+      spots,
       favoriteCount,
       monthlyVisits,
       salesSummary,
@@ -261,7 +261,7 @@ export class UsersService {
         .sort({ isDigital: -1, createdAt: 1 })
         .lean()
         .exec(),
-      this.storeModel
+      this.spotModel
         .find({ merchantId, isActive: true })
         .select("name address location isPrimary")
         .sort({ isPrimary: -1, createdAt: 1 })
@@ -317,13 +317,13 @@ export class UsersService {
         .exec(),
     ]);
 
-    const locations = stores.length
-      ? stores.map((store) => ({
-          id: String(store._id),
-          name: store.name,
-          address: store.address,
-          location: store.location,
-          isPrimary: store.isPrimary === true,
+    const locations = spots.length
+      ? spots.map((spot) => ({
+          id: String(spot._id),
+          name: spot.name,
+          address: spot.address,
+          location: spot.location,
+          isPrimary: spot.isPrimary === true,
         }))
       : merchant.mainAddress
         ? [

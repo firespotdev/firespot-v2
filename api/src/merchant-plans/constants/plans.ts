@@ -57,8 +57,8 @@ export interface PlanDefinition {
   /** Naira. Converted to kobo at Paystack call sites. */
   price: number
   billingType: BillingType
-  /** true when price is charged per store per period (PRO MAX) */
-  perStore: boolean
+  /** true when price is charged per spot per period (PRO MAX) */
+  perSpot: boolean
   tagline: string
   /** Ordered verification steps the merchant must complete for this tier. */
   requiredSteps: KycStepDef[]
@@ -115,7 +115,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     name: 'Firespot Business Lite',
     price: 0,
     billingType: 'one_time',
-    perStore: false,
+    perSpot: false,
     tagline:
       'For businesses not yet registered with the CAC. All you need is BVN + NIN.',
     requiredSteps: [STEP.ninEnhanced, STEP.bvnEnhanced],
@@ -139,7 +139,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     name: 'Firespot Business Pro',
     price: 6000,
     billingType: 'monthly',
-    perStore: false,
+    perSpot: false,
     tagline:
       'Sell online and offline, all sales recorded automatically. You need BVN + NIN + Liveness check (Selfie).',
     // The biometric BVN step covers identity AND liveness in one job.
@@ -166,7 +166,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
     name: 'Firespot Business Pro Max',
     price: 10_000,
     billingType: 'monthly',
-    perStore: true,
+    perSpot: true,
     tagline:
       'Run your business fully on Firespot Business Platform. You need BVN + NIN + Liveness check (Selfie) + CAC.',
     requiredSteps: [STEP.ninEnhanced, STEP.bvnBiometric, STEP.cac],
@@ -442,7 +442,7 @@ export function resolvePeriodWindow(params: {
  * The billing date never moves — only the difference is charged now, and the
  * new subscription's first full charge lands on the original renewal date.
  *
- * Amounts are per-period totals (already store-multiplied for PRO MAX).
+ * Amounts are per-period totals (already spot-multiplied for PRO MAX).
  * Returns 0 when the period is over/unknown or the credit covers the upgrade.
  */
 export function calculateProration(params: {

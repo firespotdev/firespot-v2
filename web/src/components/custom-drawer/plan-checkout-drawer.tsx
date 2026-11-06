@@ -48,13 +48,13 @@ export function PlanCheckoutDrawer({
   const { data: preview } = usePlanPreview({ tier, interval })
 
   const plan = data?.plans.find((p) => p.tier === tier)
-  const storeCount = data?.current.activeStoreCount ?? 1
+  const spotCount = data?.current.activeSpotCount ?? 1
 
   if (!plan) return null
 
   const isOneTime = plan.billingType === 'one_time'
   const unitPrice = planUnitPrice(plan, interval)
-  const listTotal = planTotal(plan, interval, storeCount)
+  const listTotal = planTotal(plan, interval, spotCount)
   // Fall back to list price only until the quote arrives.
   const total = preview ? preview.amountDue : listTotal
   const credit = preview?.credit ?? 0
@@ -216,7 +216,7 @@ export function PlanCheckoutDrawer({
             >
               <Trash2 size={16} color="black" />
             </button>
-            {/* Quantity is fixed at 1 (per-store totals are computed for you). */}
+            {/* Quantity is fixed at 1 (per-Spot totals are computed for you). */}
             <div className="flex items-center rounded-[10px] bg-[#F1F1F1] h-9">
               <span className="w-9 h-9 flex items-center justify-center text-[#C7C7CC]">
                 <Minus className="w-4 h-4" />
@@ -257,11 +257,11 @@ export function PlanCheckoutDrawer({
           <span className="text-[#6B7280] font-medium">Frequency</span>
           <span className="font-medium text-black">{frequency}</span>
         </div>
-        {/* {plan.perStore && storeCount > 1 && (
+        {/* {plan.perSpot && spotCount > 1 && (
           <div className="flex justify-between text-xs">
             <span className="text-[#9CA3AF] font-medium">Stores billed</span>
             <span className="text-[#9CA3AF] font-medium">
-              {storeCount} × NGN {formatCurrency(unitPrice)}
+              {spotCount} × NGN {formatCurrency(unitPrice)}
             </span>
           </div>
         )} */}

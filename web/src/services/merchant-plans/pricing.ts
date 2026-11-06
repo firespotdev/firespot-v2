@@ -29,12 +29,12 @@ export function periodsFor(interval: BillingInterval): number {
 /**
  * Total charged now for a plan. One-time tiers (LITE) ignore interval.
  * PRO and PRO MAX charge the base unit price for the selected cadence.
- * Additional stores on PRO MAX are billed separately upon store creation.
+ * Additional Spots on PRO MAX are billed separately when each Spot is created.
  */
 export function planTotal(
   plan: PlanDefinition,
   interval: BillingInterval,
-  storeCount: number,
+  spotCount: number,
 ): number {
   if (plan.billingType === 'one_time') return plan.price
   return plan.price * periodsFor(interval)

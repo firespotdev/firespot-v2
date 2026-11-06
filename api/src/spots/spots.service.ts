@@ -10,17 +10,17 @@ import {
 import { InjectModel } from '@nestjs/mongoose'
 import { ConfigService } from '@nestjs/config'
 import { Model, Types } from 'mongoose'
-import { Store, StoreDocument } from '../schemas/store.schema'
+import { Spot, SpotDocument } from '../schemas/spot.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { PaystackService } from '../users/services/paystack.service'
 import { getEffectiveTier } from '../merchant-plans/constants/plans'
 
 @Injectable()
-export class StoresService {
-  private readonly logger = new Logger(StoresService.name)
+export class SpotsService {
+  private readonly logger = new Logger(SpotsService.name)
 
   constructor(
-    @InjectModel(Store.name) private storeModel: Model<StoreDocument>,
+    @InjectModel(Spot.name) private spotModel: Model<SpotDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private paystackService: PaystackService,
     private configService: ConfigService,
@@ -34,7 +34,7 @@ export class StoresService {
       location?: string
       idempotencyKey: string
     },
-  ): Promise<Store> {
+  ): Promise<Spot> {
     const user = await this.userModel.findById(merchantId).exec()
     if (!user) {
       throw new NotFoundException('User not found')
@@ -44,7 +44,7 @@ export class StoresService {
     }
 
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const existingRequest = await this.storeModel
+    const existingRequest = await this.spotModel
       .findOne({
         merchantId: merchantObjectId,
         billingRequestKey: dto.idempotencyKey,
@@ -64,7 +64,7 @@ export class StoresService {
         (subscription) =>
           subscription.kind === 'primary' && subscription.status === 'active',
       )
-      const store = new this.storeModel({
+      const spot = new this.spotModel({
         merchantId: merchantObjectId,
         name: dto.name,
         address: dto.address,
@@ -77,7 +77,7 @@ export class StoresService {
         subscriptionEmailToken: primarySubscription?.emailToken,
       })
       try {
-        const saved = await store.save()
+        const saved = await spot.save()
         if (primarySubscription?.code) {
           await this.userModel.updateOne(
             {
@@ -87,7 +87,7 @@ export class StoresService {
             {
               $set: {
                 'subscriptions.$.kind': 'primary',
-                'subscriptions.$.storeId': saved._id,
+                'subscriptions.$.spotId': saved._id,
               },
             },
           )
@@ -103,10 +103,10 @@ export class StoresService {
       }
     }
 
-    await this.ensurePrimaryStore(merchantId)
+    await this.ensurePrimarySpot(merchantId)
 
-    // Adding additional stores beyond the primary store requires PRO MAX and
-    // creates an independent Paystack subscription for each extra store.
+    // Adding additional spots beyond the primary spot requires PRO MAX and
+    // creates an independent Paystack subscription for each extra spot.
     const effectiveTier = getEffectiveTier(user)
     if (effectiveTier !== 'PROMAX') {
       throw new ForbiddenException(
@@ -130,9 +130,9 @@ export class StoresService {
       )
     }
 
-    const store =
+    const spot =
       existingRequest ||
-      new this.storeModel({
+      new this.spotModel({
         merchantId: merchantObjectId,
         name: dto.name,
         address: dto.address,
@@ -142,12 +142,12 @@ export class StoresService {
         billingStatus: 'pending',
         billingRequestKey: dto.idempotencyKey,
       })
-    store.name = dto.name
-    store.address = dto.address
-    store.location = dto.location
-    store.billingStatus = 'pending'
+    spot.name = dto.name
+    spot.address = dto.address
+    spot.location = dto.location
+    spot.billingStatus = 'pending'
     try {
-      await store.save()
+      await spot.save()
     } catch (error: any) {
       if (error?.code === 11000) {
         throw new ConflictException(
@@ -165,10 +165,10 @@ export class StoresService {
         authorization: user.paystackAuthorizationCode,
       })
     } catch (error: any) {
-      store.billingStatus = 'failed'
-      await store.save()
+      spot.billingStatus = 'failed'
+      await spot.save()
       this.logger.error(
-        `Failed to create subscription for additional store: ${error?.message || error}`,
+        `Failed to create subscription for additional spot: ${error?.message || error}`,
       )
       throw new BadRequestException(
         error?.response?.data?.message ||
@@ -177,12 +177,12 @@ export class StoresService {
       )
     }
 
-    store.subscriptionCode = subscription.subscriptionCode
-    store.subscriptionEmailToken = subscription.emailToken
-    store.billingStatus = 'active'
-    store.isActive = true
+    spot.subscriptionCode = subscription.subscriptionCode
+    spot.subscriptionEmailToken = subscription.emailToken
+    spot.billingStatus = 'active'
+    spot.isActive = true
     try {
-      await store.save()
+      await spot.save()
     } catch (error) {
       let compensationSucceeded = false
       try {
@@ -193,8 +193,8 @@ export class StoresService {
         if (!compensation.success) {
           throw new Error('Paystack did not confirm compensation')
         }
-        await this.storeModel.updateOne(
-          { _id: store._id },
+        await this.spotModel.updateOne(
+          { _id: spot._id },
           {
             $set: {
               subscriptionCode: subscription.subscriptionCode,
@@ -206,8 +206,8 @@ export class StoresService {
         )
         compensationSucceeded = true
       } catch (compensationError) {
-        await this.storeModel.updateOne(
-          { _id: store._id },
+        await this.spotModel.updateOne(
+          { _id: spot._id },
           {
             $set: {
               subscriptionCode: subscription.subscriptionCode,
@@ -243,7 +243,7 @@ export class StoresService {
       existingSubscription.planCode = planCode
       existingSubscription.interval = 'monthly'
       existingSubscription.kind = 'branch'
-      existingSubscription.storeId = store._id as Types.ObjectId
+      existingSubscription.spotId = spot._id as Types.ObjectId
       existingSubscription.status = 'active'
     } else {
       billingUser.subscriptions.push({
@@ -252,7 +252,7 @@ export class StoresService {
         planCode,
         interval: 'monthly',
         kind: 'branch',
-        storeId: store._id as Types.ObjectId,
+        spotId: spot._id as Types.ObjectId,
         status: 'active',
         createdAt: new Date(),
       })
@@ -269,69 +269,69 @@ export class StoresService {
       await billingUser.save()
     } catch (error) {
       this.logger.error(
-        `Store ${store._id} is active but its user subscription index could not be updated: ${error}`,
+        `Spot ${spot._id} is active but its user subscription index could not be updated: ${error}`,
       )
       throw new ServiceUnavailableException(
         'The store is active, but setup is still being reconciled. Please retry.',
       )
     }
-    return store
+    return spot
   }
 
-  async findAll(merchantId: string): Promise<Store[]> {
-    const stores = await this.storeModel
+  async findAll(merchantId: string): Promise<Spot[]> {
+    const spots = await this.spotModel
       .find({ merchantId: new Types.ObjectId(merchantId) })
       .sort({ createdAt: 1 })
       .exec()
-    if (stores.length > 0 && !stores.some((store) => store.isPrimary)) {
-      const primary = stores[0]
+    if (spots.length > 0 && !spots.some((spot) => spot.isPrimary)) {
+      const primary = spots[0]
       primary.isPrimary = true
       await primary.save()
     }
-    return stores
+    return spots
   }
 
-  async findOne(merchantId: string, id: string): Promise<StoreDocument> {
-    const store = await this.storeModel
+  async findOne(merchantId: string, id: string): Promise<SpotDocument> {
+    const spot = await this.spotModel
       .findOne({
         _id: new Types.ObjectId(id),
         merchantId: new Types.ObjectId(merchantId),
       })
       .exec()
-    if (!store) {
+    if (!spot) {
       throw new NotFoundException('Store not found')
     }
-    return store
+    return spot
   }
 
   async update(
     merchantId: string,
     id: string,
     dto: { name?: string; address?: string; location?: string },
-  ): Promise<Store> {
-    const store = await this.findOne(merchantId, id)
-    if (dto.name !== undefined) store.name = dto.name
-    if (dto.address !== undefined) store.address = dto.address
-    if (dto.location !== undefined) store.location = dto.location
-    return store.save()
+  ): Promise<Spot> {
+    const spot = await this.findOne(merchantId, id)
+    if (dto.name !== undefined) spot.name = dto.name
+    if (dto.address !== undefined) spot.address = dto.address
+    if (dto.location !== undefined) spot.location = dto.location
+    return spot.save()
   }
 
   /**
-   * Deactivates a store and cancels its paired Paystack subscription if present.
+   * Deactivates a spot and cancels its paired Paystack subscription if present.
    */
-  async deactivate(merchantId: string, id: string): Promise<Store> {
-    const store = await this.findOne(merchantId, id)
-    if (store.isPrimary) {
+  async deactivate(merchantId: string, id: string): Promise<Spot> {
+    const spot = await this.findOne(merchantId, id)
+    if (spot.isPrimary) {
       throw new BadRequestException(
         'The primary store is managed by the main plan subscription.',
       )
     }
-    if (store.subscriptionCode) {
-      let token = store.subscriptionEmailToken
+    if (spot.subscriptionCode) {
+      let token = spot.subscriptionEmailToken
       if (!token) {
         const user = await this.userModel.findById(merchantId).exec()
         const sub = user?.subscriptions?.find(
-          (s) => s.code === store.subscriptionCode,
+          (s) => s.code === spot.subscriptionCode,
         )
         token = sub?.emailToken
       }
@@ -339,12 +339,12 @@ export class StoresService {
       if (!token) {
         try {
           const remote = await this.paystackService.fetchSubscription(
-            store.subscriptionCode,
+            spot.subscriptionCode,
           )
           token = remote?.email_token
         } catch (error) {
           this.logger.warn(
-            `Could not recover token for ${store.subscriptionCode}: ${error}`,
+            `Could not recover token for ${spot.subscriptionCode}: ${error}`,
           )
         }
       }
@@ -355,25 +355,25 @@ export class StoresService {
         )
       }
 
-      const previousBillingStatus = store.billingStatus
-      store.billingStatus = 'cancellation_pending'
-      store.subscriptionEmailToken = token
-      await store.save()
+      const previousBillingStatus = spot.billingStatus
+      spot.billingStatus = 'cancellation_pending'
+      spot.subscriptionEmailToken = token
+      await spot.save()
       try {
         const result = await this.paystackService.disableSubscription({
-          code: store.subscriptionCode,
+          code: spot.subscriptionCode,
           token,
         })
         if (!result.success)
           throw new Error('Paystack did not confirm cancellation')
       } catch (error) {
-        store.billingStatus =
+        spot.billingStatus =
           previousBillingStatus === 'cancellation_pending'
             ? 'cancellation_pending'
             : 'active'
-        await store.save()
+        await spot.save()
         this.logger.error(
-          `Failed to disable subscription ${store.subscriptionCode} for store ${store._id}: ${error}`,
+          `Failed to disable subscription ${spot.subscriptionCode} for spot ${spot._id}: ${error}`,
         )
         throw new ServiceUnavailableException(
           'This store subscription could not be cancelled. Please try again.',
@@ -383,19 +383,19 @@ export class StoresService {
       await this.userModel.updateOne(
         {
           _id: new Types.ObjectId(merchantId),
-          'subscriptions.code': store.subscriptionCode,
+          'subscriptions.code': spot.subscriptionCode,
         },
         { $set: { 'subscriptions.$.status': 'cancelled' } },
       )
     }
 
-    store.isActive = false
-    store.billingStatus = 'cancelled'
-    return store.save()
+    spot.isActive = false
+    spot.billingStatus = 'cancelled'
+    return spot.save()
   }
 
   async countActive(merchantId: string): Promise<number> {
-    return this.storeModel
+    return this.spotModel
       .countDocuments({
         merchantId: new Types.ObjectId(merchantId),
         isActive: true,
@@ -405,25 +405,25 @@ export class StoresService {
 
   async findBySubscriptionCode(
     subscriptionCode: string,
-  ): Promise<StoreDocument | null> {
-    return this.storeModel.findOne({ subscriptionCode }).exec()
+  ): Promise<SpotDocument | null> {
+    return this.spotModel.findOne({ subscriptionCode }).exec()
   }
 
   async resolveSubscriptionOwnership(
     merchantId: string,
     subscriptionCode: string,
-  ): Promise<{ kind: 'primary' | 'branch'; storeId: Types.ObjectId } | null> {
-    await this.ensurePrimaryStore(merchantId)
-    const store = await this.storeModel
+  ): Promise<{ kind: 'primary' | 'branch'; spotId: Types.ObjectId } | null> {
+    await this.ensurePrimarySpot(merchantId)
+    const spot = await this.spotModel
       .findOne({
         merchantId: new Types.ObjectId(merchantId),
         subscriptionCode,
       })
       .exec()
-    if (!store) return null
+    if (!spot) return null
     return {
-      kind: store.isPrimary ? 'primary' : 'branch',
-      storeId: store._id as Types.ObjectId,
+      kind: spot.isPrimary ? 'primary' : 'branch',
+      spotId: spot._id as Types.ObjectId,
     }
   }
 
@@ -431,8 +431,8 @@ export class StoresService {
     merchantId: string,
     subscriptionCode: string,
     emailToken?: string,
-  ): Promise<StoreDocument | null> {
-    return this.storeModel
+  ): Promise<SpotDocument | null> {
+    return this.spotModel
       .findOneAndUpdate(
         {
           merchantId: new Types.ObjectId(merchantId),
@@ -452,12 +452,12 @@ export class StoresService {
       .exec()
   }
 
-  async attachSubscriptionToPrimaryStore(
+  async attachSubscriptionToPrimarySpot(
     merchantId: string,
     subscriptionCode: string,
     emailToken?: string,
-  ): Promise<StoreDocument | null> {
-    const primary = await this.ensurePrimaryStore(merchantId)
+  ): Promise<SpotDocument | null> {
+    const primary = await this.ensurePrimarySpot(merchantId)
     if (!primary) return null
     primary.subscriptionCode = subscriptionCode
     primary.subscriptionEmailToken = emailToken
@@ -467,52 +467,52 @@ export class StoresService {
     return primary
   }
 
-  private async ensurePrimaryStore(
+  private async ensurePrimarySpot(
     merchantId: string,
-  ): Promise<StoreDocument | null> {
+  ): Promise<SpotDocument | null> {
     const merchantObjectId = new Types.ObjectId(merchantId)
-    const existingPrimary = await this.storeModel
+    const existingPrimary = await this.spotModel
       .findOne({ merchantId: merchantObjectId, isPrimary: true })
       .exec()
     if (existingPrimary) return existingPrimary
 
-    const oldestStore = await this.storeModel
+    const oldestSpot = await this.spotModel
       .findOne({ merchantId: merchantObjectId })
       .sort({ createdAt: 1 })
       .exec()
-    if (!oldestStore) return null
-    oldestStore.isPrimary = true
+    if (!oldestSpot) return null
+    oldestSpot.isPrimary = true
     try {
-      return await oldestStore.save()
+      return await oldestSpot.save()
     } catch (error: any) {
       if (error?.code !== 11000) throw error
-      return this.storeModel
+      return this.spotModel
         .findOne({ merchantId: merchantObjectId, isPrimary: true })
         .exec()
     }
   }
 
-  async deactivateStoreBySubscription(
+  async deactivateSpotBySubscription(
     merchantId: string,
     subscriptionCode: string,
   ): Promise<void> {
-    const store = await this.storeModel.findOne({
+    const spot = await this.spotModel.findOne({
       merchantId: new Types.ObjectId(merchantId),
       subscriptionCode,
       isActive: true,
     })
-    if (store) {
-      store.isActive = false
-      store.billingStatus = 'failed'
-      await store.save()
+    if (spot) {
+      spot.isActive = false
+      spot.billingStatus = 'failed'
+      await spot.save()
     }
   }
 
-  async reactivateStoreBySubscription(
+  async reactivateSpotBySubscription(
     merchantId: string,
     subscriptionCode: string,
   ): Promise<void> {
-    await this.storeModel.updateOne(
+    await this.spotModel.updateOne(
       {
         merchantId: new Types.ObjectId(merchantId),
         subscriptionCode,

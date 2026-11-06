@@ -23,9 +23,9 @@ import {
   MaxLength,
 } from 'class-validator'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
-import { StoresService } from './stores.service'
+import { SpotsService } from './spots.service'
 
-class CreateStoreDto {
+class CreateSpotDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
@@ -45,7 +45,7 @@ class CreateStoreDto {
   idempotencyKey: string
 }
 
-class UpdateStoreDto {
+class UpdateSpotDto {
   @IsString()
   @IsOptional()
   @MaxLength(100)
@@ -62,42 +62,42 @@ class UpdateStoreDto {
   location?: string
 }
 
-@ApiTags('stores')
-@Controller('stores')
+@ApiTags('spots')
+@Controller('spots')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('JWT-auth')
-export class StoresController {
-  constructor(private readonly storesService: StoresService) {}
+export class SpotsController {
+  constructor(private readonly spotsService: SpotsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a store (billable location on PRO MAX)' })
-  @ApiResponse({ status: 201, description: 'Store created' })
-  async create(@Request() req, @Body() dto: CreateStoreDto) {
-    return this.storesService.create(req.user.userId, dto)
+  @ApiOperation({ summary: 'Create a spot (billable location on PRO MAX)' })
+  @ApiResponse({ status: 201, description: 'Spot created' })
+  async create(@Request() req, @Body() dto: CreateSpotDto) {
+    return this.spotsService.create(req.user.userId, dto)
   }
 
   @Get()
-  @ApiOperation({ summary: "Get the merchant's stores" })
-  @ApiResponse({ status: 200, description: 'List of stores' })
+  @ApiOperation({ summary: "Get the merchant's spots" })
+  @ApiResponse({ status: 200, description: 'List of spots' })
   async findAll(@Request() req) {
-    return this.storesService.findAll(req.user.userId)
+    return this.spotsService.findAll(req.user.userId)
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update a store' })
-  @ApiResponse({ status: 200, description: 'Store updated' })
+  @ApiOperation({ summary: 'Update a spot' })
+  @ApiResponse({ status: 200, description: 'Spot updated' })
   async update(
     @Request() req,
     @Param('id') id: string,
-    @Body() dto: UpdateStoreDto,
+    @Body() dto: UpdateSpotDto,
   ) {
-    return this.storesService.update(req.user.userId, id, dto)
+    return this.spotsService.update(req.user.userId, id, dto)
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Deactivate a store' })
-  @ApiResponse({ status: 200, description: 'Store deactivated' })
+  @ApiOperation({ summary: 'Deactivate a spot' })
+  @ApiResponse({ status: 200, description: 'Spot deactivated' })
   async remove(@Request() req, @Param('id') id: string) {
-    return this.storesService.deactivate(req.user.userId, id)
+    return this.spotsService.deactivate(req.user.userId, id)
   }
 }
