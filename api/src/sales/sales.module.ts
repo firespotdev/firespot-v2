@@ -25,6 +25,10 @@ import {
   PaystackPaymentAttempt,
   PaystackPaymentAttemptSchema,
 } from '../schemas/paystack-payment-attempt.schema';
+import {
+  MerchantSaleDraft,
+  MerchantSaleDraftSchema,
+} from '../schemas/merchant-sale-draft.schema';
 
 @Module({
   imports: [
@@ -41,6 +45,10 @@ import {
       {
         name: PaystackPaymentAttempt.name,
         schema: PaystackPaymentAttemptSchema,
+      },
+      {
+        name: MerchantSaleDraft.name,
+        schema: MerchantSaleDraftSchema,
       },
     ]),
     EventsModule,

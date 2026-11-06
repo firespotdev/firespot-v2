@@ -113,7 +113,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
   LITE: {
     tier: 'LITE',
     name: 'Firespot Business Lite',
-    price: 1000,
+    price: 0,
     billingType: 'one_time',
     perStore: false,
     tagline:

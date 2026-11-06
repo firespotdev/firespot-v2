@@ -56,10 +56,16 @@ import {
 } from './dto/initialize-paystack-sale.dto'
 import { SmsService } from '../services/sms/sms.service'
 import { generateReference } from '../common/reference'
+import {
+  MerchantSaleDraft,
+  MerchantSaleDraftDocument,
+} from '../schemas/merchant-sale-draft.schema'
+import { SaveSaleDraftDto } from './dto/save-sale-draft.dto'
 
 const CUSTOMER_COLLECTION_UNAVAILABLE_MESSAGE =
   'Payment failed. Please try another payment method'
 const DAILY_LIMIT_ALERT_WINDOW_MS = 24 * 60 * 60 * 1000
+const SALE_DRAFT_LIFETIME_MS = 2 * 24 * 60 * 60 * 1000
 
 const saleCustomerPopulate = () => [
   { path: 'customerId' },
@@ -88,7 +94,118 @@ export class SalesService {
     private dailyCollectionUsageModel: Model<DailyCollectionUsageDocument>,
     @InjectModel(PaystackPaymentAttempt.name)
     private paystackPaymentAttemptModel: Model<PaystackPaymentAttemptDocument>,
+    @InjectModel(MerchantSaleDraft.name)
+    private merchantSaleDraftModel: Model<MerchantSaleDraftDocument>,
   ) {}
+
+  private saleDraftExpiry() {
+    return new Date(Date.now() + SALE_DRAFT_LIFETIME_MS)
+  }
+
+  private saleDraftId(value: string) {
+    if (!Types.ObjectId.isValid(value)) {
+      throw new BadRequestException('Sale draft id is invalid')
+    }
+    return new Types.ObjectId(value)
+  }
+
+  private validateSaleDraft(dto: SaveSaleDraftDto) {
+    for (const item of dto.items) {
+      if (
+        item.selectedVariant &&
+        JSON.stringify(item.selectedVariant).length > 4_000
+      ) {
+        throw new BadRequestException('Selected variant is too large')
+      }
+    }
+  }
+
+  async getSaleDrafts(merchantId: string) {
+    return this.merchantSaleDraftModel
+      .find({
+        merchantId: new Types.ObjectId(merchantId),
+        expiresAt: { $gt: new Date() },
+      })
+      .sort({ updatedAt: -1 })
+      .populate('customerId')
+      .exec()
+  }
+
+  async createSaleDraft(merchantId: string, dto: SaveSaleDraftDto) {
+    this.validateSaleDraft(dto)
+    if (dto.customerId) {
+      await this.requireMerchantRelationship(merchantId, dto.customerId)
+    }
+    const draft = new this.merchantSaleDraftModel({
+      ...dto,
+      description: this.normalizeDescription(dto.description) || '',
+      merchantId: new Types.ObjectId(merchantId),
+      customerId: dto.customerId
+        ? new Types.ObjectId(dto.customerId)
+        : undefined,
+      expiresAt: this.saleDraftExpiry(),
+    })
+    await draft.save()
+    return draft.populate('customerId')
+  }
+
+  async updateSaleDraft(
+    merchantId: string,
+    draftId: string,
+    dto: SaveSaleDraftDto,
+  ) {
+    this.validateSaleDraft(dto)
+    if (dto.customerId) {
+      await this.requireMerchantRelationship(merchantId, dto.customerId)
+    }
+    const values: Record<string, unknown> = {
+      ...dto,
+      description: this.normalizeDescription(dto.description) || '',
+      expiresAt: this.saleDraftExpiry(),
+    }
+    delete values.customerId
+    const unset: Record<string, 1> = {}
+    if (dto.customerId) {
+      values.customerId = new Types.ObjectId(dto.customerId)
+    } else {
+      unset.customerId = 1
+    }
+    if (!dto.paymentMethod) unset.paymentMethod = 1
+    if (!dto.dueDate) unset.dueDate = 1
+
+    const draft = await this.merchantSaleDraftModel
+      .findOneAndUpdate(
+        {
+          _id: this.saleDraftId(draftId),
+          merchantId: new Types.ObjectId(merchantId),
+        },
+        {
+          $set: values,
+          ...(Object.keys(unset).length ? { $unset: unset } : {}),
+        },
+        { new: true, runValidators: true },
+      )
+      .populate('customerId')
+      .exec()
+    if (!draft) throw new NotFoundException('Sale draft not found')
+    return draft
+  }
+
+  async deleteSaleDraft(merchantId: string, draftId: string) {
+    const result = await this.merchantSaleDraftModel.deleteOne({
+      _id: this.saleDraftId(draftId),
+      merchantId: new Types.ObjectId(merchantId),
+    })
+    if (!result.deletedCount) throw new NotFoundException('Sale draft not found')
+    return { success: true }
+  }
+
+  async clearSaleDrafts(merchantId: string) {
+    const result = await this.merchantSaleDraftModel.deleteMany({
+      merchantId: new Types.ObjectId(merchantId),
+    })
+    return { count: result.deletedCount }
+  }
 
   private evaluateReferralVolume(merchantId: string | Types.ObjectId) {
     void this.merchantReferralsService
@@ -98,14 +215,38 @@ export class SalesService {
       )
   }
 
+  // Saves a status change out of PENDING only if no concurrent request has
+  // already moved the sale on. Without the filter, a confirm and a cancel that
+  // both read PENDING would both save, and the later one would silently win.
+  private async savePendingTransition(
+    sale: SaleDocument,
+    filter: Record<string, unknown> = {},
+  ): Promise<SaleDocument> {
+    sale.$where = { ...filter, status: 'PENDING' }
+    try {
+      return await sale.save()
+    } catch (error) {
+      if (error instanceof mongoose.Error.DocumentNotFoundError) {
+        throw new ConflictException(
+          'This sale was just updated elsewhere. Refresh to see its latest status.',
+        )
+      }
+      throw error
+    }
+  }
+
   private emitSaleEvent(event: string, sale: SaleDocument) {
     const payload =
       typeof sale.toObject === 'function' ? sale.toObject() : { ...sale }
     delete payload.paystackAuthorizationDetails
-    this.eventsGateway.server
-      .to(sale.merchantId.toString())
-      .to(`sale-${sale._id.toString()}`)
-      .emit(event, payload)
+    this.eventsGateway.server.to(sale.merchantId.toString()).emit(event, payload)
+    // Anyone can subscribe to a sale's status. Never broadcast bank details or
+    // customer identity into that public room.
+    this.eventsGateway.server.to(`sale-${sale._id.toString()}`).emit(event, {
+      id: sale._id,
+      status: sale.status,
+      cancelledBy: sale.cancelledBy,
+    })
   }
 
   private assertPayerIsNotMerchant(
@@ -114,6 +255,57 @@ export class SalesService {
   ): void {
     if (payerUserId && String(merchantId) === String(payerUserId)) {
       throw new ForbiddenException("You can't pay your own account")
+    }
+  }
+
+  private async attachPaymentPayer(sale: SaleDocument, userId?: string) {
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      throw new ForbiddenException('Sign in to continue with payment')
+    }
+    this.assertPayerIsNotMerchant(sale.merchantId, userId)
+    if (sale.customerUserId && String(sale.customerUserId) !== userId) {
+      throw new ForbiddenException('This payment belongs to another customer')
+    }
+    const payer = await this.userModel.findById(userId).exec()
+    if (!payer?.fullName?.trim()) {
+      throw new ForbiddenException('Enter your full name to continue')
+    }
+    const relationship = await this.customersService.findOrCreateForUser(
+      sale.merchantId,
+      userId,
+    )
+    if (!relationship?.userId) {
+      throw new UnprocessableEntityException(
+        'Could not link your customer profile. Please try again.',
+      )
+    }
+    sale.customerUserId = relationship.userId
+    sale.customerId = relationship._id as Types.ObjectId
+    sale.customerName = payer.fullName.trim()
+    sale.customerPhone = payer.fullPhoneNumber
+    if (sale.isNew === false) {
+      const claim = await this.saleModel.updateOne(
+        {
+          _id: sale._id,
+          status: 'PENDING',
+          $or: [
+            { customerUserId: { $exists: false } },
+            { customerUserId: null },
+            { customerUserId: new Types.ObjectId(userId) },
+          ],
+        },
+        {
+          $set: {
+            customerUserId: sale.customerUserId,
+            customerId: sale.customerId,
+            customerName: sale.customerName,
+            customerPhone: sale.customerPhone,
+          },
+        },
+      ).exec()
+      if (!claim.matchedCount) {
+        throw new ForbiddenException('This payment belongs to another customer')
+      }
     }
   }
 
@@ -739,9 +931,11 @@ export class SalesService {
       ...dto,
       description,
       merchantId: merchantObjectId,
-      // The public pending endpoint must not trust a user id supplied by the
-      // browser. Logged-in payers are attached through the guarded claim route.
+      // Never trust customer identity supplied by the browser. The verified
+      // payer and merchant relationship are attached below before saving.
       customerUserId: undefined,
+      customerId: undefined,
+      customerName: undefined,
       // Pending payment intent is not an accounting record or a debt.
       isPaidInFull: undefined,
       amountPaid: undefined,
@@ -755,6 +949,7 @@ export class SalesService {
       status: 'PENDING',
     })
 
+    await this.attachPaymentPayer(sale, payerUserId)
     await sale.save()
 
     // Emit event to the merchant's room
@@ -974,7 +1169,7 @@ export class SalesService {
       .exec()
     if (!sale) throw new NotFoundException('Sale not found')
     this.assertPayerIsNotMerchant(sale.merchantId, payerUserId)
-    if (sale.status !== 'PENDING' || !sale.isCollection) {
+    if (sale.status !== 'PENDING') {
       throw new UnprocessableEntityException(
         'This payment request can no longer be paid.',
       )
@@ -982,7 +1177,7 @@ export class SalesService {
     if (this.isSaleExpired(sale)) {
       throw new UnprocessableEntityException('This sale expired at midnight.')
     }
-    if (sale.receiptUrl || sale.customerMarkedPaidAt || sale.isCopied) {
+    if (sale.receiptUrl || sale.customerMarkedPaidAt) {
       throw new UnprocessableEntityException(
         'This payment is already using direct bank transfer.',
       )
@@ -1039,7 +1234,6 @@ export class SalesService {
           paymentRail: { $ne: 'paystack' },
           receiptUrl: { $exists: false },
           customerMarkedPaidAt: { $exists: false },
-          isCopied: { $ne: true },
         },
         {
           $set: {
@@ -1121,7 +1315,7 @@ export class SalesService {
       customerName,
       cancelSaleOnFailure,
     } = params
-    this.assertPayerIsNotMerchant(merchant._id, payerUserId)
+    await this.attachPaymentPayer(sale, payerUserId)
     await this.assertCanCollect(merchant._id)
     const channel = this.resolvePaystackChannel(merchant, requestedChannel)
 
@@ -1145,7 +1339,7 @@ export class SalesService {
       ? this.payerEmailForUser(payer)
       : 'generalcustomer@firespot.co'
     const payerName = payer
-      ? [payer.firstName, payer.lastName].filter(Boolean).join(' ') || undefined
+      ? payer.fullName || undefined
       : customerName
     const payerPhone = payer?.fullPhoneNumber
     const callbackUrl = this.paystackCallbackUrl(sale)
@@ -1163,6 +1357,7 @@ export class SalesService {
       capReservationStatus: 'active',
     })
 
+    sale.isCollection = true
     sale.paymentRail = 'paystack'
     sale.paystackAttemptStatus = 'initializing'
     sale.paystackReference = paystackReference
@@ -1812,7 +2007,8 @@ export class SalesService {
       cancelledBy: sale.cancelledBy,
       isCopied: sale.isCopied,
       targetBankName: sale.targetBankName,
-      targetAccountNumber: sale.targetAccountNumber,
+      // Account numbers are obtained through the authenticated QR endpoint.
+      targetAccountNumber: undefined,
       sourceBankName: sale.sourceBankName,
       paymentMethod: sale.paymentMethod,
       paymentRail: sale.paymentRail,
@@ -2333,7 +2529,9 @@ export class SalesService {
     if (customer) sale.customerId = customer._id
     if (customerUserId) sale.customerUserId = customerUserId
 
-    const savedSale = await sale.save()
+    const savedSale = await this.savePendingTransition(sale, {
+      isArchived: { $ne: true },
+    })
     if (savedSale.isCollection) {
       this.evaluateReferralVolume(savedSale.merchantId)
     }
@@ -2364,7 +2562,7 @@ export class SalesService {
 
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'merchant'
-    const savedSale = await sale.save()
+    const savedSale = await this.savePendingTransition(sale)
     this.emitSaleEvent('sale.cancelled', savedSale)
     return savedSale
   }
@@ -2402,7 +2600,7 @@ export class SalesService {
 
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'customer'
-    const savedSale = await sale.save()
+    const savedSale = await this.savePendingTransition(sale)
     this.emitSaleEvent('sale.cancelled', savedSale)
     return savedSale
   }
@@ -2452,6 +2650,8 @@ export class SalesService {
       sale.customerFingerprint = normalizedFingerprint
       shouldSave = true
     }
+
+    await this.attachPaymentPayer(sale, payerUserId)
 
     const isNewExplicitDeclaration = !sale.customerMarkedPaidExplicitly
     if (!sale.customerMarkedPaidAt) {
@@ -3205,6 +3405,7 @@ export class SalesService {
       customerFingerprint,
     )
     this.assertPayerIsNotMerchant(sale.merchantId, payerUserId)
+    await this.attachPaymentPayer(sale, payerUserId)
     sale.isCopied = true
     if (targetBankName?.trim()) {
       sale.targetBankName = targetBankName.trim()
@@ -3405,6 +3606,8 @@ export class SalesService {
       throw new ForbiddenException('This payment belongs to another customer')
     }
 
+    await this.attachPaymentPayer(sale, userId)
+
     const user = await this.userModel
       .findById(userId)
       .select('+savedCards.authorizationCode')
@@ -3448,7 +3651,7 @@ export class SalesService {
     const payerPaystackEmail =
       card.email || this.payerEmailForUser(user)
     const payerName =
-      [user.firstName, user.lastName].filter(Boolean).join(' ') || undefined
+      user.fullName || undefined
     const payerPhone = user.fullPhoneNumber
 
     const claimedSale = await this.saleModel

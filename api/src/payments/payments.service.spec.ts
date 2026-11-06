@@ -378,6 +378,7 @@ describe('PaymentsService event routing', () => {
       'CUS_xnxdt6s1zg1f4nx',
       'INV_kmhuaaur5c9ruh2',
       '2016-05-19T07:00:00.000Z',
+      'SUB_l07i1s6s39nmytr',
     )
   })
 

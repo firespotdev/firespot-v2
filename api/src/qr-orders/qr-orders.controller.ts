@@ -20,7 +20,7 @@ export class QROrdersController {
   }
 
   @ApiOperation({
-    summary: 'Get QR kit pricing (naira). Zero means free.',
+    summary: 'Get QR kit pricing (naira). Kit purchases require a positive unit price.',
   })
   @Get('pricing')
   getPricing() {

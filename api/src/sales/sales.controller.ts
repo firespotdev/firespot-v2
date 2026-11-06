@@ -32,9 +32,11 @@ import {
   SaveCardFromSaleDto,
 } from './dto/pay-with-saved-card.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PaymentPayerGuard } from '../auth/guards/payment-payer.guard';
 import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 import { User } from '../schemas/user.schema';
+import { SaveSaleDraftDto } from './dto/save-sale-draft.dto';
 
 @ApiTags('sales')
 @Controller('sales')
@@ -42,7 +44,7 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @ApiOperation({ summary: 'Create a pending sale' })
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(PaymentPayerGuard)
   @Post('pending')
   async createPendingSale(
     @Body() dto: CreatePendingSaleDto,
@@ -52,7 +54,7 @@ export class SalesController {
   }
 
   @ApiOperation({ summary: 'Initialize a Paystack collection sale from customer pay page' })
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(PaymentPayerGuard)
   @Post('collect/paystack')
   async createPaystackCollectSale(
     @Body() dto: CreatePaystackCollectSaleDto,
@@ -65,7 +67,7 @@ export class SalesController {
   }
 
   @ApiOperation({ summary: 'Initialize Paystack for an existing dynamic sale' })
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(PaymentPayerGuard)
   @Post(':id/paystack/initialize')
   async initializeExistingPaystackSale(
     @Param('id') saleId: string,
@@ -112,7 +114,7 @@ export class SalesController {
 
   @ApiOperation({ summary: 'Pay for a sale using a customer saved card in 1-tap' })
   @ApiBearerAuth('JWT-auth')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(PaymentPayerGuard)
   @Post(':id/pay-saved-card')
   async payWithSavedCard(
     @Param('id') saleId: string,
@@ -138,6 +140,60 @@ export class SalesController {
       (user as any).userId,
       dto,
     );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get merchant sale drafts' })
+  @Get('drafts')
+  getSaleDrafts(@GetUser() user: User) {
+    return this.salesService.getSaleDrafts((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Save a merchant sale draft' })
+  @Post('drafts')
+  createSaleDraft(@GetUser() user: User, @Body() dto: SaveSaleDraftDto) {
+    return this.salesService.createSaleDraft((user as any).userId, dto);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update a merchant sale draft' })
+  @Patch('drafts/:draftId')
+  updateSaleDraft(
+    @GetUser() user: User,
+    @Param('draftId') draftId: string,
+    @Body() dto: SaveSaleDraftDto,
+  ) {
+    return this.salesService.updateSaleDraft(
+      (user as any).userId,
+      draftId,
+      dto,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Delete a merchant sale draft' })
+  @Delete('drafts/:draftId')
+  deleteSaleDraft(
+    @GetUser() user: User,
+    @Param('draftId') draftId: string,
+  ) {
+    return this.salesService.deleteSaleDraft(
+      (user as any).userId,
+      draftId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Clear merchant sale drafts' })
+  @Delete('drafts')
+  clearSaleDrafts(@GetUser() user: User) {
+    return this.salesService.clearSaleDrafts((user as any).userId);
   }
 
   @ApiBearerAuth('JWT-auth')
@@ -327,11 +383,12 @@ export class SalesController {
     @Param('id') saleId: string,
     @Body() dto: CustomerSaleActionDto,
   ) {
-    return this.salesService.cancelSaleAsCustomer(saleId, dto.serialNumber);
+    await this.salesService.cancelSaleAsCustomer(saleId, dto.serialNumber);
+    return this.salesService.getPublicSaleById(saleId, dto.serialNumber);
   }
 
   @ApiOperation({ summary: 'Tell the merchant that the customer has paid' })
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(PaymentPayerGuard)
   @Patch(':id/customer-paid')
   async markSalePaidByCustomer(
     @Param('id') saleId: string,
@@ -358,13 +415,14 @@ export class SalesController {
     @UploadedFile() file: Express.Multer.File,
     @GetUser() user?: User,
   ) {
-    return this.salesService.uploadReceipt(
+    await this.salesService.uploadReceipt(
       saleId,
       serialNumber,
       customerFingerprint,
       file.buffer,
       (user as any)?.userId,
     );
+    return this.salesService.getPublicSaleById(saleId, serialNumber);
   }
 
   @ApiOperation({
@@ -376,21 +434,23 @@ export class SalesController {
     @Query('serialNumber') serialNumber: string,
     @Headers('x-customer-fingerprint') customerFingerprint: string,
   ) {
-    return this.salesService.deleteReceipt(
+    await this.salesService.deleteReceipt(
       saleId,
       serialNumber,
       customerFingerprint,
     );
+    return this.salesService.getPublicSaleById(saleId, serialNumber);
   }
 
   @ApiOperation({ summary: 'Record customer scanning/accessing link' })
   @Patch(':id/scan')
   async recordScan(@Param('id') saleId: string) {
-    return this.salesService.recordScan(saleId);
+    await this.salesService.recordScan(saleId);
+    return { success: true };
   }
 
   @ApiOperation({ summary: 'Record customer copying account number' })
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(PaymentPayerGuard)
   @Patch(':id/copy')
   async recordCopy(
     @Param('id') saleId: string,

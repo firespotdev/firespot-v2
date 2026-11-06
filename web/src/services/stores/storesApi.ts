@@ -10,6 +10,10 @@ export interface Store {
   address?: string
   location?: string
   isActive: boolean
+  isPrimary: boolean
+  billingStatus:
+    'pending' | 'active' | 'cancellation_pending' | 'cancelled' | 'failed'
+  billingRequestKey?: string
   createdAt?: string
 }
 
@@ -19,13 +23,17 @@ export interface StorePayload {
   location?: string
 }
 
+export interface CreateStorePayload extends StorePayload {
+  idempotencyKey: string
+}
+
 export const StoresApi = {
   getStores: async (): Promise<Store[]> => {
     const { data } = await apiClient.get('/stores')
     return data
   },
 
-  createStore: async (payload: StorePayload): Promise<Store> => {
+  createStore: async (payload: CreateStorePayload): Promise<Store> => {
     const { data } = await apiClient.post('/stores', payload)
     return data
   },
@@ -50,7 +58,16 @@ export const useStores = () => {
 export const useCreateStore = () => {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload: StorePayload) => StoresApi.createStore(payload),
+    mutationFn: (payload: CreateStorePayload) => StoresApi.createStore(payload),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: STORES_KEY }),
+  })
+}
+
+export const useUpdateStore = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: StorePayload }) =>
+      StoresApi.updateStore(id, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: STORES_KEY }),
   })
 }
@@ -59,6 +76,6 @@ export const useDeleteStore = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => StoresApi.deleteStore(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: STORES_KEY }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: STORES_KEY }),
   })
 }

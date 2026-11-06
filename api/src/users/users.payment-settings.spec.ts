@@ -24,6 +24,9 @@ describe('UsersService - updatePaymentSettings', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
     );
   });
 

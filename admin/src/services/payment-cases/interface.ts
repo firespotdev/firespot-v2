@@ -60,8 +60,7 @@ export interface CustomerReport {
   merchantId: PopulatedMerchant
   customerId?: {
     _id: string
-    firstName?: string
-    lastName?: string
+    fullName?: string
     fullPhoneNumber?: string
   }
   saleId: PopulatedSale

@@ -78,7 +78,7 @@ export class ReportsService {
     return this.reportModel
       .find(status ? { status } : {})
       .populate("merchantId", "businessName fullPhoneNumber")
-      .populate("customerId", "firstName lastName fullPhoneNumber")
+      .populate("customerId", "fullName fullPhoneNumber")
       .populate("saleId", "reference amount description recordedAt")
       .sort({ createdAt: -1 })
       .exec();

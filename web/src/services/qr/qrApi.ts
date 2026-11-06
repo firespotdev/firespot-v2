@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { publicApiClient, apiClient } from '@/lib/utils/axios'
+import { useAuthStore } from '@/services/auth/authSlice'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import type {
   QRKit,
@@ -10,9 +11,10 @@ import type {
 export const publicQrApi = {
   getMerchantBySerial: async (
     serialNumber: string,
+    authenticated = false,
   ): Promise<MerchantProfile> => {
     const fingerprint = getCustomerFingerprint()
-    const response = await publicApiClient.get<MerchantProfile>(
+    const response = await (authenticated ? apiClient : publicApiClient).get<MerchantProfile>(
       `/qr-kits/${serialNumber}`,
       {
         headers: {
@@ -53,16 +55,7 @@ export const userQrApi = {
     return response.data
   },
 
-  generateDigitalQRKit: async (): Promise<{
-    message: string
-    qrKit: QRKit
-  }> => {
-    const response = await apiClient.post<{
-      message: string
-      qrKit: QRKit
-    }>('/qr-kits/generate-digital')
-    return response.data
-  },
+
 }
 
 // Hooks
@@ -82,11 +75,12 @@ export const useQRCodeSVG = (url: string | null | undefined) => {
 }
 
 export const useMerchantBySerial = (serialNumber: string | null) => {
+  const identity = useAuthStore((s) => s.isAuthenticated && s.user?.fullName?.trim() ? s.user.id : null)
   return useQuery({
-    queryKey: ['merchant', serialNumber],
+    queryKey: ['merchant', serialNumber, identity],
     queryFn: () => {
       if (!serialNumber) throw new Error('Serial number is required')
-      return publicQrApi.getMerchantBySerial(serialNumber)
+      return publicQrApi.getMerchantBySerial(serialNumber, Boolean(identity))
     },
     enabled: !!serialNumber,
     retry: false,
@@ -132,42 +126,10 @@ export const useUpdateQRKit = () => {
   })
 }
 
-export const useGenerateDigitalQRKit = () => {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: userQrApi.generateDigitalQRKit,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
-    },
-  })
-}
-
 export const useQRAvailability = () => {
   return useQuery({
     queryKey: ['qr-kits', 'availability'],
     queryFn: () => publicQrApi.getAvailability(),
     refetchInterval: 30000, // Refresh every 30 seconds
-  })
-}
-
-export const useClaimDigitalKit = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async (): Promise<{
-      message: string
-      qrKit: QRKit
-    }> => {
-      const response = await apiClient.post<{
-        message: string
-        qrKit: QRKit
-      }>('/qr-kits/claim-digital')
-      return response.data
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['user', 'qr-kits'] })
-      queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
-    },
   })
 }

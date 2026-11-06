@@ -8,6 +8,8 @@ node_modules/
 .env
 .env*.local
 
+.claude
+
 # os / editor
 .DS_Store
 
@@ -24,3 +26,4 @@ PRODUCT.md
 DESIGN.md
 AGENTS.md
 .impeccable
+design-qa.md

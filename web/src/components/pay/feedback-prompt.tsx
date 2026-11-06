@@ -86,7 +86,7 @@ export function FeedbackPrompt({
     ? `${merchantName}, ${sale.location}`
     : merchantName
   const customerName =
-    [customer?.firstName, customer?.lastName].filter(Boolean).join(' ') ||
+    customer?.fullName ||
     'Firespot customer'
   const transactionDate = formatFeedbackDate(
     String(sale.recordedAt || sale.createdAt),
@@ -136,7 +136,7 @@ export function FeedbackPrompt({
       <button
         type="button"
         onClick={handleOpen}
-        className="flex w-full items-center gap-3 border-t border-[#F1F1F1] p-3 text-left transition-colors active:bg-[#F8F9FA]"
+        className="flex w-full items-center gap-3 border-t border-[#F1F1F1] p-3 text-left outline-none transition-colors active:bg-[#F8F9FA] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#26B2FF] text-white">
           <MessageCircleHeart size={20} strokeWidth={2} />

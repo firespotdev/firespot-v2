@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { create } from 'zustand';
+import { refreshAccessToken } from '@/lib/utils/axios';
 import { useAuthStore } from '@/services/auth';
 
 interface SocketState {
@@ -25,6 +26,12 @@ const getSharedSocket = () => {
   sharedSocket = io(url, {
     transports: ['websocket'],
     reconnection: true,
+    auth: (callback) => callback({ token: useAuthStore.getState().token }),
+  });
+  sharedSocket.on('disconnect', async (reason) => {
+    if (reason !== 'io server disconnect' || !useAuthStore.getState().isAuthenticated) return;
+    const token = await refreshAccessToken();
+    if (!token) useAuthStore.getState().logout();
   });
   sharedSocket.on('connect', () => {
     if (merchantRoomId) {
@@ -55,6 +62,8 @@ export const useSocket = () => {
 
     merchantRoomId = user.role === 'merchant' ? user.id : null;
     const nextSocket = getSharedSocket();
+    if (nextSocket.connected) nextSocket.disconnect();
+    nextSocket.connect();
     const handleConnect = () =>
       useSocketState.setState({ socket: nextSocket, isConnected: true });
     const handleDisconnect = () =>

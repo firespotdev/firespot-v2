@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { Sale } from '@/services/sales/interface'
+import type { Sale, SaleDraft } from '@/services/sales/interface'
 import { DRAFT_ITEM_ID, type CartItem } from './types'
 
 interface Options {
@@ -211,6 +211,25 @@ export function useSaleCart({ prefillSale }: Options) {
     setAmountMirrorsCartTotal(false)
   }
 
+  const restoreDraft = (draft: SaleDraft) => {
+    setActiveTab(draft.activeTab)
+    setAmount(draft.amountInput || '')
+    setDescription(draft.description || '')
+    setCartItems(
+      draft.items.map((item) => ({
+        id: item.clientId,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl,
+        description: item.description,
+        selectedVariant: item.selectedVariant,
+      })),
+    )
+    setPreservedExistingTotal(null)
+    setAmountMirrorsCartTotal(false)
+  }
+
   return {
     activeTab,
     setActiveTab,
@@ -230,6 +249,7 @@ export function useSaleCart({ prefillSale }: Options) {
     addCustomAmountToCart,
     addProductToCart,
     resetCart,
+    restoreDraft,
   }
 }
 

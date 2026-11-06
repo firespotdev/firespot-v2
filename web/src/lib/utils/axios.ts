@@ -69,8 +69,8 @@ apiClient.interceptors.response.use(
 
       // Refresh failed — session is truly gone.
       useAuthStore.getState().logout()
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login'
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/pay/')) {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
       }
     }
     return Promise.reject(error)

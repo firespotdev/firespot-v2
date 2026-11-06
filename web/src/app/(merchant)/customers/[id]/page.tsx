@@ -366,7 +366,8 @@ export default function CustomerDetailPage({
                         return (
                           <ActionListItem
                             key={sale._id}
-                            onClick={() =>
+                            as={isUnconfirmed ? 'div' : 'button'}
+                            onClick={isUnconfirmed ? undefined : () =>
                               openDrawer({
                                 type: 'transaction-details',
                                 props: { sale },
@@ -384,7 +385,7 @@ export default function CustomerDetailPage({
                               </span>
                             }
                             subtitle={formatDate(sale.createdAt)}
-                            className="p-3"
+                            className={isUnconfirmed ? 'p-3 cursor-default hover:bg-white active:bg-white' : 'p-3'}
                             trailing={
                               <div className="flex items-center gap-2">
                                 <div className="text-right">
@@ -407,10 +408,10 @@ export default function CustomerDetailPage({
                                     {statusLabel}
                                   </p>
                                 </div>
-                                <ChevronRight
+                                {!isUnconfirmed && <ChevronRight
                                   size={16}
                                   className="text-[#AEAEB2] stroke-[2.5px]"
-                                />
+                                />}
                               </div>
                             }
                           />

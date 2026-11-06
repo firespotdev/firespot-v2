@@ -42,11 +42,12 @@ export class ScansController {
     @Param("serialNumber") serialNumber: string,
     @Body() body: RecordCopyDto,
   ) {
-    return this.scansService.recordAccountCopyBySerial(
+    await this.scansService.recordAccountCopyBySerial(
       serialNumber,
       body?.accountNumber,
       body?.bankName,
     );
+    return { success: true };
   }
 
   @Get("qr-kit/:qrKitId/count")

@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios';
 import {
   useInfiniteQuery,
   useMutation,
@@ -10,6 +11,7 @@ import {
   CreatePaystackCollectPayload,
   RecordSalePayload,
   EditSalePayload,
+  SaveSaleDraftPayload,
 } from './salesApi';
 import type { Sale } from './interface';
 
@@ -290,6 +292,52 @@ export const useCreatePendingCollectSale = () => {
   });
 };
 
+export const useSaleDrafts = () =>
+  useQuery({
+    queryKey: ['sales', 'drafts'],
+    queryFn: SalesApi.getSaleDrafts,
+    staleTime: 10 * 1000,
+  });
+
+export const useSaveSaleDraft = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      draftId,
+      payload,
+    }: {
+      draftId?: string;
+      payload: SaveSaleDraftPayload;
+    }) =>
+      draftId
+        ? SalesApi.updateSaleDraft(draftId, payload)
+        : SalesApi.createSaleDraft(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'drafts'] });
+    },
+  });
+};
+
+export const useDeleteSaleDraft = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.deleteSaleDraft,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'drafts'] });
+    },
+  });
+};
+
+export const useClearSaleDrafts = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: SalesApi.clearSaleDrafts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales', 'drafts'] });
+    },
+  });
+};
+
 export const useArchiveSale = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -336,8 +384,17 @@ export const usePublicSale = (saleId?: string, serialNumber?: string) => {
     queryKey: ['public-sale', saleId, serialNumber],
     queryFn: () => SalesApi.getPublicSale(saleId!, serialNumber!),
     enabled: !!saleId && !!serialNumber,
-    refetchInterval: (query) =>
-      query.state.data?.status === 'PENDING' ? 5000 : false,
+    retry: (failureCount, error) =>
+      !(isAxiosError(error) && error.response?.status === 404) &&
+      failureCount < 3,
+    refetchInterval: (query) => {
+      // A cached pending sale may have been removed (or belong to a different
+      // API environment). Its old status must not keep a 404 polling forever.
+      if (isAxiosError(query.state.error) && query.state.error.response?.status === 404) {
+        return false;
+      }
+      return query.state.data?.status === 'PENDING' ? 5000 : false;
+    },
   });
 };
 

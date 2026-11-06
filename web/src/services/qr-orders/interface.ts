@@ -1,14 +1,15 @@
 export interface CreateQROrderPayload {
+  kitType?: 'physical' | 'digital';
   qrKitId?: string;
   quantity: number;
-  phoneNumber: string;
-  state: string;
-  lga: string;
-  deliveryAddress: string;
+  phoneNumber?: string;
+  state?: string;
+  lga?: string;
+  deliveryAddress?: string;
 }
 
 /**
- * Server-side pricing, in naira. Zero means free.
+ * Server-side pricing, in naira. Kit purchases require a positive unit price.
  *
  * Always read prices from here rather than hardcoding them: the API is the
  * only thing that knows what it will actually charge, and these values are
@@ -26,6 +27,10 @@ export type QROrderPaymentStatus = 'PENDING' | 'SUCCESSFUL' | 'FAILED';
 /** The settled order returned by /qr-orders/verify/:reference. */
 export interface VerifyQROrderResponse {
   _id: string;
+  kitType?: 'physical' | 'digital';
+  assignedKitIds?: string[];
+  /** This verified order granted the merchant LITE for the first time. */
+  liteGranted?: boolean;
   quantity: number;
   totalAmount: number;
   paymentStatus: QROrderPaymentStatus;
@@ -35,8 +40,6 @@ export interface VerifyQROrderResponse {
 
 export interface CreateQROrderResponse {
   orderId: string;
-  /** Present only for free orders — no payment step follows. */
-  isFree?: boolean;
   /** Present only when payment is required. */
   authorizationUrl?: string;
   reference?: string;

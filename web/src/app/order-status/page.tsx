@@ -35,16 +35,15 @@ function OrderStatusContent() {
   const searchParams = useSearchParams()
 
   const reference = searchParams.get('reference') || ''
-  // Free orders are settled server-side at creation, so they arrive here with
-  // no Paystack reference to verify — just an explicit success flag.
-  const isFreeOrder = searchParams.get('status') === 'success'
-
   const [status, setStatus] = useState<PaymentStatus>(
-    isFreeOrder ? 'success' : reference ? 'loading' : 'failed',
+    reference ? 'loading' : 'failed',
   )
   const [errorMessage, setErrorMessage] = useState<string>(
-    !isFreeOrder && !reference ? 'We could not find that order.' : '',
+    !reference ? 'We could not find that order.' : '',
   )
+  const [digitalKitId, setDigitalKitId] = useState<string | null>(null)
+  const [isDigital, setIsDigital] = useState(false)
+  const [liteGranted, setLiteGranted] = useState(false)
   const hasVerified = useRef(false)
 
   const { refetch: verifyPayment } = useVerifyQROrderPayment(reference, {
@@ -53,7 +52,7 @@ function OrderStatusContent() {
 
   // Verify payment on mount
   useEffect(() => {
-    if (isFreeOrder || !reference || hasVerified.current) {
+    if (!reference || hasVerified.current) {
       return
     }
 
@@ -70,13 +69,20 @@ function OrderStatusContent() {
       }
 
       if (result.data?.paymentStatus === 'SUCCESSFUL') {
+        setIsDigital(result.data.kitType === 'digital')
+        setLiteGranted(result.data.liteGranted === true)
+        setDigitalKitId(
+          result.data.kitType === 'digital'
+            ? result.data.assignedKitIds?.[0] || null
+            : null,
+        )
         setStatus('success')
       } else {
         setStatus('failed')
         setErrorMessage('This payment has not been completed.')
       }
     })
-  }, [reference, isFreeOrder, verifyPayment])
+  }, [reference, verifyPayment])
 
   // Loading state
   if (status === 'loading') {
@@ -109,16 +115,20 @@ function OrderStatusContent() {
             </div>
 
             <h1 className="text-[20px] font-bold text-white -tracking-[0.4px] mb-1.5 text-center shrink-0">
-              Order submitted successfully
+              {isDigital
+                ? 'Your digital QR kit is ready'
+                : 'Order submitted successfully'}
             </h1>
             <p className="text-[14px] text-center text-white max-w-[350px] mb-8 font-medium leading-[130%] shrink-0">
-              Your physical QR kit order is being processed. Check your email
-              inbox for delivery details.
+              {isDigital
+                ? 'Your digital QR kit is ready to view and share.'
+                : 'Your physical QR kit order is being processed.'}
+              {liteGranted && ' Your purchase also includes Firespot Business LITE at no extra cost.'}
             </p>
 
             <div className="w-full border border-[#f4f6f8] bg-white shadow-[0px_4px_8px_0px_#0000000A] rounded-[12px] mt-8 shrink-0">
               <Link
-                href="/qr-kits"
+                href={digitalKitId ? `/qr-kits/${digitalKitId}` : '/qr-kits'}
                 className="flex items-center gap-4 border-b border-[#F1F1F1] p-3"
               >
                 <div className="w-9 h-9 rounded-full bg-linear-to-br from-[#FB5012] to-[#D72483] flex items-center justify-center shrink-0">
@@ -143,7 +153,9 @@ function OrderStatusContent() {
                     Manage QR kits
                   </h3>
                   <p className="text-[#00000080] text-[13px] font-medium">
-                    By scanning the code or entering the kit’s serial number.
+                    {isDigital
+                      ? 'View and share your digital QR kit.'
+                      : 'By scanning the code or entering the kit’s serial number.'}
                   </p>
                 </div>
                 <ChevronRight className="text-[#00000080]" size={20} />
@@ -198,7 +210,7 @@ function OrderStatusContent() {
 
         <div className="p-4 pb-6">
           <Link
-            href="/order-qr-kit"
+            href={searchParams.get('kitType') === 'digital' ? '/order-qr-kit?kitType=digital' : '/order-qr-kit'}
             className="flex items-center justify-center w-full bg-black text-white font-bold h-12 rounded-full hover:bg-black"
           >
             Try again

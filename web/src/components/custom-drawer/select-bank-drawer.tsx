@@ -5,6 +5,7 @@ import { useDrawerStore } from '@/services/drawer'
 import { TagFooter, BankLogo } from '../ui'
 
 interface BankAccount {
+  id?: string
   bankName: string
   bankCode: string
   accountNumber: string
@@ -89,7 +90,7 @@ export function SelectBankDrawer({
               <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-3 border border-[#F1F1F1]">
                 {primaryAccounts.map((account, index) => (
                   <button
-                    key={account.accountNumber}
+                    key={account.id || account.accountNumber}
                     onClick={() => handleSelectBank(account)}
                     type="button"
                     className="w-full flex items-center gap-3 py-3 px-4 border-b border-[#EBEBEB] last:border-b-0 hover:bg-[#F4F6F8] transition-colors"
@@ -121,7 +122,7 @@ export function SelectBankDrawer({
               <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_#0000000A] overflow-hidden mb-2 border border-[#F1F1F1]">
                 {secondaryAccounts.map((account) => (
                   <button
-                    key={account.accountNumber}
+                    key={account.id || account.accountNumber}
                     onClick={() => handleSelectBank(account)}
                     type="button"
                     className="w-full flex items-center gap-3 py-3 px-4 border-b border-[#EBEBEB] last:border-b-0 hover:bg-[#F4F6F8] transition-colors"

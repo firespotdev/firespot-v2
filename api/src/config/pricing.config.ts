@@ -3,9 +3,9 @@ import { ConfigService } from "@nestjs/config";
 /**
  * QR kit pricing, in NAIRA.
  *
- * All values default to 0, i.e. kits are free end to end. Setting a non-zero
- * price re-enables the Paystack paywall for that step with no code change —
- * see `QROrdersService.createOrder` and `QRKitsService.initiateActivation`.
+ * Purchase and activation paths reject zero prices unless activation was
+ * prepaid through an order. Delivery may be free. Missing or invalid kit
+ * pricing fails closed at checkout.
  *
  * Amounts are held in naira everywhere and converted to kobo only at the
  * Paystack boundary via `nairaToKobo`.

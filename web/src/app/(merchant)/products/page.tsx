@@ -24,6 +24,8 @@ export default function ProductsPage() {
   const products = useProducts({ search })
 
   const hasProducts = Boolean(products.data?.length)
+  const hasCategories = Boolean(categories.data?.categories.length)
+  const isLoadingCatalogue = products.isLoading || categories.isLoading
   const searchQuery = search.trim()
   const isSearching = searchQuery.length > 0
   const productCount = products.data?.length ?? 0
@@ -71,7 +73,7 @@ export default function ProductsPage() {
             </button>
           )}
         </div>
-        {!isSearching && products.isLoading && (
+        {!isSearching && isLoadingCatalogue && !hasProducts && !hasCategories && (
           <div
             role="status"
             aria-label="Loading products"
@@ -80,7 +82,7 @@ export default function ProductsPage() {
             <LoaderCircle />
           </div>
         )}
-        {!isSearching && !hasProducts && !products.isLoading && (
+        {!isSearching && !hasProducts && !hasCategories && !isLoadingCatalogue && (
           <div className="flex min-h-[65dvh] items-center">
             <EmptyState
               emoji={<span className="text-[56px] mb-6">📦</span>}
@@ -97,7 +99,7 @@ export default function ProductsPage() {
             />
           </div>
         )}
-        {(hasProducts || isSearching) && (
+        {(hasProducts || hasCategories || isSearching) && (
           <main className="mt-3">
             {isSearching ? (
               <>

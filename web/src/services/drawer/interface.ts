@@ -1,4 +1,6 @@
 export type DrawerContentType =
+  | 'payment-auth'
+  | 'payment-verify'
   | 'bank-accounts'
   | 'profile-menu'
   | 'personal-profile-menu'
@@ -61,6 +63,8 @@ export type DrawerContentType =
   | 'ongoing-sales'
   | 'post-composer'
   | 'post-product-select'
+  | 'business-locations'
+  | 'business-options'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 

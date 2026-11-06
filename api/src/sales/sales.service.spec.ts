@@ -1,4 +1,5 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
+import mongoose from "mongoose";
 import { SalesService } from "./sales.service";
 
 jest.mock("nanoid", () => ({ nanoid: () => "TEST1234" }));
@@ -13,6 +14,7 @@ describe("SalesService amount invariants", () => {
     userModel: Record<string, jest.Mock> = {},
     qrKitModel: Record<string, jest.Mock> = {},
     cloudinaryService: Record<string, jest.Mock> = {},
+    merchantSaleDraftModel: Record<string, jest.Mock> = {},
   ) => {
     const server = {
       to: jest.fn(),
@@ -22,7 +24,7 @@ describe("SalesService amount invariants", () => {
 
     return new SalesService(
       saleModel as any,
-      userModel as any,
+      { findById: jest.fn(() => ({ exec: jest.fn().mockResolvedValue({ _id: customerUserId, fullName: 'Test Customer', fullPhoneNumber: '+2348011112222' }) })), ...userModel } as any,
       qrKitModel as any,
       customerModel as any,
       {
@@ -31,7 +33,7 @@ describe("SalesService amount invariants", () => {
       {} as any,
       cloudinaryService as any,
       {} as any,
-      customersService as any,
+      { findOrCreateForUser: jest.fn().mockResolvedValue({ _id: customerId, userId: customerUserId, name: 'Test Customer' }), ...customersService } as any,
       { evaluateReferredMerchant: jest.fn().mockResolvedValue(null) } as any,
       { initializeTransaction: jest.fn() } as any,
       { sendSms: jest.fn().mockResolvedValue({ status: "sent" }) } as any,
@@ -49,8 +51,55 @@ describe("SalesService amount invariants", () => {
         findOneAndUpdate: jest.fn(),
         updateOne: jest.fn(),
       } as any,
+      merchantSaleDraftModel as any,
     );
   };
+
+  describe('authenticated payment identity', () => {
+    const sale = () => ({ _id: '507f1f77bcf86cd799439013', merchantId: '507f1f77bcf86cd799439012', status: 'PENDING' })
+    it('rejects anonymous payment commits', async () => {
+      await expect((createService() as any).attachPaymentPayer(sale())).rejects.toThrow('Sign in')
+    })
+    it('does not allow a different user to take over a payment', async () => {
+      await expect((createService() as any).attachPaymentPayer({ ...sale(), customerUserId: 'another-user' }, customerUserId)).rejects.toThrow('another customer')
+    })
+    it('requires a personal name for merchant-first payers', async () => {
+      const service = createService({}, {}, {}, { findById: jest.fn(() => ({ exec: jest.fn().mockResolvedValue({ role: 'merchant', onboardingCompleted: true, businessName: 'Ada Store' }) })) })
+      await expect((service as any).attachPaymentPayer(sale(), customerUserId)).rejects.toThrow('full name')
+    })
+    it('blocks proceeding when the customer relationship cannot be created', async () => {
+      const service = createService({}, {}, { findOrCreateForUser: jest.fn().mockResolvedValue(undefined) })
+      await expect((service as any).attachPaymentPayer(sale(), customerUserId)).rejects.toThrow('Could not link')
+    })
+    it('attaches the server identity and verified phone rather than a client name', async () => {
+      const payment = { ...sale(), customerName: 'Spoofed name' }
+      await (createService() as any).attachPaymentPayer(payment, customerUserId)
+      expect(payment).toEqual(expect.objectContaining({ customerName: 'Test Customer', customerPhone: '+2348011112222', customerUserId }))
+    })
+    it('rejects a competing claim atomically', async () => {
+      const updateOne = jest.fn(() => ({ exec: jest.fn().mockResolvedValue({ matchedCount: 0 }) }))
+      const service = createService({ updateOne })
+      await expect((service as any).attachPaymentPayer({ ...sale(), isNew: false }, customerUserId)).rejects.toThrow('another customer')
+      expect(updateOne).toHaveBeenCalledWith(expect.objectContaining({ status: 'PENDING', $or: expect.any(Array) }), expect.anything())
+    })
+    it('never returns a destination account number in the public sale view', async () => {
+      const payment = { ...sale(), targetAccountNumber: '0123456789', createdAt: new Date(), merchantId: { businessName: 'Test Store' } }
+      const query: any = { exec: jest.fn().mockResolvedValue(payment) }
+      query.select = jest.fn(() => query)
+      query.populate = jest.fn(() => query)
+      const service = createService({ findOne: jest.fn(() => query) })
+      const result = await service.getPublicSaleById(payment._id, 'FS-QR-1')
+      expect(result.targetAccountNumber).toBeUndefined()
+      expect(JSON.stringify(result)).not.toContain('0123456789')
+    })
+    it('publishes only status into the unauthenticated sale room', () => {
+      const service = createService()
+      const payment = { ...sale(), targetAccountNumber: '0123456789', customerName: 'Private customer' }
+      ;(service as any).emitSaleEvent('sale.copied', payment)
+      const server = (service as any).eventsGateway.server
+      expect(server.emit).toHaveBeenLastCalledWith('sale.copied', { id: payment._id, status: 'PENDING', cancelledBy: undefined })
+    })
+  })
 
   describe("recorded sale normalization", () => {
     const normalize = (
@@ -234,6 +283,82 @@ describe("SalesService amount invariants", () => {
       expect(sale.save).toHaveBeenCalledTimes(1);
     });
 
+    describe("concurrent status changes", () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const saleId = "507f1f77bcf86cd799439013";
+      const pendingSale = (save: jest.Mock) => ({
+        _id: { toString: () => saleId },
+        merchantId: { toString: () => merchantId },
+        status: "PENDING",
+        amount: 2500,
+        serialNumber: "FS-QR-1",
+        items: [],
+        repayments: [],
+        save,
+      });
+      const changedElsewhere = () =>
+        new mongoose.Error.DocumentNotFoundError("No document found for query");
+      const userModel = {
+        findById: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(null),
+          }),
+        }),
+      };
+      const transitions: Array<
+        [string, (service: SalesService) => Promise<unknown>]
+      > = [
+        ["confirm", (service) => service.confirmSale(merchantId, saleId)],
+        ["merchant cancel", (service) => service.cancelSale(merchantId, saleId)],
+        [
+          "customer cancel",
+          (service) => service.cancelSaleAsCustomer(saleId, "FS-QR-1"),
+        ],
+      ];
+
+      it.each(transitions)(
+        "saves a %s only while the sale is still pending",
+        async (_, run) => {
+          let filterAtSave: unknown;
+          const save = jest.fn();
+          const sale = pendingSale(save);
+          save.mockImplementation(async () => {
+            filterAtSave = (sale as any).$where;
+            return sale;
+          });
+          const service = createService(
+            { findOne: jest.fn().mockResolvedValue(sale) },
+            {},
+            {},
+            userModel,
+          );
+
+          await run(service);
+
+          expect(filterAtSave).toEqual(
+            expect.objectContaining({ status: "PENDING" }),
+          );
+        },
+      );
+
+      it.each(transitions)(
+        "rejects a %s that loses a race and announces nothing",
+        async (_, run) => {
+          const save = jest.fn().mockRejectedValue(changedElsewhere());
+          const service = createService(
+            { findOne: jest.fn().mockResolvedValue(pendingSale(save)) },
+            {},
+            {},
+            userModel,
+          );
+          const server = (service as any).eventsGateway.server;
+
+          await expect(run(service)).rejects.toBeInstanceOf(ConflictException);
+          expect(server.emit).not.toHaveBeenCalled();
+        },
+      );
+    });
+
     it.each([
       ["recorded", false, 0],
       ["collection", true, 1],
@@ -350,6 +475,7 @@ describe("SalesService amount invariants", () => {
           "GTBank",
           "0651234567",
           "Moniepoint",
+          customerUserId,
         ),
       ).resolves.toBe(sale);
 
@@ -458,6 +584,7 @@ describe("SalesService amount invariants", () => {
           saleId,
           "FS-QR-1",
           "customer-fingerprint",
+          customerUserId,
         ),
       ).resolves.toBe(sale);
 
@@ -1282,6 +1409,55 @@ describe("SalesService amount invariants", () => {
         status: "CONFIRMED",
       };
       expect(service.isSaleExpired(sale)).toBe(false);
+    });
+  });
+
+  describe("merchant sale drafts", () => {
+    it("expires abandoned drafts two days after their latest save", () => {
+      jest.useFakeTimers().setSystemTime(new Date("2026-09-18T12:00:00Z"));
+      const service = createService();
+
+      expect((service as any).saleDraftExpiry()).toEqual(
+        new Date("2026-09-20T12:00:00Z"),
+      );
+
+      jest.useRealTimers();
+    });
+
+    it("returns only the merchant's unexpired drafts", async () => {
+      const drafts = [{ _id: "507f1f77bcf86cd799439013" }];
+      const exec = jest.fn().mockResolvedValue(drafts);
+      const populate = jest.fn().mockReturnValue({ exec });
+      const sort = jest.fn().mockReturnValue({ populate });
+      const draftModel = {
+        find: jest.fn().mockReturnValue({ sort }),
+      };
+      const service = createService({}, {}, {}, {}, {}, {}, draftModel);
+
+      await expect(
+        service.getSaleDrafts("507f1f77bcf86cd799439012"),
+      ).resolves.toEqual(drafts);
+
+      expect(draftModel.find).toHaveBeenCalledWith({
+        merchantId: expect.objectContaining({ toString: expect.any(Function) }),
+        expiresAt: { $gt: expect.any(Date) },
+      });
+      expect(sort).toHaveBeenCalledWith({ updatedAt: -1 });
+      expect(populate).toHaveBeenCalledWith("customerId");
+    });
+
+    it("cannot delete another merchant's draft", async () => {
+      const draftModel = {
+        deleteOne: jest.fn().mockResolvedValue({ deletedCount: 0 }),
+      };
+      const service = createService({}, {}, {}, {}, {}, {}, draftModel);
+
+      await expect(
+        service.deleteSaleDraft(
+          "507f1f77bcf86cd799439012",
+          "507f1f77bcf86cd799439013",
+        ),
+      ).rejects.toThrow("Sale draft not found");
     });
   });
 });

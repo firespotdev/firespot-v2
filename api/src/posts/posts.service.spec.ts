@@ -393,4 +393,44 @@ describe("PostsService", () => {
       });
     });
   });
+
+  describe("listPublicByMerchant", () => {
+    it("returns empty array for invalid merchantId", async () => {
+      const result = await service.listPublicByMerchant("not-an-id");
+      expect(result).toEqual([]);
+    });
+
+    it("returns serialized published posts for merchant", async () => {
+      const publishedPost = {
+        _id: new Types.ObjectId(),
+        sourceUrl: "https://instagram.com/p/test",
+        platform: "instagram",
+        preview: { title: "Test Post" },
+        status: "PUBLISHED" as const,
+        productIds: [],
+        publishedAt: new Date(),
+        merchantId: {
+          _id: new Types.ObjectId(merchantId),
+          businessName: "Test Merchant",
+        },
+      };
+
+      postModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            populate: jest.fn().mockReturnValue({
+              lean: jest.fn().mockReturnValue({
+                exec: jest.fn().mockResolvedValue([publishedPost]),
+              }),
+            }),
+          }),
+        }),
+      });
+
+      const result = await service.listPublicByMerchant(merchantId);
+      expect(result).toHaveLength(1);
+      expect(result[0].preview.title).toBe("Test Post");
+    });
+  });
 });
+

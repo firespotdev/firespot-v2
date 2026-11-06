@@ -1,5 +1,7 @@
 import {
   IsInt,
+  IsIn,
+  ValidateIf,
   IsMongoId,
   IsNotEmpty,
   IsOptional,
@@ -7,9 +9,13 @@ import {
   Max,
   MaxLength,
   Min,
-} from 'class-validator';
+} from "class-validator";
 
 export class CreateQROrderDto {
+  @IsOptional()
+  @IsIn(["physical", "digital"])
+  kitType?: "physical" | "digital";
+
   @IsOptional()
   @IsMongoId()
   qrKitId?: string;
@@ -20,23 +26,27 @@ export class CreateQROrderDto {
   @Max(100)
   quantity: number;
 
+  @ValidateIf((order: CreateQROrderDto) => order.kitType !== "digital")
   @IsNotEmpty()
   @IsString()
   @MaxLength(20)
-  phoneNumber: string;
+  phoneNumber?: string;
 
+  @ValidateIf((order: CreateQROrderDto) => order.kitType !== "digital")
   @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  state: string;
+  state?: string;
 
+  @ValidateIf((order: CreateQROrderDto) => order.kitType !== "digital")
   @IsNotEmpty()
   @IsString()
   @MaxLength(100)
-  lga: string;
+  lga?: string;
 
+  @ValidateIf((order: CreateQROrderDto) => order.kitType !== "digital")
   @IsNotEmpty()
   @IsString()
   @MaxLength(500)
-  deliveryAddress: string;
+  deliveryAddress?: string;
 }

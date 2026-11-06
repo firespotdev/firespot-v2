@@ -5,6 +5,7 @@ import {
   IsEmail,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -14,8 +15,19 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { Type } from "class-transformer";
-import { ApiPropertyOptional } from "@nestjs/swagger";
+import { Transform, Type } from "class-transformer";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+
+export class UpdateBusinessNameDto {
+  @ApiProperty({ description: "Business display name", maxLength: 100 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === "string" ? value.trim() : value,
+  )
+  @IsString()
+  @IsNotEmpty({ message: "Business name is required" })
+  @MaxLength(100)
+  businessName: string;
+}
 
 /**
  * All shop-setup fields are optional and independently editable — a merchant

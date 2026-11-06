@@ -1,6 +1,8 @@
 'use client'
 
-interface SwitchProps {
+import type { AriaAttributes } from 'react'
+
+interface SwitchProps extends Pick<AriaAttributes, 'aria-label' | 'aria-labelledby'> {
   checked?: boolean
   onCheckedChange?: (checked: boolean) => void
   disabled?: boolean
@@ -16,12 +18,14 @@ export function Switch({
   className = '',
   variant = 'blue',
   activeColor,
+  ...ariaProps
 }: SwitchProps) {
   const activeBg =
     activeColor || (variant === 'green' ? 'bg-[#24C166]' : 'bg-[#26B2FF]')
 
   return (
     <div
+      {...ariaProps}
       role="switch"
       aria-checked={checked}
       tabIndex={disabled ? -1 : 0}

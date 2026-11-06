@@ -151,7 +151,7 @@ export function PaymentCheckoutFooter({
       : isInstant
         ? getPaystackOptionLabel(merchant.paystackCollectionChannels)
         : account
-          ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
+          ? account.accountNumber ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})` : account.bankName
           : 'Transfer directly to bank account'
 
   const handleChangeClick = () => {

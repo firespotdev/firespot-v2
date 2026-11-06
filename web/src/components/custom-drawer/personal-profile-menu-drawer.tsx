@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useRef } from 'react'
 import { useRouter } from '@bprogress/next/app'
-import { Camera, ChevronRight, Copy, Maximize2, Share, X } from 'lucide-react'
+import { Camera, ChevronRight, Copy, Maximize2, Settings, Share, X } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { logoutEverywhere, useAuthStore } from '@/services/auth'
 import { useDrawerStore } from '@/services/drawer'
@@ -62,7 +62,7 @@ export function PersonalProfileMenuDrawer({
   }
 
   const displayName =
-    [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Customer'
+    user?.fullName || 'Customer'
 
   const qrUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://lite.firespot.co'
 
@@ -491,6 +491,13 @@ export function PersonalProfileMenuDrawer({
             </div>
             <ChevronRight size={18} className="text-[#C7C7CC]" />
           </a>
+        </div>
+
+        <div className="overflow-hidden rounded-[12px] bg-white">
+          <Link href="/settings" onClick={closeDrawer} className="flex min-h-13 items-center justify-between gap-3 px-4 py-3">
+            <span className="flex items-center gap-3 text-base font-medium text-black"><Settings size={24} />Settings</span>
+            <ChevronRight size={18} className="text-[#C7C7CC]" />
+          </Link>
         </div>
 
         {/* Sign Out Card */}

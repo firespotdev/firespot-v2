@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
+import { useRouter } from '@bprogress/next/app'
 import {
   ArrowUpRight,
   Check,
@@ -72,6 +73,7 @@ function PlansContent() {
       ? requestedTier
       : 'LITE'
 
+  const router = useRouter()
   const handleBack = useSafeBack('/profile')
   const { data, isLoading } = usePlanCatalog()
   const openDrawer = useDrawerStore((s) => s.openDrawer)
@@ -164,6 +166,10 @@ function PlansContent() {
     // subscription ends, so it goes through the cancel flow, not checkout.
     if (isLowerTier && plan.tier === 'LITE') {
       openDrawer({ type: 'cancel-plan' })
+      return
+    }
+    if (plan.tier === 'LITE') {
+      router.push('/activate')
       return
     }
     openDrawer({
@@ -310,17 +316,15 @@ function PlansContent() {
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-[#9CA3AF]">
-                  {plan.billingType === 'one_time'
-                    ? 'One time upgrade fee'
-                    : 'Subscription'}
+                  Subscription
                 </p>
                 <p className="text-[14px] font-bold">
                   {plan.billingType === 'one_time' ? (
                     <>
-                      {`₦${formatCurrency(plan.price)} to upgrade, then `}
                       <span className="bg-linear-to-r from-[#FB5012] to-[#D72483] bg-clip-text text-transparent">
-                        free forever
-                      </span>
+                        Free forever
+                      </span>{' '}
+                      Activated with a QRkit purchase
                     </>
                   ) : (
                     priceSubtitle(plan, interval, storeCount)

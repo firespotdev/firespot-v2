@@ -6,13 +6,15 @@ import { useRouter } from '@bprogress/next/app'
 import { ArrowUpRight, X } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { publicQrApi } from '@/services/qr/qrApi'
+import { usePaymentAuth } from '@/hooks/use-payment-auth'
 import { useMerchantBySerial } from '@/services/qr'
 import { useRecordAccountCopy } from '@/services/scans'
 import { showNotificationToast } from '@/components/ui'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 import { Button } from '@/components/ui/button'
 import { useDrawerStore } from '@/services/drawer'
-import { useAuthStore } from '@/services/auth'
+import { useAuthReady, useAuthStore } from '@/services/auth'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { SalesApi } from '@/services/sales/salesApi'
 import {
@@ -20,7 +22,6 @@ import {
   useCreatePaystackCollectSale,
   useRecordScan,
   useRecordCopy,
-  useClaimSalePayer,
   usePublicSale,
   useCustomerSavedCards,
   usePayWithSavedCard,
@@ -71,14 +72,19 @@ export default function PaymentPage() {
     () => !saleId,
   )
 
-  const [selectedBankIndex, setSelectedBankIndex] = useState(0)
-  const [selectedRail, setSelectedRail] = useState<PaymentRail>('multiple')
+  const selectedBankIndex = usePurchaseCartStore((s) => s.selectedBankIndex)
+  const setSelectedBankIndex = usePurchaseCartStore((s) => s.setSelectedBankIndex)
+  const selectedRail = usePurchaseCartStore((s) => s.selectedRail)
+  const setSelectedRail = usePurchaseCartStore((s) => s.setSelectedRail)
+  const ensureIdentity = usePaymentAuth()
+  const authReady = useAuthReady()
+  const paymentBusy = useRef(false)
   const [selectedChannel, setSelectedChannel] = useState<string>(
     DEFAULT_PAYSTACK_CHANNEL,
   )
   const purchaseItems = usePurchaseCartStore((state) => state.items)
   const clearPurchase = usePurchaseCartStore((state) => state.clear)
-  const resetPurchase = usePurchaseCartStore((state) => state.reset)
+  const beginPurchase = usePurchaseCartStore((state) => state.begin)
   const replacePurchaseItems = usePurchaseCartStore(
     (state) => state.replaceItems,
   )
@@ -97,7 +103,6 @@ export default function PaymentPage() {
   } = usePaystackRedirectState()
   const { mutate: recordSaleScan } = useRecordScan()
   const recordSaleCopy = useRecordCopy()
-  const claimSalePayer = useClaimSalePayer()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const closeAllDrawers = useDrawerStore((state) => state.closeAllDrawers)
   const authUser = useAuthStore((state) => state.user)
@@ -117,8 +122,8 @@ export default function PaymentPage() {
   useEffect(() => {
     hydratedDraftMerchantRef.current = null
     serverDraftExistsRef.current = false
-    resetPurchase()
-  }, [resetPurchase, serialNumber])
+    beginPurchase(serialNumber)
+  }, [beginPurchase, serialNumber])
 
   useEffect(() => {
     if (saleId) {
@@ -161,7 +166,7 @@ export default function PaymentPage() {
     }))
     serverDraftExistsRef.current = Boolean(cartDraftQuery.data)
     hydratedDraftMerchantRef.current = merchant.id
-    replacePurchaseItems(restoredItems)
+    if (usePurchaseCartStore.getState().items.length === 0) replacePurchaseItems(restoredItems)
   }, [
     cartDraftQuery.data,
     cartDraftQuery.isFetched,
@@ -361,30 +366,18 @@ export default function PaymentPage() {
           },
         },
       )
-
-      // Dynamic QR: link this merchant-initiated sale to the logged-in payer so
-      // it appears in their Activity once confirmed. No-op when logged out.
-      if (saleId && authUser?.id) {
-        claimSalePayer.mutate({ saleId })
-      }
     }
 
     if (saleId) {
-      try {
-        await recordSaleCopy.mutateAsync({
-          saleId,
-          serialNumber,
-          targetBankName: bankName,
-          targetAccountNumber: accountNumber,
-          sourceBankName,
-        })
-      } catch (error) {
-        console.error('Failed to persist transfer selection:', error)
-      }
+      await recordSaleCopy.mutateAsync({
+        saleId, serialNumber, targetBankName: bankName,
+        targetAccountNumber: accountNumber, sourceBankName,
+      })
     }
   }
 
   if (
+    !authReady ||
     (isEnteringWaiting && !saleId) ||
     isRecoveringActiveSale ||
     isLoading ||
@@ -835,7 +828,7 @@ export default function PaymentPage() {
             : undefined,
         onSelectBank: (bank: BankAccount) => {
           const index = sortedBankAccounts.findIndex(
-            (acc) => acc.accountNumber === bank.accountNumber,
+            (acc) => acc.id === bank.id,
           )
           if (index !== -1) {
             setSelectedBankIndex(index)
@@ -903,7 +896,7 @@ export default function PaymentPage() {
   }
 
 
-  function startPaystackPayment(
+  async function startPaystackPayment(
     amount: number,
     description: string,
     channel: string,
@@ -917,6 +910,7 @@ export default function PaymentPage() {
     }
 
     if (createPaystackCollectSale.isPending || isRedirectingToPaystack) return
+    if (!(await ensureIdentity())) return
 
     let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
     if (!fingerprint) {
@@ -927,7 +921,7 @@ export default function PaymentPage() {
     }
 
     const payerName =
-      [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
+      useAuthStore.getState().user?.fullName ||
       undefined
 
     closeAllDrawers()
@@ -969,7 +963,7 @@ export default function PaymentPage() {
     )
   }
 
-  function handlePayInstantly(
+  async function handlePayInstantly(
     amount: number,
     description: string,
     rail: PaymentRail = effectiveSelectedRail,
@@ -990,6 +984,8 @@ export default function PaymentPage() {
       isRedirectingToPaystack
     )
       return
+
+    if (!(await ensureIdentity())) return
 
     if (rail === 'saved') {
       const cardToUse = savedCard
@@ -1079,104 +1075,46 @@ export default function PaymentPage() {
 
   // Payer enters an amount, copies the account, and hands off to the shared
   // waiting/confirmation flow via ?saleId (the pending sale we just created).
-  const handlePayAmountCopy = (
+  const handlePayAmountCopy = async (
     amount: number,
     description: string,
     account: BankAccount | undefined = bankAccount,
   ) => {
-    if (!account || createPendingSale.isPending) return Promise.resolve()
-
-    const { accountNumber, bankName } = account
-    void navigator.clipboard.writeText(accountNumber).catch(() => {
-      showNotificationToast({
-        message: 'Could not copy the account number. Copy it on the next screen.',
-        mode: 'error',
+    if (!account || paymentBusy.current || createPendingSale.isPending) return
+    paymentBusy.current = true
+    try {
+      if (!(await ensureIdentity())) return
+      const authenticatedMerchant = await publicQrApi.getMerchantBySerial(serialNumber, true)
+      const target = authenticatedMerchant.bankAccounts.find((bank) => bank.id === account.id)
+      if (!target?.accountNumber) throw new Error('Account unavailable')
+      const sale = await createPendingSale.mutateAsync({
+        merchantId: merchant.id, amount, description,
+        customerFingerprint: getCustomerFingerprint(),
+        source: searchParams.get('shared') === 'true' ? 'Link shared' : 'QR scan',
+        targetBankName: target.bankName, serialNumber,
+        items: purchaseSaleItems.length ? purchaseSaleItems : undefined,
       })
-    })
-
-    let fingerprint = safeLocalStorage.getItem('firespot_customer_fingerprint')
-    if (!fingerprint) {
-      fingerprint =
-        crypto.randomUUID?.() ||
-        `fs_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`
-      safeLocalStorage.setItem('firespot_customer_fingerprint', fingerprint)
+      // Store the sale immediately: a clipboard/network failure must not create
+      // another pending payment when the customer retries.
+      safeSessionStorage.setItem(`firespot-active-sale:${serialNumber}`, sale._id)
+      try {
+        await navigator.clipboard.writeText(target.accountNumber)
+        await recordSaleCopy.mutateAsync({ saleId: sale._id, serialNumber, targetBankName: target.bankName, targetAccountNumber: target.accountNumber })
+        recordCopy.mutate({ serialNumber, accountNumber: target.accountNumber, bankName: target.bankName })
+      } catch {
+        showNotificationToast({ message: 'Tap the copy button on the next screen to copy the account number.', mode: 'info' })
+      }
+      setIsEnteringWaiting(true)
+      closeAllDrawers()
+      clearSubmittedPurchase()
+      router.replace(`/pay/${serialNumber}?saleId=${sale._id}&payment=copy-account`)
+    } catch (error) {
+      showNotificationToast({ message: (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to start payment. Please try again.', mode: 'error' })
+    } finally {
+      paymentBusy.current = false
     }
-
-    // If a logged-in personal account is paying, attach their name so the
-    // merchant sees it instead of "New".
-    const payerName =
-      [authUser?.firstName, authUser?.lastName].filter(Boolean).join(' ') ||
-      undefined
-
-    return new Promise<void>((resolve) => {
-      createPendingSale.mutate(
-        {
-          merchantId: merchant.id,
-          amount,
-          description,
-          customerFingerprint: fingerprint,
-          customerName: payerName,
-          source: window.location.search.includes('shared=true')
-            ? 'Link shared'
-            : 'QR scan',
-          targetBankName: bankName,
-          serialNumber,
-          items: purchaseSaleItems.length > 0 ? purchaseSaleItems : undefined,
-        },
-        {
-          onSuccess: (sale: { _id?: string }) => {
-            const newSaleId = sale?._id
-            if (!newSaleId) {
-              showNotificationToast({
-                message: 'Failed to start payment. Please try again.',
-                mode: 'error',
-              })
-              resolve()
-              return
-            }
-
-            const continueToWaiting = () => {
-              recordCopy.mutate({ serialNumber, accountNumber, bankName })
-              // Mark copied so the flow resumes at "waiting", then hand off.
-              recordSaleCopy.mutate(
-                {
-                  saleId: newSaleId,
-                  serialNumber,
-                  targetBankName: bankName,
-                  targetAccountNumber: accountNumber,
-                },
-                {
-                  onSettled: () => {
-                    setIsEnteringWaiting(true)
-                    router.replace(`/pay/${serialNumber}?saleId=${newSaleId}`)
-                    closeAllDrawers()
-                    clearSubmittedPurchase()
-                    resolve()
-                  },
-                },
-              )
-            }
-
-            if (authUser?.id) {
-              claimSalePayer.mutate(
-                { saleId: newSaleId },
-                { onSettled: continueToWaiting },
-              )
-            } else {
-              continueToWaiting()
-            }
-          },
-          onError: () => {
-            showNotificationToast({
-              message: 'Failed to start payment. Please try again.',
-              mode: 'error',
-            })
-            resolve()
-          },
-        },
-      )
-    })
   }
+
 
   function openCurrentPurchase(
     rail = effectiveSelectedRail,

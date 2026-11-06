@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from '@bprogress/next/app'
 import { Heart, Search } from 'lucide-react'
 import {
   ActionList,
@@ -19,6 +20,7 @@ type SavedTab = 'ALL' | 'SHOPS'
 const TABS: SavedTab[] = ['ALL', 'SHOPS']
 
 export default function SavedPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<SavedTab>('ALL')
   const { data, isLoading, isError } = useFavorites()
   const removeFavorite = useRemoveFavorite()
@@ -126,6 +128,9 @@ export default function SavedPage() {
                 <ActionListItem
                   key={merchant.id}
                   as="div"
+                  onClick={() =>
+                    router.push(`/business?businessId=${merchant.id}`)
+                  }
                   icon={
                     <MerchantAvatar
                       profilePhotoUrl={
@@ -140,9 +145,10 @@ export default function SavedPage() {
                   trailing={
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={(event) => {
+                        event.stopPropagation()
                         remove(merchant.id, merchant.businessName)
-                      }
+                      }}
                       disabled={removeFavorite.isPending}
                       aria-label={`Remove ${merchant.businessName || 'business'} from Faves`}
                       className="grid h-9 w-9 place-items-center rounded-full text-[#E23B4E] disabled:opacity-50 active:bg-[#FBEEEE]"

@@ -7,6 +7,11 @@ export const useDrawerStore = create<DrawerState>((set) => ({
   configs: [],
   openDrawer: (config) =>
     set((state) => {
+      const sale = config.props?.sale as { status?: string } | undefined
+      if (
+        sale?.status === 'PENDING' &&
+        ['transaction-details', 'transaction-options', 'activity-details', 'activity-options', 'sale-receipt'].includes(config.type)
+      ) return state
       const existingIndex = state.configs.findIndex((c) => c.type === config.type)
       let newConfigs: DrawerConfig[]
       if (existingIndex !== -1) {

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { PaystackService } from './paystack.service'
+import crypto from 'crypto'
 
 jest.mock('axios', () => ({
   __esModule: true,
@@ -43,3 +44,39 @@ describe('PaystackService transaction verification', () => {
     })
   })
 })
+
+describe("PaystackService webhook signature", () => {
+  const secret = "sk_test_example";
+  const service = new PaystackService({ get: jest.fn(() => secret) } as any);
+  const body = JSON.stringify({
+    event: "charge.success",
+    data: { reference: "COL-1" },
+  });
+  const sign = (payload: string) =>
+    crypto.createHmac("sha512", secret).update(payload).digest("hex");
+
+  it("accepts a signature computed over the raw body", () => {
+    expect(service.verifyWebhookSignature(body, sign(body))).toBe(true);
+  });
+
+  it("rejects a signature for a different body", () => {
+    expect(service.verifyWebhookSignature(body, sign(`${body} `))).toBe(false);
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["truncated", "abc123"],
+  ])("rejects a %s signature without throwing", (_, signature) => {
+    expect(service.verifyWebhookSignature(body, signature)).toBe(
+      false,
+    );
+  });
+
+  it("compares signatures in constant time", () => {
+    const spy = jest.spyOn(crypto, "timingSafeEqual");
+    service.verifyWebhookSignature(body, sign(body));
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+});

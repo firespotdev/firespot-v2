@@ -17,6 +17,7 @@ import {
   ApiBearerAuth,
 } from "@nestjs/swagger";
 import { QRKitsService } from "./qr-kits.service";
+import { OptionalJwtAuthGuard } from "../auth/guards/optional-jwt-auth.guard";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 
 @ApiTags("qr-kits")
@@ -74,6 +75,7 @@ export class QRKitsController {
   }
 
   @Get(":serialNumber")
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
     summary: "Get merchant profile by QR kit serial number",
     description:
@@ -136,6 +138,7 @@ export class QRKitsController {
       ipAddress,
       userAgent,
       customerFingerprint,
+      Boolean(req.user?.fullName?.trim()),
     );
   }
 
@@ -194,7 +197,7 @@ export class QRKitsController {
   @ApiOperation({
     summary: "Generate a merchant-owned digital QR kit",
     description:
-      "Creates and activates a new digital QR kit for the authenticated merchant without linking a physical serial number.",
+      "Free generation is unavailable. Purchase a digital kit through QR orders.",
   })
   @ApiResponse({
     status: 201,
@@ -204,8 +207,8 @@ export class QRKitsController {
     status: 400,
     description: "Merchant profile is incomplete",
   })
-  async generateDigital(@Request() req) {
-    return this.qrKitsService.generateDigitalKit(req.user.userId);
+  generateDigital() {
+    return this.qrKitsService.generateDigitalKit();
   }
 
   @Get("verify-payment/:reference")
@@ -252,7 +255,7 @@ export class QRKitsController {
   @ApiOperation({
     summary: "Claim first digital kit",
     description:
-      "Allows a merchant to claim their first digital kit if they have entitlements but no kits yet (Recovery mechanism).",
+      "Returns an existing activated digital kit. New kits require a verified purchase.",
   })
   @ApiResponse({
     status: 200,

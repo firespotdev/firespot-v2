@@ -39,6 +39,7 @@ import { UpdateQRKitDto } from "./dto/update-qr-kit.dto";
 import { VerifyAccountDto } from "./dto/verify-account.dto";
 import { RegisterFcmTokenDto } from "./dto/register-fcm-token.dto";
 import {
+  UpdateBusinessNameDto,
   UpdateActiveHoursSetupDto,
   UpdateContactDto,
   UpdateEmployeeSetupDto,
@@ -56,9 +57,31 @@ export class PublicMerchantsController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: "Discover live merchants" })
+  @ApiOperation({
+    summary: "Discover live shops or find a merchant by phone number",
+  })
   discover(@Query() query: PublicDiscoveryQueryDto) {
     return this.usersService.discoverMerchants(query);
+  }
+
+  @Get(":identifier/feedback")
+  @ApiOperation({ summary: "Get public feedback for a live merchant" })
+  getFeedback(
+    @Param("identifier") identifier: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.usersService.getPublicMerchantFeedback(
+      identifier,
+      Number(page) || 1,
+      Number(limit) || 20,
+    );
+  }
+
+  @Get(":identifier")
+  @ApiOperation({ summary: "Get a live merchant's public business profile" })
+  getProfile(@Param("identifier") identifier: string) {
+    return this.usersService.getPublicMerchantProfile(identifier);
   }
 }
 
@@ -539,6 +562,17 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "Checklist returned" })
   async getShopSetup(@Request() req) {
     return this.usersService.getShopSetup(req.user.userId);
+  }
+
+  @Patch("me/business-name")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Update the merchant's business display name" })
+  async updateBusinessName(
+    @Request() req: { user: { userId: string } },
+    @Body() dto: UpdateBusinessNameDto,
+  ) {
+    return this.usersService.updateBusinessName(req.user.userId, dto);
   }
 
   @Patch("me/contact")

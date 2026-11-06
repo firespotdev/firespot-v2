@@ -7,6 +7,8 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({
@@ -15,6 +17,8 @@ import { Server, Socket } from 'socket.io';
   },
 })
 export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private readonly jwt: JwtService, private readonly config: ConfigService) {}
+
   @WebSocketServer()
   server: Server;
 
@@ -23,19 +27,28 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
-    // Client disconnected
+    clearTimeout(client.data.expiryTimer);
   }
 
   @SubscribeMessage('join-merchant-room')
-  handleJoinRoom(
+  async handleJoinRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody() merchantId: string,
   ) {
-    if (merchantId) {
-      client.join(merchantId);
+    try {
+      const payload = await this.jwt.verifyAsync(client.handshake.auth?.token, {
+        secret: this.config.get<string>('JWT_SECRET'),
+      });
+      if (payload.type !== 'access' || payload.sub !== merchantId) {
+        return { status: 'failed' };
+      }
+      await client.join(merchantId);
+      clearTimeout(client.data.expiryTimer);
+      client.data.expiryTimer = setTimeout(() => client.disconnect(true), Math.max(0, payload.exp * 1000 - Date.now()));
       return { status: 'joined', room: merchantId };
+    } catch {
+      return { status: 'failed' };
     }
-    return { status: 'failed' };
   }
 
   @SubscribeMessage('join-sale-room')

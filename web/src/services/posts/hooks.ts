@@ -25,6 +25,13 @@ export const usePostsFeed = (params: PostFeedParams, enabled = true) =>
     enabled,
   })
 
+export const useMerchantPosts = (merchantId?: string) =>
+  useQuery({
+    queryKey: ['public-merchant-posts', merchantId],
+    queryFn: () => PostsApi.listByMerchant(merchantId!),
+    enabled: Boolean(merchantId),
+  })
+
 export const usePostPreview = () =>
   useMutation({
     mutationFn: PostsApi.preview,

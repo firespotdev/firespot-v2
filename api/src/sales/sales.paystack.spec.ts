@@ -45,7 +45,7 @@ function makeService(overrides: Record<string, any> = {}) {
     ...overrides.dailyUsageModel,
   }
   const customersService = {
-    findOrCreateForUser: jest.fn(),
+    findOrCreateForUser: jest.fn((_merchantId, userId) => Promise.resolve({ _id: new Types.ObjectId(), userId: new Types.ObjectId(userId), name: 'Test Customer' })),
     ...overrides.customersService,
   }
   const referrals = {
@@ -85,6 +85,7 @@ function makeService(overrides: Record<string, any> = {}) {
     smsService as any,
     dailyUsageModel as any,
     paymentAttemptModel as any,
+    {} as any,
   )
   jest.spyOn((service as any).logger, 'error').mockImplementation(() => {})
   jest.spyOn((service as any).logger, 'log').mockImplementation(() => {})
@@ -412,9 +413,10 @@ describe('SalesService Paystack collection integrity', () => {
     expect(dailyUsageModel.findOneAndUpdate).toHaveBeenCalledTimes(2)
   })
 
-  it('initializes Paystack on the existing dynamic sale instead of creating another sale', async () => {
+  it.each([false, true])('initializes Paystack on an existing sale without duplicating it (account copied: %s)', async (isCopied) => {
     const sale = makePendingSale({
-      isCollection: true,
+      isCollection: !isCopied,
+      isCopied,
       serialNumber: 'FS-QR-1',
       customerFingerprint: 'payer-1',
     })
@@ -652,8 +654,7 @@ describe('SalesService Paystack collection integrity', () => {
       const user = {
         _id: userId,
         fullPhoneNumber: '+2348011112222',
-        firstName: 'Test',
-        lastName: 'Customer',
+        fullName: 'Test Customer',
         savedCards: [
           {
             _id: cardId,
@@ -760,8 +761,7 @@ describe('SalesService Paystack collection integrity', () => {
       const user = {
         _id: userId,
         fullPhoneNumber: '+2348011112222',
-        firstName: 'Test',
-        lastName: 'Customer',
+        fullName: 'Test Customer',
         savedCards: [
           {
             _id: cardId,
@@ -936,6 +936,7 @@ describe('SalesService Paystack collection integrity', () => {
       }
       const customer = {
         _id: userId,
+        fullName: 'Test Customer',
         savedCards: [
           {
             _id: cardId,
@@ -984,6 +985,7 @@ describe('SalesService Paystack collection integrity', () => {
       }
       const customer = {
         _id: userId,
+        fullName: 'Test Customer',
         savedCards: [
           {
             _id: cardId,

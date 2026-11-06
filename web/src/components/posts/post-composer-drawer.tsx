@@ -199,9 +199,7 @@ function PostComposerForm({ closeDrawer, post }: PostComposerDrawerProps) {
   const isSaving = Boolean(submittingStatus)
   const businessName =
     profile.data?.businessName ||
-    [profile.data?.firstName, profile.data?.lastName]
-      .filter(Boolean)
-      .join(' ') ||
+    profile.data?.fullName ||
     'Your business'
 
   return (

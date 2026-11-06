@@ -314,7 +314,10 @@ const TransactionDetailsDrawer = ({
             <div
               data-export-exclude
               data-vaul-no-drag
-              className="scrollbar-hide mb-6 flex w-full touch-pan-x gap-2 overflow-x-auto px-1"
+              className={cn(
+                'scrollbar-hide mb-6 flex w-full touch-pan-x gap-2 overflow-x-auto px-1',
+                isCollected && 'justify-center',
+              )}
             >
               <Button
                 variant="outline"

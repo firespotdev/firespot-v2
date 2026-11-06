@@ -6,6 +6,7 @@ import {
   LogOut,
   Maximize2,
   Share,
+  Settings,
   Volume2,
   X,
 } from 'lucide-react'
@@ -477,7 +478,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
 
   const businessName =
     profile?.businessName ||
-    [profile?.firstName, profile?.lastName].filter(Boolean).join(' ') ||
+    profile?.fullName ||
     'Your Business'
   const businessImageUrl = getBusinessImageUrl(profile)
 
@@ -794,6 +795,10 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
             />
           </div>
 
+          <div className="overflow-hidden rounded-[12px] bg-white">
+            <MenuRow label="Settings" icon={<Settings size={24} />} href="/settings" closeDrawer={closeDrawer} hasProAccess={hasProAccess} />
+          </div>
+
           {/* Existing sound preference retained. */}
           <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
             <div className="flex min-h-13 w-full items-center gap-3 px-4 py-2.5">
@@ -802,6 +807,7 @@ export function ProfileMenuDrawer({ closeDrawer }: ProfileMenuDrawerProps) {
                 Play sound for pending sales
               </span>
               <Switch
+                aria-label="Play sound for pending sales"
                 checked={soundEnabled}
                 onCheckedChange={setSoundEnabled}
               />

@@ -22,9 +22,24 @@ export class Store extends Document {
   @Prop({ default: true, index: true })
   isActive: boolean
 
-  // Paystack subscription funding this store (PRO MAX only)
+  @Prop({ default: false })
+  isPrimary: boolean
+
+  @Prop({
+    enum: ['pending', 'active', 'cancellation_pending', 'cancelled', 'failed'],
+    default: 'active',
+  })
+  billingStatus: string
+
   @Prop()
+  billingRequestKey?: string
+
+  // Paystack subscription funding this store (PRO MAX only)
+  @Prop({ index: true })
   subscriptionCode?: string
+
+  @Prop()
+  subscriptionEmailToken?: string
 
   createdAt?: Date
   updatedAt?: Date
@@ -34,3 +49,18 @@ export const StoreSchema = SchemaFactory.createForClass(Store)
 export type StoreDocument = Store & Document
 
 StoreSchema.index({ merchantId: 1, isActive: 1 })
+StoreSchema.index(
+  { merchantId: 1, isPrimary: 1 },
+  { unique: true, partialFilterExpression: { isPrimary: true } },
+)
+StoreSchema.index(
+  { merchantId: 1, billingRequestKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { billingRequestKey: { $type: 'string' } },
+  },
+)
+StoreSchema.index(
+  { merchantId: 1, billingStatus: 1 },
+  { unique: true, partialFilterExpression: { billingStatus: 'pending' } },
+)

@@ -472,4 +472,22 @@ export class PostsService {
       meta: { limit: FEED_LIMIT, total: posts.length, mode },
     };
   }
+
+  async listPublicByMerchant(merchantId: string) {
+    if (!Types.ObjectId.isValid(merchantId)) {
+      return [];
+    }
+    const posts = await this.postModel
+      .find({
+        merchantId: new Types.ObjectId(merchantId),
+        status: "PUBLISHED",
+      })
+      .sort({ publishedAt: -1, createdAt: -1 })
+      .populate("merchantId", "businessName profilePhotoUrl businessImageUrl")
+      .populate("productIds", "name description price imageUrl isArchived")
+      .lean()
+      .exec();
+
+    return posts.map((post) => this.serialize(post));
+  }
 }

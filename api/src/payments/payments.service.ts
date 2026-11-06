@@ -301,6 +301,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           // sibling period_start/period_end are unreliable, so they are not
           // used — see docs/paystack_llm.md §3.
           data?.subscription?.next_payment_date,
+          data?.subscription?.subscription_code,
         );
       }
     }
