@@ -48,6 +48,7 @@ export function SaleItem({
   className,
   variant = 'default',
 }: SaleItemProps) {
+  const canOpenDetails = sale.status !== 'PENDING' && Boolean(onClick)
   const isArchivedItem = getMerchantStatus(sale) === 'Archived'
   const isRecent = variant.startsWith('recent-')
   const title =
@@ -62,11 +63,20 @@ export function SaleItem({
   const content = (
     <div
       className={cn(
-        'p-3 flex items-center justify-between gap-3 border-b border-[#F1F1F1] bg-white cursor-pointer transition-colors hover:bg-gray-50',
+        'p-3 flex items-center justify-between gap-3 border-b border-[#F1F1F1] bg-white',
+        canOpenDetails && 'cursor-pointer transition-colors hover:bg-gray-50',
         isArchivedItem && variant === 'default' && 'bg-[#FAFAFA] opacity-70',
         className,
       )}
-      onClick={() => onClick?.(sale)}
+      role={canOpenDetails ? 'button' : undefined}
+      tabIndex={canOpenDetails ? 0 : undefined}
+      onClick={canOpenDetails ? () => onClick?.(sale) : undefined}
+      onKeyDown={canOpenDetails ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick?.(sale)
+        }
+      } : undefined}
     >
       <div className="flex flex-1 items-center gap-2 min-w-0">
         <MerchantAvatar
@@ -111,7 +121,7 @@ export function SaleItem({
           </p>
           <StatusBadge status={getMerchantStatus(sale)} variant="text" />
         </div>
-        <ChevronRight className="text-[#D1D5DB]" size={16} />
+        {canOpenDetails && <ChevronRight className="text-[#D1D5DB]" size={16} />}
       </div>
     </div>
   )

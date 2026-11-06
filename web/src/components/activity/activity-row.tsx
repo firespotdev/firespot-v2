@@ -9,7 +9,7 @@ import {
   resolveSaleMerchant,
   saleActivitySubtitle,
 } from '@/lib/utils/customer-sale'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 interface ActivityRowProps {
@@ -18,18 +18,20 @@ interface ActivityRowProps {
 }
 
 export function ActivityRow({ sale, onOpen }: ActivityRowProps) {
+  const isPending = sale.status === 'PENDING'
+  const Row = isPending ? 'div' : 'button'
   const merchant = resolveSaleMerchant(sale)
   const businessName = merchant.businessName || 'Merchant'
-  const subtitle = saleActivitySubtitle(sale)
+  const subtitle = isPending ? 'Payment awaiting confirmation' : saleActivitySubtitle(sale)
   const isComment = subtitle?.toLowerCase().includes('comment')
   const isEnquiry = subtitle?.toLowerCase().includes('enquiry')
   const isFollow = subtitle?.toLowerCase().includes('follow')
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(sale)}
-      className="w-full flex items-center gap-3 text-left"
+    <Row
+      type={isPending ? undefined : 'button'}
+      onClick={isPending ? undefined : () => onOpen(sale)}
+      className={cn('w-full flex items-center gap-3 text-left', !isPending && 'cursor-pointer')}
     >
       <MerchantAvatar
         profilePhotoUrl={getBusinessImageUrl(merchant)}
@@ -60,18 +62,18 @@ export function ActivityRow({ sale, onOpen }: ActivityRowProps) {
           />
         </div>
       ) : isEnquiry || isFollow ? (
-        <ChevronRight className="w-4 h-4 text-[#C7C7CC] shrink-0" />
+        !isPending && <ChevronRight className="w-4 h-4 text-[#C7C7CC] shrink-0" />
       ) : (
         <div className="flex items-center gap-1.5 shrink-0">
           <div className="text-right">
             <p className="text-[14px] font-bold text-black">
               ₦{formatCurrency(sale.amount || 0)}
             </p>
-            <p className="text-xs font-medium text-[#24C166] mt-0.5">Paid</p>
+            <p className={cn("text-xs font-medium mt-0.5", isPending ? "text-[#BB8123]" : "text-[#24C166]")}>{isPending ? "Unconfirmed" : "Paid"}</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />
+          {!isPending && <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />}
         </div>
       )}
-    </button>
+    </Row>
   )
 }

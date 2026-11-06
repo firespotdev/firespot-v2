@@ -126,13 +126,13 @@ export default function ActivityPage() {
           logoSrc="/images/firespot_personal.png"
           className="bg-white"
           rightSlot={
-            <button
-              type="button"
+            <Link
+              href="/settings"
               aria-label="Settings"
-              className="flex h-9 w-9 items-center justify-center rounded-full transition-colors active:bg-gray-200"
+              className="flex h-9 w-9 items-center justify-center rounded-full cursor-pointer"
             >
               <Setting2 size={24} strokeWidth={2} color="black" />
-            </button>
+            </Link>
           }
         />
 

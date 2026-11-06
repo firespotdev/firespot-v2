@@ -1,6 +1,7 @@
 import { Injectable, HttpException, HttpStatus } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import axios from "axios";
+import { createHmac, timingSafeEqual } from "crypto";
 
 interface BankVerificationResponse {
   status: boolean;
@@ -939,11 +940,16 @@ export class PaystackService {
   }
 
   verifyWebhookSignature(payload: string, signature: string): boolean {
-    const crypto = require("crypto");
-    const hash = crypto
-      .createHmac("sha512", this.paystackSecretKey)
-      .update(payload)
-      .digest("hex");
-    return hash === signature;
+    if (!signature) return false;
+    const expected = Buffer.from(
+      createHmac("sha512", this.paystackSecretKey)
+        .update(payload)
+        .digest("hex"),
+    );
+    const received = Buffer.from(signature);
+    // timingSafeEqual throws on unequal lengths, so check length first.
+    return (
+      expected.length === received.length && timingSafeEqual(expected, received)
+    );
   }
 }

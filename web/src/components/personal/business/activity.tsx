@@ -10,7 +10,7 @@ import { useDrawerStore } from '@/services/drawer'
 import type { CustomerSale } from '@/services/sales/interface'
 import type { PublicBusinessProfile } from '@/services/business-profile'
 import { resolveSaleMerchant } from '@/lib/utils/customer-sale'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { formatDate } from '@/lib/utils/date-time'
 
 interface ActivityProps {
@@ -96,17 +96,20 @@ export function Activity({ business }: ActivityProps) {
         <section key={month}>
           <h3 className="mb-2 text-sm font-bold text-black">{month}</h3>
           <div className="overflow-hidden rounded-[12px] border border-[#F1F1F1] bg-white shadow-[0px_4px_8px_0px_#0000000A]">
-            {transactions.map((sale) => (
-              <button
-                type="button"
+            {transactions.map((sale) => {
+              const isPending = sale.status === 'PENDING'
+              const Row = isPending ? 'div' : 'button'
+              return (
+              <Row
+                type={isPending ? undefined : 'button'}
                 key={sale._id}
-                onClick={() =>
+                onClick={isPending ? undefined : () =>
                   openDrawer({
                     type: 'activity-details',
                     props: { sale },
                   })
                 }
-                className="flex w-full items-center justify-between border-b border-gray-100 p-3 text-left last:border-b-0 active:bg-black/[0.03]"
+                className={cn('flex w-full items-center justify-between border-b border-gray-100 p-3 text-left last:border-b-0', !isPending && 'cursor-pointer active:bg-black/[0.03]')}
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <MerchantAvatar
@@ -128,14 +131,15 @@ export function Activity({ business }: ActivityProps) {
                     <p className="text-[13px] font-bold text-black">
                       ₦{formatCurrency(saleAmount(sale))}
                     </p>
-                    <p className="text-[10px] font-medium text-[#24C166]">
-                      Paid
+                    <p className={cn('text-[10px] font-medium', isPending ? 'text-[#BB8123]' : 'text-[#24C166]')}>
+                      {isPending ? 'Unconfirmed' : 'Paid'}
                     </p>
                   </div>
-                  <ChevronRight className="text-[#BDBDBD]" size={16} />
+                  {!isPending && <ChevronRight className="text-[#BDBDBD]" size={16} />}
                 </div>
-              </button>
-            ))}
+              </Row>
+              )
+            })}
           </div>
         </section>
       ))}

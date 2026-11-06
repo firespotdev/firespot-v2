@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Lock, Plus } from 'lucide-react'
 import type { SavedCard } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
 import { LockSimpleIcon } from '@phosphor-icons/react'
+import { EmptyState } from '@/components/ui'
 
 const CARD_BRAND_IMAGES: Record<string, string> = {
   visa: '/images/visa.png',
@@ -13,13 +14,14 @@ const CARD_BRAND_IMAGES: Record<string, string> = {
   amex: '/images/amex.png',
 }
 
-export interface SavedCardsDrawerProps {
+export type SavedCardsDrawerProps = {
   savedCards: SavedCard[]
   selectedCardId?: string
-  onSelectCard: (card: SavedCard) => void
-  onAddNewCard: () => void
   onBack?: () => void
-}
+} & (
+  | { readOnly: true; onSelectCard?: never; onAddNewCard?: never }
+  | { readOnly?: false; onSelectCard: (card: SavedCard) => void; onAddNewCard: () => void }
+)
 
 export function SavedCardsHeaderLeft({ onBack }: { onBack?: () => void }) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
@@ -42,6 +44,7 @@ export function SavedCardsHeaderLeft({ onBack }: { onBack?: () => void }) {
 
 export function SavedCardsDrawer({
   savedCards,
+  readOnly = false,
   selectedCardId,
   onSelectCard,
   onAddNewCard,
@@ -51,30 +54,36 @@ export function SavedCardsDrawer({
   const activeCardId = selectedCardId || savedCards[0]?.id
 
   const handleSelect = (card: SavedCard) => {
-    onSelectCard(card)
+    onSelectCard?.(card)
     closeDrawer('saved-cards')
   }
 
   const handleAdd = () => {
     closeDrawer('saved-cards')
-    onAddNewCard()
+    onAddNewCard?.()
   }
 
   return (
     <div className="px-3 pb-6 flex flex-col">
       <div className="bg-white rounded-[12px] shadow-[0px_4px_8px_0px_rgba(0,0,0,0.04)] overflow-hidden mb-4 border border-[#F1F1F1]">
+        {readOnly && savedCards.length === 0 && (
+          <div className="px-4 py-6">
+            <EmptyState emoji="💳" title="No saved cards" details="Cards you save during checkout will appear here." cta={null} />
+          </div>
+        )}
         {savedCards.map((card, index) => {
+          const Row = readOnly ? 'div' : 'button'
           const isSelected = card.id === activeCardId
           const isDefault = index === 0
           const brandKey = card.brand.toLowerCase()
           const brandImage = CARD_BRAND_IMAGES[brandKey]
 
           return (
-            <button
+            <Row
               key={card.id}
-              type="button"
-              onClick={() => handleSelect(card)}
-              className="w-full flex items-center justify-between p-3 border-b border-[#EBEBEB] text-left hover:bg-[#F4F6F8] transition-colors"
+              type={readOnly ? undefined : "button"}
+              onClick={readOnly ? undefined : () => handleSelect(card)}
+              className="w-full flex items-center justify-between p-3 border-b border-[#EBEBEB] text-left"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <span className="flex w-9 h-6 shrink-0 items-center justify-center overflow-hidden rounded-[4px] bg-white">
@@ -94,24 +103,24 @@ export function SavedCardsDrawer({
                 </span>
                 <div className="min-w-0">
                   <p className="font-bold text-sm text-[#0F172A] truncate capitalize">
-                    {card.brand} ({card.last4})
+                    {card.brand} •••• {card.last4}
                   </p>
-                  {isDefault && (
+                  {!readOnly && isDefault && (
                     <p className="text-xs text-[#64748B] font-medium">
                       Default payment method
                     </p>
                   )}
                 </div>
               </div>
-              {isSelected && (
+              {!readOnly && isSelected && (
                 <Check className="w-4 h-4 text-[#22C55E] shrink-0 stroke-[2.5]" />
               )}
-            </button>
+            </Row>
           )
         })}
 
         {/* Add debit card */}
-        <button
+        {!readOnly && <button
           type="button"
           onClick={handleAdd}
           className="w-full flex items-center gap-3 py-3.5 px-4 text-left hover:bg-[#F4F6F8] transition-colors"
@@ -122,7 +131,7 @@ export function SavedCardsDrawer({
           <span className="font-bold text-sm text-[#0075FF]">
             Add debit card
           </span>
-        </button>
+        </button>}
       </div>
 
       {/* Footer: Secured by paystack */}

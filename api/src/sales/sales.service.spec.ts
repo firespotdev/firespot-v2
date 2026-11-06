@@ -1,4 +1,5 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ConflictException } from "@nestjs/common";
+import mongoose from "mongoose";
 import { SalesService } from "./sales.service";
 
 jest.mock("nanoid", () => ({ nanoid: () => "TEST1234" }));
@@ -280,6 +281,82 @@ describe("SalesService amount invariants", () => {
       expect((sale as any).amountPaid).toBe(2500);
       expect((sale as any).balanceOwed).toBe(0);
       expect(sale.save).toHaveBeenCalledTimes(1);
+    });
+
+    describe("concurrent status changes", () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const saleId = "507f1f77bcf86cd799439013";
+      const pendingSale = (save: jest.Mock) => ({
+        _id: { toString: () => saleId },
+        merchantId: { toString: () => merchantId },
+        status: "PENDING",
+        amount: 2500,
+        serialNumber: "FS-QR-1",
+        items: [],
+        repayments: [],
+        save,
+      });
+      const changedElsewhere = () =>
+        new mongoose.Error.DocumentNotFoundError("No document found for query");
+      const userModel = {
+        findById: jest.fn().mockReturnValue({
+          select: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(null),
+          }),
+        }),
+      };
+      const transitions: Array<
+        [string, (service: SalesService) => Promise<unknown>]
+      > = [
+        ["confirm", (service) => service.confirmSale(merchantId, saleId)],
+        ["merchant cancel", (service) => service.cancelSale(merchantId, saleId)],
+        [
+          "customer cancel",
+          (service) => service.cancelSaleAsCustomer(saleId, "FS-QR-1"),
+        ],
+      ];
+
+      it.each(transitions)(
+        "saves a %s only while the sale is still pending",
+        async (_, run) => {
+          let filterAtSave: unknown;
+          const save = jest.fn();
+          const sale = pendingSale(save);
+          save.mockImplementation(async () => {
+            filterAtSave = (sale as any).$where;
+            return sale;
+          });
+          const service = createService(
+            { findOne: jest.fn().mockResolvedValue(sale) },
+            {},
+            {},
+            userModel,
+          );
+
+          await run(service);
+
+          expect(filterAtSave).toEqual(
+            expect.objectContaining({ status: "PENDING" }),
+          );
+        },
+      );
+
+      it.each(transitions)(
+        "rejects a %s that loses a race and announces nothing",
+        async (_, run) => {
+          const save = jest.fn().mockRejectedValue(changedElsewhere());
+          const service = createService(
+            { findOne: jest.fn().mockResolvedValue(pendingSale(save)) },
+            {},
+            {},
+            userModel,
+          );
+          const server = (service as any).eventsGateway.server;
+
+          await expect(run(service)).rejects.toBeInstanceOf(ConflictException);
+          expect(server.emit).not.toHaveBeenCalled();
+        },
+      );
     });
 
     it.each([

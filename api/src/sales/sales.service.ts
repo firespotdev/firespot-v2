@@ -215,6 +215,26 @@ export class SalesService {
       )
   }
 
+  // Saves a status change out of PENDING only if no concurrent request has
+  // already moved the sale on. Without the filter, a confirm and a cancel that
+  // both read PENDING would both save, and the later one would silently win.
+  private async savePendingTransition(
+    sale: SaleDocument,
+    filter: Record<string, unknown> = {},
+  ): Promise<SaleDocument> {
+    sale.$where = { ...filter, status: 'PENDING' }
+    try {
+      return await sale.save()
+    } catch (error) {
+      if (error instanceof mongoose.Error.DocumentNotFoundError) {
+        throw new ConflictException(
+          'This sale was just updated elsewhere. Refresh to see its latest status.',
+        )
+      }
+      throw error
+    }
+  }
+
   private emitSaleEvent(event: string, sale: SaleDocument) {
     const payload =
       typeof sale.toObject === 'function' ? sale.toObject() : { ...sale }
@@ -2509,7 +2529,9 @@ export class SalesService {
     if (customer) sale.customerId = customer._id
     if (customerUserId) sale.customerUserId = customerUserId
 
-    const savedSale = await sale.save()
+    const savedSale = await this.savePendingTransition(sale, {
+      isArchived: { $ne: true },
+    })
     if (savedSale.isCollection) {
       this.evaluateReferralVolume(savedSale.merchantId)
     }
@@ -2540,7 +2562,7 @@ export class SalesService {
 
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'merchant'
-    const savedSale = await sale.save()
+    const savedSale = await this.savePendingTransition(sale)
     this.emitSaleEvent('sale.cancelled', savedSale)
     return savedSale
   }
@@ -2578,7 +2600,7 @@ export class SalesService {
 
     sale.status = 'CANCELLED'
     sale.cancelledBy = 'customer'
-    const savedSale = await sale.save()
+    const savedSale = await this.savePendingTransition(sale)
     this.emitSaleEvent('sale.cancelled', savedSale)
     return savedSale
   }

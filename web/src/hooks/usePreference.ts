@@ -1,21 +1,28 @@
-import { useState, useEffect } from 'react'
+import { useSyncExternalStore } from 'react'
 import { safeLocalStorage } from '@/lib/utils/storage'
 
-export function usePreference(key: string, defaultValue: boolean) {
-  const [value, setValue] = useState<boolean>(defaultValue)
+const PREFERENCE_CHANGE_EVENT = 'firespot:preference-change'
 
-  useEffect(() => {
+function subscribe(listener: () => void) {
+  window.addEventListener('storage', listener)
+  window.addEventListener(PREFERENCE_CHANGE_EVENT, listener)
+  return () => {
+    window.removeEventListener('storage', listener)
+    window.removeEventListener(PREFERENCE_CHANGE_EVENT, listener)
+  }
+}
+
+export function usePreference(key: string, defaultValue: boolean) {
+  const value = useSyncExternalStore(subscribe, () => {
     const stored = safeLocalStorage.getItem(key)
-    if (stored !== null) {
-      setValue(stored === 'true')
-    }
-  }, [key])
+    return stored === null ? defaultValue : stored === 'true'
+  }, () => defaultValue)
 
   const setPreference = (newValue: boolean) => {
-    setValue(newValue)
-    safeLocalStorage.setItem(key, String(newValue))
+    if (safeLocalStorage.setItem(key, String(newValue))) {
+      window.dispatchEvent(new Event(PREFERENCE_CHANGE_EVENT))
+    }
   }
 
   return [value, setPreference] as const
 }
-
