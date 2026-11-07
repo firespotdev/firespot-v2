@@ -15,6 +15,11 @@ export class PostPreview {
   @Prop({ maxlength: 2048 })
   imageUrl?: string;
 
+  // Set when imageUrl is our Cloudinary copy; providers' own image links
+  // (e.g. TikTok's signed thumbnails) expire within days.
+  @Prop({ maxlength: 300 })
+  imagePublicId?: string;
+
   @Prop({ maxlength: 120 })
   siteName?: string;
 

@@ -203,6 +203,25 @@ export class CloudinaryService {
     });
   }
 
+  /**
+   * Copies an image from another site (Cloudinary fetches it directly), for
+   * links that expire, like social media thumbnails. Stored at most 800px
+   * wide with automatic quality, under a fixed id so re-uploads overwrite.
+   */
+  async uploadRemoteImage(
+    imageUrl: string,
+    options: { folder: string; publicId: string },
+  ): Promise<{ url: string; publicId: string }> {
+    const result = await cloudinary.uploader.upload(imageUrl, {
+      folder: options.folder,
+      public_id: options.publicId,
+      overwrite: true,
+      resource_type: "image",
+      transformation: [{ width: 800, crop: "limit" }, { quality: "auto" }],
+    });
+    return { url: result.secure_url, publicId: result.public_id };
+  }
+
   async deleteImage(publicId: string): Promise<void> {
     try {
       await cloudinary.uploader.destroy(publicId);

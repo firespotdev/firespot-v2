@@ -1,16 +1,15 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { format } from 'date-fns'
 import Link from 'next/link'
-import { ChevronRight, MessageCircleHeart, Star } from 'lucide-react'
+import { ChevronRight, MessageCircleHeart } from 'lucide-react'
 import { EmptyState, LoaderCircle } from '@/components/ui'
-import { MerchantAvatar } from '@/components/layout'
 import { useBusinessFeedback } from '@/services/business-profile'
 import {
   useCustomerActions,
   type LeaveFeedbackAction,
 } from '@/services/customer-actions'
+import { ReviewCard } from './review-card'
 
 interface FeedbackProps {
   businessId: string
@@ -106,47 +105,14 @@ export function Feedback({ businessId, businessName }: FeedbackProps) {
       ) : (
         <>
           {feedback.map((review) => (
-            <article
+            <ReviewCard
               key={review.id}
-              className="mb-3 rounded-xl border border-[#f1f1f1] bg-white p-3 shadow-[0px_0.25rem_0.5rem_0px_#0000000A]"
-            >
-              <div className="mb-3 flex items-center gap-2">
-                <MerchantAvatar
-                  profilePhotoUrl={review.customerPhotoUrl}
-                  alt={review.customerName}
-                  size={36}
-                />
-                <div>
-                  <h3 className="text-sm font-bold">{review.customerName}</h3>
-                  <div className="flex items-center gap-1 text-xs font-medium text-[#6B7280]">
-                    <span
-                      className="flex items-center"
-                      aria-label={`${review.rating} out of 5 stars`}
-                    >
-                      {Array.from({ length: 5 }, (_, index) => (
-                        <Star
-                          key={index}
-                          size={14}
-                          strokeWidth={1.5}
-                          color={
-                            index < review.rating ? '#F5A623' : '#D1D5DB'
-                          }
-                          fill={
-                            index < review.rating ? '#F5A623' : '#D1D5DB'
-                          }
-                        />
-                      ))}
-                    </span>
-                    <span>
-                      {format(new Date(review.createdAt), 'h:mm a · MMM d')}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <p className="text-base font-medium text-[#374151]">
-                {review.comment}
-              </p>
-            </article>
+              customerName={review.customerName}
+              customerPhotoUrl={review.customerPhotoUrl}
+              rating={review.rating}
+              comment={review.comment}
+              createdAt={review.createdAt}
+            />
           ))}
 
           <div

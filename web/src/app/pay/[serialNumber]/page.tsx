@@ -32,6 +32,7 @@ import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
 import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
 import { SalePaymentFlow } from '@/components/pay/sale-payment-flow'
 import { SalePayAmountScreen } from '@/components/pay/sale-pay-amount-screen'
+import { SaleRequestScreen } from '@/components/pay/sale-request-screen'
 import { PaystackRedirectingScreen } from '@/components/pay/paystack-redirecting-screen'
 import { PaystackWaitingScreen } from '@/components/pay/paystack-waiting-screen'
 import { SaleExpiredScreen } from '@/components/pay/sale-expired-screen'
@@ -47,6 +48,12 @@ import {
 } from '@/services/customer-actions'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import { safeLocalStorage, safeSessionStorage } from '@/lib/utils/storage'
+import {
+  cardFailureReason,
+  paymentStartFailureReason,
+  rememberCardFailure,
+} from '@/lib/utils/card-failure'
+import { PaymentFailedScreen } from '@/components/pay/payment-failed-screen'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -110,6 +117,8 @@ export default function PaymentPage() {
   const { data: customerCards } = useCustomerSavedCards(isAuthenticated)
   const savedCards = customerCards || authUser?.savedCards || []
   const [selectedCardId, setSelectedCardId] = useState<string | undefined>()
+  // A payment that failed before any sale existed (nothing to redirect to).
+  const [paymentFailure, setPaymentFailure] = useState<string | null>(null)
   const activeSavedCard =
     savedCards.find((card) => card.id === selectedCardId) || savedCards[0]
   const defaultSavedCard = activeSavedCard
@@ -260,11 +269,23 @@ export default function PaymentPage() {
 
     if (saleId) {
       safeSessionStorage.setItem(storageKey, saleId)
-      return
+      // Arriving here from the recovery redirect below: the sale in the URL
+      // is now the one to show, so stop the recovery loading state.
+      queueMicrotask(() => {
+        if (active) setIsRecoveringActiveSale(false)
+      })
+      return () => {
+        active = false
+      }
     }
 
     const storedSaleId = safeSessionStorage.getItem(storageKey)
-    if (!storedSaleId) {
+    // Checking out a new cart is an explicit choice to pay for that cart, so
+    // an older unfinished sale must not take its place.
+    const isCheckingOutCart =
+      searchParams.get('checkout') === 'cart' &&
+      usePurchaseCartStore.getState().items.length > 0
+    if (!storedSaleId || isCheckingOutCart) {
       queueMicrotask(() => {
         if (active) setIsRecoveringActiveSale(false)
       })
@@ -301,7 +322,7 @@ export default function PaymentPage() {
     return () => {
       active = false
     }
-  }, [saleId, serialNumber, router])
+  }, [saleId, serialNumber, router, searchParams])
 
   useEffect(() => {
     if (!saleId || saleLoading) return
@@ -943,21 +964,12 @@ export default function PaymentPage() {
             window.location.href = res.authorizationUrl
           } else {
             cancelPaystackRedirect()
-            showNotificationToast({
-              message: 'Failed to start payment. Please try again.',
-              mode: 'error',
-            })
+            setPaymentFailure(paymentStartFailureReason(undefined))
           }
         },
         onError: (err: unknown) => {
           cancelPaystackRedirect()
-          const msg =
-            (err as { response?: { data?: { message?: string } } })?.response
-              ?.data?.message || 'Failed to start payment. Please try again.'
-          showNotificationToast({
-            message: msg,
-            mode: 'error',
-          })
+          setPaymentFailure(paymentStartFailureReason(err))
         },
       },
     )
@@ -1012,39 +1024,43 @@ export default function PaymentPage() {
         },
         {
           onSuccess: (pendingSale) => {
-            clearSubmittedPurchase()
+            // From here the items live on the pending sale, success or not.
+            // A failed charge leaves it payable, so the customer is moved to
+            // it to see why and retry, instead of back to an emptied cart.
+            const saleId = pendingSale._id
+            safeSessionStorage.setItem(
+              `firespot-active-sale:${serialNumber}`,
+              saleId,
+            )
             payWithSavedCard.mutate(
               {
-                saleId: pendingSale._id,
+                saleId,
                 cardId: cardToUse.id,
                 customerFingerprint: getCustomerFingerprint(),
               },
               {
                 onSuccess: () => {
-                  router.push(`/pay/${serialNumber}?saleId=${pendingSale._id}`)
+                  clearSubmittedPurchase()
+                  router.push(`/pay/${serialNumber}?saleId=${saleId}`)
                 },
                 onError: (err: unknown) => {
-                  const msg =
-                    (err as { response?: { data?: { message?: string } } })
-                      ?.response?.data?.message ||
-                    'Payment failed. Please try again.'
-                  showNotificationToast({
-                    message: msg,
-                    mode: 'error',
-                  })
+                  rememberCardFailure(
+                    saleId,
+                    cardFailureReason(
+                      (err as { response?: { data?: { message?: string } } })
+                        ?.response?.data?.message,
+                    ),
+                  )
+                  clearSubmittedPurchase()
+                  router.replace(
+                    `/pay/${serialNumber}?saleId=${saleId}&payment=card-failed`,
+                  )
                 },
               },
             )
           },
           onError: (err: unknown) => {
-            const msg =
-              (err as { response?: { data?: { message?: string } } })
-                ?.response?.data?.message ||
-              'Failed to start payment. Please try again.'
-            showNotificationToast({
-              message: msg,
-              mode: 'error',
-            })
+            setPaymentFailure(paymentStartFailureReason(err))
           },
         },
       )
@@ -1181,6 +1197,71 @@ export default function PaymentPage() {
     return <PaystackRedirectingScreen />
   }
 
+  if (paymentFailure) {
+    return (
+      <PaymentFailedScreen
+        reason={paymentFailure}
+        onOkay={() => setPaymentFailure(null)}
+        onUseAnotherMethod={() => {
+          setPaymentFailure(null)
+          handleOpenPaymentMethodDrawer()
+        }}
+      />
+    )
+  }
+
+  // Checkout from a business profile or item page always pushes here, so
+  // closing returns to that page. A scanned QR has no page to return to.
+  const isCartCheckout = searchParams.get('checkout') === 'cart'
+  const leavePayPage = () =>
+    isCartCheckout ? router.back() : router.push('/')
+
+  const shareMerchant = () =>
+    openDrawer({
+      type: 'share-transfer',
+      props: {
+        businessName: merchant.businessName,
+        serialNumber,
+        businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
+      },
+    })
+  const isSubmittingPayment =
+    createPendingSale.isPending ||
+    createPaystackCollectSale.isPending ||
+    payWithSavedCard.isPending ||
+    recordSaleCopy.isPending
+
+  // Checkout from a business profile or item page: the cart is shown as a
+  // payment request, and the sale is only created once the customer pays.
+  if (isCartCheckout && purchaseItems.length > 0) {
+    return (
+      <SaleRequestScreen
+        sale={{
+          amount: purchaseTotal,
+          items: purchaseSaleItems,
+          createdAt: new Date().toISOString(),
+        }}
+        merchant={merchant}
+        account={bankAccount}
+        selectedRail={effectiveSelectedRail}
+        onCopy={() => handlePurchasePay('transfer', bankAccount)}
+        onPayInstantly={() =>
+          handlePurchasePay(effectiveSelectedRail, bankAccount, defaultSavedCard)
+        }
+        onChangeAccount={() => handleOpenBankDrawer(true)}
+        onChangePaymentMethod={() => handleOpenPaymentMethodDrawer()}
+        onChangeSavedCard={() => handleOpenSavedCardsDrawer(true)}
+        onShare={shareMerchant}
+        onClose={leavePayPage}
+        hasPaystackCollection={merchant.hasPaystackCollection}
+        savedCard={
+          effectiveSelectedRail === 'saved' ? defaultSavedCard : undefined
+        }
+        isSubmitting={isSubmittingPayment}
+      />
+    )
+  }
+
   return (
     <SalePayAmountScreen
       merchant={merchant}
@@ -1194,17 +1275,7 @@ export default function PaymentPage() {
       onSelectItems={handleOpenCatalogue}
       onCopy={handlePayAmountCopy}
       onPayInstantly={handlePayInstantly}
-      onShare={() => {
-        openDrawer({
-          type: 'share-transfer',
-          props: {
-            businessName: merchant.businessName,
-            serialNumber,
-            businessImageUrl:
-              merchant.businessImageUrl || merchant.profilePhotoUrl,
-          },
-        })
-      }}
+      onShare={shareMerchant}
       onClose={() => {
         if (isAuthenticated && merchant?.id && purchaseItems.length > 0) {
           void enqueueDraftSync(() =>
@@ -1217,14 +1288,9 @@ export default function PaymentPage() {
             }),
           )
         }
-        router.push('/')
+        leavePayPage()
       }}
-      isSubmitting={
-        createPendingSale.isPending ||
-        createPaystackCollectSale.isPending ||
-        payWithSavedCard.isPending ||
-        recordSaleCopy.isPending
-      }
+      isSubmitting={isSubmittingPayment}
       savedCard={
         effectiveSelectedRail === 'saved' ? defaultSavedCard : undefined
       }

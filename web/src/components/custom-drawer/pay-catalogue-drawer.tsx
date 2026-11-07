@@ -1,13 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronDown, Image as ImageIcon, Plus, Search, X } from 'lucide-react'
+import { ChevronDown, Image as ImageIcon, Search, X } from 'lucide-react'
 import { usePublicCatalogue } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import type { MerchantProfile } from '@/services/qr/interface'
 import { useDrawerStore } from '@/services/drawer'
 import { Button } from '@/components/ui/button'
-import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
+import { CartCheckoutBar } from '@/components/pay/cart-checkout-bar'
+import { CatalogueProductRow } from '@/components/pay/catalogue-product-row'
+import { useAddToPurchase } from '@/hooks/use-add-to-purchase'
 import { LoaderCircle } from '../ui'
 import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
@@ -16,12 +18,6 @@ interface Props {
   onCheckout: () => void
 }
 
-const money = (value: number) =>
-  new Intl.NumberFormat('en-NG', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value)
-
 const productCategoryId = (product: Product) =>
   typeof product.categoryId === 'string'
     ? product.categoryId
@@ -29,15 +25,13 @@ const productCategoryId = (product: Product) =>
 
 export function PayCatalogueDrawer({ merchant, onCheckout }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
-  const openDrawer = useDrawerStore((state) => state.openDrawer)
   const {
     data: catalogue,
     isLoading,
     isError,
     refetch,
   } = usePublicCatalogue(merchant.id)
-  const cartItems = usePurchaseCartStore((state) => state.items)
-  const onAddProduct = usePurchaseCartStore((state) => state.addProduct)
+  const { cartItems, quantityForProduct, addToPurchase } = useAddToPurchase()
   const [activeCategory, setActiveCategory] = useState('all')
   const [search, setSearch] = useState('')
   const normalizedSearch = search.trim().toLowerCase()
@@ -72,46 +66,6 @@ export function PayCatalogueDrawer({ merchant, onCheckout }: Props) {
       }))
       .filter((group) => group.products.length > 0)
   }, [activeCategory, catalogue, normalizedSearch, visibleProducts])
-
-  const quantityForProduct = (productId: string) =>
-    cartItems
-      .filter((item) => item.id.startsWith(productId))
-      .reduce((total, item) => total + item.quantity, 0)
-
-  const addProduct = (product: Product) => {
-    if (product.options.length > 0 && product.variants.length > 0) {
-      openDrawer({
-        type: 'variant-selector',
-        direction: 'bottom',
-        props: {
-          product,
-          cartQuantity: quantityForProduct(product._id),
-          actionLabel: 'Add to purchase',
-          onAdd: (
-            variant: {
-              label: string
-              values: Array<{
-                optionId: string
-                optionName: string
-                valueId: string
-                value: string
-              }>
-              price: number
-            },
-            quantity: number,
-          ) =>
-            onAddProduct(
-              product,
-              { label: variant.label, values: variant.values },
-              quantity,
-              variant.price,
-            ),
-        },
-      })
-      return
-    }
-    onAddProduct(product)
-  }
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-white font-satoshi">
@@ -226,83 +180,21 @@ export function PayCatalogueDrawer({ merchant, onCheckout }: Props) {
                 <h3 className="mb-1 text-[16px] font-bold">{group.name}</h3>
               )}
               <div>
-                {group.products.map((product) => {
-                  const quantity = quantityForProduct(product._id)
-                  return (
-                    <div
-                      key={product._id}
-                      className="flex min-w-0 items-center gap-3 border-b border-[#F1F1F1] py-2 last:border-0"
-                    >
-                      <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[8px] bg-[#F1F1F1]">
-                        {product.imageUrl ? (
-                          <img
-                            src={product.imageUrl}
-                            alt={product.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center text-[#9CA3AF]">
-                            <ImageIcon size={20} />
-                          </div>
-                        )}
-                        {quantity > 0 && (
-                          <span className="absolute inset-0 grid place-items-center bg-black/45 text-[22px] font-bold text-white">
-                            {quantity}
-                          </span>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-[14px] font-bold text-[#111827]">
-                          {product.name}
-                        </p>
-                        <p className="truncate text-sm font-medium text-[#6B7280]">
-                          {product.description || 'Product'}
-                        </p>
-                        <p className="mt-1 text-[14px] font-medium text-[#374151]">
-                          NGN {money(product.price)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => addProduct(product)}
-                        aria-label={`Add ${product.name}`}
-                        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#F1F1F1]"
-                      >
-                        <Plus size={18} />
-                      </button>
-                    </div>
-                  )
-                })}
+                {group.products.map((product) => (
+                  <CatalogueProductRow
+                    key={product._id}
+                    product={product}
+                    quantity={quantityForProduct(product._id)}
+                    onAdd={() => addToPurchase(product, 'Add to purchase')}
+                  />
+                ))}
               </div>
             </section>
           ))
         )}
       </main>
 
-      <footer className="flex shrink-0 items-center gap-3 border-t border-[#F1F1F1] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <button
-          type="button"
-          onClick={() => onCheckout()}
-          disabled={cartItems.length === 0}
-          className="min-w-0 flex-1 text-left disabled:cursor-not-allowed"
-        >
-          <span className="block text-[14px] font-bold text-[#111827]">
-            {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}{' '}
-            selected
-          </span>
-          <span className="mt-0.5 block text-xs font-medium text-[#9CA3AF]">
-            View selection ›
-          </span>
-        </button>
-        <Button
-          type="button"
-          onClick={() => onCheckout()}
-          disabled={cartItems.length === 0}
-          className="h-11 w-auto px-6"
-        >
-          Checkout
-        </Button>
-      </footer>
+      <CartCheckoutBar itemCount={cartItems.length} onCheckout={onCheckout} />
     </div>
   )
 }

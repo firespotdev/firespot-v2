@@ -128,6 +128,7 @@ export function ProductForm({
   const queryClient = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const priceInputRef = useRef<HTMLInputElement>(null)
+  const compareAtInputRef = useRef<HTMLInputElement>(null)
   const [image, setImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState(product?.imageUrl || '')
   const [name, setName] = useState(product?.name || '')
@@ -154,6 +155,10 @@ export function ProductForm({
     setNewCategoryName('')
   }
   const [price, setPrice] = useState(product ? money(product.price) : '0.00')
+  // Empty means no discount.
+  const [compareAtPrice, setCompareAtPrice] = useState(
+    product?.compareAtPrice ? money(product.compareAtPrice) : '',
+  )
   const [options, setOptions] = useState<ProductOption[]>(
     product?.options || [],
   )
@@ -227,6 +232,16 @@ export function ProductForm({
       input.setSelectionRange(formatted.caret, formatted.caret)
     })
   }
+  const updateCompareAtPrice = (input: HTMLInputElement) => {
+    const formatted = formatPriceInput(input)
+    setCompareAtPrice(formatted.value)
+    requestAnimationFrame(() => {
+      compareAtInputRef.current?.setSelectionRange(
+        formatted.caret,
+        formatted.caret,
+      )
+    })
+  }
   const updateVariantPrice = (
     key: string,
     ids: string[],
@@ -276,6 +291,15 @@ export function ProductForm({
       })
       return
     }
+    const originalPrice = compareAtPrice.trim()
+      ? parseCurrency(compareAtPrice)
+      : null
+    if (originalPrice !== null && originalPrice <= basePrice) {
+      showNotificationToast({
+        message: 'The original price must be higher than the price.',
+      })
+      return
+    }
     setIsSubmitting(true)
     const cleanOptions = options
       .map((option) => ({
@@ -312,6 +336,7 @@ export function ProductForm({
         description: description.trim() || undefined,
         categoryId: resolvedCategoryId,
         price: basePrice,
+        compareAtPrice: originalPrice,
         options: cleanOptions,
         variantPriceOverrides: effectiveOverrides,
         excludedVariantKeys: effectiveExcludedVariantKeys,
@@ -485,6 +510,36 @@ export function ProductForm({
                   className="pl-9 text-[16px]"
                 />
               </div>
+            </div>
+            <div>
+              <Label>Original price (optional)</Label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-[16px]">
+                  ₦
+                </span>
+                <Input
+                  ref={compareAtInputRef}
+                  value={compareAtPrice}
+                  onBlur={() =>
+                    setCompareAtPrice(
+                      parseCurrency(compareAtPrice)
+                        ? money(parseCurrency(compareAtPrice))
+                        : '',
+                    )
+                  }
+                  onChange={(event) =>
+                    updateCompareAtPrice(event.currentTarget)
+                  }
+                  onKeyDown={handlePriceKeyDown}
+                  placeholder="No discount"
+                  inputMode="decimal"
+                  className="pl-9 text-[16px]"
+                />
+              </div>
+              <p className="mt-1 text-xs text-[#545F6C]">
+                Shown crossed out next to the price. Applies to the base price
+                only.
+              </p>
             </div>
           </section>
           <section className="py-6">

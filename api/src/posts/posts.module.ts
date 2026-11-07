@@ -5,6 +5,7 @@ import { Post, PostSchema } from "../schemas/post.schema";
 import { User, UserSchema } from "../schemas/user.schema";
 import { PostsController, PublicPostsController } from "./posts.controller";
 import { PostsService } from "./posts.service";
+import { CloudinaryService } from "../users/services/cloudinary.service";
 
 @Module({
   imports: [
@@ -15,6 +16,6 @@ import { PostsService } from "./posts.service";
     ]),
   ],
   controllers: [PostsController, PublicPostsController],
-  providers: [PostsService],
+  providers: [PostsService, CloudinaryService],
 })
 export class PostsModule {}

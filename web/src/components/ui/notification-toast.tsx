@@ -40,7 +40,7 @@ function NotificationToastContent({
         <div
           className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
             mode === 'success'
-              ? 'bg-[#22C55E]'
+              ? 'bg-[#24C166]'
               : mode === 'error'
                 ? 'bg-[#EF4444]'
                 : 'bg-[#6B7280]'

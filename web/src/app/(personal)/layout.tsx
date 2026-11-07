@@ -49,7 +49,8 @@ export default function PersonalLayout({
   return (
     <>
       {children}
-      {pathname !== '/business' && <BottomNav variant="light" />}
+      {/* Business profiles and item pages have their own bottom bars. */}
+      {!pathname.startsWith('/business') && <BottomNav variant="light" />}
     </>
   )
 }

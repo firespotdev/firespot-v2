@@ -1,7 +1,9 @@
+import { createHash } from "crypto";
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
@@ -11,9 +13,11 @@ import { Post, PostDocument, PostStatus } from "../schemas/post.schema";
 import { User, UserDocument } from "../schemas/user.schema";
 import { CreatePostDto, PostFeedQueryDto, UpdatePostDto } from "./dto/post.dto";
 import { fetchPostMetadata, parseSupportedPostUrl } from "./post-metadata";
+import { CloudinaryService } from "../users/services/cloudinary.service";
 
 const NEARBY_RADIUS_METERS = 25_000;
 const FEED_LIMIT = 50;
+const POST_IMAGE_FOLDER = "firespot/posts";
 const DAY_ORDER = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 interface OpeningDay {
@@ -130,7 +134,52 @@ export class PostsService {
     @InjectModel(Product.name)
     private readonly productModel: Model<ProductDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
+
+  private readonly logger = new Logger(PostsService.name);
+
+  /**
+   * Swaps the provider's preview image for our Cloudinary copy, since social
+   * media thumbnail links expire (TikTok's within days). One image per
+   * merchant and link, so re-posting a link overwrites it. If copying fails
+   * the post keeps the provider's link rather than failing to save.
+   */
+  private async hostPreviewImage(
+    merchantId: string,
+    sourceUrl: string,
+    preview: Post["preview"],
+  ): Promise<Post["preview"]> {
+    if (!preview?.imageUrl) return preview;
+    const publicId = createHash("sha256")
+      .update(`${merchantId}:${sourceUrl}`)
+      .digest("hex")
+      .slice(0, 32);
+    try {
+      const stored = await this.cloudinaryService.uploadRemoteImage(
+        preview.imageUrl,
+        { folder: POST_IMAGE_FOLDER, publicId },
+      );
+      return { ...preview, imageUrl: stored.url, imagePublicId: stored.publicId };
+    } catch (error) {
+      this.logger.warn(
+        `Could not copy post preview image for ${sourceUrl}: ${(error as Error).message}`,
+      );
+      return preview;
+    }
+  }
+
+  /** Removing a stored image never blocks the post change that caused it. */
+  private async deleteStoredImage(publicId?: string) {
+    if (!publicId) return;
+    try {
+      await this.cloudinaryService.deleteImage(publicId);
+    } catch (error) {
+      this.logger.warn(
+        `Could not delete post image ${publicId}: ${(error as Error).message}`,
+      );
+    }
+  }
 
   private async assertMerchant(merchantId: string) {
     const merchant = await this.userModel
@@ -270,12 +319,17 @@ export class PostsService {
         "Could not retrieve post details from this link. Make sure the post is public.",
       );
     }
+    const preview = await this.hostPreviewImage(
+      merchantId,
+      source.url,
+      rawMetadata,
+    );
 
     const post = await this.postModel.create({
       merchantId: new Types.ObjectId(merchantId),
       sourceUrl: source.url,
       platform: source.platform,
-      preview: rawMetadata,
+      preview,
       caption: dto.caption?.trim() || "",
       productIds,
       status,
@@ -327,9 +381,17 @@ export class PostsService {
 
     if (dto.sourceUrl !== undefined) {
       const source = this.sourceInfo(dto.sourceUrl);
+      const previousImageId = post.preview?.imagePublicId;
       post.sourceUrl = source.url;
       post.platform = source.platform;
-      post.preview = await fetchPostMetadata(source);
+      post.preview = await this.hostPreviewImage(
+        merchantId,
+        source.url,
+        await fetchPostMetadata(source),
+      );
+      if (previousImageId !== post.preview?.imagePublicId) {
+        await this.deleteStoredImage(previousImageId);
+      }
     }
 
     const targetStatus = dto.status ?? post.status;
@@ -374,6 +436,7 @@ export class PostsService {
       _id: new Types.ObjectId(postId),
       merchantId: new Types.ObjectId(merchantId),
     });
+    await this.deleteStoredImage(post.preview?.imagePublicId);
     return { deleted: true };
   }
 

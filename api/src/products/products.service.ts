@@ -70,6 +70,19 @@ export class ProductsService {
     return category._id;
   }
 
+  /** A discount's original price must sit above the price it discounts. */
+  private assertCompareAtPrice(
+    price: number,
+    compareAtPrice: number | null | undefined,
+  ) {
+    if (compareAtPrice === null || compareAtPrice === undefined) return;
+    if (compareAtPrice <= price) {
+      throw new BadRequestException(
+        "The original price must be higher than the selling price",
+      );
+    }
+  }
+
   private validateOptions(
     dto: Pick<
       CreateProductDto,
@@ -199,6 +212,7 @@ export class ProductsService {
     imageFile?: Express.Multer.File,
   ) {
     this.validateOptions(dto);
+    this.assertCompareAtPrice(dto.price, dto.compareAtPrice);
     const categoryId = await this.assertCategory(merchantId, dto.categoryId);
     const image = imageFile
       ? await this.cloudinaryService.uploadImage(
@@ -280,6 +294,7 @@ export class ProductsService {
           name: serialized.name,
           description: serialized.description,
           price: serialized.price,
+          compareAtPrice: serialized.compareAtPrice ?? null,
           imageUrl: serialized.imageUrl,
           categoryId: serialized.categoryId,
           isArchived: false,
@@ -393,6 +408,43 @@ export class ProductsService {
     };
   }
 
+  /**
+   * Keeps price and compareAtPrice consistent on update. A new original price
+   * is checked against the new or saved price; a new price alone drops a
+   * saved original price it has caught up with, so no stale "discount" stays.
+   */
+  private async discountUpdate(
+    id: string,
+    merchantId: string,
+    dto: UpdateProductDto,
+  ): Promise<{ compareAtPrice?: null }> {
+    const setsDiscount =
+      dto.compareAtPrice !== undefined && dto.compareAtPrice !== null;
+    const changesPriceOnly =
+      dto.price !== undefined && dto.compareAtPrice === undefined;
+    if (!setsDiscount && !changesPriceOnly) return {};
+
+    const stored = await this.productModel
+      .findOne({
+        _id: new Types.ObjectId(id),
+        merchantId: this.merchantObjectId(merchantId),
+      })
+      .select("price compareAtPrice")
+      .lean();
+    if (!stored) throw new NotFoundException("Product not found");
+
+    if (setsDiscount) {
+      this.assertCompareAtPrice(dto.price ?? stored.price, dto.compareAtPrice);
+      return {};
+    }
+    const savedDiscount = stored.compareAtPrice;
+    return savedDiscount !== null &&
+      savedDiscount !== undefined &&
+      savedDiscount <= dto.price!
+      ? { compareAtPrice: null }
+      : {};
+  }
+
   async update(
     id: string,
     merchantId: string,
@@ -400,6 +452,7 @@ export class ProductsService {
     imageFile?: Express.Multer.File,
   ) {
     this.validateOptions(dto);
+    const discountClear = await this.discountUpdate(id, merchantId, dto);
     const categoryId = await this.assertCategory(merchantId, dto.categoryId);
     const image = imageFile
       ? await this.cloudinaryService.uploadImage(
@@ -407,7 +460,7 @@ export class ProductsService {
           "firespot/products",
         )
       : undefined;
-    const data: Record<string, unknown> = { ...dto };
+    const data: Record<string, unknown> = { ...dto, ...discountClear };
     if (image) data.imageUrl = image.url;
     if (dto.name) data.name = normaliseName(dto.name);
     if (dto.description !== undefined)

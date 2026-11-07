@@ -24,6 +24,7 @@ describe("PostsService", () => {
   let userModel: any;
   let productModel: any;
   let postModel: any;
+  let cloudinaryService: any;
   let service: PostsService;
 
   beforeEach(() => {
@@ -55,10 +56,19 @@ describe("PostsService", () => {
       deleteOne: jest.fn(),
     };
 
+    cloudinaryService = {
+      uploadRemoteImage: jest.fn().mockResolvedValue({
+        url: "https://res.cloudinary.com/demo/firespot/posts/stored.jpg",
+        publicId: "firespot/posts/stored",
+      }),
+      deleteImage: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new PostsService(
       postModel as any,
       productModel as any,
       userModel as any,
+      cloudinaryService as any,
     );
   });
 
@@ -83,7 +93,7 @@ describe("PostsService", () => {
   });
 
   describe("create", () => {
-    it("returns the created post with the provider metadata URL", async () => {
+    it("returns the created post with its preview image stored on Cloudinary", async () => {
       const createdPost = {
         _id: new Types.ObjectId(),
         sourceUrl: "https://www.instagram.com/p/ABC123/",
@@ -115,11 +125,59 @@ describe("PostsService", () => {
       expect(postModel.create).toHaveBeenCalledWith(
         expect.objectContaining({
           preview: expect.objectContaining({
-            imageUrl: "https://example.com/image.jpg",
+            imageUrl: "https://res.cloudinary.com/demo/firespot/posts/stored.jpg",
+            imagePublicId: "firespot/posts/stored",
           }),
         }),
       );
       expect(createdPost.populate).toHaveBeenCalledTimes(1);
+    });
+
+    it("copies the provider image under a name fixed by merchant and link", async () => {
+      postModel.create.mockResolvedValue({ populate: jest.fn() });
+      const sourceUrl = "https://www.instagram.com/p/ABC123/";
+
+      await service.create(merchantId, { sourceUrl });
+      await service.create(merchantId, { sourceUrl });
+      await service.create(new Types.ObjectId().toString(), { sourceUrl });
+
+      const [first, second, otherMerchant] =
+        cloudinaryService.uploadRemoteImage.mock.calls;
+      expect(first[0]).toBe("https://example.com/image.jpg");
+      expect(first[1]).toMatchObject({ folder: "firespot/posts" });
+      // Re-posting the same link overwrites one image instead of adding more.
+      expect(second[1].publicId).toBe(first[1].publicId);
+      expect(otherMerchant[1].publicId).not.toBe(first[1].publicId);
+    });
+
+    it("keeps the provider image when copying it fails", async () => {
+      cloudinaryService.uploadRemoteImage.mockRejectedValueOnce(
+        new Error("fetch failed"),
+      );
+      postModel.create.mockResolvedValue({ populate: jest.fn() });
+
+      await service.create(merchantId, {
+        sourceUrl: "https://www.instagram.com/p/ABC123/",
+      });
+
+      const { preview } = postModel.create.mock.calls[0][0];
+      expect(preview.imageUrl).toBe("https://example.com/image.jpg");
+      expect(preview.imagePublicId).toBeUndefined();
+    });
+
+    it("skips copying when the link has no image", async () => {
+      const { fetchPostMetadata } = jest.requireMock("./post-metadata");
+      fetchPostMetadata.mockResolvedValueOnce({
+        title: "Text only",
+        extractionStatus: "partial",
+      });
+      postModel.create.mockResolvedValue({ populate: jest.fn() });
+
+      await service.create(merchantId, {
+        sourceUrl: "https://www.instagram.com/p/ABC123/",
+      });
+
+      expect(cloudinaryService.uploadRemoteImage).not.toHaveBeenCalled();
     });
 
     it("rejects publishing when metadata extraction failed and caption is empty", async () => {
@@ -166,6 +224,38 @@ describe("PostsService", () => {
       expect(draftPost.caption).toBe("New caption");
     });
 
+    it("replaces the stored image when a draft's link changes", async () => {
+      const postId = new Types.ObjectId().toString();
+      const draftPost = {
+        _id: postId,
+        merchantId,
+        status: "DRAFT",
+        sourceUrl: "https://www.instagram.com/p/OLD/",
+        preview: { imagePublicId: "firespot/posts/old" },
+        caption: "",
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      postModel.findOne.mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            exec: jest.fn().mockResolvedValue(draftPost),
+          }),
+        }),
+      });
+      postModel.findOne.mockResolvedValueOnce(draftPost);
+
+      await service.update(postId, merchantId, {
+        sourceUrl: "https://www.instagram.com/p/NEW/",
+      });
+
+      expect(draftPost.preview).toMatchObject({
+        imagePublicId: "firespot/posts/stored",
+      });
+      expect(cloudinaryService.deleteImage).toHaveBeenCalledWith(
+        "firespot/posts/old",
+      );
+    });
+
     it("rejects editing a PUBLISHED post", async () => {
       const postId = new Types.ObjectId().toString();
       const publishedPost = {
@@ -200,6 +290,38 @@ describe("PostsService", () => {
         _id: new Types.ObjectId(postId),
         merchantId: new Types.ObjectId(merchantId),
       });
+    });
+
+    it("deletes the stored image with the post", async () => {
+      const postId = new Types.ObjectId().toString();
+      postModel.findOne.mockResolvedValue({
+        _id: postId,
+        merchantId,
+        preview: { imagePublicId: "firespot/posts/stored" },
+      });
+      postModel.deleteOne.mockResolvedValue({ deletedCount: 1 });
+
+      await service.remove(postId, merchantId);
+
+      expect(cloudinaryService.deleteImage).toHaveBeenCalledWith(
+        "firespot/posts/stored",
+      );
+    });
+
+    it("still deletes the post when removing the image fails", async () => {
+      const postId = new Types.ObjectId().toString();
+      postModel.findOne.mockResolvedValue({
+        _id: postId,
+        merchantId,
+        preview: { imagePublicId: "firespot/posts/stored" },
+      });
+      postModel.deleteOne.mockResolvedValue({ deletedCount: 1 });
+      cloudinaryService.deleteImage.mockRejectedValueOnce(new Error("down"));
+
+      await expect(service.remove(postId, merchantId)).resolves.toEqual({
+        deleted: true,
+      });
+      expect(postModel.deleteOne).toHaveBeenCalled();
     });
 
     it("throws NotFoundException if post to delete is not found", async () => {

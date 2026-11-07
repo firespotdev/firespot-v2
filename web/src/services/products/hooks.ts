@@ -15,6 +15,12 @@ export const usePublicCatalogue = (merchantId?: string) =>
     queryFn: () => ProductsApi.getPublicCatalogue(merchantId!),
     enabled: Boolean(merchantId),
   })
+export const useProductBuyers = (merchantId?: string, productId?: string) =>
+  useQuery({
+    queryKey: ['product-buyers', merchantId, productId],
+    queryFn: () => ProductsApi.getProductBuyers(merchantId!, productId!),
+    enabled: Boolean(merchantId && productId),
+  })
 export const useCreateProduct = () => { const client = useQueryClient(); return useMutation({ mutationFn: ({ payload, image }: { payload: CreateProductPayload; image?: File | null }) => ProductsApi.createProduct(payload, image), onSuccess: () => invalidateCatalogue(client) }) }
 export const useUpdateProduct = () => { const client = useQueryClient(); return useMutation({ mutationFn: ({ id, payload, image }: { id: string; payload: CreateProductPayload; image?: File | null }) => ProductsApi.updateProduct(id, payload, image), onSuccess: () => invalidateCatalogue(client) }) }
 export const useArchiveProduct = () => { const client = useQueryClient(); return useMutation({ mutationFn: ProductsApi.archiveProduct, onSuccess: () => invalidateCatalogue(client) }) }

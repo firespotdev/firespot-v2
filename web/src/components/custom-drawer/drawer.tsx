@@ -72,12 +72,15 @@ import { ArchiveProductDrawer } from './archive-product-drawer'
 import { ProductOptionEditorDrawer } from './product-option-editor-drawer'
 import { PayCatalogueDrawer } from './pay-catalogue-drawer'
 import { PayCurrentPurchaseDrawer } from './pay-current-purchase-drawer'
+import { OrderSummaryDrawer } from './order-summary-drawer'
 import { UnconfirmedDetailsDrawer } from './unconfirmed-details-drawer'
 import { PaymentMethodsActiveDrawer } from './payment-methods-active-drawer'
 import { MultiplePaymentOptionsDrawer } from './multiple-payment-options-drawer'
 import { PostComposerDrawer } from '@/components/posts/post-composer-drawer'
 import { PostProductPickerDrawer } from '@/components/posts/post-product-picker-drawer'
 import { LocationsContent } from '@/components/personal/business/locations-content'
+import { ItemReviewsDrawer } from '@/components/personal/business/item-reviews-drawer'
+import { ItemSearchDrawer } from '@/components/personal/business/item-search-drawer'
 import { OptionsDrawer } from '@/components/personal/business/options-drawer'
 
 // Configuration for each drawer type
@@ -492,6 +495,14 @@ const DRAWER_CONFIG: Record<
     contentClassName:
       'overflow-hidden bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh',
   },
+  'order-summary': {
+    title: 'Your order',
+    Content: OrderSummaryDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    dismissible: true,
+    contentClassName: 'overflow-hidden bg-white',
+  },
   'pay-current-purchase': {
     title: 'Current purchase',
     Content: PayCurrentPurchaseDrawer,
@@ -544,6 +555,26 @@ const DRAWER_CONFIG: Record<
   'business-locations': {
     title: '',
     Content: LocationsContent,
+    noHeader: true,
+    dismissible: true,
+    contentClassName: 'bg-[#F4F6F8]',
+  },
+  'item-search': {
+    title: '',
+    Content: ItemSearchDrawer,
+    direction: 'bottom',
+    fullScreen: true,
+    noHeader: true,
+    hideHandle: true,
+    dismissible: false,
+    // The base sheet rounds and borders the top only for bottom sheets, so the
+    // overrides need the same direction scope to win.
+    contentClassName:
+      'h-dvh overflow-hidden bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh data-[vaul-drawer-direction=bottom]:rounded-t-none data-[vaul-drawer-direction=bottom]:border-t-0',
+  },
+  'item-reviews': {
+    title: '',
+    Content: ItemReviewsDrawer,
     noHeader: true,
     dismissible: true,
     contentClassName: 'bg-[#F4F6F8]',

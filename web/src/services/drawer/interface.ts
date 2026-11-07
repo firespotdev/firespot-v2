@@ -56,6 +56,7 @@ export type DrawerContentType =
   | 'product-option-editor'
   | 'pay-catalogue'
   | 'pay-current-purchase'
+  | 'order-summary'
   | 'unconfirmed-details'
   | 'payment-methods-active'
   | 'multiple-payment-options'
@@ -65,6 +66,8 @@ export type DrawerContentType =
   | 'post-product-select'
   | 'business-locations'
   | 'business-options'
+  | 'item-reviews'
+  | 'item-search'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 
