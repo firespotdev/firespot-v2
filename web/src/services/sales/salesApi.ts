@@ -260,6 +260,15 @@ export const SalesApi = {
     return data;
   },
 
+  archiveOutstandingSales: async (
+    customerIds: string[],
+  ): Promise<ArchiveAllSalesResult> => {
+    const { data } = await apiClient.patch('/sales/outstanding/archive', {
+      customerIds,
+    });
+    return data;
+  },
+
   cancelSale: async (saleId: string): Promise<Sale> => {
     const { data } = await apiClient.patch(`/sales/${saleId}/cancel`);
     return data;
@@ -417,6 +426,8 @@ export const SalesApi = {
       customerPhone: string;
       customerAvatar?: string;
       transactionCount: number;
+      /** Debts the merchant can archive (not Paystack or collections). */
+      archivableCount: number;
       totalOwed: number;
     }>;
   }> => {

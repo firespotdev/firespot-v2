@@ -408,10 +408,10 @@ export default function CustomerDetailPage({
                                     {statusLabel}
                                   </p>
                                 </div>
-                                {!isUnconfirmed && <ChevronRight
+                                <ChevronRight
                                   size={16}
                                   className="text-[#AEAEB2] stroke-[2.5px]"
-                                />}
+                                />
                               </div>
                             }
                           />

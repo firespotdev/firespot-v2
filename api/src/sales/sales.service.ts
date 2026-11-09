@@ -2772,10 +2772,14 @@ export class SalesService {
     return { count: result.modifiedCount || 0 }
   }
 
-  async archiveCustomerOutstandingSales(
+  /**
+   * The customer identity a merchant's customer record points to. Outstanding
+   * sales are grouped by identity, so archiving works on that, not the record.
+   */
+  private async requireCustomerIdentity(
     merchantId: string,
     customerId: string,
-  ) {
+  ): Promise<Types.ObjectId> {
     const relationship = await this.requireMerchantRelationship(
       merchantId,
       customerId,
@@ -2789,15 +2793,55 @@ export class SalesService {
         'This customer relationship has no valid identity',
       )
     }
+    return new Types.ObjectId(customerUserId.toString())
+  }
+
+  // Paystack payments and collections settle through Firespot, so a merchant
+  // cannot write them off.
+  private archivableOutstandingFilter(merchantId: string) {
+    return {
+      merchantId: new Types.ObjectId(merchantId),
+      status: 'OUTSTANDING',
+      isArchived: { $ne: true },
+      isCollection: { $ne: true },
+      paymentRail: { $ne: 'paystack' },
+    } as const
+  }
+
+  async archiveCustomerOutstandingSales(
+    merchantId: string,
+    customerId: string,
+  ) {
+    const customerUserId = await this.requireCustomerIdentity(
+      merchantId,
+      customerId,
+    )
+    const result = await this.saleModel.updateMany(
+      { ...this.archivableOutstandingFilter(merchantId), customerUserId },
+      { $set: { isArchived: true } },
+    )
+
+    return { count: result.modifiedCount || 0 }
+  }
+
+  /**
+   * Archives several customers' outstanding sales at once. Every customer is
+   * checked first, so one invalid id archives nothing.
+   */
+  async archiveOutstandingSalesForCustomers(
+    merchantId: string,
+    customerIds: string[],
+  ) {
+    const identities = await Promise.all(
+      [...new Set(customerIds)].map((customerId) =>
+        this.requireCustomerIdentity(merchantId, customerId),
+      ),
+    )
 
     const result = await this.saleModel.updateMany(
       {
-        merchantId: new Types.ObjectId(merchantId),
-        customerUserId: new Types.ObjectId(customerUserId.toString()),
-        status: 'OUTSTANDING',
-        isArchived: { $ne: true },
-        isCollection: { $ne: true },
-        paymentRail: { $ne: 'paystack' },
+        ...this.archivableOutstandingFilter(merchantId),
+        customerUserId: { $in: identities },
       },
       { $set: { isArchived: true } },
     )
@@ -3317,6 +3361,7 @@ export class SalesService {
         customerPhone: string
         customerAvatar?: string
         transactionCount: number
+        archivableCount: number
         totalOwed: number
       }
     >()
@@ -3354,9 +3399,11 @@ export class SalesService {
       const custPhone = customer.phoneNumber
       const custAvatar = customerIdentity?.profilePhotoUrl || ''
 
+      const archivable = !sale.isCollection && sale.paymentRail !== 'paystack'
       const existing = customerMap.get(identityId)
       if (existing) {
         existing.transactionCount += 1
+        existing.archivableCount += archivable ? 1 : 0
         existing.totalOwed += bal
       } else {
         customerMap.set(identityId, {
@@ -3366,6 +3413,7 @@ export class SalesService {
           customerPhone: custPhone,
           customerAvatar: custAvatar,
           transactionCount: 1,
+          archivableCount: archivable ? 1 : 0,
           totalOwed: bal,
         })
       }

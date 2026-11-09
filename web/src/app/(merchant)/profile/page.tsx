@@ -12,7 +12,6 @@ import { useDrawerStore } from '@/services/drawer'
 import type { InsightsQuery } from '@/services/insights'
 import { useUserQRKits } from '@/services/qr'
 import { useOutstandingSummary, useSalesStats } from '@/services/sales/hooks'
-import Link from 'next/link'
 import { sortBankAccounts } from '@/lib/utils/bank-registry'
 import { MerchantInfoStat } from '@/components/profile/merchant-info-stat'
 import { MerchantQuickActionStack } from '@/components/merchant/merchant-quick-actions'
@@ -278,8 +277,9 @@ export default function ProfilePage() {
             </button>
 
             {/* Owing */}
-            <Link
-              href="/outstanding"
+            <button
+              type="button"
+              onClick={() => openDrawer({ type: 'outstanding' })}
               className="flex flex-col items-center group"
             >
               <span className="text-xl font-bold leading-none -tracking-[0.4px] text-[#E23B4E]">
@@ -291,7 +291,7 @@ export default function ProfilePage() {
                 </span>
                 <ChevronRight size={11} color="#E23B4E" />
               </div>
-            </Link>
+            </button>
           </div>
         </div>
       </div>

@@ -8,7 +8,6 @@ import {
   PlusCircle,
   Bell,
 } from 'lucide-react'
-import { useRouter } from '@bprogress/next/app'
 import { useDrawerStore } from '@/services/drawer'
 import { Sale } from '@/services/sales/interface'
 import { getMerchantStatus, isCollectedSale } from '@/lib/utils/sales'
@@ -34,7 +33,6 @@ export function TransactionOptionsDrawer({
   onDownloadReceipt,
   isReceiptShareReady = false,
 }: TransactionOptionsDrawerProps) {
-  const router = useRouter()
   const {
     openDrawer,
     closeDrawer: storeCloseDrawer,
@@ -89,22 +87,16 @@ export function TransactionOptionsDrawer({
               title="Record repayment"
               onClick={() => {
                 closeAllDrawers()
-
-                const params = new URLSearchParams({ id: sale._id })
-                const customerId =
-                  typeof sale.customerId === 'string'
-                    ? sale.customerId
-                    : sale.customerId?._id
-
-                if (customerId) {
-                  params.set('customerId', customerId)
-                  params.set(
-                    'returnTo',
-                    `/outstanding?customerId=${customerId}`,
-                  )
-                }
-
-                router.push(`/record-repayment?${params.toString()}`)
+                openDrawer({
+                  type: 'record-repayment',
+                  props: {
+                    saleId: sale._id,
+                    customerId:
+                      typeof sale.customerId === 'string'
+                        ? sale.customerId
+                        : sale.customerId?._id,
+                  },
+                })
               }}
             />
             <ActionListItem

@@ -48,7 +48,11 @@ export function SaleItem({
   className,
   variant = 'default',
 }: SaleItemProps) {
-  const canOpenDetails = sale.status !== 'PENDING' && Boolean(onClick)
+  // Pending sales never open transaction details, except on the Sales page's
+  // unconfirmed list, where a tap opens the step-through review instead.
+  const canOpenDetails =
+    Boolean(onClick) &&
+    (sale.status !== 'PENDING' || variant === 'recent-unconfirmed')
   const isArchivedItem = getMerchantStatus(sale) === 'Archived'
   const isRecent = variant.startsWith('recent-')
   const title =
@@ -121,7 +125,7 @@ export function SaleItem({
           </p>
           <StatusBadge status={getMerchantStatus(sale)} variant="text" />
         </div>
-        {canOpenDetails && <ChevronRight className="text-[#D1D5DB]" size={16} />}
+        {onClick && <ChevronRight className="text-[#D1D5DB]" size={16} />}
       </div>
     </div>
   )

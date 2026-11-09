@@ -135,7 +135,7 @@ export function Activity({ business }: ActivityProps) {
                       {isPending ? 'Unconfirmed' : 'Paid'}
                     </p>
                   </div>
-                  {!isPending && <ChevronRight className="text-[#BDBDBD]" size={16} />}
+                  <ChevronRight className="text-[#BDBDBD]" size={16} />
                 </div>
               </Row>
               )

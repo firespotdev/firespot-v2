@@ -1071,6 +1071,92 @@ describe("SalesService amount invariants", () => {
         { $set: { isArchived: true } },
       );
     });
+
+    it("counts each customer's debts that can be archived", async () => {
+      const owing = (overrides: Record<string, unknown>) => ({
+        status: "OUTSTANDING",
+        balanceOwed: 100,
+        customerUserId: { _id: customerUserId },
+        customerId: { _id: customerId, name: "Ada", phoneNumber: "0800" },
+        ...overrides,
+      });
+      const find = jest.fn().mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          exec: jest
+            .fn()
+            .mockResolvedValue([
+              owing({}),
+              owing({ paymentRail: "paystack" }),
+              owing({ isCollection: true }),
+            ]),
+        }),
+      });
+      const service = createService({ find });
+
+      const summary = await service.getOutstandingSummary(
+        "507f1f77bcf86cd799439012",
+      );
+
+      expect(summary.customers).toEqual([
+        expect.objectContaining({ transactionCount: 3, archivableCount: 1 }),
+      ]);
+    });
+
+    it("archives the selected customers' outstanding sales together", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const otherCustomerId = "507f1f77bcf86cd799439016";
+      const updateMany = jest.fn().mockResolvedValue({ modifiedCount: 3 });
+      const customerModel = {
+        findOne: jest.fn((query: { _id: { toString(): string } }) => ({
+          exec: jest.fn().mockResolvedValue({
+            _id: query._id,
+            userId:
+              query._id.toString() === customerId
+                ? customerUserId
+                : "507f1f77bcf86cd799439017",
+          }),
+        })),
+      };
+      const service = createService({ updateMany }, customerModel);
+
+      await expect(
+        service.archiveOutstandingSalesForCustomers(merchantId, [
+          customerId,
+          otherCustomerId,
+          customerId,
+        ]),
+      ).resolves.toEqual({ count: 3 });
+
+      expect(customerModel.findOne).toHaveBeenCalledTimes(2);
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerUserId: { $in: [expect.anything(), expect.anything()] },
+          status: "OUTSTANDING",
+          isCollection: { $ne: true },
+          paymentRail: { $ne: "paystack" },
+        }),
+        { $set: { isArchived: true } },
+      );
+    });
+
+    it("archives nothing when a selected customer is not the merchant's", async () => {
+      const updateMany = jest.fn();
+      const customerModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(null),
+        }),
+      };
+      const service = createService({ updateMany }, customerModel);
+
+      await expect(
+        service.archiveOutstandingSalesForCustomers(
+          "507f1f77bcf86cd799439012",
+          [customerId],
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(updateMany).not.toHaveBeenCalled();
+    });
   });
 
   describe("recent sales queries", () => {

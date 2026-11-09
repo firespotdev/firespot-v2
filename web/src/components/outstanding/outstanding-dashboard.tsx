@@ -1,119 +1,130 @@
 'use client'
 
-import { ChevronRight } from 'lucide-react'
-import { StatBanner, AppCard, CircularIconButton } from '@/components/ui'
-import { formatCurrency } from '@/lib/utils'
-import { MerchantAvatar } from '../layout/MerchantAvatar'
+import { Archive, Bell, Plus, PlusCircle } from 'lucide-react'
+import { ActionList, CircularIconButton, StatBanner } from '@/components/ui'
+import { useDrawerStore } from '@/services/drawer'
+import { OutstandingActionPill } from './outstanding-action-pill'
+import { OutstandingEmptyState } from './outstanding-empty-state'
+import { OwingCustomerItem } from './owing-customer-item'
+import type { OwingCustomer } from './use-outstanding-data'
 
-export interface OwingCustomer {
-  customerId: string
-  customerName: string
-  customerPhone: string
-  customerAvatar?: string
-  transactionCount: number
-  totalOwed: number
-}
+// Two equal pills sharing the row, tightened so both labels stay on one line
+// at phone widths.
+const EVEN_PILL =
+  'flex-1 justify-center gap-1.5 whitespace-nowrap px-2 tracking-[0.5px]'
 
 interface OutstandingDashboardProps {
   totalOutstanding: number
   owingCustomers: OwingCustomer[]
   onSelectCustomer: (id: string) => void
-  onBack: () => void
+  onClose: () => void
 }
 
+/** Every customer who owes the merchant, with the follow-up actions. */
 export function OutstandingDashboard({
   totalOutstanding,
   owingCustomers,
   onSelectCustomer,
-  onBack,
+  onClose,
 }: OutstandingDashboardProps) {
-  return (
-    <div className="h-full flex flex-col">
-      <header className="flex items-center justify-between py-2 px-3">
-        <CircularIconButton icon="arrow-left" size="md" onClick={onBack} />
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const hasOwing = owingCustomers.length > 0
+  const canArchive = owingCustomers.some(
+    (customer) => customer.archivableCount > 0,
+  )
 
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-        >
-          <path
-            d="M3 7h18M6 12h12M10 17h4"
-            stroke="#000000"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          ></path>
-        </svg>
+  return (
+    <div className="flex h-full flex-col">
+      <header className="flex shrink-0 justify-end px-4 py-2">
+        <CircularIconButton icon="x" size="md" onClick={onClose} />
       </header>
 
-      <div className="flex-1 px-4 pb-12 overflow-y-auto flex flex-col gap-3">
-        <h3 className="text-[32px] font-bold text-black mt-2 -tracking-[0.4px] mb-3 pb-2">
+      <div className="scrollbar-hide flex flex-1 flex-col overflow-y-auto px-4 pb-12">
+        <h1 className="mt-2 mb-5 text-[32px] font-bold -tracking-[0.4px] text-black">
           Outstanding
-        </h3>
+        </h1>
+
         <StatBanner
-          label="Total payments outstanding"
+          label="Total outstanding"
           amount={totalOutstanding}
           currency="₦"
+          splitLayout
+          actions={
+            <div className="flex items-center gap-2">
+              {canArchive && (
+                <CircularIconButton
+                  icon={<Archive size={20} strokeWidth={2} />}
+                  size="lg"
+                  variant="bordered"
+                  aria-label="Archive outstanding payments"
+                  onClick={() => openDrawer({ type: 'archive-outstanding' })}
+                  className="bg-[#F4F6F8]"
+                />
+              )}
+              <CircularIconButton
+                icon={<Plus size={22} strokeWidth={2.5} />}
+                size="lg"
+                variant="filled"
+                aria-label="New sale"
+                onClick={() => openDrawer({ type: 'record-sale' })}
+                className="bg-black text-white"
+              />
+            </div>
+          }
         />
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-bold text-black mt-2">
-            {owingCustomers.length} customer
-            {owingCustomers.length !== 1 ? 's' : ''} owing you
-          </h3>
+        {hasOwing && (
+          <div className="mt-3 flex gap-2">
+            <OutstandingActionPill
+              icon={<Bell size={16} />}
+              label="SEND OUT REMINDERS"
+              className={EVEN_PILL}
+              onClick={() =>
+                openDrawer({
+                  type: 'owing-customers',
+                  props: { purpose: 'remind' },
+                })
+              }
+            />
+            <OutstandingActionPill
+              icon={<PlusCircle size={16} />}
+              label="RECORD REPAYMENT"
+              className={EVEN_PILL}
+              onClick={() =>
+                openDrawer({
+                  type: 'owing-customers',
+                  props: { purpose: 'repay' },
+                })
+              }
+            />
+          </div>
+        )}
 
-          {owingCustomers.length > 0 ? (
-            <AppCard rounded="16" divided className="flex flex-col">
-              {owingCustomers.map((customer) => {
-                return (
-                  <button
-                    key={customer.customerId}
-                    onClick={() => onSelectCustomer(customer.customerId)}
-                    className="w-full flex items-center justify-between p-3 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <MerchantAvatar
-                        profilePhotoUrl={customer.customerAvatar}
-                      />
+        <div className="my-5 border-t border-[#F1F1F1]" />
 
-                      <div>
-                        <h4 className="text-[14px] font-bold text-[#111827] line-clamp-1">
-                          {customer.customerName}
-                        </h4>
-                        <p className="text-xs text-[#6B7280] font-medium mt-0.5">
-                          {customer.transactionCount} transaction
-                          {customer.transactionCount !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-[13px] font-bold text-[#111827]">
-                        ₦{formatCurrency(customer.totalOwed)}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-[#C1C1C1]" />
-                    </div>
-                  </button>
-                )
-              })}
-            </AppCard>
-          ) : (
-            <AppCard
-              rounded="16"
-              padding="lg"
-              className="text-center text-[#00000066] text-xs"
-            >
-              All caught up! No customers owe you.
-            </AppCard>
-          )}
-        </div>
-
-        {owingCustomers.length > 0 && (
-          <p className="text-xs font-medium text-[#00000066] text-center w-full shrink-0 my-4">
-            You’ve reached the end of the list
-          </p>
+        {hasOwing ? (
+          <section>
+            <h2 className="mb-3 text-sm font-bold text-black">
+              {owingCustomers.length} customer
+              {owingCustomers.length === 1 ? '' : 's'} owing you
+            </h2>
+            <ActionList rounded="16">
+              {owingCustomers.map((customer) => (
+                <OwingCustomerItem
+                  key={customer.customerId}
+                  customer={customer}
+                  onClick={() => onSelectCustomer(customer.customerId)}
+                />
+              ))}
+            </ActionList>
+            <p className="my-6 text-center text-xs font-medium text-[#00000066]">
+              You’ve reached the end of the list
+            </p>
+          </section>
+        ) : (
+          <div className="py-12">
+            <OutstandingEmptyState />
+          </div>
         )}
       </div>
     </div>

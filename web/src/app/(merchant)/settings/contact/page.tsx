@@ -71,6 +71,11 @@ export default function ContactSettingsPage() {
   const setSocial = (key: keyof ShopSocialLinks, value: string) =>
     setSocials((prev) => ({ ...prev, [key]: value }))
 
+  // The step only counts as done with at least one way to reach the shop.
+  const hasContact = [businessEmail, website, ...Object.values(socials)].some(
+    (value) => Boolean(value?.trim()),
+  )
+
   const handleContinue = () => {
     update.mutate(
       {
@@ -163,7 +168,7 @@ export default function ContactSettingsPage() {
         <div className="sticky bottom-0 bg-white border-t border-[#F1F1F1] rounded-t-[12px] p-4 w-full">
           <Button
             onClick={handleContinue}
-            disabled={update.isPending}
+            disabled={!hasContact || update.isPending}
             className="w-full h-14 font-bold"
           >
             {update.isPending ? <Spinner /> : 'Continue'}

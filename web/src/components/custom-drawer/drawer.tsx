@@ -61,6 +61,10 @@ import { DayTimeEditorDrawer } from './day-time-editor-drawer'
 import { ActiveHoursBookingDrawer } from './active-hours-booking-drawer'
 import { BusinessIntroDrawer } from './business-intro-drawer'
 import { RecordSaleDrawer } from './record-sale-drawer'
+import { RecordRepaymentDrawer } from './record-repayment-drawer'
+import { OutstandingDrawer } from './outstanding-drawer'
+import { OwingCustomersDrawer } from './owing-customers-drawer'
+import { ArchiveOutstandingDrawer } from './archive-outstanding-drawer'
 import { RailPickerDrawer } from './rail-picker-drawer'
 import { ChannelPickerDrawer } from './channel-picker-drawer'
 import { CatalogueActionsDrawer } from './catalogue-actions-drawer'
@@ -315,6 +319,44 @@ const DRAWER_CONFIG: Record<
     contentClassName:
       'h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
     // The sheet should visibly slide back down when dismissed.
+    animateOnClose: true,
+  },
+  outstanding: {
+    title: 'Outstanding',
+    Content: OutstandingDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: true,
+    hideHandle: true,
+    // Its lists scroll; leaving is through its own back button.
+    dismissible: false,
+    contentClassName:
+      'h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
+    animateOnClose: true,
+  },
+  'owing-customers': {
+    title: '',
+    Content: OwingCustomersDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'archive-outstanding': {
+    title: '',
+    Content: ArchiveOutstandingDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'record-repayment': {
+    title: 'Record repayment',
+    Content: RecordRepaymentDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: true,
+    hideHandle: true,
+    // The keypad must not be read as swipe-to-dismiss.
+    dismissible: false,
+    contentClassName:
+      'h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
     animateOnClose: true,
   },
   'rail-picker': {
@@ -727,7 +769,7 @@ export function CustomDrawer() {
         >
           <DrawerContent
             hideHandle={hideHandle}
-            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' || config.type === 'business-intro' || config.type === 'record-sale' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px] ${contentClassName || ''}`}
+            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' || config.type === 'business-intro' || config.type === 'record-sale' || config.type === 'record-repayment' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px] ${contentClassName || ''}`}
           >
             {noHeader ? (
               <>

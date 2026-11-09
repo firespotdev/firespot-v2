@@ -103,6 +103,9 @@ export default function LocationsSettingsPage() {
     )
   }
 
+  // The step counts as done once the shop has a state and an address.
+  const hasSpot = Boolean(state && address.trim())
+
   const handleSave = () => {
     // "6+" has no exact count; store 6 as the floor.
     const branchCount = branches
@@ -292,7 +295,7 @@ export default function LocationsSettingsPage() {
         <div className="sticky bottom-0 bg-white border-t border-[#F1F1F1] rounded-t-[12px] p-4 w-full">
           <Button
             onClick={handleSave}
-            disabled={update.isPending}
+            disabled={!hasSpot || update.isPending}
             className="w-full font-bold"
           >
             {update.isPending ? <Spinner /> : 'That’s my spot'}

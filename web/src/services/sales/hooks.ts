@@ -88,10 +88,12 @@ export const useCreateManualSale = () => {
 };
 export const useSales = (
   params?: Record<string, string | number | boolean | undefined>,
+  options?: { enabled?: boolean },
 ) => {
   return useQuery({
     queryKey: ['sales', params],
     queryFn: () => SalesApi.getSales(params),
+    enabled: options?.enabled ?? true,
   });
 };
 
@@ -228,6 +230,21 @@ export const useArchiveAllPendingSales = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useArchiveOutstandingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (customerIds: string[]) =>
+      SalesApi.archiveOutstandingSales(customerIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };

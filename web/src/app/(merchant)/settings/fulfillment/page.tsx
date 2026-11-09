@@ -77,6 +77,8 @@ export default function FulfillmentSettingsPage() {
   const toggle = (key: keyof ShopFulfillment, value: boolean) =>
     setFlags((prev) => ({ ...prev, [key]: value }))
 
+  const hasOption = Object.values(flags).some(Boolean)
+
   const handleContinue = () => {
     update.mutate(flags, {
       onSuccess: handleBack,
@@ -135,7 +137,7 @@ export default function FulfillmentSettingsPage() {
         <div className="sticky bottom-0 bg-white border-t border-[#F1F1F1] rounded-t-[12px] p-4 w-full">
           <Button
             onClick={handleContinue}
-            disabled={update.isPending}
+            disabled={!hasOption || update.isPending}
             className="w-full h-14 font-bold"
           >
             {update.isPending ? <Spinner /> : 'Continue'}

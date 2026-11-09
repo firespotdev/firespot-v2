@@ -9,6 +9,8 @@ import { Graph, Moneys, Shop } from 'iconsax-reactjs'
 import { IdentificationBadgeIcon } from '@phosphor-icons/react'
 import { useSetupShopCta } from '@/components/merchant/setup-shop-cta'
 import { cn } from '@/lib/utils'
+import { useDrawerStore } from '@/services/drawer'
+import type { DrawerConfig } from '@/services/drawer/interface'
 import { useMerchantInsights } from '@/services/insights'
 import { useOutstandingSummary, useSalesStats } from '@/services/sales/hooks'
 
@@ -16,7 +18,9 @@ export interface MerchantQuickAction {
   id: 'setup' | 'report' | 'recent' | 'outstanding'
   title: string
   subtitle: string
-  href: string
+  /** Where the card goes; absent when it opens a drawer instead. */
+  href?: string
+  drawer?: DrawerConfig
   gradient: string
   icon: ReactNode
 }
@@ -100,7 +104,7 @@ export function useMerchantQuickActions(): MerchantQuickAction[] {
         maximumFractionDigits: 0,
       }).format(outstandingAmount)} outstanding`,
       subtitle: `${outstandingCustomerCount} ${outstandingCustomerCount === 1 ? 'customer' : 'customers'} to follow up`,
-      href: '/outstanding',
+      drawer: { type: 'outstanding' },
       gradient: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
       icon: <Moneys size={24} color="white" />,
     })
@@ -122,16 +126,13 @@ export function MerchantQuickActionCard({
   onNavigate?: () => void
   className?: string
 }) {
-  return (
-    <Link
-      href={action.href}
-      onClick={onNavigate}
-      className={cn(
-        'relative flex w-full items-center gap-3 overflow-hidden rounded-[12px] border-[3px] border-[#FFFFFF99] p-3 shadow-[0px_4px_8px_0px_#0000000A]',
-        className,
-      )}
-      style={{ background: action.gradient }}
-    >
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const cardClassName = cn(
+    'relative flex w-full items-center gap-3 overflow-hidden rounded-[12px] border-[3px] border-[#FFFFFF99] p-3 shadow-[0px_4px_8px_0px_#0000000A]',
+    className,
+  )
+  const content = (
+    <>
       <span className="absolute -bottom-4 left-5 flex h-[60px] w-[48px] -rotate-[9deg] items-start pt-[3%] justify-center rounded-[12px] border border-white/40 bg-white/20 shadow-[0px_4px_8px_0px_#00000014]">
         {action.icon}
       </span>
@@ -144,6 +145,34 @@ export function MerchantQuickActionCard({
         </span>
       </span>
       <ChevronRight className="h-5 w-5 shrink-0 text-white" />
+    </>
+  )
+
+  if (action.drawer) {
+    const drawer = action.drawer
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate?.()
+          openDrawer(drawer)
+        }}
+        className={cardClassName}
+        style={{ background: action.gradient }}
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <Link
+      href={action.href ?? '/'}
+      onClick={onNavigate}
+      className={cardClassName}
+      style={{ background: action.gradient }}
+    >
+      {content}
     </Link>
   )
 }

@@ -2,7 +2,6 @@
 
 import { Check, X } from 'lucide-react'
 import { Button, ClockGradientIcon, StatBanner } from '@/components/ui'
-import { useRouter } from '@bprogress/next/app'
 import { useSalesStats } from '@/services/sales/hooks'
 import type { Sale } from '@/services/sales/interface'
 import { useDrawerStore } from '@/services/drawer'
@@ -18,7 +17,9 @@ interface RepaymentSuccessDrawerProps {
   recordedAt: string | Date
   isFullRepayment: boolean
   remainingBalance: number
-  returnTo?: string
+  /** Opens the customer's outstanding debts. */
+  onViewCustomer?: () => void
+  /** Runs after the sheet closes, when there is somewhere to return to. */
   onDismiss?: () => void
 }
 
@@ -31,29 +32,22 @@ export function RepaymentSuccessDrawer({
   recordedAt,
   isFullRepayment,
   remainingBalance,
-  returnTo,
+  onViewCustomer,
   onDismiss,
 }: RepaymentSuccessDrawerProps) {
-  const router = useRouter()
-  const { openDrawer, closeAllDrawers } = useDrawerStore()
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const { data: statsData, isLoading: isLoadingStats } = useSalesStats()
 
   const todaySalesAmount = statsData?.todaySalesAmount ?? 0
 
   const handleClose = () => {
-    closeAllDrawers()
-    if (onDismiss) {
-      onDismiss()
-    } else {
-      router.push('/sales')
-    }
+    closeDrawer('repayment-success')
+    onDismiss?.()
   }
 
   const handleSendReminder = () => {
-    closeAllDrawers()
-    if (returnTo) {
-      router.replace(returnTo)
-    }
+    closeDrawer('repayment-success')
     openDrawer({
       type: 'send-reminder',
       props: { sale: reminderSale || sale },
@@ -61,12 +55,8 @@ export function RepaymentSuccessDrawer({
   }
 
   const handleViewCustomer = () => {
-    closeAllDrawers()
-    if (returnTo) {
-      router.replace(returnTo)
-      return
-    }
-    router.push('/sales')
+    closeDrawer('repayment-success')
+    onViewCustomer?.()
   }
 
   const repaymentDate = (() => {

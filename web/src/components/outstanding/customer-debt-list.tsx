@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import {
   Archive,
   ArrowLeft,
   Bell,
   ChevronRight,
   CircleCheck,
-  Phone,
+  PhoneOutgoing,
+  Plus,
   PlusCircle,
 } from 'lucide-react'
 import {
@@ -24,7 +24,10 @@ import { useArchiveCustomerOutstandingSales } from '@/services/sales/hooks'
 import type { Sale } from '@/services/sales/interface'
 import { formatCurrency } from '@/lib/utils'
 import { getSaleSubject, isCollectedSale } from '@/lib/utils/sales'
+import { formatLocalPhoneNumber, phoneHref } from '@/lib/utils/phone'
 import { MerchantAvatar } from '@/components/layout'
+import { OutstandingActionPill } from './outstanding-action-pill'
+import { customerReminderSale } from './use-outstanding-data'
 
 interface CustomerDebtListProps {
   customerId: string
@@ -35,6 +38,7 @@ interface CustomerDebtListProps {
   unpaidSales: Sale[]
   repaidSales: Sale[]
   onSelectSale: (id: string) => void
+  onRecordRepayment: () => void
   onArchived: () => void
   onBack: () => void
 }
@@ -43,7 +47,7 @@ type DebtTab = 'unpaid' | 'repaid'
 
 const TAB_OPTIONS = [
   { label: 'UNPAID', value: 'unpaid' },
-  { label: 'REPAID', value: 'repaid' },
+  { label: 'PAID', value: 'repaid' },
 ] satisfies Array<{ label: string; value: DebtTab }>
 
 function formatDate(value: string | Date) {
@@ -63,6 +67,7 @@ export function CustomerDebtList({
   unpaidSales,
   repaidSales,
   onSelectSale,
+  onRecordRepayment,
   onArchived,
   onBack,
 }: CustomerDebtListProps) {
@@ -74,37 +79,21 @@ export function CustomerDebtList({
   const activeSales = activeTab === 'unpaid' ? unpaidSales : repaidSales
   const activeCount = activeSales.length
   const archivableSales = unpaidSales.filter((sale) => !isCollectedSale(sale))
-  const phoneHref = customerPhone
-    ? `tel:${customerPhone.replace(/[^\d+]/g, '')}`
-    : undefined
-  const recordRepaymentHref = `/record-repayment?${new URLSearchParams({
-    customerId,
-    returnTo: `/outstanding?customerId=${customerId}`,
-  }).toString()}`
+  const callHref = phoneHref(customerPhone)
 
-  const handleSendAggregateReminder = () => {
-    if (unpaidSales.length === 0) return
-
-    const simulatedSale = {
-      _id: unpaidSales[0]._id,
-      customerId: unpaidSales[0].customerId,
-      amount: customerTotalOwed,
-      amountPaid: 0,
-      balanceOwed: customerTotalOwed,
-      description: `Sale for ${customerName}`,
-      reference: unpaidSales[0].reference || 'repayment',
-      recordedAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      status: 'OUTSTANDING' as const,
-      customerPhone,
-    }
-
+  const handleSendAggregateReminder = () =>
     openDrawer({
       type: 'send-reminder',
-      props: { sale: simulatedSale },
+      props: {
+        sale: customerReminderSale({
+          customerId,
+          customerName,
+          customerPhone,
+          customerAvatar,
+          totalOwed: customerTotalOwed,
+        }),
+      },
     })
-  }
 
   const handleArchiveOutstanding = async () => {
     try {
@@ -152,24 +141,14 @@ export function CustomerDebtList({
           className="mx-auto w-full"
         />
 
-        {phoneHref ? (
-          <a
-            href={phoneHref}
-            aria-label={`Call ${customerName}`}
-            className="flex h-8 w-8 items-center justify-center"
-          >
-            <Phone className="h-6 w-6 text-black" strokeWidth={2} />
-          </a>
-        ) : (
-          <button
-            type="button"
-            disabled
-            aria-label="Customer phone number unavailable"
-            className="flex h-8 w-8 items-center justify-center opacity-30"
-          >
-            <Phone className="h-6 w-6 text-black" strokeWidth={2} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => openDrawer({ type: 'record-sale' })}
+          aria-label="New sale"
+          className="-m-1.5 flex h-11 w-11 items-center justify-center"
+        >
+          <Plus className="h-6 w-6 text-black" strokeWidth={2} />
+        </button>
       </header>
 
       <div className="scrollbar-hide flex-1 overflow-y-auto">
@@ -180,9 +159,21 @@ export function CustomerDebtList({
             size={96}
             className="rounded-full shadow-[0px_3px_2px_0px_#00000005]"
           />
-          <h1 className="mt-4 text-[32px] font-bold -tracking-[0.4px] text-black">
+          <h1 className="mt-4 text-[32px] font-bold leading-[1.2] -tracking-[0.4px] text-black">
             {customerName}
           </h1>
+          {callHref && (
+            <a
+              href={callHref}
+              aria-label={`Call ${customerName}`}
+              className="mt-2 flex items-center gap-1.5 text-[15px] font-medium text-[#00000080]"
+            >
+              <span className="underline decoration-dotted underline-offset-4">
+                {formatLocalPhoneNumber(customerPhone)}
+              </span>
+              <PhoneOutgoing size={16} strokeWidth={2} />
+            </a>
+          )}
         </section>
 
         <div className="px-3 pt-6">
@@ -205,31 +196,23 @@ export function CustomerDebtList({
 
         {unpaidSales.length > 0 && (
           <div className="scrollbar-hide mt-3 flex gap-2 overflow-x-auto px-3 pb-1">
-            <Link
-              href={recordRepaymentHref}
-              className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
-            >
-              <PlusCircle size={18} />
-              RECORD REPAYMENT
-            </Link>
-            <button
-              type="button"
+            <OutstandingActionPill
+              icon={<PlusCircle size={18} />}
+              label="RECORD REPAYMENT"
+              onClick={onRecordRepayment}
+            />
+            <OutstandingActionPill
+              icon={<Bell size={18} />}
+              label="SEND REMINDER"
               onClick={handleSendAggregateReminder}
-              className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
-            >
-              <Bell size={18} />
-              SEND REMINDER
-            </button>
+            />
             {archivableSales.length > 0 && (
-              <button
-                type="button"
+              <OutstandingActionPill
+                icon={<Archive size={18} />}
+                label="ARCHIVE"
                 onClick={() => setArchiveDialogOpen(true)}
                 disabled={archiveOutstanding.isPending}
-                className="flex h-9 shrink-0 items-center gap-2 rounded-full border border-[#0000000A] bg-[#F1F1F1] px-3 text-[10px] font-bold tracking-[1px] text-black shadow-[0px_2px_4px_0px_#0000000A]"
-              >
-                <Archive size={18} />
-                ARCHIVE
-              </button>
+              />
             )}
           </div>
         )}

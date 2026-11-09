@@ -211,7 +211,7 @@ function HistoryContent() {
   const handleRecordClick = (sale: Sale) => {
     openDrawer({
       type: 'transaction-details',
-      props: { sale, origin: 'history' },
+      props: { sale },
     })
   }
 

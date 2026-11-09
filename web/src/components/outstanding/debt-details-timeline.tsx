@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, Pencil, Check, Clock, PenLine } from 'lucide-react'
+import { Bell, PenLine } from 'lucide-react'
 import {
   StatBanner,
   AppCard,
@@ -11,7 +11,6 @@ import {
 import { useDrawerStore } from '@/services/drawer'
 import { formatCurrency } from '@/lib/utils'
 import { Sale } from '@/services/sales/interface'
-import Link from 'next/link'
 
 interface DebtDetailsTimelineProps {
   sale: Sale
@@ -22,7 +21,7 @@ interface DebtDetailsTimelineProps {
     recordedAt?: string | Date
   }>
   onBack: () => void
-  recordRepaymentHref?: string
+  onRecordRepayment: () => void
 }
 
 export function DebtDetailsTimeline({
@@ -30,7 +29,7 @@ export function DebtDetailsTimeline({
   saleOwedAmount,
   saleRepayments,
   onBack,
-  recordRepaymentHref,
+  onRecordRepayment,
 }: DebtDetailsTimelineProps) {
   const openDrawer = useDrawerStore((state) => state.openDrawer)
 
@@ -59,7 +58,7 @@ export function DebtDetailsTimeline({
         <div className="w-6 h-4"></div>
       </header>
 
-      <div className="flex-1 px-3 pt-4 pb-20 overflow-y-auto flex flex-col gap-4">
+      <div className="flex-1 min-h-0 px-3 pt-4 pb-6 overflow-y-auto flex flex-col gap-4">
         {/* Total Owed Banner */}
         <div className="relative">
           <StatBanner
@@ -112,7 +111,7 @@ export function DebtDetailsTimeline({
           {/* 2. Repayments (if any) */}
           {saleRepayments.map((rep, idx) => {
             const repDate = new Date(
-              rep.recordedAt || Date.now(),
+              rep.recordedAt || sale.recordedAt || sale.createdAt,
             ).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -191,17 +190,10 @@ export function DebtDetailsTimeline({
 
       {/* Bottom record button */}
       {saleOwedAmount > 0 && (
-        <div className="border-t border-[#F1F1F1] mx-auto fixed bottom-0 left-0 right-0 bg-white max-w-125">
+        <div className="shrink-0 border-t border-[#F1F1F1] bg-white">
           <div className="p-4">
-            <Button asChild className="w-full">
-              <Link
-                href={
-                  recordRepaymentHref ||
-                  `/record-repayment?id=${sale._id}`
-                }
-              >
-                Record repayment
-              </Link>
+            <Button type="button" onClick={onRecordRepayment} className="w-full">
+              Record repayment
             </Button>
           </div>
         </div>
