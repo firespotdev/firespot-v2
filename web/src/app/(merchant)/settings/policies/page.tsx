@@ -14,7 +14,7 @@ import { useUserProfile } from '@/services/users'
 import type { UserProfile } from '@/services/users'
 import type { ShopPolicies } from '@/services/auth/interface'
 import { BoxArrowUpIcon } from '@phosphor-icons/react'
-import { useSafeBack } from '@/hooks/use-safe-back'
+import { useSetupStepBack } from '@/hooks/use-setup-step-back'
 
 const POLICY_SECTIONS: Array<{
   label: string
@@ -75,7 +75,7 @@ function PolicyIcon() {
 }
 
 function PoliciesSettingsForm({ profile }: { profile: UserProfile }) {
-  const handleBack = useSafeBack('/profile')
+  const handleBack = useSetupStepBack()
   const update = useUpdatePolicies()
   const [policies, setPolicies] = useState(() =>
     profile.shopPolicies

@@ -1,21 +1,23 @@
 import type { ShopSetupKey } from '@/services/shop'
 import { ReactNode } from 'react'
 import {
+  AddressBookIcon,
   AddressBookTabsIcon,
   ArrowCircleUpRightIcon,
-  HourglassMediumIcon,
-  HouseIcon,
-  PackageIcon,
+  BoxArrowUpIcon,
+  CalendarDotsIcon,
+  CubeIcon,
+  FlagIcon,
+  MapTrifoldIcon,
   QrCodeIcon,
   ScanSmileyIcon,
-  ScrollIcon,
   SealCheckIcon,
   SealPercentIcon,
   StorefrontIcon,
-  TruckIcon,
-  UserCircleIcon,
   UsersThreeIcon,
 } from '@phosphor-icons/react'
+
+const FIRESPOT_GRADIENT = 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)'
 
 /** Where tapping an actionable row goes. */
 export type ChecklistDestination =
@@ -43,35 +45,35 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
     title: 'About your Shop',
     subtitle: 'Set a business name and description',
     Icon: <StorefrontIcon weight="fill" size={24} color="white" />,
-    bg: 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)',
+    bg: FIRESPOT_GRADIENT,
     destination: { kind: 'route', href: '/settings/about' },
   },
   bank: {
     title: 'Where money lands',
     subtitle: 'Add a bank account for payouts',
     Icon: <ArrowCircleUpRightIcon weight="fill" size={24} color="white" />,
-    bg: '#24C166',
+    bg: '#5DBE6F',
     destination: { kind: 'drawer', drawer: 'bank-accounts' },
   },
   verify: {
-    title: 'Verify your identity',
+    title: 'More about you',
     subtitle: 'Provide required documents',
     Icon: <SealCheckIcon weight="fill" size={24} color="white" />,
-    bg: '#2F5BFF',
-    destination: { kind: 'route', href: '/verify' },
+    bg: '#3273F6',
+    destination: { kind: 'route', href: '/verify?from=shop-setup' },
   },
   fulfillment: {
     title: 'How customers get your goods',
     subtitle: 'Setup order fulfillment',
-    Icon: <TruckIcon weight="fill" size={24} color="white" />,
-    bg: '#3B9BF5',
+    Icon: <BoxArrowUpIcon weight="fill" size={24} color="white" />,
+    bg: '#549E67',
     destination: { kind: 'route', href: '/settings/fulfillment' },
   },
   locations: {
-    title: "Your shop's spots",
+    title: 'Add shop locations',
     subtitle: 'Setup locations and landmarks',
-    Icon: <HouseIcon weight="fill" size={24} color="white" />,
-    bg: '#F5A623',
+    Icon: <MapTrifoldIcon weight="fill" size={24} color="white" />,
+    bg: '#F09343',
     destination: { kind: 'route', href: '/settings/locations' },
   },
   employees: {
@@ -84,16 +86,16 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
   },
   contact: {
     title: 'Add contact details',
-    subtitle: 'Add your business contact details',
-    Icon: <UserCircleIcon weight="fill" size={24} color="white" />,
-    bg: '#3B9BF5',
+    subtitle: 'How customers would reach you',
+    Icon: <AddressBookIcon weight="fill" size={24} color="white" />,
+    bg: '#3273F6',
     destination: { kind: 'route', href: '/settings/contact' },
   },
   firstItem: {
-    title: 'Add your first item',
-    subtitle: 'Photo, name and price',
-    Icon: <PackageIcon weight="fill" size={24} color="white" />,
-    bg: '#3B9BF5',
+    title: 'What you sell',
+    subtitle: 'Add your first product',
+    Icon: <CubeIcon weight="fill" size={24} color="white" />,
+    bg: FIRESPOT_GRADIENT,
     destination: { kind: 'route', href: '/products' },
   },
   bookings: {
@@ -104,17 +106,17 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
     destination: { kind: 'none' },
   },
   policies: {
-    title: 'Shop policies',
-    subtitle: 'Set your shop policies',
-    Icon: <ScrollIcon weight="fill" size={24} color="white" />,
-    bg: '#3B9BF5',
+    title: 'How you operate',
+    subtitle: "Your shop's policies",
+    Icon: <FlagIcon weight="fill" size={24} color="white" />,
+    bg: '#F09343',
     destination: { kind: 'route', href: '/settings/policies' },
   },
   operatingHours: {
-    title: 'Operating hours',
+    title: 'When you open and close',
     subtitle: 'Setup opening and closing times',
-    Icon: <HourglassMediumIcon weight="fill" size={24} color="white" />,
-    bg: '#3B9BF5',
+    Icon: <CalendarDotsIcon weight="fill" size={24} color="white" />,
+    bg: '#EB445A',
     destination: { kind: 'route', href: '/settings/active-hours' },
   },
   charges: {
@@ -126,9 +128,9 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
   },
   qrKit: {
     title: 'Get a QR kit',
-    subtitle: 'Order a QR kit for your shop',
+    subtitle: 'Retain customers that visit your Shop',
     Icon: <QrCodeIcon weight="fill" size={24} color="white" />,
-    bg: '#3B9BF5',
+    bg: FIRESPOT_GRADIENT,
     destination: { kind: 'drawer', drawer: 'obtain-kit' },
   },
   suppliers: {
@@ -142,13 +144,14 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
 
 /** Row order on screen, matching the design (independent of API order). */
 export const CHECKLIST_ORDER: ShopSetupKey[] = [
+  'contact',
+  'locations',
+  'about',
   'bank',
   'verify',
   'fulfillment',
-  'locations',
-  'contact',
+  'operatingHours',
   'firstItem',
   'policies',
-  'operatingHours',
   'qrKit',
 ]

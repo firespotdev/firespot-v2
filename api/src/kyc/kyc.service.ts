@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
-import { ConfigService } from '@nestjs/config'
 import { Model } from 'mongoose'
 import { User, UserDocument } from '../schemas/user.schema'
 import {
@@ -30,15 +29,6 @@ import { MerchantReferralsService } from '../merchant-referrals/merchant-referra
  */
 function isClientSideStep(step: KycStepDef): boolean {
   return step.product !== 'kyb'
-}
-
-export function normalizeBusinessName(value: string): string {
-  return String(value || '')
-    .normalize('NFKD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]/g, '')
 }
 
 export function normalizeCacRegistrationNumber(value: string): string {
@@ -66,7 +56,6 @@ export class KycService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private smileIdService: SmileIdService,
     private merchantReferralsService: MerchantReferralsService,
-    private configService: ConfigService,
   ) {}
 
   private resolveCheckResult(
@@ -116,30 +105,9 @@ export class KycService {
       }
     }
 
-    // Development still requires a real SmileID/CAC success. It skips only
-    // the merchant-name comparison so any valid business-name registration
-    // can be used while developing the flow.
-    if (this.configService.get<string>('NODE_ENV') === 'development') {
-      return { passed: true, evidence }
-    }
-
-    const submittedBusinessName = normalizeBusinessName(
-      state?.submittedBusinessName || user.businessName || '',
-    )
-    const verifiedBusinessName = normalizeBusinessName(details.legalName)
-    if (
-      !submittedBusinessName ||
-      !verifiedBusinessName ||
-      submittedBusinessName !== verifiedBusinessName
-    ) {
-      return {
-        passed: false,
-        reason:
-          'This CAC registration does not match your business name. Check the number and try again.',
-        evidence,
-      }
-    }
-
+    // CAC only confirms the registration. The registered name is kept as
+    // evidence; the merchant's business name is theirs to choose, so the two
+    // are never compared.
     return { passed: true, evidence }
   }
 
@@ -503,7 +471,6 @@ export class KycService {
             'kyc.cac.smileUserId': smileUserId,
             'kyc.cac.registrationNumber': registrationNumber,
             'kyc.cac.businessType': 'bn',
-            'kyc.cac.submittedBusinessName': user.businessName || '',
           },
           $unset: {
             'kyc.cac.verifiedBusinessName': 1,

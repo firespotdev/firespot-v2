@@ -2917,7 +2917,7 @@ export class SalesService {
       .sort({ createdAt: -1 })
       .populate(
         'merchantId',
-        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel',
+        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel planStatus',
       )
       .exec()
 
@@ -2936,7 +2936,11 @@ export class SalesService {
             merchant.businessImageUrl || merchant.profilePhotoUrl,
           businessIndustry: merchant.businessIndustry,
           mainAddress: merchant.mainAddress,
-          verificationLevel: merchant.verificationLevel,
+          // The badge shows only once the plan is verified.
+          verificationLevel:
+            merchant.planStatus === 'verified'
+              ? merchant.verificationLevel
+              : null,
         },
       }
     })

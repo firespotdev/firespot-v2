@@ -394,13 +394,13 @@ function ManageBusinessDropdown({
     {
       label: 'Locations',
       icon: <Location size={24} />,
-      href: '/settings/locations',
+      href: '/settings/locations?from=profile',
       proGateLabel: 'Available in',
     },
     {
       label: 'Delivery',
       icon: <Truck size={24} />,
-      href: '/settings/fulfillment',
+      href: '/settings/fulfillment?from=profile',
       proGateLabel: 'Available in',
     },
     // {

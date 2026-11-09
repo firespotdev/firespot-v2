@@ -88,6 +88,7 @@ export class QRKitsService {
     userAgent?: string,
     customerFingerprint?: string,
     revealAccounts = false,
+    scannerUserId?: string,
   ) {
     const qrKit = await this.qrKitModel
       .findOne({ serialNumber: serialNumber.toUpperCase() })
@@ -125,6 +126,7 @@ export class QRKitsService {
           customerFingerprint,
           deviceType: detectDeviceType(userAgent),
           browserType: detectBrowserType(userAgent),
+          userId: scannerUserId,
         })
       } catch (err) {
         console.error(

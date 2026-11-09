@@ -15,16 +15,18 @@ import {
   Switch,
   showNotificationToast,
   BackButton,
+  LoaderCircle,
 } from '@/components/ui'
 import {
   NIGERIAN_STATES,
   STATE_LGA_MAP,
 } from '@/lib/utils/nigerian-states-lgas'
 import { useUserProfile } from '@/services/users'
+import type { UserProfile } from '@/services/users'
 import { useUpdateLocation } from '@/services/shop'
 import { StorefrontIcon } from '@phosphor-icons/react'
 import { LocateFixed } from 'lucide-react'
-import { useSafeBack } from '@/hooks/use-safe-back'
+import { useSetupStepBack } from '@/hooks/use-setup-step-back'
 
 const BRANCH_OPTIONS = ['1', '2', '3', '4', '5', '6+']
 
@@ -34,14 +36,18 @@ interface CapturedLocation {
   accuracy: number
 }
 
-export default function LocationsSettingsPage() {
-  const handleBack = useSafeBack('/profile')
-  const { data: profile } = useUserProfile()
+function LocationsSettingsForm({ profile }: { profile: UserProfile }) {
+  const handleBack = useSetupStepBack()
   const update = useUpdateLocation()
 
   const existing = profile?.mainAddress
+  // "6+" is saved as 6, so 6 or more shows as "6+" again.
   const [branches, setBranches] = useState(
-    profile?.branchCount ? String(profile.branchCount) : '',
+    profile?.branchCount
+      ? profile.branchCount >= 6
+        ? '6+'
+        : String(profile.branchCount)
+      : '',
   )
   const [state, setState] = useState(existing?.state ?? '')
   const [city, setCity] = useState(existing?.city ?? '')
@@ -304,4 +310,20 @@ export default function LocationsSettingsPage() {
       </div>
     </div>
   )
+}
+
+// The form copies saved values into its fields once, so it waits for the
+// profile; otherwise a refresh or direct visit opens with empty fields.
+export default function LocationsSettingsPage() {
+  const { data: profile } = useUserProfile()
+
+  if (!profile) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-[#F4F6F8]">
+        <LoaderCircle innerBg="#F4F6F8" />
+      </div>
+    )
+  }
+
+  return <LocationsSettingsForm profile={profile} />
 }

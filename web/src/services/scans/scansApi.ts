@@ -4,6 +4,7 @@ import type {
   ScanCountResponse,
   RecordCopyResponse,
   MerchantStatsResponse,
+  RecentScan,
 } from './interface'
 
 export interface RecordCopyParams {
@@ -40,6 +41,11 @@ export const scansApi = {
     return response.data
   },
 
+  getMyRecentScans: async (): Promise<RecentScan[]> => {
+    const response = await apiClient.get<RecentScan[]>('/scans/me/recent')
+    return response.data
+  },
+
   getMerchantStats: async (): Promise<MerchantStatsResponse> => {
     const response = await apiClient.get<MerchantStatsResponse>(
       '/scans/merchant/stats',
@@ -69,6 +75,14 @@ export const useScanCountByMerchant = () => {
   return useQuery({
     queryKey: ['scan-count', 'merchant'],
     queryFn: () => scansApi.getScanCountByMerchant(),
+  })
+}
+
+/** Businesses the signed-in customer scanned recently. */
+export const useMyRecentScans = () => {
+  return useQuery({
+    queryKey: ['scans', 'me', 'recent'],
+    queryFn: () => scansApi.getMyRecentScans(),
   })
 }
 

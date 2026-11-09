@@ -44,7 +44,7 @@ export function ActivityRow({ sale, onOpen }: ActivityRowProps) {
           <p className="text-[14px] font-bold text-black truncate">
             {businessName}
           </p>
-          <VerifiedBadge level="PROMAX" />
+          <VerifiedBadge level={merchant.verificationLevel} />
         </div>
         <p className="text-xs font-medium text-[#00000066] truncate mt-0.5">
           {subtitle}

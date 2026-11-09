@@ -28,7 +28,7 @@ import { useUpdateActiveHours } from '@/services/shop'
 import { useUserProfile } from '@/services/users'
 import type { UserProfile } from '@/services/users'
 import { CalendarDotsIcon, MapPinAreaIcon } from '@phosphor-icons/react'
-import { useSafeBack } from '@/hooks/use-safe-back'
+import { useSetupStepBack } from '@/hooks/use-setup-step-back'
 
 type ScreenStep = 'opening-hours' | 'service-type'
 type BookingType = 'SPACE' | 'APPOINTMENT'
@@ -39,7 +39,7 @@ function cloneDays(days: ShopDaySchedule[]) {
 
 function ActiveHoursSettingsForm({ profile }: { profile: UserProfile }) {
   const router = useRouter()
-  const handleBack = useSafeBack('/profile')
+  const handleBack = useSetupStepBack()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const update = useUpdateActiveHours()
   const existing = profile.activeHoursSetup

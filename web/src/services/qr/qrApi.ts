@@ -75,12 +75,18 @@ export const useQRCodeSVG = (url: string | null | undefined) => {
 }
 
 export const useMerchantBySerial = (serialNumber: string | null) => {
-  const identity = useAuthStore((s) => s.isAuthenticated && s.user?.fullName?.trim() ? s.user.id : null)
+  // Any signed-in scan is sent with the token so it counts towards the
+  // customer's recent scans. The API still reveals account numbers only to
+  // named users; naming refetches so they appear.
+  const signedInId = useAuthStore((s) =>
+    s.isAuthenticated ? (s.user?.id ?? null) : null,
+  )
+  const isNamed = useAuthStore((s) => Boolean(s.user?.fullName?.trim()))
   return useQuery({
-    queryKey: ['merchant', serialNumber, identity],
+    queryKey: ['merchant', serialNumber, signedInId, isNamed],
     queryFn: () => {
       if (!serialNumber) throw new Error('Serial number is required')
-      return publicQrApi.getMerchantBySerial(serialNumber, Boolean(identity))
+      return publicQrApi.getMerchantBySerial(serialNumber, Boolean(signedInId))
     },
     enabled: !!serialNumber,
     retry: false,

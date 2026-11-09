@@ -61,6 +61,17 @@ export class ScansController {
     return { count };
   }
 
+  @Get("me/recent")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({
+    summary: "Businesses the signed-in customer scanned recently",
+  })
+  @ApiResponse({ status: 200, description: "Recently scanned businesses" })
+  async getMyRecentScans(@Request() req) {
+    return this.scansService.getRecentScansForUser(req.user.userId);
+  }
+
   @Get("merchant/count")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth("JWT-auth")

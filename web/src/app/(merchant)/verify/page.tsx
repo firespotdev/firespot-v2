@@ -142,6 +142,12 @@ function VerifyContent() {
     )
   }
 
+  // Back to Shop setup when its checklist opened this, otherwise the profile.
+  const leaveVerification = () => {
+    const from = new URLSearchParams(window.location.search).get('from')
+    router.push(from === 'shop-setup' ? '/shop-setup' : '/profile')
+  }
+
   const handlePrimary = () => {
     if (isCacStep) return handleSubmitCac()
     handleStartWebCheck()
@@ -153,7 +159,7 @@ function VerifyContent() {
         <header className="flex items-center justify-between px-3 py-3.5">
           <button
             type="button"
-            onClick={() => router.push('/profile')}
+            onClick={leaveVerification}
             aria-label="Back"
             className="-m-2.5 flex min-h-11 min-w-11 items-center justify-center"
           >
@@ -248,7 +254,7 @@ function VerifyContent() {
                         : 'Your business account is fully set up.'}
                     </p>
                     <Button
-                      onClick={() => router.push('/profile')}
+                      onClick={leaveVerification}
                       className="w-full mt-4 font-bold"
                     >
                       Done

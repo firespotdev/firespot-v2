@@ -2,10 +2,12 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from '@bprogress/next/app'
 import { X } from 'lucide-react'
 import { isToday, isYesterday, format } from 'date-fns'
 import { EmptyState, LoaderCircle } from '@/components/ui'
 import { useCustomerHistory } from '@/services/sales/hooks'
+import { useMyRecentScans, type RecentScan } from '@/services/scans'
 import { useDrawerStore } from '@/services/drawer'
 import type { CustomerSale } from '@/services/sales/interface'
 import {
@@ -13,7 +15,11 @@ import {
   saleItemCount,
 } from '@/lib/utils/customer-sale'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { ActivityRow, NeedsYouSection } from '@/components/activity'
+import {
+  ActivityRow,
+  NeedsYouSection,
+  ScanActivityRow,
+} from '@/components/activity'
 import { Map1, Scan, Setting2 } from 'iconsax-reactjs'
 
 type ActivityTab = 'ALL' | 'ORDERS' | 'PAYMENTS'
@@ -30,6 +36,10 @@ interface MerchantFilter {
   id: string
   name: string
 }
+
+type FeedItem =
+  | { kind: 'sale'; key: string; at: string | Date; sale: CustomerSale }
+  | { kind: 'scan'; key: string; at: string; scan: RecentScan }
 
 const dayDetails = (raw?: string | Date) => {
   const date = raw ? new Date(raw) : new Date()
@@ -62,7 +72,10 @@ function groupByDay<T>(items: T[], getDate: (item: T) => string | Date) {
 }
 
 export default function ActivityPage() {
+  const router = useRouter()
   const { data: sales, isLoading, isError } = useCustomerHistory()
+  // Scans only add to the feed; if they fail to load, payments still show.
+  const { data: recentScans } = useMyRecentScans()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const [activeTab, setActiveTab] = useState<ActivityTab>('ALL')
   const [merchantFilter, setMerchantFilter] = useState<MerchantFilter | null>(
@@ -91,14 +104,42 @@ export default function ActivityPage() {
     }
   }, [scopedSales, activeTab])
 
-  const saleGroups = useMemo(
-    () =>
-      groupByDay(
-        filteredSales,
-        (sale) => sale.recordedAt || sale.createdAt,
-      ),
-    [filteredSales],
+  // Scans aren't orders or payments, so only the ALL tab shows them.
+  const feedItems = useMemo(() => {
+    const saleItems: FeedItem[] = filteredSales.map((sale) => ({
+      kind: 'sale',
+      key: sale._id,
+      at: sale.recordedAt || sale.createdAt,
+      sale,
+    }))
+    const scanItems: FeedItem[] =
+      activeTab === 'ALL'
+        ? (recentScans || [])
+            .filter(
+              (scan) =>
+                !merchantFilter || scan.merchant._id === merchantFilter.id,
+            )
+            .map((scan) => ({
+              kind: 'scan',
+              key: `scan-${scan.merchant._id}`,
+              at: scan.lastScannedAt,
+              scan,
+            }))
+        : []
+    return [...saleItems, ...scanItems].sort(
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime(),
+    )
+  }, [filteredSales, recentScans, activeTab, merchantFilter])
+
+  const feedGroups = useMemo(
+    () => groupByDay(feedItems, (item) => item.at),
+    [feedItems],
   )
+
+  const openScannedBusiness = (scan: RecentScan) =>
+    router.push(
+      `/business?businessId=${encodeURIComponent(scan.merchant._id)}`,
+    )
   const handleOpen = (sale: CustomerSale) => {
     const merchant = resolveSaleMerchant(sale)
     openDrawer({
@@ -187,7 +228,7 @@ export default function ActivityPage() {
                 Couldn’t load your activity. Pull to refresh or try again later.
               </p>
             </div>
-          ) : filteredSales.length === 0 ? (
+          ) : feedItems.length === 0 ? (
             <EmptyState
               emoji={
                 <span
@@ -202,7 +243,7 @@ export default function ActivityPage() {
               details={
                 merchantFilter
                   ? `No matching activity with ${merchantFilter.name}.`
-                  : 'Your completed payments and orders will appear here.'
+                  : 'Your payments, orders and scanned businesses will appear here.'
               }
               cta={
                 <div className="flex items-center gap-3 mt-6">
@@ -226,19 +267,27 @@ export default function ActivityPage() {
           ) : (
             <div className="px-3 w-full h-full">
               {activeTab === 'ALL' && !merchantFilter && <NeedsYouSection />}
-              {saleGroups.map((group) => (
+              {feedGroups.map((group) => (
                 <section key={group.key} className="mb-5">
                   <h2 className="text-[15px] font-bold text-black mb-2">
                     {group.label}
                   </h2>
                   <div className="space-y-2 overflow-hidden">
-                    {group.items.map((sale) => (
-                      <ActivityRow
-                        key={sale._id}
-                        sale={sale}
-                        onOpen={handleOpen}
-                      />
-                    ))}
+                    {group.items.map((item) =>
+                      item.kind === 'sale' ? (
+                        <ActivityRow
+                          key={item.key}
+                          sale={item.sale}
+                          onOpen={handleOpen}
+                        />
+                      ) : (
+                        <ScanActivityRow
+                          key={item.key}
+                          scan={item.scan}
+                          onOpen={openScannedBusiness}
+                        />
+                      ),
+                    )}
                   </div>
                 </section>
               ))}
