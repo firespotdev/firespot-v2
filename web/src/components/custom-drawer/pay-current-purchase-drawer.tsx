@@ -71,6 +71,13 @@ export function PayCurrentPurchaseDrawer({
           ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
           : 'Transfer directly to bank account'
 
+  // Removing the last item leaves nothing to review, so the sheet closes.
+  const removeItem = (id: string, quantity: number) => {
+    const isLastItem = items.length === 1
+    onUpdateQuantity(id, -quantity)
+    if (isLastItem) closeDrawer('pay-current-purchase')
+  }
+
   const handlePay = async () => {
     if (isPaymentPending) return
     setIsPaying(true)
@@ -140,18 +147,20 @@ export function PayCurrentPurchaseDrawer({
             <div className="mt-4 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => onUpdateQuantity(item.id, -item.quantity)}
+                onClick={() => removeItem(item.id, item.quantity)}
                 aria-label={`Remove ${item.name}`}
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#F1F1F1]"
               >
                 <Trash2 size={16} />
               </button>
               <div className="flex h-9 items-center rounded-[10px] bg-[#F1F1F1]">
+                {/* Stops at 1; removing an item is the delete button's job. */}
                 <button
                   type="button"
                   onClick={() => onUpdateQuantity(item.id, -1)}
+                  disabled={item.quantity <= 1}
                   aria-label={`Decrease ${item.name} quantity`}
-                  className="grid h-9 w-9 place-items-center"
+                  className="grid h-9 w-9 place-items-center disabled:text-[#C7C7CC]"
                 >
                   <Minus size={16} />
                 </button>

@@ -73,11 +73,13 @@ function OrderItemRow({
           <Trash2 size={16} />
         </button>
         <div className="flex h-9 items-center rounded-[10px] bg-[#EEF0F2]">
+          {/* Stops at 1; removing an item is the delete button's job. */}
           <button
             type="button"
             onClick={() => onChangeQuantity(-1)}
+            disabled={item.quantity <= 1}
             aria-label={`Decrease ${item.name} quantity`}
-            className="grid h-9 w-9 place-items-center"
+            className="grid h-9 w-9 place-items-center disabled:text-[#C7C7CC]"
           >
             <Minus size={16} />
           </button>

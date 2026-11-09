@@ -534,8 +534,10 @@ const DRAWER_CONFIG: Record<
     noHeader: true,
     direction: 'bottom',
     dismissible: false,
+    // Square top corners; the bottom-sheet rounding is direction-scoped, so the
+    // override needs the same scope to win.
     contentClassName:
-      'overflow-hidden bg-white data-[vaul-drawer-direction=bottom]:max-h-dvh',
+      'overflow-hidden bg-white rounded-t-none data-[vaul-drawer-direction=bottom]:max-h-dvh data-[vaul-drawer-direction=bottom]:rounded-t-none',
   },
   'order-summary': {
     title: 'Your order',

@@ -22,9 +22,9 @@ import {
 } from '@/components/activity'
 import { Map1, Scan, Setting2 } from 'iconsax-reactjs'
 
-type ActivityTab = 'ALL' | 'ORDERS' | 'PAYMENTS'
+type ActivityTab = 'ALL' | 'ORDERS' | 'PAYMENTS' | 'RECENTS'
 
-const TABS: ActivityTab[] = ['ALL', 'ORDERS', 'PAYMENTS']
+const TABS: ActivityTab[] = ['ALL', 'ORDERS', 'PAYMENTS', 'RECENTS']
 
 interface DayGroup<T> {
   key: string
@@ -98,13 +98,16 @@ export default function ActivityPage() {
         return scopedSales.filter((sale) => saleItemCount(sale) > 0)
       case 'PAYMENTS':
         return scopedSales.filter((sale) => saleItemCount(sale) === 0)
+      // RECENTS lists only the businesses scanned recently.
+      case 'RECENTS':
+        return []
       case 'ALL':
       default:
         return scopedSales
     }
   }, [scopedSales, activeTab])
 
-  // Scans aren't orders or payments, so only the ALL tab shows them.
+  // Scans aren't orders or payments, so only ALL and RECENTS show them.
   const feedItems = useMemo(() => {
     const saleItems: FeedItem[] = filteredSales.map((sale) => ({
       kind: 'sale',
@@ -113,7 +116,7 @@ export default function ActivityPage() {
       sale,
     }))
     const scanItems: FeedItem[] =
-      activeTab === 'ALL'
+      activeTab === 'ALL' || activeTab === 'RECENTS'
         ? (recentScans || [])
             .filter(
               (scan) =>
@@ -243,7 +246,9 @@ export default function ActivityPage() {
               details={
                 merchantFilter
                   ? `No matching activity with ${merchantFilter.name}.`
-                  : 'Your payments, orders and scanned businesses will appear here.'
+                  : activeTab === 'RECENTS'
+                    ? 'Businesses you scan will appear here.'
+                    : 'Your payments, orders and scanned businesses will appear here.'
               }
               cta={
                 <div className="flex items-center gap-3 mt-6">
