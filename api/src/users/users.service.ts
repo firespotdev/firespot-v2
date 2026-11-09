@@ -3,6 +3,7 @@ import {
   HttpException,
   HttpStatus,
   ForbiddenException,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -44,6 +45,7 @@ import {
   UpdateFulfillmentDto,
   UpdateLocationDto,
   UpdateShopPoliciesDto,
+  CustomShopPolicyDto,
 } from "./dto/shop-setup.dto";
 import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
 import { getSelectablePaystackChannels } from "../payments/paystack-collection-channels";
@@ -67,6 +69,43 @@ interface PublicMerchantRecord {
   activeHoursSetup?: UserDocument["activeHoursSetup"];
   profileBannerUrl?: string;
   verificationLevel?: "PRO" | "PROMAX";
+}
+
+const SHOP_POLICY_KEYS = [
+  "returns",
+  "exchanges",
+  "cancellations",
+  "refunds",
+] as const;
+
+/**
+ * Policies as customers see them: each standard policy with its time limit,
+ * then the merchant's own. Null until the merchant has set any.
+ */
+function publicShopPolicies(policies: User["shopPolicies"]) {
+  const customPolicies = policies?.customPolicies ?? [];
+  if (!policies?.configuredAt && customPolicies.length === 0) return null;
+
+  const standard = Object.fromEntries(
+    SHOP_POLICY_KEYS.map((key) => {
+      const withinDays = policies?.appliesWithinDays?.[key];
+      return [
+        key,
+        policies?.[key]
+          ? { allowed: true, ...(withinDays ? { withinDays } : {}) }
+          : { allowed: false },
+      ];
+    }),
+  );
+  return {
+    ...standard,
+    customPolicies: customPolicies.map((policy) => ({
+      id: String(policy._id),
+      title: policy.title,
+      details: policy.details,
+      withinDays: policy.appliesWithinDays,
+    })),
+  };
 }
 
 @Injectable()
@@ -216,7 +255,7 @@ export class UsersService {
     const merchant = await this.userModel
       .findOne(this.publicMerchantFilter(identifier))
       .select(
-        "businessName merchantSlug businessImageUrl profilePhotoUrl profileBannerUrl businessIndustry businessDescription fullPhoneNumber mainAddress website socialLinks activeHoursSetup verificationLevel planStatus planGraceUntil",
+        "businessName merchantSlug businessImageUrl profilePhotoUrl profileBannerUrl businessIndustry businessDescription fullPhoneNumber mainAddress mainLocation website socialLinks activeHoursSetup shopPolicies verificationLevel planStatus planGraceUntil",
       )
       .lean()
       .exec();
@@ -239,6 +278,8 @@ export class UsersService {
         shopNumber?: string;
         landmark?: string;
       };
+      mainLocation?: User["mainLocation"];
+      shopPolicies?: User["shopPolicies"];
     };
   }
 
@@ -371,6 +412,13 @@ export class UsersService {
       openingHours: merchant.activeHoursSetup?.openingHours || null,
       verificationLevel:
         merchant.planStatus === "verified" ? merchant.verificationLevel : null,
+      mapLocation: merchant.mainLocation?.coordinates
+        ? {
+            latitude: merchant.mainLocation.coordinates[1],
+            longitude: merchant.mainLocation.coordinates[0],
+          }
+        : null,
+      shopPolicies: publicShopPolicies(merchant.shopPolicies),
       serialNumber: qrKit?.serialNumber,
       locations,
       stats: {
@@ -712,12 +760,115 @@ export class UsersService {
 
   async updateShopPolicies(userId: string, dto: UpdateShopPoliciesDto) {
     const user = await this.getMerchantOrThrow(userId);
+    const current = this.currentShopPolicies(user);
+    // A time limit only means something for a policy that's on.
+    const appliesWithinDays = Object.fromEntries(
+      SHOP_POLICY_KEYS.flatMap((key) =>
+        dto[key] && dto.appliesWithinDays?.[key]
+          ? [[key, dto.appliesWithinDays[key]]]
+          : [],
+      ),
+    );
     user.shopPolicies = {
-      ...dto,
+      returns: dto.returns,
+      exchanges: dto.exchanges,
+      cancellations: dto.cancellations,
+      refunds: dto.refunds,
+      appliesWithinDays,
+      customPolicies: current.customPolicies ?? [],
       configuredAt: new Date(),
     };
     await user.save();
     return { user: this.sanitizeUser(user) };
+  }
+
+  /** The saved policies as a plain object, with every switch defaulting off. */
+  private currentShopPolicies(user: UserDocument) {
+    const saved = user.shopPolicies as
+      | (UserDocument["shopPolicies"] & { toObject?: () => unknown })
+      | undefined;
+    const plain = (saved?.toObject ? saved.toObject() : saved) as
+      | NonNullable<UserDocument["shopPolicies"]>
+      | undefined;
+    return {
+      returns: false,
+      exchanges: false,
+      cancellations: false,
+      refunds: false,
+      ...plain,
+    };
+  }
+
+  /**
+   * Custom policies are saved as they're written; they don't complete the
+   * policies step, which needs the main screen saved.
+   */
+  private async saveCustomShopPolicies(
+    userId: string,
+    change: (
+      policies: NonNullable<
+        NonNullable<UserDocument["shopPolicies"]>["customPolicies"]
+      >,
+    ) => NonNullable<
+      NonNullable<UserDocument["shopPolicies"]>["customPolicies"]
+    >,
+  ) {
+    const user = await this.getMerchantOrThrow(userId);
+    const current = this.currentShopPolicies(user);
+    user.shopPolicies = {
+      ...current,
+      customPolicies: change(current.customPolicies ?? []),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  async addCustomShopPolicy(userId: string, dto: CustomShopPolicyDto) {
+    return this.saveCustomShopPolicies(userId, (policies) => [
+      ...policies,
+      {
+        _id: new Types.ObjectId(),
+        title: dto.title,
+        details: dto.details,
+        appliesWithinDays: dto.appliesWithinDays,
+      },
+    ]);
+  }
+
+  async updateCustomShopPolicy(
+    userId: string,
+    policyId: string,
+    dto: CustomShopPolicyDto,
+  ) {
+    return this.saveCustomShopPolicies(userId, (policies) => {
+      this.assertCustomPolicyExists(policies, policyId);
+      return policies.map((policy) =>
+        String(policy._id) === policyId
+          ? {
+              ...policy,
+              title: dto.title,
+              details: dto.details,
+              appliesWithinDays: dto.appliesWithinDays,
+            }
+          : policy,
+      );
+    });
+  }
+
+  async deleteCustomShopPolicy(userId: string, policyId: string) {
+    return this.saveCustomShopPolicies(userId, (policies) => {
+      this.assertCustomPolicyExists(policies, policyId);
+      return policies.filter((policy) => String(policy._id) !== policyId);
+    });
+  }
+
+  private assertCustomPolicyExists(
+    policies: Array<{ _id: Types.ObjectId }>,
+    policyId: string,
+  ) {
+    if (!policies.some((policy) => String(policy._id) === policyId)) {
+      throw new NotFoundException("This policy no longer exists");
+    }
   }
 
   async updateActiveHoursSetup(userId: string, dto: UpdateActiveHoursSetupDto) {

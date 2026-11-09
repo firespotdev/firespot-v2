@@ -208,6 +208,7 @@ describe("UsersService public merchant discovery", () => {
     "returns a customer-safe business profile (active QR: %s)",
     async (hasActiveQr) => {
       const merchantId = new Types.ObjectId();
+      const policyId = new Types.ObjectId();
       const userModel = {
         findOne: jest.fn<unknown, [unknown]>().mockReturnValue({
           select: jest.fn().mockReturnValue({
@@ -222,6 +223,23 @@ describe("UsersService public merchant discovery", () => {
                 shopIsLive: false,
                 planStatus: "verified",
                 verificationLevel: "PRO",
+                mainLocation: { type: "Point", coordinates: [3.35, 6.6] },
+                shopPolicies: {
+                  returns: true,
+                  exchanges: false,
+                  cancellations: false,
+                  refunds: false,
+                  appliesWithinDays: { returns: 7 },
+                  customPolicies: [
+                    {
+                      _id: policyId,
+                      title: "Deposits",
+                      details: "Bookings need a 20% deposit",
+                      appliesWithinDays: 14,
+                    },
+                  ],
+                  configuredAt: new Date("2026-11-01T00:00:00.000Z"),
+                },
               }),
             }),
           }),
@@ -304,6 +322,21 @@ describe("UsersService public merchant discovery", () => {
         favoriteCount: 3,
         averageSpend: 2500,
         averageRating: 4.5,
+      });
+      expect(result.mapLocation).toEqual({ latitude: 6.6, longitude: 3.35 });
+      expect(result.shopPolicies).toEqual({
+        returns: { allowed: true, withinDays: 7 },
+        exchanges: { allowed: false },
+        cancellations: { allowed: false },
+        refunds: { allowed: false },
+        customPolicies: [
+          {
+            id: String(policyId),
+            title: "Deposits",
+            details: "Bookings need a 20% deposit",
+            withinDays: 14,
+          },
+        ],
       });
       expect(result).not.toHaveProperty("bankAccounts");
     },

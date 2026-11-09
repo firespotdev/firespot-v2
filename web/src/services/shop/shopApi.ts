@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/utils/axios'
 import type {
+  CustomShopPolicyPayload,
   UpdateBusinessNamePayload,
   GoLiveResponse,
   ShopSetupResponse,
@@ -47,6 +48,26 @@ export const shopApi = {
   },
   updatePolicies: async (payload: UpdateShopPoliciesPayload) => {
     const res = await apiClient.patch('/users/me/policies', payload)
+    return res.data
+  },
+  addCustomPolicy: async (payload: CustomShopPolicyPayload) => {
+    const res = await apiClient.post('/users/me/policies/custom', payload)
+    return res.data
+  },
+  updateCustomPolicy: async ({
+    id,
+    ...payload
+  }: CustomShopPolicyPayload & { id: string }) => {
+    const res = await apiClient.patch(
+      `/users/me/policies/custom/${encodeURIComponent(id)}`,
+      payload,
+    )
+    return res.data
+  },
+  deleteCustomPolicy: async (id: string) => {
+    const res = await apiClient.delete(
+      `/users/me/policies/custom/${encodeURIComponent(id)}`,
+    )
     return res.data
   },
   updateActiveHours: async (payload: UpdateActiveHoursSetupPayload) => {
@@ -95,6 +116,17 @@ export const useUpdateEmployeeSetup = () =>
 
 export const useUpdatePolicies = () =>
   useShopMutation<UpdateShopPoliciesPayload>(shopApi.updatePolicies)
+
+export const useAddCustomPolicy = () =>
+  useShopMutation<CustomShopPolicyPayload>(shopApi.addCustomPolicy)
+
+export const useUpdateCustomPolicy = () =>
+  useShopMutation<CustomShopPolicyPayload & { id: string }>(
+    shopApi.updateCustomPolicy,
+  )
+
+export const useDeleteCustomPolicy = () =>
+  useShopMutation<string>(shopApi.deleteCustomPolicy)
 
 export const useUpdateActiveHours = () =>
   useShopMutation<UpdateActiveHoursSetupPayload>(shopApi.updateActiveHours)

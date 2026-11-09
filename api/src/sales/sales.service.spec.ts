@@ -1159,6 +1159,83 @@ describe("SalesService amount invariants", () => {
     });
   });
 
+  describe("customer activity with one business", () => {
+    const userId = "507f1f77bcf86cd799439014";
+    const merchantId = "507f1f77bcf86cd799439012";
+    const saleDoc = (value: Record<string, unknown>) => ({
+      toObject: () => ({ merchantId: { _id: merchantId }, ...value }),
+    });
+
+    it("labels each sale Paid, Processing or Failed and totals what was paid", async () => {
+      const find = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          limit: jest.fn().mockReturnValue({
+            populate: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([
+                saleDoc({ _id: "a", status: "CONFIRMED", amount: 5000, amountPaid: 5000 }),
+                saleDoc({ _id: "b", status: "CONFIRMED", amount: 3000 }),
+                saleDoc({ _id: "c", status: "PENDING", amount: 2000 }),
+                saleDoc({
+                  _id: "d",
+                  status: "CANCELLED",
+                  amount: 1000,
+                  paystackAttemptStatus: "failed",
+                }),
+                saleDoc({
+                  _id: "e",
+                  status: "PENDING",
+                  amount: 800,
+                  paystackAttemptStatus: "abandoned",
+                }),
+              ]),
+            }),
+          }),
+        }),
+      });
+      const service = createService({ find });
+
+      const result = await service.getMyActivityWithMerchant(userId, merchantId);
+
+      expect(result.totalSpent).toBe(8000);
+      expect(result.paidCount).toBe(2);
+      expect(
+        result.data.map((sale: { _id: string; activityStatus: string }) => [
+          sale._id,
+          sale.activityStatus,
+        ]),
+      ).toEqual([
+        ["a", "PAID"],
+        ["b", "PAID"],
+        ["c", "PROCESSING"],
+        ["d", "FAILED"],
+        ["e", "FAILED"],
+      ]);
+      const [query] = find.mock.calls[0] as [Record<string, unknown>];
+      expect(query).toMatchObject({
+        customerUserId: expect.anything(),
+        merchantId: expect.anything(),
+        isArchived: { $ne: true },
+        $or: [
+          { status: { $in: ["CONFIRMED", "PENDING"] } },
+          {
+            status: "CANCELLED",
+            paystackAttemptStatus: { $in: ["failed", "abandoned"] },
+          },
+        ],
+      });
+    });
+
+    it("returns nothing for an invalid id", async () => {
+      const find = jest.fn();
+      const service = createService({ find });
+
+      await expect(
+        service.getMyActivityWithMerchant(userId, "not-an-id"),
+      ).resolves.toEqual({ totalSpent: 0, paidCount: 0, data: [] });
+      expect(find).not.toHaveBeenCalled();
+    });
+  });
+
   describe("recent sales queries", () => {
     const merchantId = "507f1f77bcf86cd799439012";
 

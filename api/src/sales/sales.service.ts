@@ -72,6 +72,10 @@ const saleCustomerPopulate = () => [
   { path: 'customerUserId', select: 'profilePhotoUrl' },
 ]
 
+const FAILED_PAYSTACK_ATTEMPTS: Array<'failed' | 'abandoned'> = ['failed', 'abandoned']
+// A customer's activity with one business is short; this caps a runaway list.
+const CUSTOMER_MERCHANT_ACTIVITY_LIMIT = 200
+
 @Injectable()
 export class SalesService {
   private readonly logger = new Logger(SalesService.name)
@@ -2921,29 +2925,84 @@ export class SalesService {
       )
       .exec()
 
-    return sales.map((sale) => {
-      const value = sale.toObject() as any
-      const merchant = value.merchantId
-      if (!merchant || typeof merchant !== 'object') return value
+    return sales.map((sale) => this.toCustomerActivity(sale))
+  }
 
-      return {
-        ...value,
-        merchantId: {
-          _id: merchant._id,
-          businessName: merchant.businessName,
-          merchantSlug: merchant.merchantSlug,
-          businessImageUrl:
-            merchant.businessImageUrl || merchant.profilePhotoUrl,
-          businessIndustry: merchant.businessIndustry,
-          mainAddress: merchant.mainAddress,
-          // The badge shows only once the plan is verified.
-          verificationLevel:
-            merchant.planStatus === 'verified'
-              ? merchant.verificationLevel
-              : null,
-        },
-      }
+  /** A sale as the customer's activity shows it, with a public merchant card. */
+  private toCustomerActivity(sale: SaleDocument) {
+    const value = sale.toObject() as any
+    const merchant = value.merchantId
+    if (!merchant || typeof merchant !== 'object') return value
+
+    return {
+      ...value,
+      merchantId: {
+        _id: merchant._id,
+        businessName: merchant.businessName,
+        merchantSlug: merchant.merchantSlug,
+        businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
+        businessIndustry: merchant.businessIndustry,
+        mainAddress: merchant.mainAddress,
+        // The badge shows only once the plan is verified.
+        verificationLevel:
+          merchant.planStatus === 'verified' ? merchant.verificationLevel : null,
+      },
+    }
+  }
+
+  /**
+   * The customer's sales with one business for its Activity tab: paid,
+   * still processing, or failed at Paystack. Sales the customer cancelled
+   * themselves and outstanding balances aren't shown.
+   */
+  async getMyActivityWithMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(merchantId)) {
+      return { totalSpent: 0, paidCount: 0, data: [] }
+    }
+
+    const sales = await this.saleModel
+      .find({
+        customerUserId: new Types.ObjectId(userId),
+        merchantId: new Types.ObjectId(merchantId),
+        isArchived: { $ne: true },
+        $or: [
+          { status: { $in: ['CONFIRMED', 'PENDING'] } },
+          {
+            status: 'CANCELLED',
+            paystackAttemptStatus: { $in: FAILED_PAYSTACK_ATTEMPTS },
+          },
+        ],
+      })
+      .sort({ createdAt: -1 })
+      .limit(CUSTOMER_MERCHANT_ACTIVITY_LIMIT)
+      .populate(
+        'merchantId',
+        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel planStatus',
+      )
+      .exec()
+
+    const data = sales.map((sale) => {
+      const value = this.toCustomerActivity(sale)
+      const failed = FAILED_PAYSTACK_ATTEMPTS.includes(value.paystackAttemptStatus)
+      const activityStatus =
+        value.status === 'CONFIRMED'
+          ? 'PAID'
+          : failed
+            ? 'FAILED'
+            : 'PROCESSING'
+      return { ...value, activityStatus }
     })
+    const paid = data.filter((sale) => sale.activityStatus === 'PAID')
+
+    return {
+      totalSpent: paid.reduce(
+        (sum, sale) =>
+          sum + (sale.amountPaid > 0 ? sale.amountPaid : sale.amount || 0),
+        0,
+      ),
+      paidCount: paid.length,
+      data,
+    }
   }
 
   /**

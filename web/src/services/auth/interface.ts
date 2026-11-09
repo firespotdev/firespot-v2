@@ -49,11 +49,28 @@ export interface EmployeeSetup {
   configuredAt?: string
 }
 
+export type StandardShopPolicy =
+  | 'returns'
+  | 'exchanges'
+  | 'cancellations'
+  | 'refunds'
+
+/** A merchant-written policy shown on their Shop page. */
+export interface CustomShopPolicy {
+  _id: string
+  title: string
+  details: string
+  appliesWithinDays: number
+}
+
 export interface ShopPolicies {
   returns: boolean
   exchanges: boolean
   cancellations: boolean
   refunds: boolean
+  /** Days after purchase each policy that's on applies for. */
+  appliesWithinDays?: Partial<Record<StandardShopPolicy, number>>
+  customPolicies?: CustomShopPolicy[]
   configuredAt?: string
 }
 

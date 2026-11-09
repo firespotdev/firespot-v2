@@ -4,6 +4,7 @@ import {
   ArchiveAllSalesResult,
   ConfirmAllSalesResult,
   CustomerSale,
+  CustomerMerchantActivity,
   PublicSale,
   Sale,
   SaleDraft,
@@ -208,6 +209,15 @@ export const SalesApi = {
 
   getCustomerHistory: async (): Promise<CustomerSale[]> => {
     const { data } = await apiClient.get('/sales/customer/history');
+    return data;
+  },
+
+  getCustomerMerchantActivity: async (
+    merchantId: string,
+  ): Promise<CustomerMerchantActivity> => {
+    const { data } = await apiClient.get(
+      `/sales/customer/merchants/${encodeURIComponent(merchantId)}`,
+    );
     return data;
   },
 

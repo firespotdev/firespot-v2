@@ -1,16 +1,13 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import {
   ArrowUpRight,
   Bookmark,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   FileText,
-  MapPin,
   MessageCircle,
   Phone,
   ScanBarcode,
@@ -19,10 +16,12 @@ import {
 import { LoaderCircle } from '@/components/ui'
 import type { PublicBusinessProfile } from '@/services/business-profile'
 import { cn, formatCurrency } from '@/lib/utils'
+import { externalHref } from '@/lib/utils/external-link'
 import { useMerchantPosts } from '@/services/posts/hooks'
 import { Activity } from './activity'
 import { ItemsTab } from './items-tab'
 import { Feedback } from './feedback'
+import { AboutTab } from './about-tab'
 
 export type BusinessTab =
   | 'items'
@@ -47,91 +46,10 @@ const compactNumber = new Intl.NumberFormat('en', {
   maximumFractionDigits: 1,
 })
 
-function externalHref(value: string) {
-  if (/^https?:\/\//i.test(value)) return value
-  return `https://${value}`
-}
-
 function StatChip({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex shrink-0 items-center gap-1 rounded-[6px] border border-[#0000001A] bg-white px-[8px] py-[7px]">
       {children}
-    </div>
-  )
-}
-
-function AccordionSection({
-  title,
-  hasContent,
-  children,
-}: {
-  title: string
-  hasContent: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <details
-      open={hasContent}
-      className="group border-b border-[#f1f1f1] last:border-0"
-    >
-      <summary className="flex cursor-pointer list-none items-center justify-between py-[0.9rem] text-[0.938rem] font-semibold marker:hidden">
-        {title}
-        <ChevronUp
-          size={16}
-          className="transition-transform group-not-open:rotate-180"
-        />
-      </summary>
-      {hasContent && <div className="pb-4">{children}</div>}
-    </details>
-  )
-}
-
-function SocialLink({
-  href,
-  src,
-  label,
-}: {
-  href?: string
-  src: string
-  label: string
-}) {
-  if (!href) return null
-  return (
-    <Link
-      href={externalHref(href)}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={label}
-      className="flex items-center"
-    >
-      <Image src={src} alt="" width={36} height={36} className="h-9 w-9" />
-    </Link>
-  )
-}
-
-function OpeningHours({ business }: { business: PublicBusinessProfile }) {
-  const days = business.openingHours?.days.filter((day) => day.enabled) || []
-  if (days.length === 0) {
-    return (
-      <p className="text-sm font-medium text-[#000000B2]">
-        No opening hours available yet.
-      </p>
-    )
-  }
-
-  return (
-    <div className="space-y-1.5">
-      {days.map((day) => (
-        <div
-          key={day.day}
-          className="flex items-center justify-between gap-4 text-sm font-medium text-[#000000B2]"
-        >
-          <span>{day.day}</span>
-          <span>
-            {day.opensAt || '—'} – {day.closesAt || '—'}
-          </span>
-        </div>
-      ))}
     </div>
   )
 }
@@ -276,10 +194,6 @@ export function MerchantProfile({
     { value: 'activity', label: 'Activity' },
     { value: 'about', label: 'About' },
   ]
-  const hasOpeningHours = Boolean(
-    business.openingHours?.days.some((day) => day.enabled),
-  )
-  const hasSocialLinks = Object.values(business.socialLinks).some(Boolean)
 
   return (
     <div className="flex w-full flex-col pt-[18px]">
@@ -554,98 +468,14 @@ export function MerchantProfile({
           />
         )}
 
-        {activeTab === 'about' && (
-          <div className="overflow-hidden rounded-lg bg-white px-4">
-            <AccordionSection
-              title={`About ${business.businessName}`}
-              hasContent={Boolean(business.businessDescription)}
-            >
-              <p className="text-sm font-medium text-[#000000B2]">
-                {business.businessDescription ||
-                  'No business description is available yet.'}
-              </p>
-            </AccordionSection>
-
-            <AccordionSection
-              title="Locations"
-              hasContent={business.locations.length > 0}
-            >
-              {business.locations.length > 0 && (
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                  {business.locations.map((location) => (
-                    <div
-                      key={location.id}
-                      className="flex items-center gap-3 rounded-[8px] border border-[#0000001A] p-3"
-                    >
-                      <div
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${
-                          location.isPrimary ? 'bg-[#FB5012]' : 'bg-[#BFBFBF]'
-                        }`}
-                      >
-                        <MapPin size={17} color="white" fill="white" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-black">
-                          {location.name}
-                        </p>
-                        {(location.address || location.location) && (
-                          <p className="text-xs font-medium text-[#00000080]">
-                            {[location.address, location.location]
-                              .filter(Boolean)
-                              .join(' · ')}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </AccordionSection>
-
-            <AccordionSection
-              title="Opening hours"
-              hasContent={hasOpeningHours}
-            >
-              <OpeningHours business={business} />
-            </AccordionSection>
-
-            <AccordionSection title="Social links" hasContent={hasSocialLinks}>
-              <div className="flex w-full items-center gap-6">
-                <SocialLink
-                  href={business.socialLinks.facebook}
-                  src="/icons/fb.svg"
-                  label="Facebook"
-                />
-                <SocialLink
-                  href={business.socialLinks.whatsapp}
-                  src="/icons/whatsapp.svg"
-                  label="WhatsApp"
-                />
-                <SocialLink
-                  href={business.socialLinks.instagram}
-                  src="/icons/ig.svg"
-                  label="Instagram"
-                />
-                <SocialLink
-                  href={business.socialLinks.x}
-                  src="/icons/twitter.svg"
-                  label="X"
-                />
-                <SocialLink
-                  href={business.socialLinks.tiktok}
-                  src="/icons/tiktok.png"
-                  label="TikTok"
-                />
-              </div>
-            </AccordionSection>
-          </div>
-        )}
+        {activeTab === 'about' && <AboutTab business={business} />}
 
         {activeTab === 'activity' && <Activity business={business} />}
         {activeTab === 'feedback' && (
           <Feedback
             businessId={business.id}
             businessName={business.businessName}
+            serialNumber={business.serialNumber}
           />
         )}
       </div>

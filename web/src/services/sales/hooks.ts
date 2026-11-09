@@ -149,6 +149,18 @@ export const useCustomerHistory = () => {
   });
 };
 
+/** The signed-in customer's sales with one business. */
+export const useCustomerMerchantActivity = (
+  merchantId: string,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ['customer-history', 'merchant', merchantId],
+    queryFn: () => SalesApi.getCustomerMerchantActivity(merchantId),
+    enabled: enabled && Boolean(merchantId),
+  });
+};
+
 export const useSalesStats = <TParams extends object = Record<string, never>>(
   params?: TParams,
   options?: { enabled?: boolean },

@@ -1,105 +1,136 @@
 'use client'
 
 import { useState } from 'react'
-import { ArchiveRestore, ChevronRight } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useRouter } from '@bprogress/next/app'
 import {
+  ArrowsLeftRightIcon,
+  ArrowUUpLeftIcon,
+  BoxArrowUpIcon,
+  NoteIcon,
+  PlusIcon,
+  ReceiptXIcon,
+} from '@phosphor-icons/react'
+import {
+  ActionList,
+  ActionListItem,
   AppCard,
   LoaderCircle,
   Switch,
   showNotificationToast,
 } from '@/components/ui'
 import { ShopSetupScreen } from '@/components/shop/shop-setup-screen'
+import {
+  DEFAULT_POLICY_DAYS,
+  PolicyTimeLimit,
+  isValidPolicyDays,
+} from '@/components/shop/policy-time-limit'
 import { useUpdatePolicies } from '@/services/shop'
 import { useUserProfile } from '@/services/users'
 import type { UserProfile } from '@/services/users'
-import type { ShopPolicies } from '@/services/auth/interface'
-import { BoxArrowUpIcon } from '@phosphor-icons/react'
+import type { StandardShopPolicy } from '@/services/auth/interface'
 import { useSetupStepBack } from '@/hooks/use-setup-step-back'
+import { cn } from '@/lib/utils'
 
-const POLICY_SECTIONS: Array<{
-  label: string
-  items: Array<{
-    key: keyof Pick<
-      ShopPolicies,
-      'returns' | 'exchanges' | 'cancellations' | 'refunds'
-    >
-    title: string
-    subtitle: string
-  }>
+const FIRESPOT_GRADIENT = 'linear-gradient(135deg, #FB5012 0%, #D72483 100%)'
+
+const POLICIES: Array<{
+  key: StandardShopPolicy
+  title: string
+  subtitle: string
+  icon: ReactNode
+  bg: string
 }> = [
   {
-    label: 'Returns and exchanges',
-    items: [
-      {
-        key: 'returns',
-        title: 'Returns',
-        subtitle: 'I accept returns of items',
-      },
-      {
-        key: 'exchanges',
-        title: 'Exchanges',
-        subtitle: 'I allow exchanges of items',
-      },
-    ],
+    key: 'returns',
+    title: 'Returns',
+    subtitle: 'I accept returns of items',
+    icon: <ArrowUUpLeftIcon size={24} weight="bold" color="white" />,
+    bg: '#F09343',
   },
   {
-    label: 'Cancellations and refunds',
-    items: [
-      {
-        key: 'cancellations',
-        title: 'Cancellations',
-        subtitle: 'I allow cancellation of bookings',
-      },
-      {
-        key: 'refunds',
-        title: 'Refunds',
-        subtitle: 'I give refunds on cancellations',
-      },
-    ],
+    key: 'exchanges',
+    title: 'Exchanges',
+    subtitle: 'I allow exchanges of items',
+    icon: <ArrowsLeftRightIcon size={24} weight="bold" color="white" />,
+    bg: '#3273F6',
+  },
+  {
+    key: 'cancellations',
+    title: 'Cancellations',
+    subtitle: 'I allow cancellation of bookings',
+    icon: <ReceiptXIcon size={24} weight="fill" color="white" />,
+    bg: FIRESPOT_GRADIENT,
+  },
+  {
+    key: 'refunds',
+    title: 'Refunds',
+    subtitle: 'I give refunds on cancellations',
+    icon: <BoxArrowUpIcon size={24} weight="fill" color="white" />,
+    bg: '#5DBE6F',
   },
 ]
 
-const EMPTY_POLICIES = {
-  returns: false,
-  exchanges: false,
-  cancellations: false,
-  refunds: false,
-}
+const CUSTOM_POLICY_BG = '#549E67'
+const CUSTOM_POLICY_HREF = '/settings/policies/custom'
 
-function PolicyIcon() {
+type PolicySwitches = Record<StandardShopPolicy, boolean>
+type PolicyDays = Record<StandardShopPolicy, number | undefined>
+
+function PolicyTile({ bg, children }: { bg: string; children: ReactNode }) {
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-linear-to-br from-[#FB5012] to-[#D72483] text-white">
-      <BoxArrowUpIcon size={24} weight="fill" color="white" />
+    <span
+      className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]"
+      style={{ background: bg }}
+    >
+      {children}
     </span>
   )
 }
 
 function PoliciesSettingsForm({ profile }: { profile: UserProfile }) {
+  const router = useRouter()
   const handleBack = useSetupStepBack()
   const update = useUpdatePolicies()
-  const [policies, setPolicies] = useState(() =>
-    profile.shopPolicies
-      ? {
-          returns: profile.shopPolicies.returns,
-          exchanges: profile.shopPolicies.exchanges,
-          cancellations: profile.shopPolicies.cancellations,
-          refunds: profile.shopPolicies.refunds,
-        }
-      : EMPTY_POLICIES,
+  const saved = profile.shopPolicies
+  const [switches, setSwitches] = useState<PolicySwitches>(() => ({
+    returns: saved?.returns ?? false,
+    exchanges: saved?.exchanges ?? false,
+    cancellations: saved?.cancellations ?? false,
+    refunds: saved?.refunds ?? false,
+  }))
+  const [days, setDays] = useState<PolicyDays>(() => ({
+    returns: saved?.appliesWithinDays?.returns ?? DEFAULT_POLICY_DAYS,
+    exchanges: saved?.appliesWithinDays?.exchanges ?? DEFAULT_POLICY_DAYS,
+    cancellations:
+      saved?.appliesWithinDays?.cancellations ?? DEFAULT_POLICY_DAYS,
+    refunds: saved?.appliesWithinDays?.refunds ?? DEFAULT_POLICY_DAYS,
+  }))
+  const customPolicies = saved?.customPolicies ?? []
+
+  // Every policy that's on needs a usable time limit before saving.
+  const canSave = POLICIES.every(
+    ({ key }) => !switches[key] || isValidPolicyDays(days[key]),
   )
 
-  const toggle = (key: keyof typeof EMPTY_POLICIES, value: boolean) =>
-    setPolicies((current) => ({ ...current, [key]: value }))
-
   const handleContinue = () => {
-    update.mutate(policies, {
-      onSuccess: handleBack,
-      onError: () =>
-        showNotificationToast({
-          message: 'Could not save. Try again.',
-          mode: 'error',
-        }),
-    })
+    const appliesWithinDays = Object.fromEntries(
+      POLICIES.filter(({ key }) => switches[key]).map(({ key }) => [
+        key,
+        days[key],
+      ]),
+    )
+    update.mutate(
+      { ...switches, appliesWithinDays },
+      {
+        onSuccess: handleBack,
+        onError: () =>
+          showNotificationToast({
+            message: 'Could not save. Try again.',
+            mode: 'error',
+          }),
+      },
+    )
   }
 
   return (
@@ -108,67 +139,97 @@ function PoliciesSettingsForm({ profile }: { profile: UserProfile }) {
       title="Specify Shop Policies"
       onBack={handleBack}
       onContinue={handleContinue}
+      continueLabel="Save and continue"
+      disabled={!canSave}
       pending={update.isPending}
       className="bg-linear-to-br from-[#FFFFFF] to-[#F6F7F8]"
     >
-      <div className="mt-4 rounded-[12px] bg-[#F4F6F8] px-4 py-3 text-[13px] font-medium leading-[130%] text-[#6B7280]">
-        Details of each policy can be updated in your business settings at any
-        time.
-      </div>
+      <div className="mt-6 space-y-3">
+        {POLICIES.map((policy) => (
+          <section
+            key={policy.key}
+            className={cn(
+              switches[policy.key] && 'border-b border-[#E5E7EB] pb-5',
+            )}
+          >
+            <AppCard
+              rounded="12"
+              padding="sm"
+              className="flex items-center gap-3"
+            >
+              <PolicyTile bg={policy.bg}>{policy.icon}</PolicyTile>
+              <div className="min-w-0 flex-1">
+                <p className="text-[15px] font-bold text-[#111827]">
+                  {policy.title}
+                </p>
+                <p className="mt-0.5 text-[13px] font-medium text-[#64748B]">
+                  {policy.subtitle}
+                </p>
+              </div>
+              <Switch
+                checked={switches[policy.key]}
+                onCheckedChange={(value) =>
+                  setSwitches((current) => ({ ...current, [policy.key]: value }))
+                }
+                aria-label={policy.title}
+              />
+            </AppCard>
 
-      {POLICY_SECTIONS.map((section, sectionIndex) => (
-        <section
-          key={section.label}
-          className={
-            sectionIndex > 0 ? 'mt-4 border-t border-[#E5E7EB] pt-5' : 'mt-6'
-          }
-        >
-          <p className="mb-2 text-xs font-medium text-[#545F6C]">
-            {section.label}
-          </p>
-          <div className="space-y-2">
-            {section.items.map((item) => (
-              <AppCard
-                key={item.key}
-                rounded="12"
-                padding="sm"
-                className="flex items-center gap-3"
-              >
-                <PolicyIcon />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-[#111827]">
-                    {item.title}
-                  </p>
-                  <p className="mt-0.5 text-[12px] font-medium text-[#64748B]">
-                    {item.subtitle}
-                  </p>
-                </div>
-                <Switch
-                  checked={policies[item.key]}
-                  onCheckedChange={(value) => toggle(item.key, value)}
-                />
-              </AppCard>
-            ))}
-          </div>
-        </section>
-      ))}
+            {switches[policy.key] && (
+              <PolicyTimeLimit
+                days={days[policy.key]}
+                onChange={(value) =>
+                  setDays((current) => ({ ...current, [policy.key]: value }))
+                }
+                className="mt-4"
+              />
+            )}
+          </section>
+        ))}
+      </div>
 
       <section className="mt-6 border-t border-[#E5E7EB] pt-5">
         <p className="mb-3 text-sm font-medium text-[#545F6C]">
           Your Shop policies
         </p>
-        <div className="flex w-full items-center gap-3 rounded-[12px] border border-[#F1F1F1] bg-white p-3 text-left shadow-[0px_4px_8px_0px_#0000000A]">
-          <PolicyIcon />
-          <div className="min-w-0 flex-1">
-            <p className="text-[14px] font-bold text-[#111827]">
-              Add Shop policy
-            </p>
-            <p className="mt-0.5 text-[12px] font-medium text-[#64748B]">
-              Custom
-            </p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-[#BDBDBD]" />
-        </div>
+        {customPolicies.length > 0 && (
+          <ActionList rounded="12" className="mb-3">
+            {customPolicies.map((policy) => (
+              <ActionListItem
+                key={policy._id}
+                icon={
+                  <PolicyTile bg={CUSTOM_POLICY_BG}>
+                    <NoteIcon size={24} weight="fill" color="white" />
+                  </PolicyTile>
+                }
+                title={policy.title}
+                subtitle={`Within ${policy.appliesWithinDays} days · Tap to edit`}
+                onClick={() =>
+                  router.push(
+                    `${CUSTOM_POLICY_HREF}?id=${encodeURIComponent(policy._id)}`,
+                  )
+                }
+                className="p-3"
+              />
+            ))}
+          </ActionList>
+        )}
+        <ActionList rounded="12">
+          <ActionListItem
+            icon={
+              <PolicyTile bg={CUSTOM_POLICY_BG}>
+                <NoteIcon size={24} weight="fill" color="white" />
+                <span className="absolute -right-1 -bottom-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#3B9BF5] ring-2 ring-white">
+                  <PlusIcon size={10} weight="bold" color="white" />
+                </span>
+              </PolicyTile>
+            }
+            title="Add a custom shop policy"
+            subtitle="What your customers should know"
+            onClick={() => router.push(CUSTOM_POLICY_HREF)}
+            className="p-3"
+          />
+        </ActionList>
       </section>
     </ShopSetupScreen>
   )

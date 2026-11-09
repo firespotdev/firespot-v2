@@ -223,6 +223,20 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: "My sales with one business, for its Activity tab" })
+  @Get('customer/merchants/:merchantId')
+  async getCustomerMerchantActivity(
+    @GetUser() user: User,
+    @Param('merchantId') merchantId: string,
+  ) {
+    return this.salesService.getMyActivityWithMerchant(
+      (user as any).userId,
+      merchantId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Attach me as the payer of a sale (on pay)' })
   @Patch(':id/claim')
   async claimSale(@GetUser() user: User, @Param('id') saleId: string) {

@@ -246,6 +246,15 @@ export class User extends Document {
       exchanges: Boolean,
       cancellations: Boolean,
       refunds: Boolean,
+      appliesWithinDays: {
+        returns: Number,
+        exchanges: Number,
+        cancellations: Number,
+        refunds: Number,
+      },
+      customPolicies: [
+        { title: String, details: String, appliesWithinDays: Number },
+      ],
       configuredAt: Date,
     },
     _id: false,
@@ -255,7 +264,17 @@ export class User extends Document {
     exchanges: boolean
     cancellations: boolean
     refunds: boolean
-    configuredAt: Date
+    /** Days after purchase each policy that's on applies for. */
+    appliesWithinDays?: Partial<
+      Record<'returns' | 'exchanges' | 'cancellations' | 'refunds', number>
+    >
+    customPolicies?: Array<{
+      _id: Types.ObjectId
+      title: string
+      details: string
+      appliesWithinDays: number
+    }>
+    configuredAt?: Date
   }
 
   @Prop({

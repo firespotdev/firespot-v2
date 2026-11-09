@@ -18,6 +18,25 @@ export interface BusinessOpeningHours {
   }>
 }
 
+export interface PublicPolicyStatus {
+  allowed: boolean
+  /** Days after purchase the policy applies for, when it's allowed. */
+  withinDays?: number
+}
+
+export interface PublicShopPolicies {
+  returns: PublicPolicyStatus
+  exchanges: PublicPolicyStatus
+  cancellations: PublicPolicyStatus
+  refunds: PublicPolicyStatus
+  customPolicies: Array<{
+    id: string
+    title: string
+    details: string
+    withinDays: number
+  }>
+}
+
 export interface PublicBusinessProfile {
   id: string
   businessName: string
@@ -46,6 +65,10 @@ export interface PublicBusinessProfile {
   }
   openingHours?: BusinessOpeningHours | null
   verificationLevel?: 'PRO' | 'PROMAX' | null
+  /** The main spot's pinned position, when the merchant shared it. */
+  mapLocation?: { latitude: number; longitude: number } | null
+  /** Null until the merchant has set any policies. */
+  shopPolicies?: PublicShopPolicies | null
   serialNumber?: string
   locations: BusinessLocation[]
   stats: {

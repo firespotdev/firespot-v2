@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { ChevronRight, MessageCircleHeart } from 'lucide-react'
+import { ChevronRight, MessageCircleHeart, Star } from 'lucide-react'
 import { EmptyState, LoaderCircle } from '@/components/ui'
 import { useBusinessFeedback } from '@/services/business-profile'
 import {
@@ -10,13 +10,19 @@ import {
   type LeaveFeedbackAction,
 } from '@/services/customer-actions'
 import { ReviewCard } from './review-card'
+import { ProfileBottomBar } from './profile-bottom-bar'
 
 interface FeedbackProps {
   businessId: string
   businessName: string
+  serialNumber?: string
 }
 
-export function Feedback({ businessId, businessName }: FeedbackProps) {
+export function Feedback({
+  businessId,
+  businessName,
+  serialNumber,
+}: FeedbackProps) {
   const sentinelRef = useRef<HTMLDivElement>(null)
   const customerActions = useCustomerActions()
   const {
@@ -28,10 +34,15 @@ export function Feedback({ businessId, businessName }: FeedbackProps) {
     fetchNextPage,
   } = useBusinessFeedback(businessId)
   const feedback = data?.pages.flatMap((page) => page.data) || []
+  const summary = data?.pages[0]?.summary
   const feedbackAction = customerActions.data?.data.find(
     (action): action is LeaveFeedbackAction =>
       action.type === 'leave_feedback' && action.merchant.id === businessId,
   )
+  const feedbackHref = feedbackAction
+    ? `/pay/${encodeURIComponent(feedbackAction.serialNumber)}?saleId=${encodeURIComponent(feedbackAction.saleId)}`
+    : undefined
+
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -63,11 +74,33 @@ export function Feedback({ businessId, businessName }: FeedbackProps) {
     )
   }
 
+  // The rating shows once there's feedback. Giving feedback starts from the
+  // card at the top, which opens the payment it's about.
+  const bottomBar = (
+    <ProfileBottomBar
+      businessId={businessId}
+      serialNumber={serialNumber}
+      title={
+        summary && summary.count > 0 ? (
+          <span className="flex items-center gap-1">
+            <Star size={16} className="fill-[#F5B70A] text-[#F5B70A]" />
+            {summary.averageRating.toFixed(1)} stars overall
+          </span>
+        ) : undefined
+      }
+      subtitle={
+        summary && summary.count > 0
+          ? `${summary.count} ${summary.count === 1 ? 'person' : 'people'} gave feedback`
+          : undefined
+      }
+    />
+  )
+
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 pb-28">
       {feedbackAction && (
         <Link
-          href={`/pay/${encodeURIComponent(feedbackAction.serialNumber)}?saleId=${encodeURIComponent(feedbackAction.saleId)}`}
+          href={feedbackHref!}
           className="mb-4 flex w-full items-center gap-3 rounded-xl border border-[#F1F1F1] bg-white p-3 text-left shadow-[0px_4px_8px_0px_#0000000A] transition-colors active:bg-[#F8F9FA]"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#26B2FF] text-white">
@@ -129,6 +162,7 @@ export function Feedback({ businessId, businessName }: FeedbackProps) {
           )}
         </>
       )}
+      {bottomBar}
     </div>
   )
 }

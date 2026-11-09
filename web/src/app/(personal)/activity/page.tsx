@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Suspense, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useRouter } from '@bprogress/next/app'
 import { X } from 'lucide-react'
@@ -71,15 +72,22 @@ function groupByDay<T>(items: T[], getDate: (item: T) => string | Date) {
   return groups
 }
 
-export default function ActivityPage() {
+function ActivityContent() {
   const router = useRouter()
   const { data: sales, isLoading, isError } = useCustomerHistory()
   // Scans only add to the feed; if they fail to load, payments still show.
   const { data: recentScans } = useMyRecentScans()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const [activeTab, setActiveTab] = useState<ActivityTab>('ALL')
+  // A business profile can open this already filtered to that business.
+  const searchParams = useSearchParams()
   const [merchantFilter, setMerchantFilter] = useState<MerchantFilter | null>(
-    null,
+    () => {
+      const id = searchParams.get('merchantId')
+      return id
+        ? { id, name: searchParams.get('merchantName') || 'this business' }
+        : null
+    },
   )
 
   const allSales = useMemo(() => sales || [], [sales])
@@ -305,5 +313,19 @@ export default function ActivityPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ActivityPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center bg-white">
+          <LoaderCircle />
+        </div>
+      }
+    >
+      <ActivityContent />
+    </Suspense>
   )
 }

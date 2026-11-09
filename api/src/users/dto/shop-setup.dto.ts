@@ -215,6 +215,33 @@ export class UpdateEmployeeSetupDto {
   staff: EmployeeContactDto[];
 }
 
+// Time limits are in days after purchase.
+export class PolicyTimeLimitsDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  returns?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  exchanges?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  cancellations?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  refunds?: number;
+}
+
 export class UpdateShopPoliciesDto {
   @IsBoolean()
   returns: boolean;
@@ -227,6 +254,39 @@ export class UpdateShopPoliciesDto {
 
   @IsBoolean()
   refunds: boolean;
+
+  @ApiPropertyOptional({ type: PolicyTimeLimitsDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => PolicyTimeLimitsDto)
+  appliesWithinDays?: PolicyTimeLimitsDto;
+}
+
+/** A merchant-written policy shown on their Shop page. */
+export class CustomShopPolicyDto {
+  @ApiProperty({ maxLength: 60 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === "string" ? value.trim() : value,
+  )
+  @IsString()
+  @IsNotEmpty({ message: "Give this policy a title" })
+  @MaxLength(60)
+  title: string;
+
+  @ApiProperty({ maxLength: 500 })
+  @Transform(({ value }: { value: unknown }) =>
+    typeof value === "string" ? value.trim() : value,
+  )
+  @IsString()
+  @IsNotEmpty({ message: "Tell customers what this policy means" })
+  @MaxLength(500)
+  details: string;
+
+  @ApiProperty({ minimum: 1, maximum: 365 })
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  appliesWithinDays: number;
 }
 
 export const SHOP_DAYS = [
