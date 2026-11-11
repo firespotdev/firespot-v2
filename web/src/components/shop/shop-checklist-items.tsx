@@ -135,10 +135,10 @@ export const CHECKLIST_META: Record<ShopSetupKey, ChecklistItemMeta> = {
   },
   suppliers: {
     title: 'Add supplier contacts',
-    subtitle: 'Add supplier contacts',
+    subtitle: 'Who you buy stock and services from',
     Icon: <AddressBookTabsIcon weight="fill" size={24} color="white" />,
     bg: '#3B9BF5',
-    destination: { kind: 'none' },
+    destination: { kind: 'route', href: '/suppliers' },
   },
 }
 
@@ -154,4 +154,5 @@ export const CHECKLIST_ORDER: ShopSetupKey[] = [
   'firstItem',
   'policies',
   'qrKit',
+  'suppliers',
 ]

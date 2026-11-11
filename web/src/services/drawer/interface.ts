@@ -72,6 +72,13 @@ export type DrawerContentType =
   | 'business-options'
   | 'item-reviews'
   | 'item-search'
+  | 'new-expense'
+  | 'expense-checkout'
+  | 'supplier-select'
+  | 'add-supplier'
+  | 'expense-receipt'
+  | 'expense-options'
+  | 'expense-repayment'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
 

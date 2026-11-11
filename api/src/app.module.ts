@@ -31,6 +31,7 @@ import { PayoutsModule } from './payouts/payouts.module'
 import { PaymentCasesModule } from './payment-cases/payment-cases.module'
 import { CustomerActionsModule } from './customer-actions/customer-actions.module'
 import { PostsModule } from './posts/posts.module'
+import { ExpensesModule } from './expenses/expenses.module'
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { PostsModule } from './posts/posts.module'
     PaymentCasesModule,
     CustomerActionsModule,
     PostsModule,
+    ExpensesModule,
   ],
   controllers: [AppController],
   providers: [

@@ -455,6 +455,14 @@ export class User extends Document {
   @Prop()
   lastDailyLimitAlertAt?: Date
 
+  /** Lagos day (YYYY-MM-DD) that inviteSmsCount counts invite texts for. */
+  @Prop()
+  inviteSmsDay?: string
+
+  /** Invite texts sent to new customers and suppliers on inviteSmsDay. */
+  @Prop()
+  inviteSmsCount?: number
+
   @Prop({
     enum: ['none', 'paid', 'verifying', 'verified', 'failed'],
     default: 'none',

@@ -26,6 +26,7 @@ describe("Active hours", () => {
     {} as ConstructorParameters<typeof UsersService>[7],
     {} as ConstructorParameters<typeof UsersService>[8],
     {} as ConstructorParameters<typeof UsersService>[9],
+    {} as ConstructorParameters<typeof UsersService>[10],
   );
   const pipe = new ValidationPipe({ transform: true, whitelist: true });
   const validate = (value: unknown): Promise<UpdateActiveHoursSetupDto> =>

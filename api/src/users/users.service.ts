@@ -8,6 +8,7 @@ import {
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
+import { Supplier, SupplierDocument } from "../schemas/supplier.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { Product, ProductDocument } from "../schemas/product.schema";
 import { Spot, SpotDocument } from "../schemas/spot.schema";
@@ -129,6 +130,8 @@ export class UsersService {
     private cloudinaryService: CloudinaryService,
     private merchantReferralsService: MerchantReferralsService,
     private paystackSubaccountsService: PaystackSubaccountsService,
+    @InjectModel(Supplier.name)
+    private supplierModel: Model<SupplierDocument>,
   ) {}
 
   async verifyBankAccount(dto: VerifyAccountDto) {
@@ -1008,12 +1011,13 @@ export class UsersService {
     const user = await this.getMerchantOrThrow(userId);
     const merchantId = user._id as Types.ObjectId;
 
-    const [productCount, activeKitCount] = await Promise.all([
+    const [productCount, activeKitCount, supplierCount] = await Promise.all([
       this.productModel.countDocuments({ merchantId }),
       this.qrKitModel.countDocuments({
         merchantId,
         activationStatus: "activated",
       }),
+      this.supplierModel.countDocuments({ merchantId }),
     ]);
 
     const social = user.socialLinks || {};
@@ -1045,6 +1049,7 @@ export class UsersService {
       },
       { key: "firstItem", done: productCount > 0 },
       { key: "qrKit", done: activeKitCount > 0 },
+      { key: "suppliers", done: supplierCount > 0 },
       {
         key: "policies",
         done: Boolean(user.shopPolicies?.configuredAt),
@@ -1063,7 +1068,7 @@ export class UsersService {
         : []),
     ].map((item) => ({ ...item, locked: false }));
 
-    const locked = ["bookings", "charges", "suppliers"].map((key) => ({
+    const locked = ["bookings", "charges"].map((key) => ({
       key,
       done: false,
       locked: true,

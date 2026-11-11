@@ -21,6 +21,7 @@ describe("Shop policies", () => {
     {} as ConstructorParameters<typeof UsersService>[7],
     {} as ConstructorParameters<typeof UsersService>[8],
     {} as ConstructorParameters<typeof UsersService>[9],
+    {} as ConstructorParameters<typeof UsersService>[10],
   );
   const pipe = new ValidationPipe({ transform: true, whitelist: true });
   const validate = <T>(metatype: new () => T, value: unknown): Promise<T> =>

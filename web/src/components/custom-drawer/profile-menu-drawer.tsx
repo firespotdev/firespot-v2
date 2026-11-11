@@ -31,6 +31,7 @@ import {
   ArrowCircleDown2,
   Bank,
   Box1,
+  BoxAdd,
   Clock,
   Graph,
   Location,
@@ -80,17 +81,23 @@ const MERCHANT_MENU_SECTIONS: SidebarMenuSection[] = [
           openDrawer({ type: 'record-sale' })
         },
       },
-      // {
-      //   label: 'New expense',
-      //   icon: (
-      //     <Image
-      //       src="/icons/send-square.svg"
-      //       height={24}
-      //       width={24}
-      //       alt="send-square"
-      //     />
-      //   ),
-      // },
+      {
+        label: 'New expense',
+        icon: (
+          <Image
+            src="/icons/send-square.svg"
+            height={24}
+            width={24}
+            alt=""
+          />
+        ),
+        // Recording an expense is a bottom sheet, like recording a sale.
+        onClick: () => {
+          const { closeDrawer, openDrawer } = useDrawerStore.getState()
+          closeDrawer('profile-menu')
+          openDrawer({ type: 'new-expense' })
+        },
+      },
       { label: 'History', icon: <Clock size={24} />, href: '/history' },
       {
         label: 'Payouts',
@@ -386,11 +393,11 @@ function ManageBusinessDropdown({
     //   icon: <Briefcase size={24} />,
     //   proGateLabel: 'Available in',
     // },
-    // {
-    //   label: 'Suppliers',
-    //   icon: <BoxAdd size={24} />,
-    //   proGateLabel: 'Available in',
-    // },
+    {
+      label: 'Suppliers',
+      icon: <BoxAdd size={24} />,
+      href: '/suppliers',
+    },
     {
       label: 'Locations',
       icon: <Location size={24} />,

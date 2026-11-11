@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { MerchantPost, PostPlatform } from '@/services/posts'
 
 const PLATFORM_ICONS: Record<PostPlatform, string> = {
@@ -46,6 +48,7 @@ export function PostCard({
   const isDraft = post.status === 'DRAFT'
   const caption = captionFor(post)
   const merchantName = merchantNameFor(post)
+  const showDelete = manage && isDraft && Boolean(onDelete)
 
   const cardContent = (
     <div className="relative aspect-[0.63] overflow-hidden rounded-[8px] bg-[#D9DEE6]">
@@ -74,13 +77,6 @@ export function PostCard({
           className="h-5 w-5 object-cover"
         />
       </span>
-
-      {/* Draft Badge (positioned cleanly next to platform icon, no overlap with delete button) */}
-      {isDraft && (
-        <span className="absolute left-12 top-3 z-1 rounded-full bg-black/75 px-2.5 py-1 text-[10px] font-bold tracking-[0.8px] text-white backdrop-blur-xs">
-          DRAFT
-        </span>
-      )}
 
       {/* Bottom info section */}
       <div className="absolute inset-x-3 bottom-3 text-left text-white">
@@ -117,6 +113,31 @@ export function PostCard({
         </a>
       ) : (
         cardContent
+      )}
+      {/* Draft badge and delete sit together on the right, clear of the platform icon. */}
+      {isDraft && (
+        <div className="pointer-events-none absolute top-1.5 right-1.5 z-2 flex h-9 items-center gap-0.5">
+          <span
+            className={cn(
+              'rounded-full bg-black/75 px-2.5 py-1 text-[10px] font-bold tracking-[0.8px] text-white backdrop-blur-xs',
+              !showDelete && 'mr-1.5',
+            )}
+          >
+            DRAFT
+          </span>
+          {showDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label={`Delete ${merchantName} draft`}
+              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/75 backdrop-blur-xs">
+                <Trash2 size={14} strokeWidth={2.2} className="text-white" />
+              </span>
+            </button>
+          )}
+        </div>
       )}
     </article>
   )

@@ -29,17 +29,20 @@ import {
 } from '@/services/insights'
 import { Sale } from '@/services/sales/interface'
 import { getMerchantStatus } from '@/lib/utils/sales'
-import { SaleItem } from '@/components/sales/SaleItem'
+import { HistoryEntryList } from '@/components/expenses/history-entry-list'
+import {
+  groupHistoryEntries,
+  HISTORY_FLOWS,
+  useHistoryExpenses,
+  type HistoryFlow,
+} from '@/components/expenses/use-history-entries'
 import { LoadingPage } from '@/components/layout/LoadingPage'
 import { useSafeBack } from '@/hooks/use-safe-back'
 import { ChartPieSliceIcon, ScrollIcon } from '@phosphor-icons/react'
 import { Input } from '@/components/ui'
 
 type HistoryMode = 'all' | 'collected' | 'recorded'
-type FilterId = 'mode' | 'status' | 'method' | 'qrKit' | 'location'
-
-const getMonthGroupLabel = (dateStr: string | Date) =>
-  format(new Date(dateStr), 'MMMM yyyy')
+type FilterId = 'mode' | 'flow' | 'status' | 'method' | 'qrKit' | 'location'
 
 function HistoryContent() {
   const { openDrawer } = useDrawerStore()
@@ -53,6 +56,7 @@ function HistoryContent() {
     modeParam === 'recorded' || modeParam === 'collected' ? modeParam : 'all'
 
   const [selectedMode, setSelectedMode] = useState<HistoryMode>(initialMode)
+  const [selectedFlow, setSelectedFlow] = useState<HistoryFlow>('ALL')
 
   // Filter dropdown states
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus)
@@ -124,15 +128,28 @@ function HistoryContent() {
     return selectedStatus
   }, [selectedStatus])
 
-  const { data: salesData, isLoading } = useSales({
-    mode: activeMode === 'all' ? undefined : activeMode,
-    status: apiStatusParam,
-    paymentMethod: selectedMethod,
-    qrKitName: selectedQrKit,
-    location: selectedLocation,
-    limit: '100',
-    ...(debouncedSearch && { search: debouncedSearch }),
+  const showsSales = selectedFlow !== 'MONEY OUT'
+  const { data: salesData, isLoading: isLoadingSales } = useSales(
+    {
+      mode: activeMode === 'all' ? undefined : activeMode,
+      status: apiStatusParam,
+      paymentMethod: selectedMethod,
+      qrKitName: selectedQrKit,
+      location: selectedLocation,
+      limit: '100',
+      ...(debouncedSearch && { search: debouncedSearch }),
+    },
+    { enabled: showsSales },
+  )
+  const { expenses, isLoading: isLoadingExpenses } = useHistoryExpenses({
+    flow: selectedFlow,
+    mode: activeMode,
+    status: selectedStatus,
+    method: selectedMethod,
+    qrKit: selectedQrKit,
+    search: debouncedSearch,
   })
+  const isLoading = (showsSales && isLoadingSales) || isLoadingExpenses
 
   const { data: salesStats, isLoading: isLoadingStats } = useSalesStats({
     ...dateFilter,
@@ -158,7 +175,10 @@ function HistoryContent() {
       { enabled: activeMode === 'all' },
     )
 
-  const sales: Sale[] = useMemo(() => salesData?.data ?? [], [salesData?.data])
+  const sales: Sale[] = useMemo(
+    () => (showsSales ? (salesData?.data ?? []) : []),
+    [salesData?.data, showsSales],
+  )
   const todaySalesAmount = salesStats?.todaySalesAmount ?? 0
 
   // Group sales by transaction month with merchant status filtering
@@ -190,18 +210,13 @@ function HistoryContent() {
       )
     }
 
-    const groups: Record<string, Sale[]> = {}
-    for (const sale of filtered) {
-      const key = getMonthGroupLabel(sale.recordedAt || sale.createdAt)
-      if (!groups[key]) groups[key] = []
-      groups[key].push(sale)
-    }
-    return groups
-  }, [sales, searchQuery, selectedStatus])
+    return groupHistoryEntries(filtered, expenses)
+  }, [sales, expenses, searchQuery, selectedStatus])
 
-  const isEmpty = sales.length === 0 && !isLoading
+  const isEmpty = sales.length === 0 && expenses.length === 0 && !isLoading
   const hasActiveListFilters =
     Boolean(searchQuery.trim()) ||
+    selectedFlow !== 'ALL' ||
     selectedStatus !== 'ALL' ||
     selectedMethod !== 'ALL' ||
     selectedQrKit !== 'ALL' ||
@@ -257,6 +272,14 @@ function HistoryContent() {
         : ['ALL', 'RECORDED'],
       value: activeMode.toUpperCase(),
       onChange: handleModeChange,
+    },
+    {
+      id: 'flow',
+      label: selectedFlow === 'ALL' ? 'MONEY IN & OUT' : selectedFlow,
+      isActive: selectedFlow !== 'ALL',
+      options: [...HISTORY_FLOWS],
+      value: selectedFlow,
+      onChange: (value) => setSelectedFlow(value as HistoryFlow),
     },
     {
       id: 'status',
@@ -458,6 +481,7 @@ function HistoryContent() {
             </div>
 
             {/* Summary Card */}
+            {showsSales && (
             <div
               className={cn(
                 'w-full overflow-hidden rounded-[12px] border-2 mb-3',
@@ -650,8 +674,9 @@ function HistoryContent() {
                 </div>
               )}
             </div>
+            )}
 
-            {activeMode !== 'recorded' && (
+            {activeMode !== 'recorded' && showsSales && (
               <Link
                 href="/payouts"
                 className="mb-6 flex h-9 w-full items-center justify-center gap-2 rounded-full bg-[#E5E7EB] text-[10px] font-bold tracking-[1px] text-black"
@@ -728,43 +753,16 @@ function HistoryContent() {
                 </p>
               </div>
             ) : (
-              <div>
-                <div className="space-y-8">
-                  {Object.keys(groupedSales).length === 0 ? (
-                    <div className="text-center py-12">
-                      <p className="text-[#9CA3AF] font-medium">
-                        No transactions match your filters.
-                      </p>
-                    </div>
-                  ) : (
-                    Object.entries(groupedSales).map(
-                      ([dateGroup, dateSales]) => (
-                        <div key={dateGroup}>
-                          <h4 className="text-[14px] font-bold text-black mb-2">
-                            {dateGroup}
-                          </h4>
-                          <div className="bg-white rounded-[12px] shadow-[0px_4px_12px_0px_#00000008] border border-[#F4F6F8] overflow-hidden divide-y divide-[#F1F1F1]">
-                            {dateSales.map((sale) => (
-                              <SaleItem
-                                key={sale._id}
-                                sale={sale}
-                                variant="history"
-                                onClick={() => handleRecordClick(sale)}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      ),
-                    )
-                  )}
-
-                  {Object.keys(groupedSales).length > 0 && (
-                    <p className="text-center text-[#00000066] text-xs font-medium my-6">
-                      You&apos;ve reached the end of the list
-                    </p>
-                  )}
-                </div>
-              </div>
+              <HistoryEntryList
+                groups={groupedSales}
+                onSaleClick={handleRecordClick}
+                onExpenseClick={(expense) =>
+                  openDrawer({
+                    type: 'expense-receipt',
+                    props: { expenseId: expense._id },
+                  })
+                }
+              />
             )}
           </>
         )}

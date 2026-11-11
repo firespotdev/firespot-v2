@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Sale, SaleDraft } from '@/services/sales/interface'
 import { DRAFT_ITEM_ID, type CartItem } from './types'
+import { nextAmount } from './amount-input'
 
 interface Options {
   /**
@@ -88,19 +89,7 @@ export function useSaleCart({ prefillSale }: Options) {
       )
     }
 
-    if (key === 'backspace') {
-      setAmount((prev) => prev.slice(0, -1))
-      return
-    }
-
-    setAmount((prev) => {
-      if (key === '.' && prev.includes('.')) return prev
-      if (key === '.' && prev === '') return '0.'
-      if (prev.includes('.') && prev.split('.')[1].length >= 2) return prev
-      if (prev.length >= 10) return prev
-      if (prev === '0' && key !== '.') return key
-      return prev + key
-    })
+    setAmount((prev) => nextAmount(prev, key))
   }
 
   const getDraftItem = (): CartItem | null => {

@@ -13,7 +13,12 @@ interface Props {
   initialAmountPaid?: number
   onContinue: (installmentType: 'full' | 'part', amountPaid: number) => void
   onBack?: () => void
+  /** Shown under a full payment. Defaults to the sale wording. */
+  fullPaymentNote?: string
 }
+
+const SALE_FULL_PAYMENT_NOTE =
+  'Customer paid everything. Click “Paid in part” or “Edit” only if they’re owing you a balance payment.'
 
 export function SplitPaymentDrawer({
   totalAmount,
@@ -21,6 +26,7 @@ export function SplitPaymentDrawer({
   initialAmountPaid,
   onContinue,
   onBack,
+  fullPaymentNote = SALE_FULL_PAYMENT_NOTE,
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const [installmentType, setInstallmentType] = useState<'full' | 'part'>(
@@ -143,8 +149,7 @@ export function SplitPaymentDrawer({
           <div className="bg-[#F4F4F4] rounded-[12px] p-3 border-2 border-[#0000000A] flex items-start gap-2 text-left mt-1">
             <AlertCircle color="#00000066" size={24} className="mt-0.5" />
             <p className="text-[12px] text-[#00000066] font-medium">
-              Customer paid everything. Click “Paid in part” or “Edit” only if
-              they’re owing you a balance payment.
+              {fullPaymentNote}
             </p>
           </div>
 

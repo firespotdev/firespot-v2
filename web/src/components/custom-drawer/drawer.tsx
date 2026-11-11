@@ -61,6 +61,13 @@ import { DayTimeEditorDrawer } from './day-time-editor-drawer'
 import { ActiveHoursBookingDrawer } from './active-hours-booking-drawer'
 import { BusinessIntroDrawer } from './business-intro-drawer'
 import { RecordSaleDrawer } from './record-sale-drawer'
+import { NewExpenseDrawer } from './new-expense-drawer'
+import { ExpenseCheckoutDrawer } from './expense-checkout-drawer'
+import { SupplierSelectDrawer } from './supplier-select-drawer'
+import { AddSupplierDrawer } from './add-supplier-drawer'
+import { ExpenseReceiptDrawer } from './expense-receipt-drawer'
+import { ExpenseOptionsDrawer } from './expense-options-drawer'
+import { ExpenseRepaymentDrawer } from './expense-repayment-drawer'
 import { RecordRepaymentDrawer } from './record-repayment-drawer'
 import { OutstandingDrawer } from './outstanding-drawer'
 import { OwingCustomersDrawer } from './owing-customers-drawer'
@@ -305,6 +312,57 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     fullScreen: true,
     dismissible: true,
+  },
+  'new-expense': {
+    title: 'New expense',
+    Content: NewExpenseDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    fullScreen: true,
+    hideHandle: true,
+    // The keypad must not be read as swipe-to-dismiss.
+    dismissible: false,
+    contentClassName:
+      'h-dvh data-[vaul-drawer-direction=bottom]:max-h-dvh rounded-t-none',
+    animateOnClose: true,
+  },
+  'expense-checkout': {
+    title: 'Expense summary',
+    Content: ExpenseCheckoutDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'supplier-select': {
+    title: 'Who did you pay?',
+    Content: SupplierSelectDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'add-supplier': {
+    title: 'Add new supplier',
+    Content: AddSupplierDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'expense-receipt': {
+    title: 'Expense details',
+    Content: ExpenseReceiptDrawer,
+    noHeader: true,
+    fullScreen: true,
+    hideHandle: true,
+    direction: 'right',
+  },
+  'expense-options': {
+    title: '',
+    Content: ExpenseOptionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+  },
+  'expense-repayment': {
+    title: 'Record repayment',
+    Content: ExpenseRepaymentDrawer,
+    noHeader: true,
+    direction: 'bottom',
   },
   'record-sale': {
     title: '',
@@ -773,7 +831,7 @@ export function CustomDrawer() {
         >
           <DrawerContent
             hideHandle={hideHandle}
-            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' || config.type === 'business-intro' || config.type === 'record-sale' || config.type === 'record-repayment' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px] ${contentClassName || ''}`}
+            className={`${config.type === 'bank-transfer' || config.type === 'profile-share' || config.type === 'share-transfer' || config.type === 'obtain-kit' || config.type === 'collect-payment' || config.type === 'business-intro' || config.type === 'record-sale' || config.type === 'new-expense' || config.type === 'record-repayment' ? 'bg-white' : 'bg-[#f4f6f8]'} max-w-125 mx-auto rounded-t-[32px] ${contentClassName || ''}`}
           >
             {noHeader ? (
               <>
@@ -850,6 +908,7 @@ export function CustomDrawer() {
               'bank-transfer',
               'checkout',
               'checkout-sale',
+              'expense-checkout',
               'collect-payment',
               'sale-items',
               'variant-selector',
@@ -857,6 +916,7 @@ export function CustomDrawer() {
               'send-reminder',
               'recommend-business-sms',
               'add-customer',
+              'add-supplier',
               'customer-sort',
               'plan-checkout',
               'cancel-plan',

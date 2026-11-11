@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
@@ -14,9 +15,13 @@ import { User, UserDocument } from "../schemas/user.schema";
 
 import { Sale, SaleDocument } from "../schemas/sale.schema";
 import { Feedback, FeedbackDocument } from "../schemas/feedback.schema";
+import { SmsService } from "../services/sms/sms.service";
+import { claimInviteSms } from "../common/invite-sms-quota";
 
 @Injectable()
 export class CustomersService {
+  private readonly logger = new Logger(CustomersService.name);
+
   constructor(
     @InjectModel(MerchantCustomer.name)
     private customerModel: Model<MerchantCustomerDocument>,
@@ -24,6 +29,7 @@ export class CustomersService {
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(Feedback.name) private feedbackModel: Model<FeedbackDocument>,
     private accountLinkingService: AccountLinkingService,
+    private smsService: SmsService,
   ) {}
 
   private toCustomerResponse(customer: any, identity?: any) {
@@ -55,6 +61,11 @@ export class CustomersService {
       throw new BadRequestException("Enter a valid customer name and phone number");
     }
 
+    const alreadySaved = await this.customerModel.exists({
+      merchantId: new Types.ObjectId(merchantId),
+      userId: identity._id,
+    });
+
     const relationship = await this.customerModel
       .findOneAndUpdate(
         {
@@ -75,7 +86,41 @@ export class CustomersService {
       )
       .exec();
 
+    if (!alreadySaved) {
+      await this.sendInvite(merchantId, identity.fullPhoneNumber || phoneNumber);
+    }
+
     return this.toCustomerResponse(relationship, identity);
+  }
+
+  /**
+   * Texts a newly added customer a link to sign in to their Firespot profile.
+   * A failed text never undoes the save.
+   */
+  private async sendInvite(merchantId: string, phoneNumber: string) {
+    try {
+      if (!(await claimInviteSms(this.userModel, merchantId))) {
+        this.logger.warn(
+          `Merchant ${merchantId} reached today's invite text limit`,
+        );
+        return;
+      }
+      const merchant = await this.userModel
+        .findById(merchantId)
+        .select("businessName");
+      const from = merchant?.businessName?.trim() || "A business you buy from";
+      const appUrl = (
+        process.env.FRONTEND_URL || "https://lite.firespot.co"
+      ).replace(/\/$/, "");
+      await this.smsService.sendSms(
+        phoneNumber,
+        `${from} added you as a customer on Firespot. Continue to your Firespot profile: ${appUrl}/login`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Could not text new customer of merchant ${merchantId}: ${String(error)}`,
+      );
+    }
   }
 
   async findOrCreateForUser(

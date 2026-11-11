@@ -22,6 +22,7 @@ describe("UsersService - bank account visibility", () => {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
   );
 
   beforeEach(() => jest.clearAllMocks());

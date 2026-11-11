@@ -6,7 +6,14 @@ interface Props {
   onSubmit?: (method: string) => void
   onSelectMethod?: (method: string) => void
   currentMethod?: string
+  /** Defaults to the sale wording. */
+  title?: string
+  note?: string
 }
+
+const SALE_TITLE = 'How were you paid'
+const SALE_NOTE =
+  'You will not receive a payout for these transactions. Sales are recorded for accounting purposes only.'
 
 const paymentMethods = [
   { id: 'Bank Transfer', label: 'Bank Transfer' },
@@ -19,6 +26,8 @@ export function PaymentMethodDrawer({
   onSubmit,
   onSelectMethod,
   currentMethod,
+  title = SALE_TITLE,
+  note = SALE_NOTE,
 }: Props) {
   const closeDrawer = useDrawerStore((state) => state.closeDrawer)
   const [selectedMethod, setSelectedMethod] = useState(currentMethod || '')
@@ -38,7 +47,7 @@ export function PaymentMethodDrawer({
       <div className="flex items-center justify-between mt-2 mb-7 px-4">
         <span className="w-5.5 h-5.5 shrink-0" aria-hidden="true" />
         <h2 className="text-[16px] font-bold text-black flex-1 text-center">
-          How were you paid
+          {title}
         </h2>
         <button
           type="button"
@@ -330,8 +339,7 @@ export function PaymentMethodDrawer({
         <div className="bg-[#F4F4F4] rounded-[12px] p-3 flex items-center gap-2 border border-[#00000014]">
           <AlertCircle size={28} color="#00000066" strokeWidth={2} />
           <p className="text-xs text-[#00000066] leading-[1.4] font-medium">
-            You will not receive a payout for these transactions. Sales are
-            recorded for accounting purposes only.
+            {note}
           </p>
         </div>
       </div>

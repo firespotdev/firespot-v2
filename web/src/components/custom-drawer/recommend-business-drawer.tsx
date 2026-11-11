@@ -7,6 +7,7 @@ import { useDrawerStore } from '@/services/drawer'
 import { showNotificationToast } from '@/components/ui'
 import { Copy } from 'lucide-react'
 import {
+  getMerchantInviteUrl,
   useMerchantReferralCode,
   useMerchantReferralSummary,
 } from '@/services/merchant-referrals'
@@ -21,21 +22,6 @@ interface RecommendBusinessDrawerProps {
   closeDrawer: () => void
 }
 
-function getRecommendUrl(referralCode?: string) {
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    (typeof window !== 'undefined'
-      ? window.location.origin
-      : 'https://firespot.co')
-  const url = new URL('/onboarding/merchant/start', appUrl)
-
-  if (referralCode) {
-    url.searchParams.set('mref', referralCode)
-  }
-
-  return url.toString()
-}
-
 export function RecommendBusinessDrawer({
   businessName,
   referralCode: initialReferralCode,
@@ -48,7 +34,7 @@ export function RecommendBusinessDrawer({
   const referralCode =
     initialReferralCode || codeData?.referralCode || referral?.referralCode
   const canRefer = Boolean(referralCode)
-  const recommendUrl = getRecommendUrl(referralCode)
+  const recommendUrl = getMerchantInviteUrl(referralCode)
 
   const handleCopy = () => {
     if (!canRefer) return
