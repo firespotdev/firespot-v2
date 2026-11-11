@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import type {
-  ActiveHoursSetup,
+  AppointmentAndReservation,
   ShopDaySchedule,
 } from '@/services/auth/interface'
 import {
@@ -26,7 +26,7 @@ import { scheduleIsValid } from '@/components/shop/schedule-utils'
 import { useDrawerStore } from '@/services/drawer'
 import { CalendarCheckIcon, CalendarXIcon } from '@phosphor-icons/react'
 
-type AppointmentSetup = ActiveHoursSetup['appointmentAndReservation']
+type AppointmentSetup = AppointmentAndReservation
 type DrawerStep = 'availability' | 'capacity' | 'details'
 
 interface ActiveHoursBookingDrawerProps {

@@ -20,7 +20,7 @@ import {
 import { ShopSetupScreen } from '@/components/shop/shop-setup-screen'
 import { TimeRangeField } from '@/components/shop/time-range-field'
 import type {
-  ActiveHoursSetup,
+  AppointmentAndReservation,
   ShopDaySchedule,
 } from '@/services/auth/interface'
 import { useDrawerStore } from '@/services/drawer'
@@ -58,10 +58,10 @@ function ActiveHoursSettingsForm({ profile }: { profile: UserProfile }) {
     existing?.openingHours.useDifferentTimes || false,
   )
   const [bookingType, setBookingType] = useState<BookingType | null>(
-    existing?.appointmentAndReservation.bookingType || null,
+    existing?.appointmentAndReservation?.bookingType || null,
   )
   const [savedAppointment, setSavedAppointment] = useState<
-    ActiveHoursSetup['appointmentAndReservation'] | null
+    AppointmentAndReservation | null
   >(existing?.appointmentAndReservation || null)
 
   const commonTimeValid = Boolean(opensAt && closesAt) && opensAt !== closesAt
@@ -110,60 +110,65 @@ function ActiveHoursSettingsForm({ profile }: { profile: UserProfile }) {
     })
   }
 
+  // Booking setup only applies to shops that take reservations.
+  const takesReservations = Boolean(profile.fulfillment?.reservations)
+
+  /** Saves the hours, with booking details only when the shop takes them. */
+  const saveActiveHours = async (
+    appointment?: AppointmentAndReservation,
+  ): Promise<boolean> => {
+    try {
+      await update.mutateAsync({
+        openingHours: {
+          useDifferentTimes,
+          timezone:
+            Intl.DateTimeFormat().resolvedOptions().timeZone || 'Africa/Lagos',
+          days,
+        },
+        ...(appointment ? { appointmentAndReservation: appointment } : {}),
+      })
+      if (appointment) setSavedAppointment(appointment)
+      showNotificationToast({ message: 'Active hours saved', mode: 'success' })
+      router.replace('/shop-setup')
+      return true
+    } catch (error: unknown) {
+      showNotificationToast({
+        message:
+          (error as { response?: { data?: { message?: string } } }).response
+            ?.data?.message || 'Could not save active hours. Try again.',
+        mode: 'error',
+      })
+      return false
+    }
+  }
+
+  const handleHoursContinue = () => {
+    if (takesReservations) {
+      setStep('service-type')
+    } else {
+      void saveActiveHours()
+    }
+  }
+
   const beginBookingSetup = () => {
     if (!bookingType) return
     const existing =
       savedAppointment?.bookingType === bookingType ? savedAppointment : null
-    const appointment: ActiveHoursSetup['appointmentAndReservation'] =
-      existing || {
-        bookingType,
-        bookableHours: { days: cloneDays(days) },
-        capacity: {},
-        instantConfirmation: false,
-        freeCancellations: false,
-        deposit: { amount: 0, depositType: 'FIXED' },
-        freeCancellationHours: 0,
-      }
+    const appointment: AppointmentAndReservation = existing || {
+      bookingType,
+      bookableHours: { days: cloneDays(days) },
+      capacity: {},
+      instantConfirmation: false,
+      freeCancellations: false,
+      deposit: { amount: 0, depositType: 'FIXED' },
+      freeCancellationHours: 0,
+    }
 
     openDrawer({
       type: 'active-hours-booking',
       props: {
         initialValue: appointment,
-        onComplete: async (
-          nextAppointment: ActiveHoursSetup['appointmentAndReservation'],
-        ) => {
-          try {
-            await update.mutateAsync({
-              openingHours: {
-                useDifferentTimes,
-                timezone:
-                  Intl.DateTimeFormat().resolvedOptions().timeZone ||
-                  'Africa/Lagos',
-                days,
-              },
-              appointmentAndReservation: nextAppointment,
-            })
-            setSavedAppointment(nextAppointment)
-            showNotificationToast({
-              message: 'Active hours saved',
-              mode: 'success',
-            })
-            router.replace('/shop-setup')
-            return true
-          } catch (error: unknown) {
-            showNotificationToast({
-              message:
-                (
-                  error as {
-                    response?: { data?: { message?: string } }
-                  }
-                ).response?.data?.message ||
-                'Could not save active hours. Try again.',
-              mode: 'error',
-            })
-            return false
-          }
-        },
+        onComplete: saveActiveHours,
       },
     })
   }
@@ -236,8 +241,9 @@ function ActiveHoursSettingsForm({ profile }: { profile: UserProfile }) {
       eyebrow="Set up active hours"
       title="Opening and closing times"
       onBack={handleBack}
-      onContinue={() => setStep('service-type')}
+      onContinue={handleHoursContinue}
       disabled={!openingHoursValid}
+      pending={update.isPending}
     >
       <Label className="mt-6 text-xs">Days</Label>
       <DaySelector days={days} onChange={handleDaysChange} />

@@ -74,30 +74,34 @@ export interface ShopPolicies {
   configuredAt?: string
 }
 
+/** How a shop takes bookings. */
+export interface AppointmentAndReservation {
+  bookingType: 'SPACE' | 'APPOINTMENT'
+  bookableHours: {
+    days: ShopDaySchedule[]
+  }
+  capacity: {
+    guestsAtOnce?: number
+    largestGroup?: number
+    customersAtOnce?: number
+  }
+  instantConfirmation: boolean
+  freeCancellations: boolean
+  deposit: {
+    amount: number
+    depositType: 'FIXED' | 'PERCENTAGE'
+  }
+  freeCancellationHours?: number
+}
+
 export interface ActiveHoursSetup {
   openingHours: {
     useDifferentTimes: boolean
     timezone: string
     days: ShopDaySchedule[]
   }
-  appointmentAndReservation: {
-    bookingType: 'SPACE' | 'APPOINTMENT'
-    bookableHours: {
-      days: ShopDaySchedule[]
-    }
-    capacity: {
-      guestsAtOnce?: number
-      largestGroup?: number
-      customersAtOnce?: number
-    }
-    instantConfirmation: boolean
-    freeCancellations: boolean
-    deposit: {
-      amount: number
-      depositType: 'FIXED' | 'PERCENTAGE'
-    }
-    freeCancellationHours?: number
-  }
+  /** Absent for shops that don't take bookings. */
+  appointmentAndReservation?: AppointmentAndReservation
   configuredAt?: string
 }
 

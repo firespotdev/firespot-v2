@@ -347,7 +347,7 @@ export class User extends Document {
         closesNextDay: boolean
       }>
     }
-    appointmentAndReservation: {
+    appointmentAndReservation?: {
       bookingType: 'SPACE' | 'APPOINTMENT'
       bookableHours: {
         days: Array<{

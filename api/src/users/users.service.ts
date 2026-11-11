@@ -873,38 +873,63 @@ export class UsersService {
 
   async updateActiveHoursSetup(userId: string, dto: UpdateActiveHoursSetupDto) {
     const user = await this.getMerchantOrThrow(userId);
-    const openingDays = dto.openingHours.days;
-    const bookingDays = dto.appointmentAndReservation.bookableHours.days;
-
-    const validateDays = (days: typeof openingDays, label: string) => {
-      if (days.length !== 7 || new Set(days.map((day) => day.day)).size !== 7) {
-        throw new HttpException(
-          `${label} must contain each day of the week`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      const enabled = days.filter((day) => day.enabled);
-      if (enabled.length === 0) {
-        throw new HttpException(
-          `${label} must include at least one open day`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      for (const day of enabled) {
-        if (!day.opensAt || !day.closesAt || day.opensAt === day.closesAt) {
-          throw new HttpException(
-            `${label} requires different opening and closing times`,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-        day.closesNextDay = day.closesAt < day.opensAt;
-      }
-    };
-
-    validateDays(openingDays, "Opening hours");
-    validateDays(bookingDays, "Bookable hours");
+    this.validateWeek(dto.openingHours.days, "Opening hours");
 
     const appointment = dto.appointmentAndReservation;
+    if (appointment) this.validateAppointment(appointment);
+
+    // A shop without bookings sends hours alone; an earlier booking setup
+    // stays as it was in case the merchant turns Reservations back on.
+    const keptAppointment =
+      appointment || user.activeHoursSetup?.appointmentAndReservation;
+
+    user.activeHoursSetup = {
+      openingHours: dto.openingHours,
+      ...(keptAppointment
+        ? { appointmentAndReservation: keptAppointment }
+        : {}),
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Every day of the week once, at least one open, with real times. */
+  private validateWeek(
+    days: UpdateActiveHoursSetupDto["openingHours"]["days"],
+    label: string,
+  ) {
+    if (days.length !== 7 || new Set(days.map((day) => day.day)).size !== 7) {
+      throw new HttpException(
+        `${label} must contain each day of the week`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const enabled = days.filter((day) => day.enabled);
+    if (enabled.length === 0) {
+      throw new HttpException(
+        `${label} must include at least one open day`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    for (const day of enabled) {
+      if (!day.opensAt || !day.closesAt || day.opensAt === day.closesAt) {
+        throw new HttpException(
+          `${label} requires different opening and closing times`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      day.closesNextDay = day.closesAt < day.opensAt;
+    }
+  }
+
+  private validateAppointment(
+    appointment: NonNullable<
+      UpdateActiveHoursSetupDto["appointmentAndReservation"]
+    >,
+  ) {
+    this.validateWeek(appointment.bookableHours.days, "Bookable hours");
+
     if (appointment.bookingType === "SPACE") {
       if (
         !appointment.capacity.guestsAtOnce ||
@@ -944,14 +969,6 @@ export class UsersService {
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    user.activeHoursSetup = {
-      openingHours: dto.openingHours,
-      appointmentAndReservation: appointment,
-      configuredAt: new Date(),
-    };
-    await user.save();
-    return { user: this.sanitizeUser(user) };
   }
 
   /** Marks the shop live. Reversible only by support for now. */

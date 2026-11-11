@@ -402,7 +402,9 @@ export class UpdateActiveHoursSetupDto {
   @Type(() => OpeningHoursDto)
   openingHours: OpeningHoursDto;
 
+  /** Left out when the shop doesn't take bookings; an earlier setup is kept. */
+  @IsOptional()
   @ValidateNested()
   @Type(() => AppointmentAndReservationDto)
-  appointmentAndReservation: AppointmentAndReservationDto;
+  appointmentAndReservation?: AppointmentAndReservationDto;
 }
