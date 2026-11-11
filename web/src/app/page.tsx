@@ -9,7 +9,11 @@ import Link from 'next/link'
 import { ClockCounterClockwiseIcon } from '@phosphor-icons/react'
 import { CTACarousel } from '@/components/ui/cta-carousel'
 import { BottomNav } from '@/components/layout'
-import { useAuthStore, useAuthReady } from '@/services/auth'
+import {
+  useAuthStore,
+  useAuthReady,
+  useWaitingForServer,
+} from '@/services/auth'
 import { hasPersonalIdentity, isTokenExpired } from '@/lib/utils/auth-redirect'
 
 export default function ScannerPage() {
@@ -29,6 +33,7 @@ export default function ScannerPage() {
   const activeProfileMode = useAuthStore((state) => state.activeProfileMode)
   const logout = useAuthStore((state) => state.logout)
   const authReady = useAuthReady()
+  const waitingForServer = useWaitingForServer()
 
   // Signed-in users (personal, or merchants in personal mode) get the Recent
   // shortcut + bottom nav; logged-out visitors keep the login CTAs.
@@ -46,7 +51,8 @@ export default function ScannerPage() {
     if (!authReady) return
     if (isAuthenticated && token) {
       if (isTokenExpired(token)) {
-        logout()
+        // Keep the login while the server is down; it renews once it's back.
+        if (!waitingForServer) logout()
         return
       }
       if (user?.role === 'merchant' && activeProfileMode !== 'personal') {
@@ -70,6 +76,7 @@ export default function ScannerPage() {
     activeProfileMode,
     router,
     logout,
+    waitingForServer,
   ])
 
   // Preserve dynamic-sale parameters from Firespot payment URLs. Raw serial

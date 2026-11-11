@@ -570,6 +570,7 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     fullScreen: false,
     contentClassName: 'bg-[#F4F6F8]',
+    dismissible: true,
   },
   'multiple-payment-options': {
     title: '',
@@ -578,6 +579,7 @@ const DRAWER_CONFIG: Record<
     direction: 'bottom',
     fullScreen: false,
     contentClassName: 'bg-[#F4F6F8]',
+    dismissible: true,
   },
   'post-composer': {
     title: 'Posts',

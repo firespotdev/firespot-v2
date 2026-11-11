@@ -10,6 +10,7 @@ import {
   showNotificationToast,
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
+import { usePaystackAvailability } from '@/hooks/use-paystack-availability'
 import { useUpdatePaymentSettings, useUserProfile } from '@/services/users'
 import { BankIcon, CreditCardIcon } from '@phosphor-icons/react'
 import { Card } from 'iconsax-reactjs'
@@ -27,6 +28,7 @@ export function MultiplePaymentOptionsDrawer({
   const { closeDrawer, openDrawer, closeAllDrawers } = useDrawerStore()
   const { data: profile } = useUserProfile()
   const updatePaymentSettings = useUpdatePaymentSettings()
+  const paystack = usePaystackAvailability(profile)
 
   const effectiveTier = profile?.effectiveTier
   const hasPlan = Boolean(effectiveTier)
@@ -50,6 +52,47 @@ export function MultiplePaymentOptionsDrawer({
     router.push(`/plans?tier=${tier}`)
   }
 
+  const paystackOn = profile?.paystackCollectionEnabled === true
+
+  const updateSettings = (
+    settings: Parameters<typeof updatePaymentSettings.mutate>[0],
+  ) =>
+    updatePaymentSettings.mutate(settings, {
+      onError: () => {
+        showNotificationToast({
+          message: 'Could not update payment options. Please try again.',
+          mode: 'error',
+        })
+      },
+    })
+
+  // PRO picks any mix of methods; the first one picked turns Paystack on and
+  // removing the last one turns it off.
+  const changeProChannel = (
+    channel: DisplayedPaystackChannel,
+    enabled: boolean,
+  ) => {
+    if (!paystackOn) {
+      if (enabled) {
+        updateSettings({
+          paystackCollectionEnabled: true,
+          paystackCollectionChannels: [channel],
+        })
+      }
+      return
+    }
+
+    const nextChannels = enabled
+      ? [...new Set([...selectedChannels, channel])]
+      : selectedChannels.filter((selected) => selected !== channel)
+
+    updateSettings(
+      nextChannels.length === 0
+        ? { paystackCollectionEnabled: false }
+        : { paystackCollectionChannels: nextChannels },
+    )
+  }
+
   const handleChannelChange = (
     channel: DisplayedPaystackChannel,
     enabled: boolean,
@@ -58,63 +101,29 @@ export function MultiplePaymentOptionsDrawer({
       goToPlan('LITE')
       return
     }
-
-    if (!isProOrAbove) {
-      if (channel !== liteChannel) {
-        goToPlan('PRO')
-        return
-      }
-
-      if (profile?.canCollect !== true) {
-        closeDrawer('multiple-payment-options')
-        openDrawer({ type: 'verify-identity' })
-        return
-      }
-
-      updatePaymentSettings.mutate(
-        { paystackCollectionEnabled: enabled },
-        {
-          onError: () => {
-            showNotificationToast({
-              message: 'Could not update Paystack payments. Please try again.',
-              mode: 'error',
-            })
-          },
-        },
-      )
+    // LITE has a single method; any other is a PRO feature.
+    if (!isProOrAbove && channel !== liteChannel) {
+      goToPlan('PRO')
+      return
+    }
+    // Turning a method off is always allowed, even if payouts broke since.
+    if (enabled && !paystack.canTurnOn) {
+      paystack.explainBlock()
       return
     }
 
-    const nextChannels = enabled
-      ? [...new Set([...selectedChannels, channel])]
-      : selectedChannels.filter((selected) => selected !== channel)
-
-    if (nextChannels.length === 0) {
-      showNotificationToast({
-        message: 'Keep at least one Paystack payment option active.',
-      })
-      return
+    if (isProOrAbove) {
+      changeProChannel(channel, enabled)
+    } else {
+      updateSettings({ paystackCollectionEnabled: enabled })
     }
-
-    updatePaymentSettings.mutate(
-      { paystackCollectionChannels: nextChannels },
-      {
-        onError: () => {
-          showNotificationToast({
-            message: 'Could not update payment options. Please try again.',
-            mode: 'error',
-          })
-        },
-      },
-    )
   }
 
-  const isChannelChecked = (channel: DisplayedPaystackChannel) => {
-    if (isProOrAbove) return selectedChannels.includes(channel)
-    return (
-      channel === liteChannel && profile?.paystackCollectionEnabled === true
-    )
-  }
+  const isChannelChecked = (channel: DisplayedPaystackChannel) =>
+    paystackOn &&
+    (isProOrAbove
+      ? selectedChannels.includes(channel)
+      : channel === liteChannel)
 
   return (
     <div className="flex flex-col bg-[#F4F6F8] text-black px-3">

@@ -25,12 +25,14 @@ export function useSetupShopCta(): {
   // Only fetch the checklist once we know the merchant qualifies.
   const { data: setup } = useShopSetup(verified)
 
-  const allDone = Boolean(
-    setup && setup.completedCount >= setup.total && setup.isLive,
+  // Until the checklist loads, progress is unknown — not incomplete — so the
+  // card waits rather than flashing "Set up Shop" at finished shops.
+  const setupIncomplete = Boolean(
+    setup && !(setup.completedCount >= setup.total && setup.isLive),
   )
 
   return {
-    show: needsVerification || (verified && !allDone),
+    show: needsVerification || (verified && setupIncomplete),
     title: needsVerification ? 'Continue verification' : 'Set up Shop',
     subtitle: needsVerification
       ? 'Complete your identity verification'

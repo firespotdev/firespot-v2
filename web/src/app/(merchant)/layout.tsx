@@ -2,8 +2,14 @@
 
 import { useEffect } from 'react'
 import { useRouter } from '@bprogress/next/app'
-import { useAuthStore, useAuthReady } from '@/services/auth'
+import {
+  SERVER_UNREACHABLE_MESSAGE,
+  useAuthStore,
+  useAuthReady,
+  useWaitingForServer,
+} from '@/services/auth'
 import { isTokenExpired } from '@/lib/utils/auth-redirect'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 import { MerchantBottomNav } from '@/components/layout/merchant-bottom-nav'
 
 /**
@@ -24,6 +30,7 @@ export default function MerchantLayout({
   const onboardingCompleted = useAuthStore((s) => s.onboardingCompleted)
   const logout = useAuthStore((s) => s.logout)
   const setActiveProfileMode = useAuthStore((s) => s.setActiveProfileMode)
+  const waitingForServer = useWaitingForServer()
 
   const hasValidSession =
     isAuthenticated && !!token && !isTokenExpired(token)
@@ -34,7 +41,7 @@ export default function MerchantLayout({
     user?.role === 'merchant'
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || waitingForServer) return
     if (!isAuthenticated || !token || isTokenExpired(token)) {
       if (token && isTokenExpired(token)) logout()
       router.replace('/login')
@@ -52,6 +59,7 @@ export default function MerchantLayout({
     setActiveProfileMode('merchant')
   }, [
     ready,
+    waitingForServer,
     isAuthenticated,
     token,
     user,
@@ -60,6 +68,10 @@ export default function MerchantLayout({
     logout,
     setActiveProfileMode,
   ])
+
+  if (waitingForServer) {
+    return <LoadingPage message={SERVER_UNREACHABLE_MESSAGE} />
+  }
 
   if (!canRenderMerchant) {
     return <div className="h-dvh bg-[#F4F6F8]" />

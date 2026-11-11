@@ -1,6 +1,6 @@
 'use client'
 
-import { X, Plus, ChevronRight } from 'lucide-react'
+import { X, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter } from '@bprogress/next/app'
 import {
@@ -17,6 +17,7 @@ import { Card, Scan } from 'iconsax-reactjs'
 import { BankIcon } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { getActivePaymentMethodCount } from '@/lib/utils/payment-methods'
+import { usePaystackAvailability } from '@/hooks/use-paystack-availability'
 
 const GRADIENT_TEXT_CLASS =
   'bg-linear-to-br from-[#FB5012] to-[#D72483] bg-clip-text text-transparent'
@@ -44,6 +45,7 @@ export function PaymentMethodsActiveDrawer() {
   const { closeDrawer, openDrawer } = useDrawerStore()
 
   const updatePaymentSettings = useUpdatePaymentSettings()
+  const paystack = usePaystackAvailability(profile)
 
   const bankAccountCount = profile?.bankAccounts?.length ?? 0
   const qrKitCount = qrKitsData?.data?.length ?? 0
@@ -84,10 +86,24 @@ export function PaymentMethodsActiveDrawer() {
     )
   }
 
+  const openPaymentOptionsPicker = () => {
+    closeDrawer('payment-methods-active')
+    openDrawer({
+      type: 'multiple-payment-options',
+      props: { fromActiveMethods: true },
+    })
+  }
+
+  // Turning Paystack on means choosing how customers pay, so it opens the
+  // picker; turning it off needs no choice.
   const handleMultipleOptionsChange = (enabled: boolean) => {
-    if (!hasPlan || !canCollect || !profile?.hasPayoutAccount) return
+    if (!paystack.canTurnOn) return
+    if (enabled) {
+      openPaymentOptionsPicker()
+      return
+    }
     updatePaymentSettings.mutate(
-      { paystackCollectionEnabled: enabled },
+      { paystackCollectionEnabled: false },
       {
         onError: () => {
           showNotificationToast({
@@ -110,12 +126,14 @@ export function PaymentMethodsActiveDrawer() {
     }
   }
 
+  // The row does exactly what tapping its switch does.
   const handleMultipleOptionsRowClick = () => {
-    closeDrawer('payment-methods-active')
-    openDrawer({
-      type: 'multiple-payment-options',
-      props: { fromActiveMethods: true },
-    })
+    if (updatePaymentSettings.isPending) return
+    if (!paystack.canTurnOn) {
+      paystack.explainBlock()
+      return
+    }
+    handleMultipleOptionsChange(!multipleOptionsActive)
   }
 
   const handleBankTransferChange = (enabled: boolean) => {
@@ -134,24 +152,13 @@ export function PaymentMethodsActiveDrawer() {
 
   const activeCount = getActivePaymentMethodCount(profile)
 
-  const handleAddCustomMethod = () => {
-    showNotificationToast({
-      message: 'Custom payment methods coming soon',
-    })
-  }
 
   return (
     <div className="flex flex-col bg-[#F4F6F8] text-black px-3">
       {/* Header */}
       <header className="flex items-center justify-between py-2 mb-2">
-        <button
-          type="button"
-          onClick={handleAddCustomMethod}
-          aria-label="Add payment method"
-          className="w-9 h-9 flex items-center justify-center text-black"
-        >
-          <Plus size={20} strokeWidth={2} />
-        </button>
+        {/* Keeps the title centred opposite the close button. */}
+        <div aria-hidden className="w-9 h-9" />
 
         <h2 className="text-[16px] font-bold text-black text-center">
           {activeCount} payment methods active
@@ -288,18 +295,19 @@ export function PaymentMethodsActiveDrawer() {
               )
             }
             trailing={
-              <div onClick={(e) => e.stopPropagation()}>
+              <div
+                onClick={(event) => {
+                  event.stopPropagation()
+                  // A disabled switch ignores the tap, so say why here.
+                  if (!paystack.canTurnOn) paystack.explainBlock()
+                }}
+              >
                 <Switch
                   checked={multipleOptionsActive}
                   disabled={
-                    !hasPlan ||
-                    !canCollect ||
-                    !profile?.hasPayoutAccount ||
-                    updatePaymentSettings.isPending
+                    !paystack.canTurnOn || updatePaymentSettings.isPending
                   }
-                  onCheckedChange={
-                    hasPlan ? handleMultipleOptionsChange : undefined
-                  }
+                  onCheckedChange={handleMultipleOptionsChange}
                 />
               </div>
             }

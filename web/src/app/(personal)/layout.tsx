@@ -3,9 +3,15 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { useRouter } from '@bprogress/next/app'
-import { useAuthStore, useAuthReady } from '@/services/auth'
+import {
+  SERVER_UNREACHABLE_MESSAGE,
+  useAuthStore,
+  useAuthReady,
+  useWaitingForServer,
+} from '@/services/auth'
 import { hasPersonalIdentity, isTokenExpired } from '@/lib/utils/auth-redirect'
 import { BottomNav } from '@/components/layout/bottom-nav'
+import { LoadingPage } from '@/components/layout/LoadingPage'
 
 /**
  * Personal (consumer) zone. Available to any signed-in, onboarded user —
@@ -25,9 +31,10 @@ export default function PersonalLayout({
   const onboardingCompleted = useAuthStore((s) => s.onboardingCompleted)
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const waitingForServer = useWaitingForServer()
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || waitingForServer) return
     if (!isAuthenticated || !token || isTokenExpired(token)) {
       if (token && isTokenExpired(token)) logout()
       router.replace('/login')
@@ -40,7 +47,11 @@ export default function PersonalLayout({
     if (!hasPersonalIdentity(user)) {
       router.replace(`/onboarding?redirect=${encodeURIComponent(pathname)}`)
     }
-  }, [ready, isAuthenticated, token, onboardingCompleted, user, pathname, router, logout])
+  }, [ready, waitingForServer, isAuthenticated, token, onboardingCompleted, user, pathname, router, logout])
+
+  if (waitingForServer) {
+    return <LoadingPage message={SERVER_UNREACHABLE_MESSAGE} innerBg="#ffffff" />
+  }
 
   if (!ready) {
     return <div className="h-dvh bg-white" />

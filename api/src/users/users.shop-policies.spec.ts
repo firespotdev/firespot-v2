@@ -92,6 +92,23 @@ describe("Shop policies", () => {
     ).rejects.toBeDefined();
   });
 
+  it("rejects a policy that's on without a time limit", async () => {
+    const user = merchant(undefined);
+    userModel.findById.mockResolvedValue(user);
+    const dto = await validate(UpdateShopPoliciesDto, {
+      returns: true,
+      exchanges: false,
+      cancellations: true,
+      refunds: false,
+      appliesWithinDays: { returns: 14 },
+    });
+
+    await expect(
+      service.updateShopPolicies("merchant-id", dto),
+    ).rejects.toThrow("Set how many days Cancellations applies within");
+    expect(user.save).not.toHaveBeenCalled();
+  });
+
   it("adds a custom policy without marking the step done", async () => {
     const user = merchant(undefined);
     userModel.findById.mockResolvedValue(user);

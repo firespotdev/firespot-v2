@@ -28,6 +28,7 @@ export function Switch({
       {...ariaProps}
       role="switch"
       aria-checked={checked}
+      aria-disabled={disabled || undefined}
       tabIndex={disabled ? -1 : 0}
       onClick={(e) => {
         if (disabled) return
@@ -42,10 +43,10 @@ export function Switch({
         }
       }}
       className={`
-        relative inline-flex h-8 w-[52px] shrink-0 cursor-pointer items-center rounded-full p-1
+        relative inline-flex h-8 w-[52px] shrink-0 items-center rounded-full p-1
         transition-colors duration-200 ease-in-out
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2
-        disabled:cursor-not-allowed disabled:opacity-50
+        ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
         ${checked ? activeBg : 'bg-[#E5E5E5]'}
         ${className}
       `}

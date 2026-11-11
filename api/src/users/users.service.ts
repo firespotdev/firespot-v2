@@ -78,6 +78,13 @@ const SHOP_POLICY_KEYS = [
   "refunds",
 ] as const;
 
+const SHOP_POLICY_LABELS: Record<(typeof SHOP_POLICY_KEYS)[number], string> = {
+  returns: "Returns",
+  exchanges: "Exchanges",
+  cancellations: "Cancellations",
+  refunds: "Refunds",
+};
+
 /**
  * Policies as customers see them: each standard policy with its time limit,
  * then the merchant's own. Null until the merchant has set any.
@@ -759,6 +766,16 @@ export class UsersService {
   }
 
   async updateShopPolicies(userId: string, dto: UpdateShopPoliciesDto) {
+    // Customers always see a limit for a policy that's on, never "anytime".
+    const missingLimit = SHOP_POLICY_KEYS.find(
+      (key) => dto[key] && !dto.appliesWithinDays?.[key],
+    );
+    if (missingLimit) {
+      throw new HttpException(
+        `Set how many days ${SHOP_POLICY_LABELS[missingLimit]} applies within`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const user = await this.getMerchantOrThrow(userId);
     const current = this.currentShopPolicies(user);
     // A time limit only means something for a policy that's on.

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore, useAuthHydrated } from './authSlice'
 import { refreshAccessToken } from '@/lib/utils/axios'
 import { isTokenExpired } from '@/lib/utils/auth-redirect'
+import { markSessionUnreachable } from './session-reachability'
 
 /**
  * Gate for auth guards. Resolves once the persisted store has hydrated AND —
@@ -24,9 +25,10 @@ export function useAuthReady(): boolean {
     // Expired access token + we think we're logged in → try the refresh cookie
     if (isAuthenticated && token && isTokenExpired(token)) {
       let active = true
-      refreshAccessToken().then((newToken) => {
+      refreshAccessToken().then((refresh) => {
         if (!active) return
-        if (!newToken) logout()
+        if (refresh.status === 'expired') logout()
+        if (refresh.status === 'unavailable') markSessionUnreachable()
         setBootstrapped(true)
       })
       return () => {

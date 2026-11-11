@@ -128,6 +128,7 @@ export const PLANS: Record<PlanTier, PlanDefinition> = {
       { label: 'Accept bank transfers from any bank', included: true },
       { label: 'Payouts settled into your bank next day', included: true },
       { label: 'Bank transfers confirmed instantly', included: true },
+      { label: 'Customers pay in one tap with saved cards', included: true },
       { label: 'Read-aloud payment notifications', included: true },
       { label: 'Searchable transaction history', included: true },
       { label: 'Showcase your products and services', included: true },

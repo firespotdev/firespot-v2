@@ -30,8 +30,8 @@ const getSharedSocket = () => {
   });
   sharedSocket.on('disconnect', async (reason) => {
     if (reason !== 'io server disconnect' || !useAuthStore.getState().isAuthenticated) return;
-    const token = await refreshAccessToken();
-    if (!token) useAuthStore.getState().logout();
+    const refresh = await refreshAccessToken();
+    if (refresh.status === 'expired') useAuthStore.getState().logout();
   });
   sharedSocket.on('connect', () => {
     if (merchantRoomId) {
