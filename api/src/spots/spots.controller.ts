@@ -16,6 +16,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger'
 import {
+  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -25,41 +26,84 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { SpotsService } from './spots.service'
 
-class CreateSpotDto {
+/** Address fields shared by creating and editing a spot. */
+class SpotAddressDto {
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  city?: string
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  additionalDetails?: string
+
+  @IsBoolean()
+  @IsOptional()
+  insideMarket?: boolean
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(150)
+  market?: string
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  shoppingComplex?: string
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(50)
+  shopNumber?: string
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(300)
+  landmark?: string
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(100)
+  location?: string
+}
+
+class CreateSpotDto extends SpotAddressDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   name: string
 
   @IsString()
-  @IsOptional()
-  @MaxLength(200)
-  address?: string
+  @IsNotEmpty()
+  @MaxLength(100)
+  state: string
 
   @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  location?: string
+  @IsNotEmpty()
+  @MaxLength(300)
+  address: string
 
   @IsUUID()
   idempotencyKey: string
 }
 
-class UpdateSpotDto {
+class UpdateSpotDto extends SpotAddressDto {
   @IsString()
   @IsOptional()
+  @IsNotEmpty()
   @MaxLength(100)
   name?: string
 
   @IsString()
   @IsOptional()
-  @MaxLength(200)
-  address?: string
+  @MaxLength(100)
+  state?: string
 
   @IsString()
   @IsOptional()
-  @MaxLength(100)
-  location?: string
+  @MaxLength(300)
+  address?: string
 }
 
 @ApiTags('spots')

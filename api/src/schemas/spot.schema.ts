@@ -20,6 +20,31 @@ export class Spot extends Document {
   @Prop()
   location?: string
 
+  // Structured address, the same shape as the profile's main address.
+  @Prop()
+  state?: string
+
+  @Prop()
+  city?: string
+
+  @Prop()
+  additionalDetails?: string
+
+  @Prop()
+  insideMarket?: boolean
+
+  @Prop()
+  market?: string
+
+  @Prop()
+  shoppingComplex?: string
+
+  @Prop()
+  shopNumber?: string
+
+  @Prop()
+  landmark?: string
+
   @Prop({ default: true, index: true })
   isActive: boolean
 

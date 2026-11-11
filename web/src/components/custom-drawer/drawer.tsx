@@ -68,6 +68,7 @@ import { AddSupplierDrawer } from './add-supplier-drawer'
 import { ExpenseReceiptDrawer } from './expense-receipt-drawer'
 import { ExpenseOptionsDrawer } from './expense-options-drawer'
 import { CustomerOptionsDrawer } from './customer-options-drawer'
+import { SpotFormDrawer } from './spot-form-drawer'
 import { ExpenseRepaymentDrawer } from './expense-repayment-drawer'
 import { RecordRepaymentDrawer } from './record-repayment-drawer'
 import { OutstandingDrawer } from './outstanding-drawer'
@@ -352,6 +353,14 @@ const DRAWER_CONFIG: Record<
     fullScreen: true,
     hideHandle: true,
     direction: 'right',
+  },
+  'spot-form': {
+    title: 'Add a spot',
+    Content: SpotFormDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    // Grows to fit the market fields when that switch is turned on.
+    contentClassName: 'data-[vaul-drawer-direction=bottom]:max-h-[93dvh]',
   },
   'customer-options': {
     title: '',

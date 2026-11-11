@@ -12,6 +12,7 @@ import { Supplier, SupplierDocument } from "../schemas/supplier.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { Product, ProductDocument } from "../schemas/product.schema";
 import { Spot, SpotDocument } from "../schemas/spot.schema";
+import { publicSpotAddress } from "../spots/spot-address";
 import { Sale, SaleDocument } from "../schemas/sale.schema";
 import { Feedback, FeedbackDocument } from "../schemas/feedback.schema";
 import { PaystackService } from "./services/paystack.service";
@@ -314,7 +315,9 @@ export class UsersService {
         .exec(),
       this.spotModel
         .find({ merchantId, isActive: true })
-        .select("name address location isPrimary")
+        .select(
+          "name address location isPrimary state city additionalDetails insideMarket market shoppingComplex shopNumber landmark",
+        )
         .sort({ isPrimary: -1, createdAt: 1 })
         .lean()
         .exec(),
@@ -372,8 +375,7 @@ export class UsersService {
       ? spots.map((spot) => ({
           id: String(spot._id),
           name: spot.name,
-          address: spot.address,
-          location: spot.location,
+          ...publicSpotAddress(spot),
           isPrimary: spot.isPrimary === true,
         }))
       : merchant.mainAddress
@@ -381,21 +383,7 @@ export class UsersService {
             {
               id: `main-${String(merchantId)}`,
               name: merchant.businessName,
-              address: [
-                merchant.mainAddress.address,
-                merchant.mainAddress.city,
-                merchant.mainAddress.state,
-              ]
-                .filter(Boolean)
-                .join(", "),
-              location: [
-                merchant.mainAddress.market,
-                merchant.mainAddress.shoppingComplex,
-                merchant.mainAddress.shopNumber,
-                merchant.mainAddress.landmark,
-              ]
-                .filter(Boolean)
-                .join(", "),
+              ...publicSpotAddress(merchant.mainAddress),
               isPrimary: true,
             },
           ]

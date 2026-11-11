@@ -1,329 +1,143 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import {
-  AppCard,
-  Button,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Spinner,
-  Switch,
-  showNotificationToast,
-  BackButton,
-  LoaderCircle,
-} from '@/components/ui'
-import {
-  NIGERIAN_STATES,
-  STATE_LGA_MAP,
-} from '@/lib/utils/nigerian-states-lgas'
-import { useUserProfile } from '@/services/users'
-import type { UserProfile } from '@/services/users'
-import { useUpdateLocation } from '@/services/shop'
+import { useRouter } from '@bprogress/next/app'
 import { StorefrontIcon } from '@phosphor-icons/react'
-import { LocateFixed } from 'lucide-react'
+import { ChevronRight, Plus } from 'lucide-react'
+import {
+  ActionList,
+  ActionListItem,
+  BackButton,
+  Button,
+  LoaderCircle,
+  showNotificationToast,
+} from '@/components/ui'
 import { useSetupStepBack } from '@/hooks/use-setup-step-back'
+import { useDrawerStore } from '@/services/drawer'
+import { usePlanCatalog } from '@/services/merchant-plans'
+import { useSpots, type Spot } from '@/services/spots/spots-api'
 
-const BRANCH_OPTIONS = ['1', '2', '3', '4', '5', '6+']
+const countLabel = (count: number) =>
+  count === 0 ? 'No spots yet' : `${count} ${count === 1 ? 'spot' : 'spots'}`
 
-interface CapturedLocation {
-  latitude: number
-  longitude: number
-  accuracy: number
+const spotSubtitle = (spot: Spot) =>
+  spot.isPrimary
+    ? 'Owner · Main address'
+    : ['Owner', spot.city || spot.address].filter(Boolean).join(' · ')
+
+function SpotIcon() {
+  return (
+    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#D9DEE6]">
+      <StorefrontIcon size={24} weight="fill" color="white" />
+    </span>
+  )
 }
 
-function LocationsSettingsForm({ profile }: { profile: UserProfile }) {
+function AddSpotIcon() {
+  return (
+    <span className="relative flex h-11 w-11 items-center justify-center rounded-full border border-[#E5E7EB] bg-white">
+      <StorefrontIcon size={24} weight="fill" color="#2F7CF6" />
+      <span className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-[#4DA3FF]">
+        <Plus size={11} strokeWidth={3} className="text-white" />
+      </span>
+    </span>
+  )
+}
+
+/** Setup → Add shop locations: the merchant's spots and a way to add more. */
+export default function LocationsSettingsPage() {
+  const router = useRouter()
   const handleBack = useSetupStepBack()
-  const update = useUpdateLocation()
+  const openDrawer = useDrawerStore((state) => state.openDrawer)
+  const { data, isLoading } = useSpots()
+  const { data: catalog } = usePlanCatalog()
+  const spots = (data ?? []).filter((spot) => spot.isActive)
 
-  const existing = profile?.mainAddress
-  // "6+" is saved as 6, so 6 or more shows as "6+" again.
-  const [branches, setBranches] = useState(
-    profile?.branchCount
-      ? profile.branchCount >= 6
-        ? '6+'
-        : String(profile.branchCount)
-      : '',
-  )
-  const [state, setState] = useState(existing?.state ?? '')
-  const [city, setCity] = useState(existing?.city ?? '')
-  const [address, setAddress] = useState(existing?.address ?? '')
-  const [insideMarket, setInsideMarket] = useState(
-    existing?.insideMarket === true,
-  )
-  const [market, setMarket] = useState(existing?.market ?? '')
-  const [shoppingComplex, setShoppingComplex] = useState(
-    existing?.shoppingComplex ?? '',
-  )
-  const [shopNumber, setShopNumber] = useState(existing?.shopNumber ?? '')
-  const [landmark, setLandmark] = useState(existing?.landmark ?? '')
-  const [capturedLocation, setCapturedLocation] =
-    useState<CapturedLocation | null>(null)
-  const [isLocating, setIsLocating] = useState(false)
+  const openSpot = (spot: Spot) =>
+    openDrawer({ type: 'spot-form', props: { spot } })
 
-  // Cities depend on the chosen state; reset the city when the state changes.
-  const cities = useMemo(
-    () => (state ? (STATE_LGA_MAP[state] ?? []) : []),
-    [state],
-  )
-
-  const onStateChange = (value: string) => {
-    setState(value)
-    setCity('')
-  }
-
-  const captureShopLocation = () => {
-    if (!navigator.geolocation) {
-      showNotificationToast({
-        message: 'Location is not available in this browser.',
-        mode: 'error',
-      })
+  // The first spot is free; each extra one needs Pro Max and its own charge.
+  const addSpot = () => {
+    if (spots.length === 0) {
+      openDrawer({ type: 'spot-form' })
       return
     }
-
-    setIsLocating(true)
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setCapturedLocation({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          accuracy: coords.accuracy,
-        })
-        setIsLocating(false)
-      },
-      (error) => {
-        setIsLocating(false)
-        showNotificationToast({
-          message:
-            error.code === error.PERMISSION_DENIED
-              ? 'Allow location access in your browser to capture your shop location.'
-              : 'Could not find your location. Try again at your shop.',
-          mode: 'error',
-        })
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
-    )
-  }
-
-  // The step counts as done once the shop has a state and an address.
-  const hasSpot = Boolean(state && address.trim())
-
-  const handleSave = () => {
-    // "6+" has no exact count; store 6 as the floor.
-    const branchCount = branches
-      ? branches === '6+'
-        ? 6
-        : Number(branches)
-      : undefined
-
-    update.mutate(
-      {
-        state: state || undefined,
-        city: city || undefined,
-        address: address.trim() || undefined,
-        insideMarket,
-        market: insideMarket ? market.trim() || undefined : undefined,
-        shoppingComplex: insideMarket
-          ? shoppingComplex.trim() || undefined
-          : undefined,
-        shopNumber: insideMarket ? shopNumber.trim() || undefined : undefined,
-        landmark: insideMarket ? landmark.trim() || undefined : undefined,
-        branchCount,
-        latitude: capturedLocation?.latitude,
-        longitude: capturedLocation?.longitude,
-        locationAccuracyMeters: capturedLocation?.accuracy,
-      },
-      {
-        onSuccess: handleBack,
-        onError: () =>
-          showNotificationToast({ message: 'Could not save. Try again.' }),
-      },
-    )
+    if (catalog?.current.effectiveTier !== 'PROMAX') {
+      showNotificationToast({ message: 'Extra spots need Firespot Pro Max.' })
+      router.push('/plans?tier=PROMAX')
+      return
+    }
+    const proMax = catalog.plans.find((plan) => plan.tier === 'PROMAX')
+    openDrawer({
+      type: 'spot-form',
+      props: { monthlyCharge: proMax?.price },
+    })
   }
 
   return (
     <div className="min-h-dvh bg-linear-to-br from-[#ffffff] to-[#f4f6f8]">
-      <div className="max-w-125 mx-auto min-h-dvh flex flex-col">
+      <div className="mx-auto flex min-h-dvh max-w-125 flex-col">
         <BackButton onClick={handleBack} className="self-start px-4 py-3.5" />
 
-        {/* flex-1 pushes the footer to the bottom; it scrolls if content is tall */}
-        <div className="px-4 flex-1 pb-6">
-          <p className="text-sm text-[#00000080] font-medium mt-0.5">
-            Set up location
+        <div className="flex-1 px-4 pb-6">
+          <p className="mt-0.5 text-sm font-medium text-[#00000080]">
+            Shop locations
           </p>
-          <h1 className="text-[20px] -tracking-[0.4px] font-bold text-black mt-1.5">
-            Where can customers find you?
+          <h1 className="mt-1.5 text-[20px] font-bold -tracking-[0.4px] text-black">
+            Where customers can find you
           </h1>
 
-          <div className="space-y-6 mt-6">
-            <div>
-              <Label>Locations</Label>
-              <Select value={branches} onValueChange={setBranches}>
-                <SelectTrigger className="font-medium">
-                  <SelectValue placeholder="Select number of branches" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BRANCH_OPTIONS.map((n) => (
-                    <SelectItem key={n} value={n}>
-                      {n} {n === '1' ? 'branch' : 'branches'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <LoaderCircle innerBg="#F4F6F8" />
             </div>
-
-            <div>
-              <Label>Main address</Label>
-              <div>
-                <div className="flex">
-                  <Select value={state} onValueChange={onStateChange}>
-                    <SelectTrigger className="font-medium flex-1 min-w-0 rounded-r-none rounded-b-none border-r-0 border-b-0">
-                      <SelectValue placeholder="State" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {NIGERIAN_STATES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select
-                    value={city}
-                    onValueChange={setCity}
-                    disabled={!state}
-                  >
-                    <SelectTrigger className="font-medium disabled:opacity-100 flex-1 min-w-0 rounded-l-none rounded-b-none border-b-0">
-                      <SelectValue placeholder="City" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Input
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Enter your main business address"
-                  className="font-medium rounded-t-none"
+          ) : (
+            <>
+              <p className="mt-6 mb-2 text-[13px] font-medium text-[#6B7280]">
+                {countLabel(spots.length)}
+              </p>
+              <ActionList rounded="12">
+                {spots.map((spot) => (
+                  <ActionListItem
+                    key={spot._id}
+                    className="p-3"
+                    icon={<SpotIcon />}
+                    title={
+                      <span className="text-[14px] font-bold text-black uppercase">
+                        {spot.name}
+                      </span>
+                    }
+                    subtitle={spotSubtitle(spot)}
+                    onClick={() => openSpot(spot)}
+                  />
+                ))}
+                <ActionListItem
+                  className="p-3"
+                  icon={<AddSpotIcon />}
+                  title={
+                    <span className="text-[15px] font-bold text-[#2F7CF6]">
+                      Add a Spot
+                    </span>
+                  }
+                  trailing={
+                    <ChevronRight size={18} className="text-[#2F7CF6]" />
+                  }
+                  onClick={addSpot}
                 />
-              </div>
-            </div>
-
-            <AppCard
-              rounded="12"
-              padding="sm"
-              className="flex items-center gap-3"
-            >
-              <span className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 bg-linear-to-r from-[#FB5012] to-[#D72483]">
-                <StorefrontIcon size={24} weight="fill" color="white" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[14px] font-bold text-black">
-                  Inside a market or plaza?
-                </p>
-                <p className="text-[12px] text-[#00000080] font-medium">
-                  Toggle to help customers find you
-                </p>
-              </div>
-              <Switch
-                checked={insideMarket}
-                onCheckedChange={setInsideMarket}
-              />
-            </AppCard>
-
-            {insideMarket && (
-              <div className="space-y-6">
-                <div>
-                  <Label htmlFor="market">Market (optional)</Label>
-                  <Input
-                    id="market"
-                    value={market}
-                    onChange={(event) => setMarket(event.target.value)}
-                    placeholder="Set market"
-                    maxLength={150}
-                    className="font-medium"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="shopping-complex">
-                    Shopping complex (optional)
-                  </Label>
-                  <Input
-                    id="shopping-complex"
-                    value={shoppingComplex}
-                    onChange={(event) => setShoppingComplex(event.target.value)}
-                    placeholder="Name of the building/plaza your Shop is in"
-                    maxLength={200}
-                    className="font-medium"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="shop-number">Shop number (optional)</Label>
-                  <Input
-                    id="shop-number"
-                    value={shopNumber}
-                    onChange={(event) => setShopNumber(event.target.value)}
-                    placeholder="eg 32B"
-                    maxLength={50}
-                    className="font-medium"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="landmark">Landmark (optional)</Label>
-                  <Input
-                    id="landmark"
-                    value={landmark}
-                    onChange={(event) => setLandmark(event.target.value)}
-                    placeholder="For example, Beside White House"
-                    maxLength={300}
-                    className="font-medium"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+              </ActionList>
+            </>
+          )}
         </div>
 
-        <div className="sticky bottom-0 bg-white border-t border-[#F1F1F1] rounded-t-[12px] p-4 w-full">
+        <div className="sticky bottom-0 w-full rounded-t-[12px] border-t border-[#F1F1F1] bg-white p-4">
           <Button
-            onClick={handleSave}
-            disabled={!hasSpot || update.isPending}
+            onClick={handleBack}
+            disabled={spots.length === 0}
             className="w-full font-bold"
           >
-            {update.isPending ? <Spinner /> : 'That’s my spot'}
+            Save and continue
           </Button>
         </div>
       </div>
     </div>
   )
-}
-
-// The form copies saved values into its fields once, so it waits for the
-// profile; otherwise a refresh or direct visit opens with empty fields.
-export default function LocationsSettingsPage() {
-  const { data: profile } = useUserProfile()
-
-  if (!profile) {
-    return (
-      <div className="flex h-dvh items-center justify-center bg-[#F4F6F8]">
-        <LoaderCircle innerBg="#F4F6F8" />
-      </div>
-    )
-  }
-
-  return <LocationsSettingsForm profile={profile} />
 }

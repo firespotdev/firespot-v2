@@ -14,6 +14,14 @@ import { Spot, SpotDocument } from '../schemas/spot.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { PaystackService } from '../users/services/paystack.service'
 import { getEffectiveTier } from '../merchant-plans/constants/plans'
+import {
+  applySpotAddress,
+  mainAddressFromSpot,
+  spotAddressFromMain,
+  type SpotAddress,
+} from './spot-address'
+
+type SpotInput = SpotAddress & { name: string; location?: string }
 
 @Injectable()
 export class SpotsService {
@@ -28,12 +36,7 @@ export class SpotsService {
 
   async create(
     merchantId: string,
-    dto: {
-      name: string
-      address?: string
-      location?: string
-      idempotencyKey: string
-    },
+    dto: SpotInput & { idempotencyKey: string },
   ): Promise<Spot> {
     const user = await this.userModel.findById(merchantId).exec()
     if (!user) {
@@ -76,8 +79,10 @@ export class SpotsService {
         subscriptionCode: primarySubscription?.code,
         subscriptionEmailToken: primarySubscription?.emailToken,
       })
+      applySpotAddress(spot, dto)
       try {
         const saved = await spot.save()
+        await this.syncMainAddress(merchantId, saved, user.mainAddress)
         if (primarySubscription?.code) {
           await this.userModel.updateOne(
             {
@@ -145,6 +150,7 @@ export class SpotsService {
     spot.name = dto.name
     spot.address = dto.address
     spot.location = dto.location
+    applySpotAddress(spot, dto)
     spot.billingStatus = 'pending'
     try {
       await spot.save()
@@ -283,6 +289,10 @@ export class SpotsService {
       .find({ merchantId: new Types.ObjectId(merchantId) })
       .sort({ createdAt: 1 })
       .exec()
+    if (spots.length === 0) {
+      const migrated = await this.spotFromMainAddress(merchantId)
+      return migrated ? [migrated] : []
+    }
     if (spots.length > 0 && !spots.some((spot) => spot.isPrimary)) {
       const primary = spots[0]
       primary.isPrimary = true
@@ -307,13 +317,84 @@ export class SpotsService {
   async update(
     merchantId: string,
     id: string,
-    dto: { name?: string; address?: string; location?: string },
+    dto: Partial<SpotInput>,
   ): Promise<Spot> {
     const spot = await this.findOne(merchantId, id)
+    const before: SpotAddress = {
+      state: spot.state,
+      city: spot.city,
+      address: spot.address,
+    }
     if (dto.name !== undefined) spot.name = dto.name
-    if (dto.address !== undefined) spot.address = dto.address
     if (dto.location !== undefined) spot.location = dto.location
-    return spot.save()
+    applySpotAddress(spot, dto)
+    const saved = await spot.save()
+    if (saved.isPrimary) {
+      await this.syncMainAddress(merchantId, saved, before)
+    }
+    return saved
+  }
+
+  /**
+   * Keeps the profile's main address in step with the main spot, so Places
+   * search, discovery and the shop setup step keep reading one address. A
+   * new street address drops the old map pin, as the old form did.
+   */
+  private async syncMainAddress(
+    merchantId: string,
+    spot: SpotAddress,
+    previous?: SpotAddress,
+  ): Promise<void> {
+    const moved = (['state', 'city', 'address'] as const).some(
+      (field) => (previous?.[field] ?? undefined) !== (spot[field] ?? undefined),
+    )
+    await this.userModel.updateOne(
+      { _id: new Types.ObjectId(merchantId) },
+      {
+        $set: { mainAddress: mainAddressFromSpot(spot) },
+        ...(moved
+          ? {
+              $unset: {
+                mainLocation: '',
+                mainLocationAccuracyMeters: '',
+                mainLocationCapturedAt: '',
+              },
+            }
+          : {}),
+      },
+    )
+  }
+
+  /**
+   * Merchants who saved an address before spots existed get it back as their
+   * main spot the first time they list their spots.
+   */
+  private async spotFromMainAddress(
+    merchantId: string,
+  ): Promise<SpotDocument | null> {
+    const user = await this.userModel.findById(merchantId).exec()
+    if (user?.role !== 'merchant' || !user.mainAddress?.address?.trim()) {
+      return null
+    }
+    const spot = new this.spotModel({
+      merchantId: new Types.ObjectId(merchantId),
+      name: user.businessName?.trim() || 'Main spot',
+      isActive: true,
+      isPrimary: true,
+      billingStatus: 'active',
+    })
+    applySpotAddress(spot, spotAddressFromMain(user.mainAddress))
+    try {
+      return await spot.save()
+    } catch (error: any) {
+      if (error?.code !== 11000) throw error
+      return this.spotModel
+        .findOne({
+          merchantId: new Types.ObjectId(merchantId),
+          isPrimary: true,
+        })
+        .exec()
+    }
   }
 
   /**

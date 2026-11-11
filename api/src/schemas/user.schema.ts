@@ -171,12 +171,14 @@ export class User extends Document {
       shoppingComplex: String,
       shopNumber: String,
       landmark: String,
+      additionalDetails: String,
     },
   })
   mainAddress?: {
     state?: string
     city?: string
     address?: string
+    additionalDetails?: string
     insideMarket?: boolean
     market?: string
     shoppingComplex?: string

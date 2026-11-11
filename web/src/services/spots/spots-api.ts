@@ -2,12 +2,25 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '@/lib/utils/axios'
+import { SHOP_SETUP_KEY } from '@/services/shop/shopApi'
 
-export interface Spot {
+/** Where a spot is, in the same shape as the profile's main address. */
+export interface SpotAddress {
+  state?: string
+  city?: string
+  address?: string
+  additionalDetails?: string
+  insideMarket?: boolean
+  market?: string
+  shoppingComplex?: string
+  shopNumber?: string
+  landmark?: string
+}
+
+export interface Spot extends SpotAddress {
   _id: string
   merchantId: string
   name: string
-  address?: string
   location?: string
   isActive: boolean
   isPrimary: boolean
@@ -17,10 +30,8 @@ export interface Spot {
   createdAt?: string
 }
 
-export interface SpotPayload {
+export interface SpotPayload extends SpotAddress {
   name: string
-  address?: string
-  location?: string
 }
 
 export interface CreateSpotPayload extends SpotPayload {
@@ -51,6 +62,16 @@ export const SpotsApi = {
 
 const SPOTS_KEY = ['spots']
 
+/**
+ * The main spot also saves the profile's main address, and the first spot
+ * completes the "Add shop locations" setup step, so both refresh with it.
+ */
+const refreshSpots = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: SPOTS_KEY })
+  queryClient.invalidateQueries({ queryKey: ['user', 'profile'] })
+  queryClient.invalidateQueries({ queryKey: SHOP_SETUP_KEY })
+}
+
 export const useSpots = () => {
   return useQuery({ queryKey: SPOTS_KEY, queryFn: () => SpotsApi.getSpots() })
 }
@@ -59,7 +80,7 @@ export const useCreateSpot = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: CreateSpotPayload) => SpotsApi.createSpot(payload),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: SPOTS_KEY }),
+    onSettled: () => refreshSpots(queryClient),
   })
 }
 
@@ -68,7 +89,7 @@ export const useUpdateSpot = () => {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: SpotPayload }) =>
       SpotsApi.updateSpot(id, payload),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: SPOTS_KEY }),
+    onSuccess: () => refreshSpots(queryClient),
   })
 }
 
@@ -76,6 +97,6 @@ export const useDeleteSpot = () => {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => SpotsApi.deleteSpot(id),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: SPOTS_KEY }),
+    onSettled: () => refreshSpots(queryClient),
   })
 }

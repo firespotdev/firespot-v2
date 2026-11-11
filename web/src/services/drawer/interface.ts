@@ -79,6 +79,7 @@ export type DrawerContentType =
   | 'expense-receipt'
   | 'expense-options'
   | 'customer-options'
+  | 'spot-form'
   | 'expense-repayment'
 
 export type DrawerDirection = 'left' | 'right' | 'top' | 'bottom'
