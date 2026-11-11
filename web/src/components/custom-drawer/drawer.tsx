@@ -67,6 +67,7 @@ import { SupplierSelectDrawer } from './supplier-select-drawer'
 import { AddSupplierDrawer } from './add-supplier-drawer'
 import { ExpenseReceiptDrawer } from './expense-receipt-drawer'
 import { ExpenseOptionsDrawer } from './expense-options-drawer'
+import { CustomerOptionsDrawer } from './customer-options-drawer'
 import { ExpenseRepaymentDrawer } from './expense-repayment-drawer'
 import { RecordRepaymentDrawer } from './record-repayment-drawer'
 import { OutstandingDrawer } from './outstanding-drawer'
@@ -351,6 +352,13 @@ const DRAWER_CONFIG: Record<
     fullScreen: true,
     hideHandle: true,
     direction: 'right',
+  },
+  'customer-options': {
+    title: '',
+    Content: CustomerOptionsDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    dismissible: true,
   },
   'expense-options': {
     title: '',

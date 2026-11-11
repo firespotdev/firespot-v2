@@ -21,6 +21,10 @@ export class MerchantCustomer extends Document {
   @Prop({ type: Types.ObjectId, ref: "User", index: true })
   userId?: Types.ObjectId;
 
+  // Saved by the merchant with the bookmark on the customer's page.
+  @Prop({ default: false })
+  isFavorite: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -1,4 +1,5 @@
 import { apiClient } from '@/lib/utils/axios';
+import type { Sale } from '@/services/sales/interface';
 
 export interface Customer {
   _id: string;
@@ -6,6 +7,8 @@ export interface Customer {
   phoneNumber: string;
   profilePhotoUrl?: string;
   userId?: string;
+  /** Saved with the bookmark on the customer's page. */
+  isFavorite?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -20,8 +23,16 @@ export interface CustomerDetails {
   visitCount: number;
   totalSpent: number;
   totalOutstanding: number;
-  sales: any[];
-  feedback: any[];
+  sales: Sale[];
+  feedback: CustomerFeedback[];
+}
+
+export interface CustomerFeedback {
+  _id: string;
+  rating?: number;
+  comment?: string;
+  customerPhotoUrl?: string;
+  createdAt?: string;
 }
 
 export const CustomersApi = {
@@ -32,6 +43,13 @@ export const CustomersApi = {
 
   getCustomerDetails: async (id: string): Promise<CustomerDetails> => {
     const { data } = await apiClient.get(`/customers/${id}`);
+    return data;
+  },
+
+  setFavorite: async (id: string, isFavorite: boolean): Promise<Customer> => {
+    const { data } = await apiClient.patch(`/customers/${id}/favorite`, {
+      isFavorite,
+    });
     return data;
   },
 

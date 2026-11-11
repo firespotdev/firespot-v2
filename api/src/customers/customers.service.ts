@@ -187,6 +187,28 @@ export class CustomersService {
     return this.toCustomerResponse(customer);
   }
 
+  /** Saves or unsaves one of the merchant's own customers. */
+  async setFavorite(merchantId: string, id: string, isFavorite: boolean) {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException("Customer not found");
+    }
+    const customer = await this.customerModel
+      .findOneAndUpdate(
+        {
+          _id: new Types.ObjectId(id),
+          merchantId: new Types.ObjectId(merchantId),
+        },
+        { $set: { isFavorite } },
+        { returnDocument: "after" },
+      )
+      .populate("userId", "profilePhotoUrl")
+      .exec();
+    if (!customer) {
+      throw new NotFoundException("Customer not found");
+    }
+    return this.toCustomerResponse(customer);
+  }
+
   async getCustomerDetails(id: string, merchantId: string) {
     const customer = await this.findOne(id, merchantId);
     const merchantObjId = new Types.ObjectId(merchantId);

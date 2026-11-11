@@ -1,6 +1,15 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Request,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
-import { IsNotEmpty, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsString } from "class-validator";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CustomersService } from "./customers.service";
 
@@ -13,6 +22,11 @@ class CreateCustomerDto {
   @IsNotEmpty()
   phoneNumber: string;
 
+}
+
+class SetFavoriteDto {
+  @IsBoolean()
+  isFavorite: boolean;
 }
 
 @ApiTags("customers")
@@ -45,5 +59,20 @@ export class CustomersController {
   @ApiResponse({ status: 200, description: "Customer details" })
   async findOne(@Request() req, @Param("id") id: string) {
     return this.customersService.getCustomerDetails(id, req.user.userId);
+  }
+
+  @Patch(":id/favorite")
+  @ApiOperation({ summary: "Save or unsave a customer" })
+  @ApiResponse({ status: 200, description: "Customer with its saved state" })
+  async setFavorite(
+    @Request() req,
+    @Param("id") id: string,
+    @Body() dto: SetFavoriteDto,
+  ) {
+    return this.customersService.setFavorite(
+      req.user.userId,
+      id,
+      dto.isFavorite,
+    );
   }
 }
