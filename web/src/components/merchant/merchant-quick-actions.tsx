@@ -224,6 +224,16 @@ export function MerchantQuickActionStack({
 
   if (!report) return null
 
+  // With nothing stacked behind it there's nothing to expand, so a lone
+  // action opens on the first tap.
+  if (actions.length === 1) {
+    return (
+      <div className={cn('w-full pb-5', className)}>
+        <MerchantQuickActionCard action={report} />
+      </div>
+    )
+  }
+
   if (isExpanded) {
     return (
       <div className={cn('space-y-0 w-full', className)}>
