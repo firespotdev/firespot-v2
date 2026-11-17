@@ -438,6 +438,13 @@ export class User extends Document {
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
   favoriteMerchants?: Types.ObjectId[]
 
+  // Items and posts saved to the personal Saved page, oldest first.
+  @Prop({ type: [{ type: Types.ObjectId, ref: "Product" }], default: [] })
+  savedProducts?: Types.ObjectId[]
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: "Post" }], default: [] })
+  savedPosts?: Types.ObjectId[]
+
   // Pre-created by a merchant recording a sale before this person has ever
   // logged in. The real owner claims it on their first OTP verification, at
   // which point isPlaceholder is cleared.

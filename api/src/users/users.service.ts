@@ -1485,6 +1485,7 @@ export class UsersService {
       merchantSlug: merchant.merchantSlug,
       businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
       businessIndustry: merchant.businessIndustry,
+      verificationLevel: merchant.verificationLevel,
     };
   }
 
@@ -1493,7 +1494,7 @@ export class UsersService {
       .findById(userId)
       .populate(
         "favoriteMerchants",
-        "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry",
+        "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry verificationLevel",
       )
       .exec();
     if (!user) {

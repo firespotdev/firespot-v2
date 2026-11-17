@@ -553,4 +553,20 @@ export class PostsService {
 
     return posts.map((post) => this.serialize(post));
   }
+
+  /** Published posts by id for a customer's Saved page, in the order asked. */
+  async findPublishedByIds(ids: Types.ObjectId[]) {
+    if (!ids.length) return [];
+    const posts = await this.postModel
+      .find({ _id: { $in: ids }, status: "PUBLISHED" })
+      .populate("merchantId", "businessName profilePhotoUrl businessImageUrl")
+      .populate("productIds", "name description price imageUrl isArchived")
+      .lean()
+      .exec();
+    const byId = new Map(posts.map((post) => [String(post._id), post]));
+    return ids.flatMap((id) => {
+      const post = byId.get(String(id));
+      return post ? [this.serialize(post)] : [];
+    });
+  }
 }

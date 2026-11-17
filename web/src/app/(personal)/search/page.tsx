@@ -12,6 +12,7 @@ import {
   LoaderCircle,
 } from '@/components/ui'
 import { MerchantAvatar } from '@/components/layout'
+import { itemDetailsHref } from '@/components/personal/business/product-card'
 import { useSearchParams } from 'next/navigation'
 import {
   useDiscoverMerchants,
@@ -179,7 +180,7 @@ function ProductResults({
         {products.map((product) => (
           <ActionListItem
             key={product.id}
-            href={`/pay/${product.merchant.serialNumber}`}
+            href={itemDetailsHref(product.merchant.id, product.id)}
             icon={
               <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[8px] bg-[#F1F1F1] text-[#9CA3AF]">
                 {product.imageUrl ? (
@@ -251,7 +252,10 @@ function SearchPageContent() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const deferredSearch = useDeferredValue(search.trim())
-  const canDiscover = deferredSearch.length === 0 || deferredSearch.length >= 2
+  // Results come only from a search; with nothing typed the page shows
+  // Frequent and Recent alone.
+  const showResults = deferredSearch.length > 0
+  const canDiscover = deferredSearch.length >= 2
   const params = {
     search: deferredSearch || undefined,
     page: activeType === 'all' ? 1 : page,
@@ -315,7 +319,7 @@ function SearchPageContent() {
                 setSearch(event.target.value)
                 setPage(1)
               }}
-              className="w-full h-9 pl-9 pr-9 bg-[#E6E8EB99] border-2 border-transparent -tracking-[0.2px] rounded-full text-base font-medium placeholder:text-[#00000066] focus:bg-white focus:border-[#0075FF] focus:outline-none"
+              className="w-full h-9 pl-9 pr-9 bg-[#E6E8EB99] [&::-webkit-search-cancel-button]:appearance-none border-2 border-transparent -tracking-[0.2px] rounded-full text-base font-medium placeholder:text-[#00000066] focus:bg-white focus:border-[#0075FF] focus:outline-none"
             />
             {search && (
               <button
@@ -364,7 +368,7 @@ function SearchPageContent() {
           </>
         )}
 
-        {!canDiscover ? (
+        {!showResults ? null : !canDiscover ? (
           <p className="py-12 text-center text-sm font-medium text-[#00000080]">
             Enter at least 2 characters to search.
           </p>
@@ -378,31 +382,17 @@ function SearchPageContent() {
           </p>
         ) : noResults ? (
           <p className="py-12 text-center text-sm font-medium text-[#00000080]">
-            {deferredSearch
-              ? `No results found for “${deferredSearch}”.`
-              : 'No shops or products are available yet.'}
+            No results found for “{deferredSearch}”.
           </p>
         ) : (
           <>
             <MerchantResults
               merchants={merchants}
-              title={
-                activeType === 'all'
-                  ? deferredSearch
-                    ? 'Shops'
-                    : 'Explore shops'
-                  : undefined
-              }
+              title={activeType === 'all' ? 'Shops' : undefined}
             />
             <ProductResults
               products={products}
-              title={
-                activeType === 'all'
-                  ? deferredSearch
-                    ? 'Products'
-                    : 'Explore products'
-                  : undefined
-              }
+              title={activeType === 'all' ? 'Products' : undefined}
             />
             {activeType === 'shops' && (
               <Pagination

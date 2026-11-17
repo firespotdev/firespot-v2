@@ -2,8 +2,9 @@
 
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, Share } from 'lucide-react'
+import { ArrowLeft, Bookmark, Share } from 'lucide-react'
 import { ItemDetails } from '@/components/personal/business/item-details'
+import { useSavedItemToggle } from '@/components/saved/use-saved-toggles'
 import { LoaderCircle, showNotificationToast } from '@/components/ui'
 import { useSafeBack } from '@/hooks/use-safe-back'
 import { useBusinessProfile } from '@/services/business-profile'
@@ -47,28 +48,49 @@ function ItemPageContent() {
   )
   const product = products.find((candidate) => candidate._id === productId)
   const isLoading = profileQuery.isLoading || catalogueQuery.isLoading
+  const savedItems = useSavedItemToggle()
+  const isSaved = savedItems.isSaved(productId)
 
   return (
     <div className="mx-auto min-h-dvh max-w-125 bg-white font-satoshi">
       <header className="sticky top-0 z-40 flex h-13 items-center justify-between bg-white px-4">
-        <button
-          type="button"
-          onClick={goBack}
-          aria-label="Go back"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-black transition-colors active:bg-gray-100"
-        >
-          <ArrowLeft size={22} strokeWidth={2} />
-        </button>
+        {/* Same width as the two buttons on the right, so the title stays centred. */}
+        <div className="flex w-[76px]">
+          <button
+            type="button"
+            onClick={goBack}
+            aria-label="Go back"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-black transition-colors active:bg-gray-100"
+          >
+            <ArrowLeft size={22} strokeWidth={2} />
+          </button>
+        </div>
         <h1 className="text-[16px] font-bold text-black">Item details</h1>
-        <button
-          type="button"
-          onClick={() => product && void shareItem(product.name)}
-          disabled={!product}
-          aria-label="Share item"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-black transition-colors active:bg-gray-100 disabled:opacity-40"
-        >
-          <Share size={20} strokeWidth={1.75} />
-        </button>
+        <div className="flex w-[76px] justify-end gap-1">
+          <button
+            type="button"
+            onClick={() => product && savedItems.toggle(product._id, product.name)}
+            disabled={!product || savedItems.isPending}
+            aria-pressed={isSaved}
+            aria-label={isSaved ? 'Unsave item' : 'Save item'}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-black transition-colors active:bg-gray-100 disabled:opacity-40"
+          >
+            <Bookmark
+              size={20}
+              strokeWidth={1.75}
+              fill={isSaved ? 'currentColor' : 'none'}
+            />
+          </button>
+          <button
+            type="button"
+            onClick={() => product && void shareItem(product.name)}
+            disabled={!product}
+            aria-label="Share item"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-black transition-colors active:bg-gray-100 disabled:opacity-40"
+          >
+            <Share size={20} strokeWidth={1.75} />
+          </button>
+        </div>
       </header>
 
       {isLoading ? (

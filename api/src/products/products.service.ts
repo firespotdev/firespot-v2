@@ -309,6 +309,55 @@ export class ProductsService {
     };
   }
 
+  /**
+   * Products by id for a customer's Saved page, in the order asked, each with
+   * the shop that sells it and the serial its orders go through. Archived
+   * items, and shops without an activated QR kit, are left out.
+   */
+  async findPublicByIds(ids: Types.ObjectId[]) {
+    if (!ids.length) return [];
+    const products = await this.productModel
+      .find({ _id: { $in: ids }, isArchived: false })
+      .populate("merchantId", "businessName")
+      .exec();
+    const merchantOf = (product: ProductDocument) =>
+      product.merchantId as unknown as { _id: Types.ObjectId; businessName?: string } | null;
+    const kits = await this.qrKitModel
+      .find({
+        merchantId: { $in: products.map((p) => merchantOf(p)?._id).filter(Boolean) },
+        activationStatus: "activated",
+      })
+      .select("merchantId serialNumber isDigital createdAt")
+      .sort({ isDigital: -1, createdAt: 1 })
+      .lean()
+      .exec();
+    const serialByMerchant = new Map<string, string>();
+    for (const kit of kits) {
+      const merchantId = String(kit.merchantId);
+      if (!serialByMerchant.has(merchantId)) {
+        serialByMerchant.set(merchantId, kit.serialNumber);
+      }
+    }
+    const byId = new Map(products.map((product) => [String(product._id), product]));
+
+    return ids.flatMap((id) => {
+      const product = byId.get(String(id));
+      const merchant = product && merchantOf(product);
+      const serialNumber = merchant && serialByMerchant.get(String(merchant._id));
+      if (!product || !merchant || !serialNumber) return [];
+      return [
+        {
+          product: { ...this.serialize(product), merchantId: merchant._id },
+          merchant: {
+            id: String(merchant._id),
+            businessName: merchant.businessName,
+            serialNumber,
+          },
+        },
+      ];
+    });
+  }
+
   async discoverProducts(query: PublicDiscoveryQueryDto) {
     const search = query.search?.trim();
     const page = query.page || 1;

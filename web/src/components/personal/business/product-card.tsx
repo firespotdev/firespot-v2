@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Package, Plus } from 'lucide-react'
 import type { Product } from '@/services/products/productsApi'
+import { cn } from '@/lib/utils'
 import {
   formatProductPrice,
   getProductPricing,
@@ -35,15 +36,23 @@ export function ProductCard({
   product,
   href,
   onAdd,
+  imageClassName,
 }: {
   product: Product
   href: string
   /** Absent when the merchant can't take orders, which hides the add button. */
   onAdd?: () => void
+  /** Overrides the image frame, e.g. its corner radius. */
+  imageClassName?: string
 }) {
   return (
     <div className="group flex flex-col">
-      <div className="relative aspect-square w-full overflow-hidden rounded-[14px] bg-[#F4F6F8]">
+      <div
+        className={cn(
+          'relative aspect-square w-full overflow-hidden rounded-[14px] bg-[#F4F6F8]',
+          imageClassName,
+        )}
+      >
         {/* Duplicate of the text link below, so it's skipped by keyboard and
             screen readers. The add button is its sibling, not its child. */}
         <Link href={href} tabIndex={-1} aria-hidden className="absolute inset-0">

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Trash2 } from 'lucide-react'
+import { Bookmark, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MerchantPost, PostPlatform } from '@/services/posts'
 
@@ -26,6 +26,9 @@ interface PostCardProps {
   interactive?: boolean
   onEdit?: () => void
   onDelete?: () => void
+  /** Shows a bookmark on a published post that saves or unsaves it. */
+  isSaved?: boolean
+  onToggleSave?: () => void
 }
 
 const captionFor = (post: MerchantPost) =>
@@ -43,6 +46,8 @@ export function PostCard({
   interactive = true,
   onEdit,
   onDelete,
+  isSaved = false,
+  onToggleSave,
 }: PostCardProps) {
   const [imageError, setImageError] = useState(false)
   const isDraft = post.status === 'DRAFT'
@@ -113,6 +118,22 @@ export function PostCard({
         </a>
       ) : (
         cardContent
+      )}
+      {onToggleSave && !isDraft && (
+        <button
+          type="button"
+          onClick={onToggleSave}
+          aria-pressed={isSaved}
+          aria-label={`${isSaved ? 'Unsave' : 'Save'} ${merchantName} post`}
+          className="absolute top-1.5 right-1.5 z-2 flex h-9 w-9 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <Bookmark
+            size={20}
+            strokeWidth={2.2}
+            className="text-white drop-shadow-md"
+            fill={isSaved ? 'white' : 'none'}
+          />
+        </button>
       )}
       {/* Draft badge and delete sit together on the right, clear of the platform icon. */}
       {isDraft && (

@@ -17,5 +17,6 @@ import { CloudinaryService } from "../users/services/cloudinary.service";
   ],
   controllers: [PostsController, PublicPostsController],
   providers: [PostsService, CloudinaryService],
+  exports: [PostsService],
 })
 export class PostsModule {}

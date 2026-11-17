@@ -32,6 +32,7 @@ import { PaymentCasesModule } from './payment-cases/payment-cases.module'
 import { CustomerActionsModule } from './customer-actions/customer-actions.module'
 import { PostsModule } from './posts/posts.module'
 import { ExpensesModule } from './expenses/expenses.module'
+import { SavedModule } from './saved/saved.module'
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { ExpensesModule } from './expenses/expenses.module'
     CustomerActionsModule,
     PostsModule,
     ExpensesModule,
+    SavedModule,
   ],
   controllers: [AppController],
   providers: [
