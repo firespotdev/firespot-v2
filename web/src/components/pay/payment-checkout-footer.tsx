@@ -12,6 +12,10 @@ import type { SavedCard } from '@/services/sales/interface'
 import Image from 'next/image'
 import { Cards } from 'iconsax-reactjs'
 import { BankIcon } from '@phosphor-icons/react'
+import {
+  PaymentUnavailableNotice,
+  cannotTakePayment,
+} from './payment-unavailable-notice'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -162,6 +166,22 @@ export function PaymentCheckoutFooter({
     onChangePaymentMethod()
   }
 
+  const acquisitionFooter =
+    qrType === 'dynamic' ? (
+      <TagFooter className="pb-0 pt-7" />
+    ) : (
+      <MerchantAcquisitionLink />
+    )
+
+  if (cannotTakePayment(merchant, account)) {
+    return (
+      <section className="shrink-0 rounded-t-[12px] border-t border-[#E7E9EC] bg-white p-4 shadow-[0_-1px_1px_0px_rgba(0,0,0,0.08)]">
+        <PaymentUnavailableNotice />
+        {acquisitionFooter}
+      </section>
+    )
+  }
+
   return (
     <section className="shrink-0 rounded-t-[12px] border-t border-[#E7E9EC] bg-white p-4 shadow-[0_-1px_1px_0px_rgba(0,0,0,0.08)]">
       <div className="flex min-w-0 items-center gap-3">
@@ -206,11 +226,7 @@ export function PaymentCheckoutFooter({
         )}
       </Button>
 
-      {qrType === 'dynamic' ? (
-        <TagFooter className="pb-0 pt-7" />
-      ) : (
-        <MerchantAcquisitionLink />
-      )}
+      {acquisitionFooter}
     </section>
   )
 }

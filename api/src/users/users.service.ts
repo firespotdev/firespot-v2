@@ -51,6 +51,10 @@ import {
 } from "./dto/shop-setup.dto";
 import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
 import { getSelectablePaystackChannels } from "../payments/paystack-collection-channels";
+import {
+  assertKeepsPaymentMethod,
+  paymentSnapshot,
+} from "../payments/payment-availability";
 import { normalizeNigerianPhone } from "../common/phone";
 
 const escapeRegExp = (value: string) =>
@@ -528,6 +532,7 @@ export class UsersService {
       }
     }
 
+    const before = paymentSnapshot(user);
     if (dto.savedCardsCheckoutEnabled !== undefined) {
       user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
     }
@@ -540,6 +545,7 @@ export class UsersService {
     if (dto.paystackCollectionChannels !== undefined) {
       user.paystackCollectionChannels = dto.paystackCollectionChannels;
     }
+    assertKeepsPaymentMethod(before, user);
     await user.save();
 
     return {
@@ -1297,7 +1303,9 @@ export class UsersService {
       throw new HttpException("Bank account not found", HttpStatus.NOT_FOUND);
     }
 
+    const before = paymentSnapshot(user);
     account.isEnabled = enabled;
+    assertKeepsPaymentMethod(before, user);
     await user.save();
 
     return {
@@ -1334,9 +1342,11 @@ export class UsersService {
     }
 
     const wasPrimary = user.bankAccounts[accountIndex].isPrimary;
+    const before = paymentSnapshot(user);
 
     // Remove the account
     user.bankAccounts.splice(accountIndex, 1);
+    assertKeepsPaymentMethod(before, user);
 
     // If deleted account was primary, set first account as primary
     if (wasPrimary && user.bankAccounts.length > 0) {

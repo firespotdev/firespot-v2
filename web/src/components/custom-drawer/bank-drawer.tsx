@@ -35,6 +35,10 @@ import {
 } from '@/components/ui'
 import { useDrawerStore } from '@/services/drawer'
 import type { BankAccount } from '@/services/users'
+import {
+  LAST_PAYMENT_METHOD_MESSAGE,
+  leavesNoWayToGetPaid,
+} from '@/lib/utils/payment-methods'
 
 interface SortableBankItemProps {
   account: BankAccount
@@ -185,6 +189,16 @@ export function BankDrawer({
   }, [initialAccounts, profile?.bankAccounts])
 
   const handleToggleEnabled = (accountNumber: string, enabled: boolean) => {
+    if (
+      !enabled &&
+      leavesNoWayToGetPaid(profile, { account: { accountNumber, enabled } })
+    ) {
+      showNotificationToast({
+        message: LAST_PAYMENT_METHOD_MESSAGE,
+        mode: 'error',
+      })
+      return
+    }
     setBankAccountEnabled.mutate(
       { accountNumber, enabled },
       {
@@ -197,9 +211,12 @@ export function BankDrawer({
             ),
           )
         },
-        onError: () => {
+        onError: (error) => {
           showNotificationToast({
-            message: 'Could not update bank account visibility. Please try again.',
+            message:
+              (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message ||
+              'Could not update bank account visibility. Please try again.',
             mode: 'error',
           })
         },

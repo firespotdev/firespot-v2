@@ -1096,7 +1096,14 @@ export default function PaymentPage() {
     description: string,
     account: BankAccount | undefined = bankAccount,
   ) => {
-    if (!account || paymentBusy.current || createPendingSale.isPending) return
+    if (!account) {
+      showNotificationToast({
+        message: "This shop has no bank account to pay into. Try another payment method.",
+        mode: 'error',
+      })
+      return
+    }
+    if (paymentBusy.current || createPendingSale.isPending) return
     paymentBusy.current = true
     try {
       if (!(await ensureIdentity())) return

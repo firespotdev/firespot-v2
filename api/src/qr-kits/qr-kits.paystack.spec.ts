@@ -71,44 +71,67 @@ describe('QRKitsService Paystack verification', () => {
     ])
   })
 
-  it('hides every bank account when manual bank transfer is disabled', async () => {
-    const merchant = {
-      _id: 'merchant-id',
-      businessName: 'Test Store',
-      bankTransferEnabled: false,
-      bankAccounts: [
-        {
-          bankName: 'Hidden Bank',
-          bankCode: '001',
-          accountNumber: '0123456789',
-          accountName: 'Test Store',
-          isPrimary: true,
-          isEnabled: true,
-        },
-      ],
-    }
+  const bankOffMerchant = (overrides: Record<string, unknown> = {}) => ({
+    _id: 'merchant-id',
+    businessName: 'Test Store',
+    bankTransferEnabled: false,
+    bankAccounts: [
+      {
+        bankName: 'Hidden Bank',
+        bankCode: '001',
+        accountNumber: '0123456789',
+        accountName: 'Test Store',
+        isPrimary: true,
+        isEnabled: true,
+      },
+    ],
+    ...overrides,
+  })
+
+  const serviceFor = (merchant: Record<string, unknown>) => {
     const populate = jest.fn().mockResolvedValue({
       activationStatus: 'activated',
       merchantId: merchant,
     })
-    const qrKitModel = {
-      findOne: jest.fn().mockReturnValue({ populate }),
-    }
-    const service = new QRKitsService(
-      qrKitModel as any,
+    return new QRKitsService(
+      { findOne: jest.fn().mockReturnValue({ populate }) } as any,
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { get: jest.fn().mockReturnValue('test-secret') } as any,
       {} as any,
       {} as any,
       {} as any,
       { ensureForUserId: jest.fn() } as unknown as ConstructorParameters<typeof QRKitsService>[8],
     )
+  }
+
+  it('hides every bank account when bank transfer is off and Paystack takes payment', async () => {
+    const service = serviceFor(
+      bankOffMerchant({
+        planTier: 'LITE',
+        planStatus: 'verified',
+        kycCompletedAt: new Date(),
+        paystackSubaccountCode: 'ACCT_x',
+        paystackCollectionEnabled: true,
+      }),
+    )
 
     const result = await service.getQRKitBySerial('fs-test123')
 
     expect(result.bankAccounts).toEqual([])
+    expect(result.hasPaystackCollection).toBe(true)
+  })
+
+  it('shows the bank accounts when bank transfer is off but Paystack cannot take payment', async () => {
+    const service = serviceFor(bankOffMerchant({ planStatus: 'none' }))
+
+    const result = await service.getQRKitBySerial('fs-test123')
+
+    expect(result.hasPaystackCollection).toBe(false)
+    expect(result.bankAccounts).toEqual([
+      expect.objectContaining({ bankName: 'Hidden Bank', accountNumber: '' }),
+    ])
   })
 
   it('does not activate a kit from a wrong-value success webhook', async () => {

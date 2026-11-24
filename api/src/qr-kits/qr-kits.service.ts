@@ -26,6 +26,7 @@ import { getQRKitPricing, nairaToKobo } from '../config/pricing.config'
 import { grantKitLite } from '../merchant-plans/kit-lite'
 import { PaystackSubaccountsService } from '../users/services/paystack-subaccounts.service'
 import { validatePaystackPaidValue } from '../payments/payment-validation'
+import { payerBankAccounts } from '../payments/payment-availability'
 
 const generateDigitalSerial = customAlphabet(
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
@@ -136,21 +137,16 @@ export class QRKitsService {
       }
     }
 
-    const bankAccounts =
-      merchant.bankTransferEnabled !== false &&
-      merchant.bankAccounts &&
-      merchant.bankAccounts.length > 0
-        ? merchant.bankAccounts
-            .filter((acc) => acc.isEnabled !== false)
-            .map((acc) => ({
-              id: createHmac('sha256', this.configService.get<string>('JWT_SECRET')!).update(`${merchant._id}:${acc.bankCode}:${acc.accountNumber}`).digest('hex'),
-              bankName: acc.bankName,
-              bankCode: acc.bankCode,
-              accountNumber: revealAccounts ? acc.accountNumber : '',
-              accountName: acc.accountName,
-              isPrimary: acc.isPrimary,
-            }))
-        : []
+    // Falls back to the accounts when Paystack can't take payment, so a
+    // lapsed plan never leaves the pay page with nothing to pay into.
+    const bankAccounts = payerBankAccounts(merchant).map((acc) => ({
+      id: createHmac('sha256', this.configService.get<string>('JWT_SECRET')!).update(`${merchant._id}:${acc.bankCode}:${acc.accountNumber}`).digest('hex'),
+      bankName: acc.bankName,
+      bankCode: acc.bankCode,
+      accountNumber: revealAccounts ? acc.accountNumber : '',
+      accountName: acc.accountName,
+      isPrimary: acc.isPrimary,
+    }))
 
     const canCollect = getCollectEligibility(merchant).canCollect
     const hasPaystackCollection = Boolean(
