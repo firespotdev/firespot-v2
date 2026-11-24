@@ -1,8 +1,7 @@
 'use client'
 
-import { X, Plus, ChevronRight } from 'lucide-react'
+import { X, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
-import { useRouter } from '@bprogress/next/app'
 import {
   ActionList,
   ActionListItem,
@@ -16,7 +15,12 @@ import { useUserQRKits } from '@/services/qr'
 import { Card, Scan } from 'iconsax-reactjs'
 import { BankIcon } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
-import { getActivePaymentMethodCount } from '@/lib/utils/payment-methods'
+import {
+  LAST_PAYMENT_METHOD_MESSAGE,
+  getActivePaymentMethodCount,
+  leavesNoWayToGetPaid,
+} from '@/lib/utils/payment-methods'
+import { usePaystackAvailability } from '@/hooks/use-paystack-availability'
 
 const GRADIENT_TEXT_CLASS =
   'bg-linear-to-br from-[#FB5012] to-[#D72483] bg-clip-text text-transparent'
@@ -37,13 +41,25 @@ function ProGradientBadge({ label }: { label: string }) {
   )
 }
 
+const explainLastMethod = () =>
+  showNotificationToast({ message: LAST_PAYMENT_METHOD_MESSAGE, mode: 'error' })
+
+/** The API's reason when it refuses, otherwise a generic retry message. */
+const settingsError = (fallback: string) => (error: unknown) =>
+  showNotificationToast({
+    message:
+      (error as { response?: { data?: { message?: string } } })?.response?.data
+        ?.message || fallback,
+    mode: 'error',
+  })
+
 export function PaymentMethodsActiveDrawer() {
-  const router = useRouter()
   const { data: profile } = useUserProfile()
   const { data: qrKitsData } = useUserQRKits()
   const { closeDrawer, openDrawer } = useDrawerStore()
 
   const updatePaymentSettings = useUpdatePaymentSettings()
+  const paystack = usePaystackAvailability(profile)
 
   const bankAccountCount = profile?.bankAccounts?.length ?? 0
   const qrKitCount = qrKitsData?.data?.length ?? 0
@@ -59,8 +75,9 @@ export function PaymentMethodsActiveDrawer() {
     : effectiveTier === 'LITE'
       ? 1
       : 4
+  // Saved cards are charged through Paystack, so they need the same setup.
   const savedCardsActive =
-    canCollect && profile?.savedCardsCheckoutEnabled !== false
+    paystack.canTurnOn && profile?.savedCardsCheckoutEnabled !== false
   const multipleOptionsActive = Boolean(
     hasPlan &&
       canCollect &&
@@ -68,6 +85,13 @@ export function PaymentMethodsActiveDrawer() {
       profile?.paystackCollectionEnabled === true &&
       (profile?.paystackCollectionChannels?.length ?? 0) > 0,
   )
+  // Switching either of these off would leave customers no way to pay.
+  const paystackOffLocked =
+    multipleOptionsActive &&
+    leavesNoWayToGetPaid(profile, { paystackCollectionEnabled: false })
+  const bankTransferLocked =
+    profile?.bankTransferEnabled !== false &&
+    leavesNoWayToGetPaid(profile, { bankTransferEnabled: false })
 
   const handleSavedCardsChange = (enabled: boolean) => {
     if (!canCollect) return
@@ -84,33 +108,7 @@ export function PaymentMethodsActiveDrawer() {
     )
   }
 
-  const handleMultipleOptionsChange = (enabled: boolean) => {
-    if (!hasPlan || !canCollect || !profile?.hasPayoutAccount) return
-    updatePaymentSettings.mutate(
-      { paystackCollectionEnabled: enabled },
-      {
-        onError: () => {
-          showNotificationToast({
-            message:
-              'Could not update Paystack payment options. Please try again.',
-            mode: 'error',
-          })
-        },
-      },
-    )
-  }
-
-  const handleSavedCardsRowClick = () => {
-    if (canCollect) return
-    closeDrawer('payment-methods-active')
-    if (isKycIncomplete) {
-      openDrawer({ type: 'verify-identity' })
-    } else {
-      router.push('/plans?tier=LITE')
-    }
-  }
-
-  const handleMultipleOptionsRowClick = () => {
+  const openPaymentOptionsPicker = () => {
     closeDrawer('payment-methods-active')
     openDrawer({
       type: 'multiple-payment-options',
@@ -118,43 +116,70 @@ export function PaymentMethodsActiveDrawer() {
     })
   }
 
+  // Turning Paystack on means choosing how customers pay, so it opens the
+  // picker; turning it off needs no choice.
+  const handleMultipleOptionsChange = (enabled: boolean) => {
+    if (!paystack.canTurnOn) return
+    if (enabled) {
+      openPaymentOptionsPicker()
+      return
+    }
+    if (paystackOffLocked) {
+      explainLastMethod()
+      return
+    }
+    updatePaymentSettings.mutate(
+      { paystackCollectionEnabled: false },
+      {
+        onError: settingsError(
+          'Could not update Paystack payment options. Please try again.',
+        ),
+      },
+    )
+  }
+
+  // Saved cards need the same Paystack setup, so the same explanation fits.
+  const handleSavedCardsRowClick = () => {
+    if (!paystack.canTurnOn) paystack.explainBlock()
+  }
+
+  // The row does exactly what tapping its switch does.
+  const handleMultipleOptionsRowClick = () => {
+    if (updatePaymentSettings.isPending) return
+    if (!paystack.canTurnOn) {
+      paystack.explainBlock()
+      return
+    }
+    handleMultipleOptionsChange(!multipleOptionsActive)
+  }
+
   const handleBankTransferChange = (enabled: boolean) => {
+    if (!enabled && bankTransferLocked) {
+      explainLastMethod()
+      return
+    }
     updatePaymentSettings.mutate(
       { bankTransferEnabled: enabled },
       {
-        onError: () => {
-          showNotificationToast({
-            message: 'Could not update bank transfer. Please try again.',
-            mode: 'error',
-          })
-        },
+        onError: settingsError(
+          'Could not update bank transfer. Please try again.',
+        ),
       },
     )
   }
 
   const activeCount = getActivePaymentMethodCount(profile)
 
-  const handleAddCustomMethod = () => {
-    showNotificationToast({
-      message: 'Custom payment methods coming soon',
-    })
-  }
 
   return (
     <div className="flex flex-col bg-[#F4F6F8] text-black px-3">
       {/* Header */}
       <header className="flex items-center justify-between py-2 mb-2">
-        <button
-          type="button"
-          onClick={handleAddCustomMethod}
-          aria-label="Add payment method"
-          className="w-9 h-9 flex items-center justify-center text-black"
-        >
-          <Plus size={20} strokeWidth={2} />
-        </button>
+        {/* Keeps the title centred opposite the close button. */}
+        <div aria-hidden className="w-9 h-9" />
 
         <h2 className="text-[16px] font-bold text-black text-center">
-          {activeCount} payment methods active
+          {activeCount} payment method{activeCount === 1 ? '' : 's'} active
         </h2>
 
         <button
@@ -200,7 +225,7 @@ export function PaymentMethodsActiveDrawer() {
           {/* Row 2: Firespot Customer-saved cards */}
           <ActionListItem
             as="div"
-            onClick={!canCollect ? handleSavedCardsRowClick : undefined}
+            onClick={!paystack.canTurnOn ? handleSavedCardsRowClick : undefined}
             icon={
               <div className="w-9 h-9 rounded-[10px] bg-[#26B2FF] flex items-center justify-center text-white shadow-sm shrink-0">
                 <Card size={24} strokeWidth={2} />
@@ -230,17 +255,24 @@ export function PaymentMethodsActiveDrawer() {
               )
             }
             trailing={
-              <div onClick={(e) => !canCollect && e.stopPropagation()}>
+              <div
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleSavedCardsRowClick()
+                }}
+              >
                 <Switch
                   checked={savedCardsActive}
-                  disabled={!canCollect || updatePaymentSettings.isPending}
+                  disabled={
+                    !paystack.canTurnOn || updatePaymentSettings.isPending
+                  }
                   onCheckedChange={
-                    canCollect ? handleSavedCardsChange : undefined
+                    paystack.canTurnOn ? handleSavedCardsChange : undefined
                   }
                 />
               </div>
             }
-            className={!canCollect ? 'cursor-pointer p-3' : 'p-3'}
+            className={!paystack.canTurnOn ? 'cursor-pointer p-3' : 'p-3'}
           />
 
           {/* Row 3: Multiple payment options */}
@@ -288,18 +320,22 @@ export function PaymentMethodsActiveDrawer() {
               )
             }
             trailing={
-              <div onClick={(e) => e.stopPropagation()}>
+              <div
+                onClick={(event) => {
+                  event.stopPropagation()
+                  // A disabled switch ignores the tap, so say why here.
+                  if (!paystack.canTurnOn) paystack.explainBlock()
+                  else if (paystackOffLocked) explainLastMethod()
+                }}
+              >
                 <Switch
                   checked={multipleOptionsActive}
                   disabled={
-                    !hasPlan ||
-                    !canCollect ||
-                    !profile?.hasPayoutAccount ||
+                    !paystack.canTurnOn ||
+                    paystackOffLocked ||
                     updatePaymentSettings.isPending
                   }
-                  onCheckedChange={
-                    hasPlan ? handleMultipleOptionsChange : undefined
-                  }
+                  onCheckedChange={handleMultipleOptionsChange}
                 />
               </div>
             }
@@ -333,11 +369,18 @@ export function PaymentMethodsActiveDrawer() {
               </span>
             }
             trailing={
-              <div onClick={(event) => event.stopPropagation()}>
+              <div
+                onClick={(event) => {
+                  event.stopPropagation()
+                  if (bankTransferLocked) explainLastMethod()
+                }}
+              >
                 <Switch
                   checked={profile?.bankTransferEnabled !== false}
                   disabled={
-                    bankAccountCount < 1 || updatePaymentSettings.isPending
+                    bankAccountCount < 1 ||
+                    bankTransferLocked ||
+                    updatePaymentSettings.isPending
                   }
                   onCheckedChange={handleBankTransferChange}
                 />

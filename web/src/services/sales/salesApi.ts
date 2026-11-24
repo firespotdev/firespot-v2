@@ -4,6 +4,7 @@ import {
   ArchiveAllSalesResult,
   ConfirmAllSalesResult,
   CustomerSale,
+  CustomerMerchantActivity,
   PublicSale,
   Sale,
   SaleDraft,
@@ -211,6 +212,15 @@ export const SalesApi = {
     return data;
   },
 
+  getCustomerMerchantActivity: async (
+    merchantId: string,
+  ): Promise<CustomerMerchantActivity> => {
+    const { data } = await apiClient.get(
+      `/sales/customer/merchants/${encodeURIComponent(merchantId)}`,
+    );
+    return data;
+  },
+
   getSalesStats: async (
     params?: Record<string, string | number | boolean | undefined>,
   ): Promise<SalesStats> => {
@@ -257,6 +267,15 @@ export const SalesApi = {
     const { data } = await apiClient.patch(
       `/sales/outstanding/customer/${customerId}/archive`,
     );
+    return data;
+  },
+
+  archiveOutstandingSales: async (
+    customerIds: string[],
+  ): Promise<ArchiveAllSalesResult> => {
+    const { data } = await apiClient.patch('/sales/outstanding/archive', {
+      customerIds,
+    });
     return data;
   },
 
@@ -417,6 +436,8 @@ export const SalesApi = {
       customerPhone: string;
       customerAvatar?: string;
       transactionCount: number;
+      /** Debts the merchant can archive (not Paystack or collections). */
+      archivableCount: number;
       totalOwed: number;
     }>;
   }> => {

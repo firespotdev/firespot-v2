@@ -25,6 +25,13 @@ export const usePostsFeed = (params: PostFeedParams, enabled = true) =>
     enabled,
   })
 
+export const usePublicPost = (postId?: string) =>
+  useQuery({
+    queryKey: ['public-post', postId],
+    queryFn: () => PostsApi.getPublic(postId!),
+    enabled: Boolean(postId),
+  })
+
 export const useMerchantPosts = (merchantId?: string) =>
   useQuery({
     queryKey: ['public-merchant-posts', merchantId],

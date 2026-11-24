@@ -12,7 +12,7 @@ import { Model, Types } from 'mongoose'
 import { PlanOrder, PlanOrderDocument } from '../schemas/plan-order.schema'
 import { User, UserDocument } from '../schemas/user.schema'
 import { PaystackService } from '../users/services/paystack.service'
-import { StoresService } from '../stores/stores.service'
+import { SpotsService } from '../spots/spots.service'
 import {
   PLANS,
   PLAN_REFERENCE_PREFIX,
@@ -62,7 +62,7 @@ export class MerchantPlansService {
     private planOrderModel: Model<PlanOrderDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     private paystackService: PaystackService,
-    private storesService: StoresService,
+    private spotsService: SpotsService,
     private configService: ConfigService,
     private merchantReferralsService: MerchantReferralsService,
     private paystackSubaccountsService: PaystackSubaccountsService,
@@ -128,10 +128,10 @@ export class MerchantPlansService {
       )
     }
 
-    // Drives PRO MAX's per-store total on the checkout (at least one).
-    const activeStoreCount = Math.max(
+    // Drives PRO MAX's per-spot total on the checkout (at least one).
+    const activeSpotCount = Math.max(
       1,
-      await this.storesService.countActive(merchantId),
+      await this.spotsService.countActive(merchantId),
     )
 
     // Billing cycle the merchant is currently on, so the UI can offer a
@@ -170,7 +170,7 @@ export class MerchantPlansService {
               return { canCollect, collectBlockedReason: reason }
             })()
           : { canCollect: false, collectBlockedReason: 'no_plan' as const }),
-        activeStoreCount,
+        activeSpotCount,
         nextStep: tier
           ? (getNextStep(tier, user?.kyc as any)?.key ?? null)
           : null,
@@ -282,7 +282,7 @@ export class MerchantPlansService {
     const effectiveInterval =
       plan.billingType === 'monthly' ? interval : 'monthly'
     const periods = effectiveInterval === 'annually' ? 12 : 1
-    const storeCount = 1
+    const spotCount = 1
     const fullAmount = plan.price * periods
 
     const periodEnd = user.planCurrentPeriodEnd
@@ -303,7 +303,7 @@ export class MerchantPlansService {
       tier: plan.tier,
       interval: effectiveInterval,
       fullAmount,
-      storeCount,
+      spotCount,
     }
 
     if (kind === 'blocked_cadence') {
@@ -351,7 +351,7 @@ export class MerchantPlansService {
     const currentIv = await this.currentInterval(user)
     const currentAmount =
       (currentPlan?.price || 0) *
-      (currentPlan?.perStore ? storeCount : 1) *
+      (currentPlan?.perSpot ? spotCount : 1) *
       (currentIv === 'annually' ? 12 : 1)
 
     // Same derivation as the charge path, so quote and charge cannot diverge.
@@ -415,8 +415,8 @@ export class MerchantPlansService {
       plan.billingType === 'monthly' ? interval : 'monthly'
     const periods = effectiveInterval === 'annually' ? 12 : 1
 
-    // Base plan covers 1 store. Additional stores on PRO MAX are billed separately upon store creation.
-    const storeCount = 1
+    // Base plan covers 1 spot. Additional spots on PRO MAX are billed separately upon spot creation.
+    const spotCount = 1
     const amount = plan.price * periods
 
     // A live subscription means this is a change, not a fresh purchase.
@@ -463,7 +463,7 @@ export class MerchantPlansService {
           tier: plan.tier,
           interval: effectiveInterval,
           newAmount: amount,
-          storeCount,
+          spotCount,
           paymentMethod,
         })
 
@@ -474,7 +474,7 @@ export class MerchantPlansService {
           tier: plan.tier,
           interval: effectiveInterval,
           newAmount: amount,
-          storeCount,
+          spotCount,
           resetsPeriod: true,
           paymentMethod,
         })
@@ -491,7 +491,7 @@ export class MerchantPlansService {
       merchantId: new Types.ObjectId(merchantId),
       tier: plan.tier,
       amount,
-      storeCount,
+      spotCount,
       billingType: plan.billingType,
       interval: effectiveInterval,
       paymentStatus: 'PENDING',
@@ -632,7 +632,7 @@ export class MerchantPlansService {
       tier: string
       interval: 'monthly' | 'annually'
       newAmount: number
-      storeCount: number
+      spotCount: number
       /** monthly → yearly: buys a fresh period instead of riding out this one */
       resetsPeriod?: boolean
       paymentMethod?: PlanPaymentMethod
@@ -667,7 +667,7 @@ export class MerchantPlansService {
       merchantId: user._id,
       tier: params.tier,
       amount: amountDue,
-      storeCount: params.storeCount,
+      spotCount: params.spotCount,
       billingType: 'monthly',
       interval: params.interval,
       paymentStatus: 'PENDING',
@@ -1076,7 +1076,7 @@ export class MerchantPlansService {
       planCode?: string
       interval?: string
       kind?: 'primary' | 'branch'
-      storeId?: Types.ObjectId
+      spotId?: Types.ObjectId
     },
   ) {
     if (!customerCode || !subscriptionCode) return
@@ -1094,18 +1094,18 @@ export class MerchantPlansService {
     const existing = user.subscriptions.find((s) => s.code === subscriptionCode)
 
     let inferredOwnership:
-      | { kind: 'primary' | 'branch'; storeId: Types.ObjectId }
+      | { kind: 'primary' | 'branch'; spotId: Types.ObjectId }
       | undefined
     if (!extra?.kind && !existing) {
-      const claimedStore = await this.storesService.claimPendingBranchSubscription(
+      const claimedSpot = await this.spotsService.claimPendingBranchSubscription(
         user._id.toString(),
         subscriptionCode,
         emailToken,
       )
-      if (claimedStore?._id) {
+      if (claimedSpot?._id) {
         inferredOwnership = {
           kind: 'branch',
-          storeId: claimedStore._id as Types.ObjectId,
+          spotId: claimedSpot._id as Types.ObjectId,
         }
       }
     }
@@ -1113,7 +1113,7 @@ export class MerchantPlansService {
     if (existing) {
       if (emailToken) existing.emailToken = emailToken
       if (extra?.kind) existing.kind = extra.kind
-      if (extra?.storeId) existing.storeId = extra.storeId
+      if (extra?.spotId) existing.spotId = extra.spotId
       existing.status = 'active'
     } else {
       user.subscriptions.push({
@@ -1122,7 +1122,7 @@ export class MerchantPlansService {
         planCode: extra?.planCode,
         interval: extra?.interval,
         kind: extra?.kind || inferredOwnership?.kind || 'primary',
-        storeId: extra?.storeId || inferredOwnership?.storeId,
+        spotId: extra?.spotId || inferredOwnership?.spotId,
         status: 'active',
         createdAt: new Date(),
       })
@@ -1131,13 +1131,13 @@ export class MerchantPlansService {
     const attached =
       existing || user.subscriptions[user.subscriptions.length - 1]
     if (!attached.kind) {
-      const ownership = await this.storesService.resolveSubscriptionOwnership(
+      const ownership = await this.spotsService.resolveSubscriptionOwnership(
         user._id.toString(),
         subscriptionCode,
       )
       if (ownership) {
         attached.kind = ownership.kind
-        attached.storeId = ownership.storeId
+        attached.spotId = ownership.spotId
       }
     }
     const promaxPlanCode = this.configService.get<string>(
@@ -1147,15 +1147,15 @@ export class MerchantPlansService {
       attached.kind !== 'branch' &&
       (user.planTier === 'PROMAX' || extra?.planCode === promaxPlanCode)
     if (isPromaxPrimary) {
-      const primaryStore =
-        await this.storesService.attachSubscriptionToPrimaryStore(
+      const primarySpot =
+        await this.spotsService.attachSubscriptionToPrimarySpot(
           user._id.toString(),
           subscriptionCode,
           emailToken,
         )
-      if (primaryStore?._id) {
+      if (primarySpot?._id) {
         attached.kind = 'primary'
-        attached.storeId = primaryStore._id as Types.ObjectId
+        attached.spotId = primarySpot._id as Types.ObjectId
       }
     }
 
@@ -1197,13 +1197,13 @@ export class MerchantPlansService {
       if (this.isIntentionallyRetired(sub) || sub.code === keepCode) continue
 
       if (!sub.kind) {
-        const ownership = await this.storesService.resolveSubscriptionOwnership(
+        const ownership = await this.spotsService.resolveSubscriptionOwnership(
           user._id.toString(),
           sub.code,
         )
         if (ownership) {
           sub.kind = ownership.kind
-          sub.storeId = ownership.storeId
+          sub.spotId = ownership.spotId
           await user.save()
         }
       }
@@ -1384,13 +1384,13 @@ export class MerchantPlansService {
       ? user.subscriptions?.find((s) => s.code === subscriptionCode)
       : undefined
     if (sub && !sub.kind && subscriptionCode) {
-      const ownership = await this.storesService.resolveSubscriptionOwnership(
+      const ownership = await this.spotsService.resolveSubscriptionOwnership(
         user._id.toString(),
         subscriptionCode,
       )
       if (ownership) {
         sub.kind = ownership.kind
-        sub.storeId = ownership.storeId
+        sub.spotId = ownership.spotId
       }
     }
     const otherActive = Boolean(
@@ -1441,13 +1441,13 @@ export class MerchantPlansService {
     }
 
     if (subscriptionCode && sub?.kind === 'branch') {
-      const store =
-        await this.storesService.findBySubscriptionCode(subscriptionCode)
-      if (store && String(store.merchantId) === String(user._id)) {
+      const spot =
+        await this.spotsService.findBySubscriptionCode(subscriptionCode)
+      if (spot && String(spot.merchantId) === String(user._id)) {
         this.logger.warn(
-          `Subscription ${subscriptionCode} lapsed for store ${store.name} (${store._id}) of merchant ${user._id}`,
+          `Subscription ${subscriptionCode} lapsed for spot ${spot.name} (${spot._id}) of merchant ${user._id}`,
         )
-        await this.storesService.deactivateStoreBySubscription(
+        await this.spotsService.deactivateSpotBySubscription(
           user._id.toString(),
           subscriptionCode,
         )
@@ -1662,19 +1662,19 @@ export class MerchantPlansService {
       ? user.subscriptions?.find((item) => item.code === subscriptionCode)
       : undefined
     if (subscription && !subscription.kind) {
-      const ownership = await this.storesService.resolveSubscriptionOwnership(
+      const ownership = await this.spotsService.resolveSubscriptionOwnership(
         user._id.toString(),
         subscription.code,
       )
       if (ownership) {
         subscription.kind = ownership.kind
-        subscription.storeId = ownership.storeId
+        subscription.spotId = ownership.spotId
       }
     }
     if (subscription?.kind === 'branch') {
       subscription.status = 'active'
       await user.save()
-      await this.storesService.reactivateStoreBySubscription(
+      await this.spotsService.reactivateSpotBySubscription(
         user._id.toString(),
         subscription.code,
       )

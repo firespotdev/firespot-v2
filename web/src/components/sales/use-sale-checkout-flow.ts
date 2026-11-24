@@ -27,6 +27,10 @@ interface Options {
   prefillSale?: Sale
   /** Called after a confirm/edit succeeds so the next sale is a fresh create. */
   onSaleModeSettled: () => void
+  /** Started from a customer's page: that customer, so "Who paid you?" is skipped. */
+  presetCustomer?: unknown
+  /** Started from "Record outstanding": the split step opens on paid in part. */
+  presetInstallment?: 'full' | 'part'
   canCollect: boolean
   onCollectUnavailable: () => void
   onSaleSubmitted?: () => Promise<void> | void
@@ -48,6 +52,8 @@ export function useSaleCheckoutFlow({
   saleMode,
   prefillSale,
   onSaleModeSettled,
+  presetCustomer,
+  presetInstallment = 'full',
   canCollect,
   onCollectUnavailable,
   onSaleSubmitted,
@@ -68,10 +74,12 @@ export function useSaleCheckoutFlow({
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<string>('')
   const [checkoutInstallmentType, setCheckoutInstallmentType] = useState<
     'full' | 'part'
-  >('full')
+  >(presetInstallment)
   const [checkoutAmountPaid, setCheckoutAmountPaid] = useState<number>(0)
   const [hasSetInstallment, setHasSetInstallment] = useState<boolean>(false)
-  const [checkoutCustomer, setCheckoutCustomer] = useState<any>(null)
+  const [checkoutCustomer, setCheckoutCustomer] = useState<any>(
+    presetCustomer ?? null,
+  )
   const [checkoutDueDate, setCheckoutDueDate] = useState<string>('')
 
   // Seed the checkout fields from the sale being edited or confirmed, once per
@@ -91,9 +99,9 @@ export function useSaleCheckoutFlow({
 
   const resetSaleState = () => {
     cart.resetCart()
-    setCheckoutCustomer(null)
+    setCheckoutCustomer(presetCustomer ?? null)
     setCheckoutPaymentMethod('')
-    setCheckoutInstallmentType('full')
+    setCheckoutInstallmentType(presetInstallment)
     setCheckoutAmountPaid(0)
     setHasSetInstallment(false)
     setCheckoutDueDate('')
@@ -384,6 +392,20 @@ export function useSaleCheckoutFlow({
           setCheckoutInstallmentType(newInstType)
           setCheckoutAmountPaid(newAmountPaid)
           closeDrawer('split-payment')
+          if (presetCustomer) {
+            openCheckoutSaleDrawer(
+              method,
+              newInstType,
+              newAmountPaid,
+              cust ?? presetCustomer,
+              itemsList,
+              totVal,
+              checkoutDueDate,
+              mode,
+              true,
+            )
+            return
+          }
           openCustomerSelectStep(
             method,
             newInstType,
@@ -666,12 +688,14 @@ export function useSaleCheckoutFlow({
   const handleRecordTapped = () => {
     const updatedCart = cart.getEffectiveItems()
     const totVal = cart.getTotal()
+    // "Record outstanding" starts with nothing filled in as paid now.
+    const paidNow = checkoutInstallmentType === 'part' ? 0 : totVal
 
-    setCheckoutAmountPaid(totVal)
+    setCheckoutAmountPaid(paidNow)
     openPaymentMethodStep(
       checkoutPaymentMethod,
       checkoutInstallmentType,
-      totVal,
+      paidNow,
       checkoutCustomer,
       updatedCart,
       totVal,

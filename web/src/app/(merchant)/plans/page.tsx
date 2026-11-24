@@ -55,11 +55,11 @@ const TIER_BADGE: Record<PlanTier, string> = {
 function priceSubtitle(
   plan: PlanDefinition,
   interval: BillingInterval,
-  storeCount: number,
+  spotCount: number,
 ): string {
-  const total = planTotal(plan, interval, storeCount)
+  const total = planTotal(plan, interval, spotCount)
   const cadence = interval === 'annually' ? 'year' : 'month'
-  if (plan.perStore) {
+  if (plan.perSpot) {
     return `₦${formatCurrency(total)}/location/${cadence}`
   }
   return `₦${formatCurrency(total)}/${cadence}`
@@ -89,7 +89,7 @@ function PlansContent() {
     [plans, activeTier],
   )
 
-  const storeCount = current?.activeStoreCount ?? 1
+  const spotCount = current?.activeSpotCount ?? 1
   // A lapsed merchant still "holds" their tier but has been demoted to the
   // LITE floor, so re-buying it must be allowed — that is a reactivation.
   const isLapsed = Boolean(current?.isLapsed)
@@ -327,7 +327,7 @@ function PlansContent() {
                       Activated with a QRkit purchase
                     </>
                   ) : (
-                    priceSubtitle(plan, interval, storeCount)
+                    priceSubtitle(plan, interval, spotCount)
                   )}
                 </p>
               </div>

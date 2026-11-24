@@ -49,12 +49,49 @@ export interface EmployeeSetup {
   configuredAt?: string
 }
 
+export type StandardShopPolicy =
+  | 'returns'
+  | 'exchanges'
+  | 'cancellations'
+  | 'refunds'
+
+/** A merchant-written policy shown on their Shop page. */
+export interface CustomShopPolicy {
+  _id: string
+  title: string
+  details: string
+  appliesWithinDays: number
+}
+
 export interface ShopPolicies {
   returns: boolean
   exchanges: boolean
   cancellations: boolean
   refunds: boolean
+  /** Days after purchase each policy that's on applies for. */
+  appliesWithinDays?: Partial<Record<StandardShopPolicy, number>>
+  customPolicies?: CustomShopPolicy[]
   configuredAt?: string
+}
+
+/** How a shop takes bookings. */
+export interface AppointmentAndReservation {
+  bookingType: 'SPACE' | 'APPOINTMENT'
+  bookableHours: {
+    days: ShopDaySchedule[]
+  }
+  capacity: {
+    guestsAtOnce?: number
+    largestGroup?: number
+    customersAtOnce?: number
+  }
+  instantConfirmation: boolean
+  freeCancellations: boolean
+  deposit: {
+    amount: number
+    depositType: 'FIXED' | 'PERCENTAGE'
+  }
+  freeCancellationHours?: number
 }
 
 export interface ActiveHoursSetup {
@@ -63,24 +100,8 @@ export interface ActiveHoursSetup {
     timezone: string
     days: ShopDaySchedule[]
   }
-  appointmentAndReservation: {
-    bookingType: 'SPACE' | 'APPOINTMENT'
-    bookableHours: {
-      days: ShopDaySchedule[]
-    }
-    capacity: {
-      guestsAtOnce?: number
-      largestGroup?: number
-      customersAtOnce?: number
-    }
-    instantConfirmation: boolean
-    freeCancellations: boolean
-    deposit: {
-      amount: number
-      depositType: 'FIXED' | 'PERCENTAGE'
-    }
-    freeCancellationHours?: number
-  }
+  /** Absent for shops that don't take bookings. */
+  appointmentAndReservation?: AppointmentAndReservation
   configuredAt?: string
 }
 

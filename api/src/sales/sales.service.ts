@@ -72,6 +72,10 @@ const saleCustomerPopulate = () => [
   { path: 'customerUserId', select: 'profilePhotoUrl' },
 ]
 
+const FAILED_PAYSTACK_ATTEMPTS: Array<'failed' | 'abandoned'> = ['failed', 'abandoned']
+// A customer's activity with one business is short; this caps a runaway list.
+const CUSTOMER_MERCHANT_ACTIVITY_LIMIT = 200
+
 @Injectable()
 export class SalesService {
   private readonly logger = new Logger(SalesService.name)
@@ -2772,10 +2776,14 @@ export class SalesService {
     return { count: result.modifiedCount || 0 }
   }
 
-  async archiveCustomerOutstandingSales(
+  /**
+   * The customer identity a merchant's customer record points to. Outstanding
+   * sales are grouped by identity, so archiving works on that, not the record.
+   */
+  private async requireCustomerIdentity(
     merchantId: string,
     customerId: string,
-  ) {
+  ): Promise<Types.ObjectId> {
     const relationship = await this.requireMerchantRelationship(
       merchantId,
       customerId,
@@ -2789,15 +2797,55 @@ export class SalesService {
         'This customer relationship has no valid identity',
       )
     }
+    return new Types.ObjectId(customerUserId.toString())
+  }
+
+  // Paystack payments and collections settle through Firespot, so a merchant
+  // cannot write them off.
+  private archivableOutstandingFilter(merchantId: string) {
+    return {
+      merchantId: new Types.ObjectId(merchantId),
+      status: 'OUTSTANDING',
+      isArchived: { $ne: true },
+      isCollection: { $ne: true },
+      paymentRail: { $ne: 'paystack' },
+    } as const
+  }
+
+  async archiveCustomerOutstandingSales(
+    merchantId: string,
+    customerId: string,
+  ) {
+    const customerUserId = await this.requireCustomerIdentity(
+      merchantId,
+      customerId,
+    )
+    const result = await this.saleModel.updateMany(
+      { ...this.archivableOutstandingFilter(merchantId), customerUserId },
+      { $set: { isArchived: true } },
+    )
+
+    return { count: result.modifiedCount || 0 }
+  }
+
+  /**
+   * Archives several customers' outstanding sales at once. Every customer is
+   * checked first, so one invalid id archives nothing.
+   */
+  async archiveOutstandingSalesForCustomers(
+    merchantId: string,
+    customerIds: string[],
+  ) {
+    const identities = await Promise.all(
+      [...new Set(customerIds)].map((customerId) =>
+        this.requireCustomerIdentity(merchantId, customerId),
+      ),
+    )
 
     const result = await this.saleModel.updateMany(
       {
-        merchantId: new Types.ObjectId(merchantId),
-        customerUserId: new Types.ObjectId(customerUserId.toString()),
-        status: 'OUTSTANDING',
-        isArchived: { $ne: true },
-        isCollection: { $ne: true },
-        paymentRail: { $ne: 'paystack' },
+        ...this.archivableOutstandingFilter(merchantId),
+        customerUserId: { $in: identities },
       },
       { $set: { isArchived: true } },
     )
@@ -2873,29 +2921,88 @@ export class SalesService {
       .sort({ createdAt: -1 })
       .populate(
         'merchantId',
-        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel',
+        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel planStatus',
       )
       .exec()
 
-    return sales.map((sale) => {
-      const value = sale.toObject() as any
-      const merchant = value.merchantId
-      if (!merchant || typeof merchant !== 'object') return value
+    return sales.map((sale) => this.toCustomerActivity(sale))
+  }
 
-      return {
-        ...value,
-        merchantId: {
-          _id: merchant._id,
-          businessName: merchant.businessName,
-          merchantSlug: merchant.merchantSlug,
-          businessImageUrl:
-            merchant.businessImageUrl || merchant.profilePhotoUrl,
-          businessIndustry: merchant.businessIndustry,
-          mainAddress: merchant.mainAddress,
-          verificationLevel: merchant.verificationLevel,
-        },
-      }
+  /** A sale as the customer's activity shows it, with a public merchant card. */
+  private toCustomerActivity(sale: SaleDocument) {
+    const value = sale.toObject() as any
+    const merchant = value.merchantId
+    if (!merchant || typeof merchant !== 'object') return value
+
+    return {
+      ...value,
+      merchantId: {
+        _id: merchant._id,
+        businessName: merchant.businessName,
+        merchantSlug: merchant.merchantSlug,
+        businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
+        businessIndustry: merchant.businessIndustry,
+        mainAddress: merchant.mainAddress,
+        // The badge shows only once the plan is verified.
+        verificationLevel:
+          merchant.planStatus === 'verified' ? merchant.verificationLevel : null,
+      },
+    }
+  }
+
+  /**
+   * The customer's sales with one business for its Activity tab: paid,
+   * still processing, or failed at Paystack. Sales the customer cancelled
+   * themselves and outstanding balances aren't shown.
+   */
+  async getMyActivityWithMerchant(userId: string, merchantId: string) {
+    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(merchantId)) {
+      return { totalSpent: 0, paidCount: 0, data: [] }
+    }
+
+    const sales = await this.saleModel
+      .find({
+        customerUserId: new Types.ObjectId(userId),
+        merchantId: new Types.ObjectId(merchantId),
+        isArchived: { $ne: true },
+        $or: [
+          { status: { $in: ['CONFIRMED', 'PENDING'] } },
+          {
+            status: 'CANCELLED',
+            paystackAttemptStatus: { $in: FAILED_PAYSTACK_ATTEMPTS },
+          },
+        ],
+      })
+      .sort({ createdAt: -1 })
+      .limit(CUSTOMER_MERCHANT_ACTIVITY_LIMIT)
+      .populate(
+        'merchantId',
+        'businessName businessImageUrl profilePhotoUrl merchantSlug businessIndustry mainAddress verificationLevel planStatus',
+      )
+      .exec()
+
+    const data = sales.map((sale) => {
+      const value = this.toCustomerActivity(sale)
+      const failed = FAILED_PAYSTACK_ATTEMPTS.includes(value.paystackAttemptStatus)
+      const activityStatus =
+        value.status === 'CONFIRMED'
+          ? 'PAID'
+          : failed
+            ? 'FAILED'
+            : 'PROCESSING'
+      return { ...value, activityStatus }
     })
+    const paid = data.filter((sale) => sale.activityStatus === 'PAID')
+
+    return {
+      totalSpent: paid.reduce(
+        (sum, sale) =>
+          sum + (sale.amountPaid > 0 ? sale.amountPaid : sale.amount || 0),
+        0,
+      ),
+      paidCount: paid.length,
+      data,
+    }
   }
 
   /**
@@ -3317,6 +3424,7 @@ export class SalesService {
         customerPhone: string
         customerAvatar?: string
         transactionCount: number
+        archivableCount: number
         totalOwed: number
       }
     >()
@@ -3354,9 +3462,11 @@ export class SalesService {
       const custPhone = customer.phoneNumber
       const custAvatar = customerIdentity?.profilePhotoUrl || ''
 
+      const archivable = !sale.isCollection && sale.paymentRail !== 'paystack'
       const existing = customerMap.get(identityId)
       if (existing) {
         existing.transactionCount += 1
+        existing.archivableCount += archivable ? 1 : 0
         existing.totalOwed += bal
       } else {
         customerMap.set(identityId, {
@@ -3366,6 +3476,7 @@ export class SalesService {
           customerPhone: custPhone,
           customerAvatar: custAvatar,
           transactionCount: 1,
+          archivableCount: archivable ? 1 : 0,
           totalOwed: bal,
         })
       }

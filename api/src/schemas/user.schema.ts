@@ -160,7 +160,7 @@ export class User extends Document {
   }
 
   // Primary business address used by shop setup and customer discovery.
-  // Billable physical locations are materialised separately as Store docs.
+  // Billable physical locations are materialised separately as Spot docs.
   @Prop({
     type: {
       state: String,
@@ -171,12 +171,14 @@ export class User extends Document {
       shoppingComplex: String,
       shopNumber: String,
       landmark: String,
+      additionalDetails: String,
     },
   })
   mainAddress?: {
     state?: string
     city?: string
     address?: string
+    additionalDetails?: string
     insideMarket?: boolean
     market?: string
     shoppingComplex?: string
@@ -246,6 +248,15 @@ export class User extends Document {
       exchanges: Boolean,
       cancellations: Boolean,
       refunds: Boolean,
+      appliesWithinDays: {
+        returns: Number,
+        exchanges: Number,
+        cancellations: Number,
+        refunds: Number,
+      },
+      customPolicies: [
+        { title: String, details: String, appliesWithinDays: Number },
+      ],
       configuredAt: Date,
     },
     _id: false,
@@ -255,7 +266,17 @@ export class User extends Document {
     exchanges: boolean
     cancellations: boolean
     refunds: boolean
-    configuredAt: Date
+    /** Days after purchase each policy that's on applies for. */
+    appliesWithinDays?: Partial<
+      Record<'returns' | 'exchanges' | 'cancellations' | 'refunds', number>
+    >
+    customPolicies?: Array<{
+      _id: Types.ObjectId
+      title: string
+      details: string
+      appliesWithinDays: number
+    }>
+    configuredAt?: Date
   }
 
   @Prop({
@@ -328,7 +349,7 @@ export class User extends Document {
         closesNextDay: boolean
       }>
     }
-    appointmentAndReservation: {
+    appointmentAndReservation?: {
       bookingType: 'SPACE' | 'APPOINTMENT'
       bookableHours: {
         days: Array<{
@@ -417,6 +438,13 @@ export class User extends Document {
   @Prop({ type: [{ type: Types.ObjectId, ref: 'User' }], default: [] })
   favoriteMerchants?: Types.ObjectId[]
 
+  // Items and posts saved to the personal Saved page, oldest first.
+  @Prop({ type: [{ type: Types.ObjectId, ref: "Product" }], default: [] })
+  savedProducts?: Types.ObjectId[]
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: "Post" }], default: [] })
+  savedPosts?: Types.ObjectId[]
+
   // Pre-created by a merchant recording a sale before this person has ever
   // logged in. The real owner claims it on their first OTP verification, at
   // which point isPlaceholder is cleared.
@@ -435,6 +463,14 @@ export class User extends Document {
   /** Rolling 24-hour, atomically claimed SMS throttle for collection-cap failures. */
   @Prop()
   lastDailyLimitAlertAt?: Date
+
+  /** Lagos day (YYYY-MM-DD) that inviteSmsCount counts invite texts for. */
+  @Prop()
+  inviteSmsDay?: string
+
+  /** Invite texts sent to new customers and suppliers on inviteSmsDay. */
+  @Prop()
+  inviteSmsCount?: number
 
   @Prop({
     enum: ['none', 'paid', 'verifying', 'verified', 'failed'],
@@ -551,7 +587,7 @@ export class User extends Document {
         planCode: String,
         interval: String,
         kind: { type: String, enum: ['primary', 'branch'] },
-        storeId: { type: Types.ObjectId, ref: 'Store' },
+        spotId: { type: Types.ObjectId, ref: 'Spot' },
         status: String,
         createdAt: Date,
       },
@@ -564,7 +600,7 @@ export class User extends Document {
     planCode?: string
     interval?: string
     kind?: 'primary' | 'branch'
-    storeId?: Types.ObjectId
+    spotId?: Types.ObjectId
     status?: string
     createdAt?: Date
   }>

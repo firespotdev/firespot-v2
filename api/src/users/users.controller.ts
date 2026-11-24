@@ -46,6 +46,7 @@ import {
   UpdateFulfillmentDto,
   UpdateLocationDto,
   UpdateShopPoliciesDto,
+  CustomShopPolicyDto,
 } from "./dto/shop-setup.dto";
 import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
 import { UpdateCurrentLocationDto } from "./dto/update-current-location.dto";
@@ -640,6 +641,47 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "Shop policies saved" })
   async updateShopPolicies(@Request() req, @Body() dto: UpdateShopPoliciesDto) {
     return this.usersService.updateShopPolicies(req.user.userId, dto);
+  }
+
+  @Post("me/policies/custom")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Add a custom shop policy" })
+  @ApiResponse({ status: 201, description: "Custom policy added" })
+  async addCustomShopPolicy(
+    @Request() req,
+    @Body() dto: CustomShopPolicyDto,
+  ) {
+    return this.usersService.addCustomShopPolicy(req.user.userId, dto);
+  }
+
+  @Patch("me/policies/custom/:policyId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Edit a custom shop policy" })
+  @ApiResponse({ status: 200, description: "Custom policy saved" })
+  async updateCustomShopPolicy(
+    @Request() req,
+    @Param("policyId") policyId: string,
+    @Body() dto: CustomShopPolicyDto,
+  ) {
+    return this.usersService.updateCustomShopPolicy(
+      req.user.userId,
+      policyId,
+      dto,
+    );
+  }
+
+  @Delete("me/policies/custom/:policyId")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth("JWT-auth")
+  @ApiOperation({ summary: "Delete a custom shop policy" })
+  @ApiResponse({ status: 200, description: "Custom policy deleted" })
+  async deleteCustomShopPolicy(
+    @Request() req,
+    @Param("policyId") policyId: string,
+  ) {
+    return this.usersService.deleteCustomShopPolicy(req.user.userId, policyId);
   }
 
   @Patch("me/active-hours")

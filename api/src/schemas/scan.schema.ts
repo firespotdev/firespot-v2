@@ -9,6 +9,10 @@ export class Scan extends Document {
   @Prop({ type: Types.ObjectId, ref: "QRKit", required: true, index: true })
   qrKitId: Types.ObjectId;
 
+  // Set only when the person scanning was signed in.
+  @Prop({ type: Types.ObjectId, ref: "User" })
+  userId?: Types.ObjectId;
+
   // Customer identification (based on fingerprinting)
   @Prop()
   customerFingerprint?: string;
@@ -46,3 +50,4 @@ ScanSchema.index({ merchantId: 1, scannedAt: -1 });
 ScanSchema.index({ merchantId: 1, customerFingerprint: 1 });
 ScanSchema.index({ qrKitId: 1, scannedAt: -1 });
 ScanSchema.index({ scannedAt: -1 });
+ScanSchema.index({ userId: 1, scannedAt: -1 });

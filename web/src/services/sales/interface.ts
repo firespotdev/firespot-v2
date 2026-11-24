@@ -199,6 +199,16 @@ export interface CustomerSale extends Omit<Sale, 'merchantId'> {
   merchantId: CustomerSaleMerchant | string;
 }
 
+/** How a customer's sale reads in a business's Activity tab. */
+export type CustomerActivityStatus = 'PAID' | 'PROCESSING' | 'FAILED';
+
+export interface CustomerMerchantActivity {
+  totalSpent: number;
+  /** Paid sales, which the total counts. */
+  paidCount: number;
+  data: Array<CustomerSale & { activityStatus: CustomerActivityStatus }>;
+}
+
 export interface TrendData {
   label: string;
   amount: number;

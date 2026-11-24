@@ -22,6 +22,7 @@ describe("UsersService - bank account visibility", () => {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
   );
 
   beforeEach(() => jest.clearAllMocks());
@@ -39,7 +40,7 @@ describe("UsersService - bank account visibility", () => {
       isEnabled: true,
     };
     const user = {
-      bankAccounts: [account],
+      bankAccounts: [account, { accountNumber: "9999999999", isEnabled: true }],
       save: jest.fn().mockResolvedValue(undefined),
     };
     userModel.findById.mockResolvedValue(user);

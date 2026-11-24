@@ -139,6 +139,7 @@ export class QRKitsController {
       userAgent,
       customerFingerprint,
       Boolean(req.user?.fullName?.trim()),
+      req.user?.userId,
     );
   }
 

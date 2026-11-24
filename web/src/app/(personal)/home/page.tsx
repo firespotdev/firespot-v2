@@ -20,6 +20,7 @@ import {
 } from '@/services/users'
 import { getCurrentBrowserLocation } from '@/lib/utils/current-location'
 import { GhostIcon, MapPinIcon } from '@phosphor-icons/react'
+import { useSavedPostToggle } from '@/components/saved/use-saved-toggles'
 
 const QUICK_ACTIONS = [
   { label: 'Shops', icon: '/icons/shop.svg', href: '/search?type=shops' },
@@ -75,6 +76,7 @@ function HomePageContent() {
       ? { latitude: savedCoordinates[1], longitude: savedCoordinates[0] }
       : null)
   const needsLocation = activeMode !== 'latest'
+  const savedPosts = useSavedPostToggle()
   const postsFeed = usePostsFeed(
     {
       mode: activeMode,
@@ -319,7 +321,14 @@ function HomePageContent() {
           <section className="px-3 pb-10 pt-4">
             <div className="grid grid-cols-2 gap-3">
               {posts.map((post) => (
-                <PostCard key={post._id} post={post} interactive={false} />
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  interactive={false}
+                  href={`/post?postId=${post._id}`}
+                  isSaved={savedPosts.isSaved(post._id)}
+                  onToggleSave={() => savedPosts.toggle(post._id)}
+                />
               ))}
             </div>
           </section>

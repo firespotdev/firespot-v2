@@ -44,7 +44,7 @@ export function ActivityRow({ sale, onOpen }: ActivityRowProps) {
           <p className="text-[14px] font-bold text-black truncate">
             {businessName}
           </p>
-          <VerifiedBadge level="PROMAX" />
+          <VerifiedBadge level={merchant.verificationLevel} />
         </div>
         <p className="text-xs font-medium text-[#00000066] truncate mt-0.5">
           {subtitle}
@@ -62,7 +62,7 @@ export function ActivityRow({ sale, onOpen }: ActivityRowProps) {
           />
         </div>
       ) : isEnquiry || isFollow ? (
-        !isPending && <ChevronRight className="w-4 h-4 text-[#C7C7CC] shrink-0" />
+        <ChevronRight className="w-4 h-4 text-[#C7C7CC] shrink-0" />
       ) : (
         <div className="flex items-center gap-1.5 shrink-0">
           <div className="text-right">
@@ -71,7 +71,7 @@ export function ActivityRow({ sale, onOpen }: ActivityRowProps) {
             </p>
             <p className={cn("text-xs font-medium mt-0.5", isPending ? "text-[#BB8123]" : "text-[#24C166]")}>{isPending ? "Unconfirmed" : "Paid"}</p>
           </div>
-          {!isPending && <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />}
+          <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />
         </div>
       )}
     </Row>

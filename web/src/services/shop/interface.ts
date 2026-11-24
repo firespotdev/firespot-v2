@@ -1,5 +1,6 @@
 import type {
   ActiveHoursSetup,
+  CustomShopPolicy,
   EmployeeSetup,
   ShopFulfillment,
   ShopMainAddress,
@@ -61,7 +62,11 @@ export interface UpdateLocationPayload extends ShopMainAddress {
 }
 
 export type UpdateEmployeeSetupPayload = Omit<EmployeeSetup, 'configuredAt'>
-export type UpdateShopPoliciesPayload = Omit<ShopPolicies, 'configuredAt'>
+export type UpdateShopPoliciesPayload = Omit<
+  ShopPolicies,
+  'configuredAt' | 'customPolicies'
+>
+export type CustomShopPolicyPayload = Omit<CustomShopPolicy, '_id'>
 export type UpdateActiveHoursSetupPayload = Omit<
   ActiveHoursSetup,
   'configuredAt'

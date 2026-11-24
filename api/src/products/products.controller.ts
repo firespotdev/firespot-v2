@@ -16,9 +16,15 @@ import {
   MaxFileSizeValidator,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
-import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger'
+import {
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger'
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard'
 import { ProductsService } from './products.service'
+import { ProductBuyersService } from './product-buyers.service'
 import {
   CreateCategoriesDto,
   CreateProductDto,
@@ -120,11 +126,25 @@ export class ProductsController {
 @ApiTags('products')
 @Controller('public')
 export class PublicProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(
+    private readonly productsService: ProductsService,
+    private readonly productBuyersService: ProductBuyersService,
+  ) {}
 
   @Get('merchants/:merchantId/catalogue')
   getCatalogue(@Param('merchantId') merchantId: string) {
     return this.productsService.findPublicCatalogue(merchantId)
+  }
+
+  @Get('merchants/:merchantId/products/:productId/buyers')
+  @ApiOperation({
+    summary: 'Who bought a product (first name + initial) and their reviews',
+  })
+  getBuyers(
+    @Param('merchantId') merchantId: string,
+    @Param('productId') productId: string,
+  ) {
+    return this.productBuyersService.getBuyers(merchantId, productId)
   }
 
   @Get('products')

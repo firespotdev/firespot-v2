@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { Bookmark, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import type { MerchantPost, PostPlatform } from '@/services/posts'
 
 const PLATFORM_ICONS: Record<PostPlatform, string> = {
@@ -24,6 +27,11 @@ interface PostCardProps {
   interactive?: boolean
   onEdit?: () => void
   onDelete?: () => void
+  /** Opens this page inside the app, e.g. the post's own page. */
+  href?: string
+  /** Shows a bookmark on a published post that saves or unsaves it. */
+  isSaved?: boolean
+  onToggleSave?: () => void
 }
 
 const captionFor = (post: MerchantPost) =>
@@ -41,11 +49,15 @@ export function PostCard({
   interactive = true,
   onEdit,
   onDelete,
+  isSaved = false,
+  onToggleSave,
+  href,
 }: PostCardProps) {
   const [imageError, setImageError] = useState(false)
   const isDraft = post.status === 'DRAFT'
   const caption = captionFor(post)
   const merchantName = merchantNameFor(post)
+  const showDelete = manage && isDraft && Boolean(onDelete)
 
   const cardContent = (
     <div className="relative aspect-[0.63] overflow-hidden rounded-[8px] bg-[#D9DEE6]">
@@ -75,13 +87,6 @@ export function PostCard({
         />
       </span>
 
-      {/* Draft Badge (positioned cleanly next to platform icon, no overlap with delete button) */}
-      {isDraft && (
-        <span className="absolute left-12 top-3 z-1 rounded-full bg-black/75 px-2.5 py-1 text-[10px] font-bold tracking-[0.8px] text-white backdrop-blur-xs">
-          DRAFT
-        </span>
-      )}
-
       {/* Bottom info section */}
       <div className="absolute inset-x-3 bottom-3 text-left text-white">
         <p className="truncate text-[14px] font-bold leading-[120%]">
@@ -105,6 +110,14 @@ export function PostCard({
         >
           {cardContent}
         </button>
+      ) : href ? (
+        <Link
+          href={href}
+          className="block rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+          aria-label={`Open ${merchantName} post`}
+        >
+          {cardContent}
+        </Link>
       ) : interactive ? (
         <a
           href={post.sourceUrl}
@@ -117,6 +130,47 @@ export function PostCard({
         </a>
       ) : (
         cardContent
+      )}
+      {onToggleSave && !isDraft && (
+        <button
+          type="button"
+          onClick={onToggleSave}
+          aria-pressed={isSaved}
+          aria-label={`${isSaved ? 'Unsave' : 'Save'} ${merchantName} post`}
+          className="absolute top-1.5 right-1.5 z-2 flex h-9 w-9 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        >
+          <Bookmark
+            size={20}
+            strokeWidth={2.2}
+            className="text-white drop-shadow-md"
+            fill={isSaved ? 'white' : 'none'}
+          />
+        </button>
+      )}
+      {/* Draft badge and delete sit together on the right, clear of the platform icon. */}
+      {isDraft && (
+        <div className="pointer-events-none absolute top-1.5 right-1.5 z-2 flex h-9 items-center gap-0.5">
+          <span
+            className={cn(
+              'rounded-full bg-black/75 px-2.5 py-1 text-[10px] font-bold tracking-[0.8px] text-white backdrop-blur-xs',
+              !showDelete && 'mr-1.5',
+            )}
+          >
+            DRAFT
+          </span>
+          {showDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              aria-label={`Delete ${merchantName} draft`}
+              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/75 backdrop-blur-xs">
+                <Trash2 size={14} strokeWidth={2.2} className="text-white" />
+              </span>
+            </button>
+          )}
+        </div>
       )}
     </article>
   )

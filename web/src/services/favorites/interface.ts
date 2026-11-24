@@ -5,6 +5,7 @@ export interface FavoriteMerchant {
   businessImageUrl?: string
   profilePhotoUrl?: string
   businessIndustry?: string
+  verificationLevel?: 'PRO' | 'PROMAX' | null
 }
 
 export interface FavoritesResponse {

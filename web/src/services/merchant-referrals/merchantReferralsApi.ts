@@ -35,3 +35,19 @@ export const useMerchantReferralSummary = (enabled = true) =>
     queryFn: merchantReferralsApi.getMine,
     enabled,
   })
+
+/** Merchant sign-up link that credits the referring merchant. */
+export function getMerchantInviteUrl(referralCode?: string) {
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined'
+      ? window.location.origin
+      : 'https://firespot.co')
+  const url = new URL('/onboarding/merchant/start', appUrl)
+
+  if (referralCode) {
+    url.searchParams.set('mref', referralCode)
+  }
+
+  return url.toString()
+}

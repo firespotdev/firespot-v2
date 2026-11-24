@@ -13,6 +13,7 @@ import type { MerchantProfile } from '@/services/qr/interface'
 import { SaleRequestScreen } from './sale-request-screen'
 import { SaleWaitingScreen } from './sale-waiting-screen'
 import { SaleSuccessScreen } from './sale-success-screen'
+import { PaymentFailedScreen } from './payment-failed-screen'
 import { useCancelSaleAsCustomer } from '@/services/sales/hooks'
 import {
   useInitializeExistingPaystackSale,
@@ -30,6 +31,13 @@ import type { PaymentRail } from '@/components/custom-drawer/rail-picker-drawer'
 import { DEFAULT_PAYSTACK_CHANNEL } from '@/components/custom-drawer/channel-picker-drawer'
 import { getCustomerFingerprint } from '@/lib/utils/customer-fingerprint'
 import { safeSessionStorage } from '@/lib/utils/storage'
+import {
+  PAYSTACK_FAILED_REASON,
+  cardFailureReason,
+  forgetCardFailure,
+  paymentStartFailureReason,
+  readCardFailure,
+} from '@/lib/utils/card-failure'
 import { PaystackWaitingScreen } from './paystack-waiting-screen'
 import { PaystackRedirectingScreen } from './paystack-redirecting-screen'
 import { usePaystackRedirectState } from '@/hooks/usePaystackRedirectState'
@@ -132,6 +140,13 @@ export function SalePaymentFlow({
     merchant.paystackCollectionChannels?.[0] || DEFAULT_PAYSTACK_CHANNEL,
   )
   const [isFinishing, setIsFinishing] = useState(false)
+  // A declined card: set here on retry, or carried over from the pay page's
+  // cart checkout (?payment=card-failed) after it created this sale.
+  const [cardFailure, setCardFailure] = useState<string | null>(() =>
+    searchParams.get('payment') === 'card-failed'
+      ? (readCardFailure(sale.id) ?? cardFailureReason())
+      : null,
+  )
   const [selectedAccountIndex, setSelectedAccountIndex] =
     useState(initialAccountIndex)
   const [fromBankName, setFromBankName] = useState<string | null>(
@@ -170,8 +185,9 @@ export function SalePaymentFlow({
     showNotificationToast({
       message:
         cancelledBy === 'customer'
-          ? 'Transaction cancelled'
+          ? 'Purchase cancelled'
           : 'This payment request was cancelled by the vendor',
+      mode: 'error',
       duration: 3000,
     })
     router.replace(customerExitPath)
@@ -212,6 +228,12 @@ export function SalePaymentFlow({
       { saleId: sale.id, serialNumber },
       {
         onError: (error: unknown) => {
+          // 422: the webhook already settled the attempt before the customer
+          // got back. The refreshed sale shows the outcome, failure included.
+          if ((error as { response?: { status?: number } })?.response?.status === 422) {
+            queryClient.invalidateQueries({ queryKey: ['public-sale', sale.id] })
+            return
+          }
           showNotificationToast({
             message:
               (error as { response?: { data?: { message?: string } } })
@@ -223,6 +245,7 @@ export function SalePaymentFlow({
       },
     )
   }, [
+    queryClient,
     reconcilePaystack,
     sale.id,
     sale.paymentRail,
@@ -315,19 +338,10 @@ export function SalePaymentFlow({
         return
       }
       cancelPaystackRedirect()
-      showNotificationToast({
-        message: 'Failed to start Paystack payment. Please try again.',
-        mode: 'error',
-      })
+      setCardFailure(paymentStartFailureReason(undefined))
     } catch (error: unknown) {
       cancelPaystackRedirect()
-      showNotificationToast({
-        message:
-          (error as { response?: { data?: { message?: string } } })
-            ?.response?.data?.message ||
-          'Failed to start Paystack payment. Please try again.',
-        mode: 'error',
-      })
+      setCardFailure(paymentStartFailureReason(error))
     }
   }
 
@@ -361,13 +375,12 @@ export function SalePaymentFlow({
             invalidateSale()
           },
           onError: (err: unknown) => {
-            const msg =
-              (err as { response?: { data?: { message?: string } } })?.response
-                ?.data?.message || 'Payment failed. Please try again.'
-            showNotificationToast({
-              message: msg,
-              mode: 'error',
-            })
+            setCardFailure(
+              cardFailureReason(
+                (err as { response?: { data?: { message?: string } } })
+                  ?.response?.data?.message,
+              ),
+            )
           },
         },
       )
@@ -532,6 +545,36 @@ export function SalePaymentFlow({
     return (
       <PaystackWaitingScreen
         onMinimize={handleMinimize}
+      />
+    )
+  }
+
+  // Back from Paystack's page with the attempt marked failed (by the return
+  // reconcile or the webhook). Dismissing drops ?payment, which hides it.
+  const paystackReturnFailed =
+    searchParams.get('payment') === 'paystack-return' &&
+    sale.status === 'PENDING' &&
+    sale.paystackAttemptStatus === 'failed'
+  const failureReason =
+    cardFailure ?? (paystackReturnFailed ? PAYSTACK_FAILED_REASON : null)
+
+  const dismissCardFailure = () => {
+    forgetCardFailure(sale.id)
+    setCardFailure(null)
+    if (searchParams.get('payment')) {
+      router.replace(`/pay/${serialNumber}?saleId=${sale.id}`)
+    }
+  }
+
+  if (failureReason && step === 'request') {
+    return (
+      <PaymentFailedScreen
+        reason={failureReason}
+        onOkay={dismissCardFailure}
+        onUseAnotherMethod={() => {
+          dismissCardFailure()
+          handleChangePaymentMethod()
+        }}
       />
     )
   }

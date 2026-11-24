@@ -13,8 +13,16 @@ import { getBusinessImageUrl } from '@/lib/utils/business-image'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
+/**
+ * What the screen shows: a merchant's sale request, or the customer's own
+ * cart before any sale exists (business profile checkout).
+ */
+export type SaleRequest = Pick<PublicSale, 'amount' | 'items' | 'location' | 'createdAt'> & {
+  merchant?: PublicSale['merchant']
+}
+
 interface SaleRequestScreenProps {
-  sale: PublicSale
+  sale: SaleRequest
   merchant: MerchantProfile
   account?: BankAccount
   onChangeAccount: () => void

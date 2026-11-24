@@ -15,7 +15,6 @@ import {
   ChevronRight,
   MoreHorizontal,
 } from 'lucide-react'
-import { useRouter } from '@bprogress/next/app'
 import {
   Button,
   TagFooter,
@@ -44,17 +43,14 @@ interface TransactionDetailsDrawerProps {
   sale: Sale
   onClose: () => void
   justRecorded?: boolean
-  origin?: 'history'
   autoDownloadReceipt?: boolean
 }
 
 const TransactionDetailsDrawer = ({
   sale,
   justRecorded = false,
-  origin,
   autoDownloadReceipt = false,
 }: TransactionDetailsDrawerProps) => {
-  const router = useRouter()
   const { openDrawer, closeDrawer, closeAllDrawers } = useDrawerStore()
   const receiptRef = useRef<HTMLDivElement>(null)
   const hasAutoDownloaded = useRef(false)
@@ -101,21 +97,11 @@ const TransactionDetailsDrawer = ({
   }, [sale.customerId])
 
   const handleRecordRepayment = () => {
-    try {
-      const progressWindow = window as Window & {
-        bprogress?: { start: () => void }
-      }
-      if (typeof window !== 'undefined' && progressWindow.bprogress) {
-        progressWindow.bprogress.start()
-      }
-    } catch {}
     closeAllDrawers()
-    const params = new URLSearchParams({ id: sale._id })
-    if (origin === 'history' && customerId) {
-      params.set('customerId', customerId)
-      params.set('returnTo', `/outstanding?customerId=${customerId}`)
-    }
-    router.push(`/record-repayment?${params.toString()}`)
+    openDrawer({
+      type: 'record-repayment',
+      props: { saleId: sale._id, customerId: customerId ?? undefined },
+    })
   }
 
   const {
@@ -462,11 +448,14 @@ const TransactionDetailsDrawer = ({
                   onClick={() => {
                     if (!customerId) return
                     closeDrawer()
-                    const params = new URLSearchParams({
-                      customerId,
-                      saleId: sale._id,
+                    openDrawer({
+                      type: 'outstanding',
+                      props: {
+                        customerId,
+                        saleId: sale._id,
+                        openedAt: Date.now(),
+                      },
                     })
-                    router.push(`/outstanding?${params.toString()}`)
                   }}
                   className="flex w-full items-center justify-between text-left disabled:cursor-default"
                 >

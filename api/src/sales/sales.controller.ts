@@ -22,6 +22,7 @@ import { SalesQueryDto } from './dto/sales-query.dto';
 import { CustomerSaleActionDto } from './dto/customer-sale-action.dto';
 import { RecordRepaymentDto } from './dto/record-repayment.dto';
 import { UpdateSaleCustomerDto } from './dto/update-sale-customer.dto';
+import { ArchiveOutstandingSalesDto } from './dto/archive-outstanding-sales.dto';
 import { CreatePaystackCollectSaleDto } from './dto/create-paystack-collect-sale.dto';
 import {
   InitializePaystackSaleDto,
@@ -222,6 +223,20 @@ export class SalesController {
 
   @ApiBearerAuth('JWT-auth')
   @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: "My sales with one business, for its Activity tab" })
+  @Get('customer/merchants/:merchantId')
+  async getCustomerMerchantActivity(
+    @GetUser() user: User,
+    @Param('merchantId') merchantId: string,
+  ) {
+    return this.salesService.getMyActivityWithMerchant(
+      (user as any).userId,
+      merchantId,
+    );
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Attach me as the payer of a sale (on pay)' })
   @Patch(':id/claim')
   async claimSale(@GetUser() user: User, @Param('id') saleId: string) {
@@ -282,6 +297,22 @@ export class SalesController {
   @Patch('archive-all')
   async archiveAllPendingSales(@GetUser() user: User) {
     return this.salesService.archiveAllPendingSales((user as any).userId);
+  }
+
+  @ApiBearerAuth('JWT-auth')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: "Archive the selected customers' active outstanding sales",
+  })
+  @Patch('outstanding/archive')
+  async archiveOutstandingSales(
+    @GetUser() user: User,
+    @Body() dto: ArchiveOutstandingSalesDto,
+  ) {
+    return this.salesService.archiveOutstandingSalesForCustomers(
+      (user as any).userId,
+      dto.customerIds,
+    );
   }
 
   @ApiBearerAuth('JWT-auth')

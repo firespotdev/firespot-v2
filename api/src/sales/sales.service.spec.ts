@@ -1071,6 +1071,169 @@ describe("SalesService amount invariants", () => {
         { $set: { isArchived: true } },
       );
     });
+
+    it("counts each customer's debts that can be archived", async () => {
+      const owing = (overrides: Record<string, unknown>) => ({
+        status: "OUTSTANDING",
+        balanceOwed: 100,
+        customerUserId: { _id: customerUserId },
+        customerId: { _id: customerId, name: "Ada", phoneNumber: "0800" },
+        ...overrides,
+      });
+      const find = jest.fn().mockReturnValue({
+        populate: jest.fn().mockReturnValue({
+          exec: jest
+            .fn()
+            .mockResolvedValue([
+              owing({}),
+              owing({ paymentRail: "paystack" }),
+              owing({ isCollection: true }),
+            ]),
+        }),
+      });
+      const service = createService({ find });
+
+      const summary = await service.getOutstandingSummary(
+        "507f1f77bcf86cd799439012",
+      );
+
+      expect(summary.customers).toEqual([
+        expect.objectContaining({ transactionCount: 3, archivableCount: 1 }),
+      ]);
+    });
+
+    it("archives the selected customers' outstanding sales together", async () => {
+      const merchantId = "507f1f77bcf86cd799439012";
+      const otherCustomerId = "507f1f77bcf86cd799439016";
+      const updateMany = jest.fn().mockResolvedValue({ modifiedCount: 3 });
+      const customerModel = {
+        findOne: jest.fn((query: { _id: { toString(): string } }) => ({
+          exec: jest.fn().mockResolvedValue({
+            _id: query._id,
+            userId:
+              query._id.toString() === customerId
+                ? customerUserId
+                : "507f1f77bcf86cd799439017",
+          }),
+        })),
+      };
+      const service = createService({ updateMany }, customerModel);
+
+      await expect(
+        service.archiveOutstandingSalesForCustomers(merchantId, [
+          customerId,
+          otherCustomerId,
+          customerId,
+        ]),
+      ).resolves.toEqual({ count: 3 });
+
+      expect(customerModel.findOne).toHaveBeenCalledTimes(2);
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customerUserId: { $in: [expect.anything(), expect.anything()] },
+          status: "OUTSTANDING",
+          isCollection: { $ne: true },
+          paymentRail: { $ne: "paystack" },
+        }),
+        { $set: { isArchived: true } },
+      );
+    });
+
+    it("archives nothing when a selected customer is not the merchant's", async () => {
+      const updateMany = jest.fn();
+      const customerModel = {
+        findOne: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(null),
+        }),
+      };
+      const service = createService({ updateMany }, customerModel);
+
+      await expect(
+        service.archiveOutstandingSalesForCustomers(
+          "507f1f77bcf86cd799439012",
+          [customerId],
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("customer activity with one business", () => {
+    const userId = "507f1f77bcf86cd799439014";
+    const merchantId = "507f1f77bcf86cd799439012";
+    const saleDoc = (value: Record<string, unknown>) => ({
+      toObject: () => ({ merchantId: { _id: merchantId }, ...value }),
+    });
+
+    it("labels each sale Paid, Processing or Failed and totals what was paid", async () => {
+      const find = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnValue({
+          limit: jest.fn().mockReturnValue({
+            populate: jest.fn().mockReturnValue({
+              exec: jest.fn().mockResolvedValue([
+                saleDoc({ _id: "a", status: "CONFIRMED", amount: 5000, amountPaid: 5000 }),
+                saleDoc({ _id: "b", status: "CONFIRMED", amount: 3000 }),
+                saleDoc({ _id: "c", status: "PENDING", amount: 2000 }),
+                saleDoc({
+                  _id: "d",
+                  status: "CANCELLED",
+                  amount: 1000,
+                  paystackAttemptStatus: "failed",
+                }),
+                saleDoc({
+                  _id: "e",
+                  status: "PENDING",
+                  amount: 800,
+                  paystackAttemptStatus: "abandoned",
+                }),
+              ]),
+            }),
+          }),
+        }),
+      });
+      const service = createService({ find });
+
+      const result = await service.getMyActivityWithMerchant(userId, merchantId);
+
+      expect(result.totalSpent).toBe(8000);
+      expect(result.paidCount).toBe(2);
+      expect(
+        result.data.map((sale: { _id: string; activityStatus: string }) => [
+          sale._id,
+          sale.activityStatus,
+        ]),
+      ).toEqual([
+        ["a", "PAID"],
+        ["b", "PAID"],
+        ["c", "PROCESSING"],
+        ["d", "FAILED"],
+        ["e", "FAILED"],
+      ]);
+      const [query] = find.mock.calls[0] as [Record<string, unknown>];
+      expect(query).toMatchObject({
+        customerUserId: expect.anything(),
+        merchantId: expect.anything(),
+        isArchived: { $ne: true },
+        $or: [
+          { status: { $in: ["CONFIRMED", "PENDING"] } },
+          {
+            status: "CANCELLED",
+            paystackAttemptStatus: { $in: ["failed", "abandoned"] },
+          },
+        ],
+      });
+    });
+
+    it("returns nothing for an invalid id", async () => {
+      const find = jest.fn();
+      const service = createService({ find });
+
+      await expect(
+        service.getMyActivityWithMerchant(userId, "not-an-id"),
+      ).resolves.toEqual({ totalSpent: 0, paidCount: 0, data: [] });
+      expect(find).not.toHaveBeenCalled();
+    });
   });
 
   describe("recent sales queries", () => {

@@ -24,29 +24,52 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 )
 
-// Single-flight refresh: concurrent 401s share one /auth/refresh call.
-let refreshPromise: Promise<string | null> | null = null
+/**
+ * - refreshed: a new access token was issued.
+ * - expired: the server refused the refresh cookie; the session is over.
+ * - unavailable: the server couldn't answer (network, 5xx). The session may
+ *   still be fine, so callers must not log the user out on this.
+ */
+export type RefreshResult =
+  | { status: 'refreshed'; token: string }
+  | { status: 'expired' }
+  | { status: 'unavailable' }
 
-export function refreshAccessToken(): Promise<string | null> {
+const SESSION_REFUSED = [401, 403]
+
+// Single-flight refresh: concurrent 401s share one /auth/refresh call.
+let refreshPromise: Promise<RefreshResult> | null = null
+
+export function refreshAccessToken(): Promise<RefreshResult> {
   if (!refreshPromise) {
     refreshPromise = axios
       .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
-      .then((res) => {
+      .then((res): RefreshResult => {
         const token: string | undefined = res.data?.accessToken
-        if (token) {
-          safeLocalStorage.setItem('token', token)
-          useAuthStore.getState().setAccessToken(token)
-          return token
-        }
-
-        return null
+        if (!token) return { status: 'expired' }
+        useAuthStore.getState().setAccessToken(token)
+        return { status: 'refreshed', token }
       })
-      .catch(() => null)
+      .catch((error): RefreshResult => {
+        const status: number | undefined = error?.response?.status
+        return status !== undefined && SESSION_REFUSED.includes(status)
+          ? { status: 'expired' }
+          : { status: 'unavailable' }
+      })
       .finally(() => {
         refreshPromise = null
       })
   }
   return refreshPromise
+}
+
+function sendToLogin() {
+  if (
+    typeof window !== 'undefined' &&
+    !window.location.pathname.startsWith('/pay/')
+  ) {
+    window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+  }
 }
 
 apiClient.interceptors.response.use(
@@ -60,17 +83,18 @@ apiClient.interceptors.response.use(
 
     if (status === 401 && !isAuthEndpoint && original && !original._retry) {
       original._retry = true
-      const newToken = await refreshAccessToken()
-      if (newToken) {
+      const refresh = await refreshAccessToken()
+      if (refresh.status === 'refreshed') {
         original.headers = original.headers || {}
-        original.headers.Authorization = `Bearer ${newToken}`
+        original.headers.Authorization = `Bearer ${refresh.token}`
         return apiClient(original)
       }
 
-      // Refresh failed — session is truly gone.
-      useAuthStore.getState().logout()
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/pay/')) {
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`
+      // Only a refused refresh ends the session; an outage fails this
+      // request but keeps the user signed in.
+      if (refresh.status === 'expired') {
+        useAuthStore.getState().logout()
+        sendToLogin()
       }
     }
     return Promise.reject(error)

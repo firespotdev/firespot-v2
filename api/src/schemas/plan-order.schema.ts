@@ -17,9 +17,9 @@ export class PlanOrder extends Document {
   @Prop({ required: true })
   amount: number
 
-  // Stores billed on this order (PRO MAX); 1 for LITE/PRO
+  // Spots billed on this order (PRO MAX); 1 for LITE/PRO
   @Prop({ default: 1 })
-  storeCount: number
+  spotCount: number
 
   @Prop({ enum: ['one_time', 'monthly'], default: 'one_time' })
   billingType: string

@@ -282,3 +282,5 @@ export type SaleDocument = Sale & Document;
 SaleSchema.index({ merchantId: 1, createdAt: -1 });
 SaleSchema.index({ merchantId: 1, recordedAt: -1 });
 SaleSchema.index({ merchantId: 1, customerUserId: 1, status: 1 });
+// Item pages: who bought a given product (ProductBuyersService).
+SaleSchema.index({ merchantId: 1, "items.productId": 1, status: 1 });

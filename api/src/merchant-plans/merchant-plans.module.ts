@@ -4,7 +4,7 @@ import { MongooseModule } from '@nestjs/mongoose'
 import { PlanOrder, PlanOrderSchema } from '../schemas/plan-order.schema'
 import { User, UserSchema } from '../schemas/user.schema'
 import { UsersModule } from '../users/users.module'
-import { StoresModule } from '../stores/stores.module'
+import { SpotsModule } from '../spots/spots.module'
 import { MerchantPlansController } from './merchant-plans.controller'
 import { MerchantPlansService } from './merchant-plans.service'
 import { MerchantReferralsModule } from '../merchant-referrals/merchant-referrals.module'
@@ -17,7 +17,7 @@ import { MerchantReferralsModule } from '../merchant-referrals/merchant-referral
     ]),
     UsersModule,
     QRKitsModule,
-    StoresModule,
+    SpotsModule,
     MerchantReferralsModule,
   ],
   controllers: [MerchantPlansController],

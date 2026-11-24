@@ -15,11 +15,13 @@ import {
   Spinner,
   showNotificationToast,
   BackButton,
+  LoaderCircle,
 } from '@/components/ui'
 import { useUserProfile } from '@/services/users'
+import type { UserProfile } from '@/services/users'
 import { useUpdateContact } from '@/services/shop'
 import type { ShopSocialLinks } from '@/services/auth/interface'
-import { useSafeBack } from '@/hooks/use-safe-back'
+import { useSetupStepBack } from '@/hooks/use-setup-step-back'
 
 // Only ig/fb/twitter svgs ship today; the other two use a lucide fallback in a
 // brand-coloured tile until real assets land.
@@ -55,9 +57,8 @@ const SOCIALS: Array<{
   },
 ]
 
-export default function ContactSettingsPage() {
-  const handleBack = useSafeBack('/profile')
-  const { data: profile } = useUserProfile()
+function ContactSettingsForm({ profile }: { profile: UserProfile }) {
+  const handleBack = useSetupStepBack()
   const update = useUpdateContact()
 
   const [businessEmail, setBusinessEmail] = useState(
@@ -70,6 +71,11 @@ export default function ContactSettingsPage() {
 
   const setSocial = (key: keyof ShopSocialLinks, value: string) =>
     setSocials((prev) => ({ ...prev, [key]: value }))
+
+  // The step only counts as done with at least one way to reach the shop.
+  const hasContact = [businessEmail, website, ...Object.values(socials)].some(
+    (value) => Boolean(value?.trim()),
+  )
 
   const handleContinue = () => {
     update.mutate(
@@ -163,7 +169,7 @@ export default function ContactSettingsPage() {
         <div className="sticky bottom-0 bg-white border-t border-[#F1F1F1] rounded-t-[12px] p-4 w-full">
           <Button
             onClick={handleContinue}
-            disabled={update.isPending}
+            disabled={!hasContact || update.isPending}
             className="w-full h-14 font-bold"
           >
             {update.isPending ? <Spinner /> : 'Continue'}
@@ -172,4 +178,20 @@ export default function ContactSettingsPage() {
       </div>
     </div>
   )
+}
+
+// The form copies saved values into its fields once, so it waits for the
+// profile; otherwise a refresh or direct visit opens with empty fields.
+export default function ContactSettingsPage() {
+  const { data: profile } = useUserProfile()
+
+  if (!profile) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-white">
+        <LoaderCircle innerBg="white" />
+      </div>
+    )
+  }
+
+  return <ContactSettingsForm profile={profile} />
 }

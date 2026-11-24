@@ -3,13 +3,16 @@ import {
   HttpException,
   HttpStatus,
   ForbiddenException,
+  NotFoundException,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "../schemas/user.schema";
+import { Supplier, SupplierDocument } from "../schemas/supplier.schema";
 import { QRKit, QRKitDocument } from "../schemas/qrkit.schema";
 import { Product, ProductDocument } from "../schemas/product.schema";
-import { Store, StoreDocument } from "../schemas/store.schema";
+import { Spot, SpotDocument } from "../schemas/spot.schema";
+import { publicSpotAddress } from "../spots/spot-address";
 import { Sale, SaleDocument } from "../schemas/sale.schema";
 import { Feedback, FeedbackDocument } from "../schemas/feedback.schema";
 import { PaystackService } from "./services/paystack.service";
@@ -44,9 +47,14 @@ import {
   UpdateFulfillmentDto,
   UpdateLocationDto,
   UpdateShopPoliciesDto,
+  CustomShopPolicyDto,
 } from "./dto/shop-setup.dto";
 import { PublicDiscoveryQueryDto } from "../common/dto/public-discovery-query.dto";
 import { getSelectablePaystackChannels } from "../payments/paystack-collection-channels";
+import {
+  assertKeepsPaymentMethod,
+  paymentSnapshot,
+} from "../payments/payment-availability";
 import { normalizeNigerianPhone } from "../common/phone";
 
 const escapeRegExp = (value: string) =>
@@ -69,13 +77,57 @@ interface PublicMerchantRecord {
   verificationLevel?: "PRO" | "PROMAX";
 }
 
+const SHOP_POLICY_KEYS = [
+  "returns",
+  "exchanges",
+  "cancellations",
+  "refunds",
+] as const;
+
+const SHOP_POLICY_LABELS: Record<(typeof SHOP_POLICY_KEYS)[number], string> = {
+  returns: "Returns",
+  exchanges: "Exchanges",
+  cancellations: "Cancellations",
+  refunds: "Refunds",
+};
+
+/**
+ * Policies as customers see them: each standard policy with its time limit,
+ * then the merchant's own. Null until the merchant has set any.
+ */
+function publicShopPolicies(policies: User["shopPolicies"]) {
+  const customPolicies = policies?.customPolicies ?? [];
+  if (!policies?.configuredAt && customPolicies.length === 0) return null;
+
+  const standard = Object.fromEntries(
+    SHOP_POLICY_KEYS.map((key) => {
+      const withinDays = policies?.appliesWithinDays?.[key];
+      return [
+        key,
+        policies?.[key]
+          ? { allowed: true, ...(withinDays ? { withinDays } : {}) }
+          : { allowed: false },
+      ];
+    }),
+  );
+  return {
+    ...standard,
+    customPolicies: customPolicies.map((policy) => ({
+      id: String(policy._id),
+      title: policy.title,
+      details: policy.details,
+      withinDays: policy.appliesWithinDays,
+    })),
+  };
+}
+
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(QRKit.name) private qrKitModel: Model<QRKitDocument>,
     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
-    @InjectModel(Store.name) private storeModel: Model<StoreDocument>,
+    @InjectModel(Spot.name) private spotModel: Model<SpotDocument>,
     @InjectModel(Sale.name) private saleModel: Model<SaleDocument>,
     @InjectModel(Feedback.name)
     private feedbackModel: Model<FeedbackDocument>,
@@ -83,6 +135,8 @@ export class UsersService {
     private cloudinaryService: CloudinaryService,
     private merchantReferralsService: MerchantReferralsService,
     private paystackSubaccountsService: PaystackSubaccountsService,
+    @InjectModel(Supplier.name)
+    private supplierModel: Model<SupplierDocument>,
   ) {}
 
   async verifyBankAccount(dto: VerifyAccountDto) {
@@ -216,7 +270,7 @@ export class UsersService {
     const merchant = await this.userModel
       .findOne(this.publicMerchantFilter(identifier))
       .select(
-        "businessName merchantSlug businessImageUrl profilePhotoUrl profileBannerUrl businessIndustry businessDescription fullPhoneNumber mainAddress website socialLinks activeHoursSetup verificationLevel planStatus planGraceUntil",
+        "businessName merchantSlug businessImageUrl profilePhotoUrl profileBannerUrl businessIndustry businessDescription fullPhoneNumber mainAddress mainLocation website socialLinks activeHoursSetup shopPolicies verificationLevel planStatus planGraceUntil",
       )
       .lean()
       .exec();
@@ -239,6 +293,8 @@ export class UsersService {
         shopNumber?: string;
         landmark?: string;
       };
+      mainLocation?: User["mainLocation"];
+      shopPolicies?: User["shopPolicies"];
     };
   }
 
@@ -249,7 +305,7 @@ export class UsersService {
 
     const [
       qrKit,
-      stores,
+      spots,
       favoriteCount,
       monthlyVisits,
       salesSummary,
@@ -261,9 +317,11 @@ export class UsersService {
         .sort({ isDigital: -1, createdAt: 1 })
         .lean()
         .exec(),
-      this.storeModel
+      this.spotModel
         .find({ merchantId, isActive: true })
-        .select("name address location isPrimary")
+        .select(
+          "name address location isPrimary state city additionalDetails insideMarket market shoppingComplex shopNumber landmark",
+        )
         .sort({ isPrimary: -1, createdAt: 1 })
         .lean()
         .exec(),
@@ -317,34 +375,19 @@ export class UsersService {
         .exec(),
     ]);
 
-    const locations = stores.length
-      ? stores.map((store) => ({
-          id: String(store._id),
-          name: store.name,
-          address: store.address,
-          location: store.location,
-          isPrimary: store.isPrimary === true,
+    const locations = spots.length
+      ? spots.map((spot) => ({
+          id: String(spot._id),
+          name: spot.name,
+          ...publicSpotAddress(spot),
+          isPrimary: spot.isPrimary === true,
         }))
       : merchant.mainAddress
         ? [
             {
               id: `main-${String(merchantId)}`,
               name: merchant.businessName,
-              address: [
-                merchant.mainAddress.address,
-                merchant.mainAddress.city,
-                merchant.mainAddress.state,
-              ]
-                .filter(Boolean)
-                .join(", "),
-              location: [
-                merchant.mainAddress.market,
-                merchant.mainAddress.shoppingComplex,
-                merchant.mainAddress.shopNumber,
-                merchant.mainAddress.landmark,
-              ]
-                .filter(Boolean)
-                .join(", "),
+              ...publicSpotAddress(merchant.mainAddress),
               isPrimary: true,
             },
           ]
@@ -371,6 +414,13 @@ export class UsersService {
       openingHours: merchant.activeHoursSetup?.openingHours || null,
       verificationLevel:
         merchant.planStatus === "verified" ? merchant.verificationLevel : null,
+      mapLocation: merchant.mainLocation?.coordinates
+        ? {
+            latitude: merchant.mainLocation.coordinates[1],
+            longitude: merchant.mainLocation.coordinates[0],
+          }
+        : null,
+      shopPolicies: publicShopPolicies(merchant.shopPolicies),
       serialNumber: qrKit?.serialNumber,
       locations,
       stats: {
@@ -482,6 +532,7 @@ export class UsersService {
       }
     }
 
+    const before = paymentSnapshot(user);
     if (dto.savedCardsCheckoutEnabled !== undefined) {
       user.savedCardsCheckoutEnabled = dto.savedCardsCheckoutEnabled;
     }
@@ -494,6 +545,7 @@ export class UsersService {
     if (dto.paystackCollectionChannels !== undefined) {
       user.paystackCollectionChannels = dto.paystackCollectionChannels;
     }
+    assertKeepsPaymentMethod(before, user);
     await user.save();
 
     return {
@@ -711,49 +763,187 @@ export class UsersService {
   }
 
   async updateShopPolicies(userId: string, dto: UpdateShopPoliciesDto) {
+    // Customers always see a limit for a policy that's on, never "anytime".
+    const missingLimit = SHOP_POLICY_KEYS.find(
+      (key) => dto[key] && !dto.appliesWithinDays?.[key],
+    );
+    if (missingLimit) {
+      throw new HttpException(
+        `Set how many days ${SHOP_POLICY_LABELS[missingLimit]} applies within`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     const user = await this.getMerchantOrThrow(userId);
+    const current = this.currentShopPolicies(user);
+    // A time limit only means something for a policy that's on.
+    const appliesWithinDays = Object.fromEntries(
+      SHOP_POLICY_KEYS.flatMap((key) =>
+        dto[key] && dto.appliesWithinDays?.[key]
+          ? [[key, dto.appliesWithinDays[key]]]
+          : [],
+      ),
+    );
     user.shopPolicies = {
-      ...dto,
+      returns: dto.returns,
+      exchanges: dto.exchanges,
+      cancellations: dto.cancellations,
+      refunds: dto.refunds,
+      appliesWithinDays,
+      customPolicies: current.customPolicies ?? [],
       configuredAt: new Date(),
     };
     await user.save();
     return { user: this.sanitizeUser(user) };
   }
 
+  /** The saved policies as a plain object, with every switch defaulting off. */
+  private currentShopPolicies(user: UserDocument) {
+    const saved = user.shopPolicies as
+      | (UserDocument["shopPolicies"] & { toObject?: () => unknown })
+      | undefined;
+    const plain = (saved?.toObject ? saved.toObject() : saved) as
+      | NonNullable<UserDocument["shopPolicies"]>
+      | undefined;
+    return {
+      returns: false,
+      exchanges: false,
+      cancellations: false,
+      refunds: false,
+      ...plain,
+    };
+  }
+
+  /**
+   * Custom policies are saved as they're written; they don't complete the
+   * policies step, which needs the main screen saved.
+   */
+  private async saveCustomShopPolicies(
+    userId: string,
+    change: (
+      policies: NonNullable<
+        NonNullable<UserDocument["shopPolicies"]>["customPolicies"]
+      >,
+    ) => NonNullable<
+      NonNullable<UserDocument["shopPolicies"]>["customPolicies"]
+    >,
+  ) {
+    const user = await this.getMerchantOrThrow(userId);
+    const current = this.currentShopPolicies(user);
+    user.shopPolicies = {
+      ...current,
+      customPolicies: change(current.customPolicies ?? []),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  async addCustomShopPolicy(userId: string, dto: CustomShopPolicyDto) {
+    return this.saveCustomShopPolicies(userId, (policies) => [
+      ...policies,
+      {
+        _id: new Types.ObjectId(),
+        title: dto.title,
+        details: dto.details,
+        appliesWithinDays: dto.appliesWithinDays,
+      },
+    ]);
+  }
+
+  async updateCustomShopPolicy(
+    userId: string,
+    policyId: string,
+    dto: CustomShopPolicyDto,
+  ) {
+    return this.saveCustomShopPolicies(userId, (policies) => {
+      this.assertCustomPolicyExists(policies, policyId);
+      return policies.map((policy) =>
+        String(policy._id) === policyId
+          ? {
+              ...policy,
+              title: dto.title,
+              details: dto.details,
+              appliesWithinDays: dto.appliesWithinDays,
+            }
+          : policy,
+      );
+    });
+  }
+
+  async deleteCustomShopPolicy(userId: string, policyId: string) {
+    return this.saveCustomShopPolicies(userId, (policies) => {
+      this.assertCustomPolicyExists(policies, policyId);
+      return policies.filter((policy) => String(policy._id) !== policyId);
+    });
+  }
+
+  private assertCustomPolicyExists(
+    policies: Array<{ _id: Types.ObjectId }>,
+    policyId: string,
+  ) {
+    if (!policies.some((policy) => String(policy._id) === policyId)) {
+      throw new NotFoundException("This policy no longer exists");
+    }
+  }
+
   async updateActiveHoursSetup(userId: string, dto: UpdateActiveHoursSetupDto) {
     const user = await this.getMerchantOrThrow(userId);
-    const openingDays = dto.openingHours.days;
-    const bookingDays = dto.appointmentAndReservation.bookableHours.days;
-
-    const validateDays = (days: typeof openingDays, label: string) => {
-      if (days.length !== 7 || new Set(days.map((day) => day.day)).size !== 7) {
-        throw new HttpException(
-          `${label} must contain each day of the week`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      const enabled = days.filter((day) => day.enabled);
-      if (enabled.length === 0) {
-        throw new HttpException(
-          `${label} must include at least one open day`,
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-      for (const day of enabled) {
-        if (!day.opensAt || !day.closesAt || day.opensAt === day.closesAt) {
-          throw new HttpException(
-            `${label} requires different opening and closing times`,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-        day.closesNextDay = day.closesAt < day.opensAt;
-      }
-    };
-
-    validateDays(openingDays, "Opening hours");
-    validateDays(bookingDays, "Bookable hours");
+    this.validateWeek(dto.openingHours.days, "Opening hours");
 
     const appointment = dto.appointmentAndReservation;
+    if (appointment) this.validateAppointment(appointment);
+
+    // A shop without bookings sends hours alone; an earlier booking setup
+    // stays as it was in case the merchant turns Reservations back on.
+    const keptAppointment =
+      appointment || user.activeHoursSetup?.appointmentAndReservation;
+
+    user.activeHoursSetup = {
+      openingHours: dto.openingHours,
+      ...(keptAppointment
+        ? { appointmentAndReservation: keptAppointment }
+        : {}),
+      configuredAt: new Date(),
+    };
+    await user.save();
+    return { user: this.sanitizeUser(user) };
+  }
+
+  /** Every day of the week once, at least one open, with real times. */
+  private validateWeek(
+    days: UpdateActiveHoursSetupDto["openingHours"]["days"],
+    label: string,
+  ) {
+    if (days.length !== 7 || new Set(days.map((day) => day.day)).size !== 7) {
+      throw new HttpException(
+        `${label} must contain each day of the week`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    const enabled = days.filter((day) => day.enabled);
+    if (enabled.length === 0) {
+      throw new HttpException(
+        `${label} must include at least one open day`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    for (const day of enabled) {
+      if (!day.opensAt || !day.closesAt || day.opensAt === day.closesAt) {
+        throw new HttpException(
+          `${label} requires different opening and closing times`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      day.closesNextDay = day.closesAt < day.opensAt;
+    }
+  }
+
+  private validateAppointment(
+    appointment: NonNullable<
+      UpdateActiveHoursSetupDto["appointmentAndReservation"]
+    >,
+  ) {
+    this.validateWeek(appointment.bookableHours.days, "Bookable hours");
+
     if (appointment.bookingType === "SPACE") {
       if (
         !appointment.capacity.guestsAtOnce ||
@@ -793,14 +983,6 @@ export class UsersService {
         HttpStatus.BAD_REQUEST,
       );
     }
-
-    user.activeHoursSetup = {
-      openingHours: dto.openingHours,
-      appointmentAndReservation: appointment,
-      configuredAt: new Date(),
-    };
-    await user.save();
-    return { user: this.sanitizeUser(user) };
   }
 
   /** Marks the shop live. Reversible only by support for now. */
@@ -823,12 +1005,13 @@ export class UsersService {
     const user = await this.getMerchantOrThrow(userId);
     const merchantId = user._id as Types.ObjectId;
 
-    const [productCount, activeKitCount] = await Promise.all([
+    const [productCount, activeKitCount, supplierCount] = await Promise.all([
       this.productModel.countDocuments({ merchantId }),
       this.qrKitModel.countDocuments({
         merchantId,
         activationStatus: "activated",
       }),
+      this.supplierModel.countDocuments({ merchantId }),
     ]);
 
     const social = user.socialLinks || {};
@@ -860,6 +1043,7 @@ export class UsersService {
       },
       { key: "firstItem", done: productCount > 0 },
       { key: "qrKit", done: activeKitCount > 0 },
+      { key: "suppliers", done: supplierCount > 0 },
       {
         key: "policies",
         done: Boolean(user.shopPolicies?.configuredAt),
@@ -878,7 +1062,7 @@ export class UsersService {
         : []),
     ].map((item) => ({ ...item, locked: false }));
 
-    const locked = ["bookings", "charges", "suppliers"].map((key) => ({
+    const locked = ["bookings", "charges"].map((key) => ({
       key,
       done: false,
       locked: true,
@@ -1119,7 +1303,9 @@ export class UsersService {
       throw new HttpException("Bank account not found", HttpStatus.NOT_FOUND);
     }
 
+    const before = paymentSnapshot(user);
     account.isEnabled = enabled;
+    assertKeepsPaymentMethod(before, user);
     await user.save();
 
     return {
@@ -1156,9 +1342,11 @@ export class UsersService {
     }
 
     const wasPrimary = user.bankAccounts[accountIndex].isPrimary;
+    const before = paymentSnapshot(user);
 
     // Remove the account
     user.bankAccounts.splice(accountIndex, 1);
+    assertKeepsPaymentMethod(before, user);
 
     // If deleted account was primary, set first account as primary
     if (wasPrimary && user.bankAccounts.length > 0) {
@@ -1307,6 +1495,7 @@ export class UsersService {
       merchantSlug: merchant.merchantSlug,
       businessImageUrl: merchant.businessImageUrl || merchant.profilePhotoUrl,
       businessIndustry: merchant.businessIndustry,
+      verificationLevel: merchant.verificationLevel,
     };
   }
 
@@ -1315,7 +1504,7 @@ export class UsersService {
       .findById(userId)
       .populate(
         "favoriteMerchants",
-        "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry",
+        "businessName merchantSlug businessImageUrl profilePhotoUrl businessIndustry verificationLevel",
       )
       .exec();
     if (!user) {

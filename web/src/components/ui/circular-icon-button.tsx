@@ -38,9 +38,9 @@ export const CircularIconButton = React.forwardRef<
 
     const variantClasses = {
       ghost: 'text-black',
-      filled: 'bg-gray-100 text-black',
+      filled: 'flex items-center justify-center rounded-full bg-gray-100 text-black',
       bordered:
-        'border border-[#F1F1F1] bg-white text-black shadow-sm',
+        'flex items-center justify-center rounded-full border border-[#F1F1F1] bg-white text-black shadow-sm',
     }[variant]
 
     const renderIcon = () => {

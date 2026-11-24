@@ -88,10 +88,12 @@ export const useCreateManualSale = () => {
 };
 export const useSales = (
   params?: Record<string, string | number | boolean | undefined>,
+  options?: { enabled?: boolean },
 ) => {
   return useQuery({
     queryKey: ['sales', params],
     queryFn: () => SalesApi.getSales(params),
+    enabled: options?.enabled ?? true,
   });
 };
 
@@ -144,6 +146,18 @@ export const useCustomerHistory = () => {
   return useQuery({
     queryKey: ['customer-history'],
     queryFn: () => SalesApi.getCustomerHistory(),
+  });
+};
+
+/** The signed-in customer's sales with one business. */
+export const useCustomerMerchantActivity = (
+  merchantId: string,
+  enabled = true,
+) => {
+  return useQuery({
+    queryKey: ['customer-history', 'merchant', merchantId],
+    queryFn: () => SalesApi.getCustomerMerchantActivity(merchantId),
+    enabled: enabled && Boolean(merchantId),
   });
 };
 
@@ -228,6 +242,21 @@ export const useArchiveAllPendingSales = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+    },
+  });
+};
+
+export const useArchiveOutstandingSales = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (customerIds: string[]) =>
+      SalesApi.archiveOutstandingSales(customerIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-stats'] });
+      queryClient.invalidateQueries({
+        queryKey: ['sales-outstanding-summary'],
+      });
     },
   });
 };

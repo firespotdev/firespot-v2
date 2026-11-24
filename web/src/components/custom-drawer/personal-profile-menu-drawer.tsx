@@ -12,7 +12,7 @@ import { useCustomerHistory } from '@/services/sales/hooks'
 import { useUpdateProfilePhoto, useUserProfile } from '@/services/users'
 import { MerchantAvatar } from '@/components/layout'
 import { Button, showNotificationToast, VerifiedBadge } from '@/components/ui'
-import { StorefrontIcon } from '@phosphor-icons/react'
+import { BookmarkSimpleIcon, StorefrontIcon } from '@phosphor-icons/react'
 
 interface PersonalProfileMenuDrawerProps {
   closeDrawer: () => void
@@ -351,6 +351,17 @@ export function PersonalProfileMenuDrawer({
         {/* Section F: Core Account & Navigation Cards */}
         {/* Navigation List Card */}
         <div className="overflow-hidden rounded-[12px] bg-white shadow-[0px_2px_8px_0px_#0000000A]">
+          <Link
+            href="/saved"
+            onClick={closeDrawer}
+            className="flex min-h-13 w-full items-center justify-between gap-3 border-b border-[#F4F6F8] px-4 py-3"
+          >
+            <div className="flex items-center gap-3">
+              <BookmarkSimpleIcon size={24} color="black" />
+              <span className="text-[16px] font-medium text-black">Saved</span>
+            </div>
+            <ChevronRight size={18} className="text-[#C7C7CC]" />
+          </Link>
           <Link
             href="/profile"
             onClick={closeDrawer}

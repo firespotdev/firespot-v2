@@ -22,7 +22,7 @@ import { FirebaseModule } from './services/firebase/firebase.module'
 import { CustomersModule } from './customers/customers.module'
 import { ProductsModule } from './products/products.module'
 import { ReportsModule } from './reports/reports.module'
-import { StoresModule } from './stores/stores.module'
+import { SpotsModule } from './spots/spots.module'
 import { MerchantPlansModule } from './merchant-plans/merchant-plans.module'
 import { KycModule } from './kyc/kyc.module'
 import { FeedbackModule } from './feedback/feedback.module'
@@ -31,6 +31,8 @@ import { PayoutsModule } from './payouts/payouts.module'
 import { PaymentCasesModule } from './payment-cases/payment-cases.module'
 import { CustomerActionsModule } from './customer-actions/customer-actions.module'
 import { PostsModule } from './posts/posts.module'
+import { ExpensesModule } from './expenses/expenses.module'
+import { SavedModule } from './saved/saved.module'
 
 @Module({
   imports: [
@@ -67,7 +69,7 @@ import { PostsModule } from './posts/posts.module'
     CustomersModule,
     ProductsModule,
     ReportsModule,
-    StoresModule,
+    SpotsModule,
     MerchantPlansModule,
     KycModule,
     FeedbackModule,
@@ -76,6 +78,8 @@ import { PostsModule } from './posts/posts.module'
     PaymentCasesModule,
     CustomerActionsModule,
     PostsModule,
+    ExpensesModule,
+    SavedModule,
   ],
   controllers: [AppController],
   providers: [

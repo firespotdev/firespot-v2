@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ProgressProvider } from '@bprogress/next/app'
 import { useState } from 'react'
 import { GlobalSocket } from './global-socket'
+import { queryRetryDelay, shouldRetryQuery } from '@/lib/utils/query-retry'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -13,6 +14,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
           queries: {
             staleTime: 1000 * 60 * 5, // 5 minutes
             refetchOnWindowFocus: false,
+            retry: shouldRetryQuery,
+            retryDelay: queryRetryDelay,
           },
         },
       }),

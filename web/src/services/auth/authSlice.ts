@@ -23,7 +23,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
@@ -42,9 +42,12 @@ export const useAuthStore = create<AuthState>()(
       },
       setUser: (user) => set({ user }),
       updateUser: (user) => set({ user }),
+      // Refreshes only renew a live session. A refresh that lands after a
+      // logout must not bring back a session with no user loaded.
       setAccessToken: (token) => {
+        if (!get().isAuthenticated) return
         safeLocalStorage.setItem('token', token)
-        set({ token, isAuthenticated: true })
+        set({ token })
       },
       setOnboardingCompleted: (completed) =>
         set({ onboardingCompleted: completed }),

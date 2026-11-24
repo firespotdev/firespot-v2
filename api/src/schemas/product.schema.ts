@@ -15,6 +15,11 @@ export class Product extends Document {
   @Prop({ required: true })
   price: number;
 
+  // Original price shown struck through; a discount exists only when it is
+  // above `price`. Applies to the base price, never to option prices.
+  @Prop({ type: Number, default: null })
+  compareAtPrice?: number | null;
+
   @Prop()
   imageUrl?: string;
 

@@ -15,6 +15,10 @@ import { maskAccountNumber } from '@/lib/utils'
 import { BankLogo } from '@/components/ui/bank-logo'
 import { Button, Spinner } from '@/components/ui'
 import { usePurchaseCartStore } from '@/services/pay/purchaseCartSlice'
+import {
+  PaymentUnavailableNotice,
+  cannotTakePayment,
+} from '@/components/pay/payment-unavailable-notice'
 
 type BankAccount = MerchantProfile['bankAccounts'][0]
 
@@ -70,6 +74,13 @@ export function PayCurrentPurchaseDrawer({
         : account
           ? `${account.bankName} (${maskAccountNumber(account.accountNumber)})`
           : 'Transfer directly to bank account'
+
+  // Removing the last item leaves nothing to review, so the sheet closes.
+  const removeItem = (id: string, quantity: number) => {
+    const isLastItem = items.length === 1
+    onUpdateQuantity(id, -quantity)
+    if (isLastItem) closeDrawer('pay-current-purchase')
+  }
 
   const handlePay = async () => {
     if (isPaymentPending) return
@@ -140,18 +151,20 @@ export function PayCurrentPurchaseDrawer({
             <div className="mt-4 flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => onUpdateQuantity(item.id, -item.quantity)}
+                onClick={() => removeItem(item.id, item.quantity)}
                 aria-label={`Remove ${item.name}`}
                 className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#F1F1F1]"
               >
                 <Trash2 size={16} />
               </button>
               <div className="flex h-9 items-center rounded-[10px] bg-[#F1F1F1]">
+                {/* Stops at 1; removing an item is the delete button's job. */}
                 <button
                   type="button"
                   onClick={() => onUpdateQuantity(item.id, -1)}
+                  disabled={item.quantity <= 1}
                   aria-label={`Decrease ${item.name} quantity`}
-                  className="grid h-9 w-9 place-items-center"
+                  className="grid h-9 w-9 place-items-center disabled:text-[#C7C7CC]"
                 >
                   <Minus size={16} />
                 </button>
@@ -187,49 +200,55 @@ export function PayCurrentPurchaseDrawer({
       </section>
 
       <footer className="shrink-0 border-t border-[#F1F1F1] bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="flex min-w-0 items-center gap-3">
-          {selectedRail === 'saved' ? (
-            <SavedCardIcon brand={savedCard?.brand} />
-          ) : isInstant ? (
-            <PaymentRailIcon rail="multiple" channel={singlePaystackChannel} />
-          ) : account ? (
-            <BankLogo
-              bankName={account.bankName}
-              size={24}
-              className="shrink-0 rounded-[8px] border border-[#F1F1F1]"
-            />
-          ) : (
-            <PaymentRailIcon rail="transfer" />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-[#64748B]">
-              {isInstant ? 'Payment method' : 'Transfer to'}
-            </p>
-            <p className="truncate text-sm font-bold">{paymentMethodLabel}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onChangePaymentMethod}
-            className="h-9 shrink-0 rounded-full bg-[#F1F1F1] px-3.5 text-[10px] font-bold uppercase tracking-[1px]"
-          >
-            Change
-          </button>
-        </div>
+        {cannotTakePayment(merchant, account) ? (
+          <PaymentUnavailableNotice />
+        ) : (
+          <>
+            <div className="flex min-w-0 items-center gap-3">
+              {selectedRail === 'saved' ? (
+                <SavedCardIcon brand={savedCard?.brand} />
+              ) : isInstant ? (
+                <PaymentRailIcon rail="multiple" channel={singlePaystackChannel} />
+              ) : account ? (
+                <BankLogo
+                  bankName={account.bankName}
+                  size={24}
+                  className="shrink-0 rounded-[8px] border border-[#F1F1F1]"
+                />
+              ) : (
+                <PaymentRailIcon rail="transfer" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium text-[#64748B]">
+                  {isInstant ? 'Payment method' : 'Transfer to'}
+                </p>
+                <p className="truncate text-sm font-bold">{paymentMethodLabel}</p>
+              </div>
+              <button
+                type="button"
+                onClick={onChangePaymentMethod}
+                className="h-9 shrink-0 rounded-full bg-[#F1F1F1] px-3.5 text-[10px] font-bold uppercase tracking-[1px]"
+              >
+                Change
+              </button>
+            </div>
 
-        <Button
-          type="button"
-          onClick={handlePay}
-          disabled={items.length === 0 || isPaymentPending}
-          className="mt-4"
-        >
-          {isPaymentPending ? (
-            <Spinner />
-          ) : isInstant ? (
-            `Pay NGN ${money(total)}`
-          ) : (
-            'Copy account number'
-          )}
-        </Button>
+            <Button
+              type="button"
+              onClick={handlePay}
+              disabled={items.length === 0 || isPaymentPending}
+              className="mt-4"
+            >
+              {isPaymentPending ? (
+                <Spinner />
+              ) : isInstant ? (
+                `Pay NGN ${money(total)}`
+              ) : (
+                'Copy account number'
+              )}
+            </Button>
+          </>
+        )}
       </footer>
     </div>
   )

@@ -72,6 +72,17 @@ export class CreateProductDto {
   @Min(0)
   price: number;
 
+  // Multipart forms send "" to clear the discount; null clears it in JSON.
+  @IsOptional()
+  @Transform(({ value }) =>
+    value === "" || value === null || value === undefined
+      ? null
+      : Number(value),
+  )
+  @IsNumber()
+  @Min(0)
+  compareAtPrice?: number | null;
+
   @IsMongoId()
   categoryId: string;
 

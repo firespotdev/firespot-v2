@@ -13,7 +13,11 @@ export function usePaymentAuth() {
   return async () => {
     if (!ready) return Promise.resolve(false)
     const { token } = useAuthStore.getState()
-    if (token && isTokenExpired(token) && !(await refreshAccessToken()))
+    if (
+      token &&
+      isTokenExpired(token) &&
+      (await refreshAccessToken()).status === 'expired'
+    )
       useAuthStore.getState().logout()
     const { isAuthenticated, user } = useAuthStore.getState()
     if (isAuthenticated && hasPersonalIdentity(user))

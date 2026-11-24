@@ -20,7 +20,7 @@ export interface PlanDefinition {
   name: string
   price: number
   billingType: BillingType
-  perStore: boolean
+  perSpot: boolean
   tagline: string
   requiredSteps: Array<{
     key: KycCheck
@@ -61,8 +61,8 @@ export interface CurrentPlanState {
   canCollect: boolean
   /** Why collecting is blocked, so the UI routes to the right fix. */
   collectBlockedReason: CollectBlockedReason
-  /** Active stores — drives PRO MAX's per-store checkout total (min 1). */
-  activeStoreCount: number
+  /** Active Spots — drives PRO MAX's per-Spot checkout total (min 1). */
+  activeSpotCount: number
   nextStep: KycCheck | null
 }
 
@@ -137,7 +137,7 @@ export interface PlanPreviewResponse {
   subtotal?: number
   /** Value of unused time deducted (0 when nothing to credit). */
   credit?: number
-  storeCount: number
+  spotCount: number
   blocked: boolean
   reason?: string
   /** True when nothing is charged now and the change lands at period end. */

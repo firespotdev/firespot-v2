@@ -19,6 +19,24 @@ export interface CreateScanDto {
   customerFingerprint?: string;
   deviceType?: string;
   browserType?: string;
+  /** The signed-in person scanning, if any. */
+  userId?: string;
+}
+
+// How far back a customer's recently scanned businesses go.
+const RECENT_SCAN_DAYS = 30;
+const RECENT_SCAN_LIMIT = 20;
+
+export interface RecentScan {
+  merchant: {
+    _id: Types.ObjectId;
+    businessName?: string;
+    merchantSlug?: string;
+    businessImageUrl?: string;
+    mainAddress?: unknown;
+    verificationLevel: string | null;
+  };
+  lastScannedAt: Date;
 }
 
 @Injectable()
@@ -43,6 +61,10 @@ export class ScansService {
       customerFingerprint: dto.customerFingerprint,
       deviceType: dto.deviceType,
       browserType: dto.browserType,
+      userId:
+        dto.userId && Types.ObjectId.isValid(dto.userId)
+          ? new Types.ObjectId(dto.userId)
+          : undefined,
       scannedAt: new Date(),
     });
 
@@ -56,11 +78,91 @@ export class ScansService {
     return scan;
   }
 
+  /**
+   * Businesses a customer scanned recently, newest first, one row each.
+   * A business they paid after their last scan is left out: that visit
+   * already shows in their activity as a payment.
+   */
+  async getRecentScansForUser(userId: string): Promise<RecentScan[]> {
+    if (!Types.ObjectId.isValid(userId)) return [];
+    const user = new Types.ObjectId(userId);
+    const since = new Date(Date.now() - RECENT_SCAN_DAYS * 24 * 60 * 60 * 1000);
+
+    const scans: Array<{ _id: Types.ObjectId; lastScannedAt: Date }> =
+      await this.scanModel.aggregate([
+        // A merchant scanning their own kit isn't a visit.
+        {
+          $match: {
+            userId: user,
+            merchantId: { $ne: user },
+            scannedAt: { $gte: since },
+          },
+        },
+        {
+          $group: { _id: "$merchantId", lastScannedAt: { $max: "$scannedAt" } },
+        },
+        { $sort: { lastScannedAt: -1 } },
+        { $limit: RECENT_SCAN_LIMIT },
+      ]);
+    if (scans.length === 0) return [];
+
+    const merchantIds = scans.map((scan) => scan._id);
+    const [payments, merchants] = await Promise.all([
+      this.saleModel.aggregate([
+        {
+          $match: {
+            customerUserId: user,
+            merchantId: { $in: merchantIds },
+            status: "CONFIRMED",
+          },
+        },
+        { $group: { _id: "$merchantId", lastPaidAt: { $max: "$createdAt" } } },
+      ]) as Promise<Array<{ _id: Types.ObjectId; lastPaidAt: Date }>>,
+      this.userModel
+        .find({ _id: { $in: merchantIds } })
+        .select(
+          "businessName merchantSlug businessImageUrl profilePhotoUrl mainAddress verificationLevel planStatus",
+        )
+        .lean(),
+    ]);
+
+    const lastPaid = new Map(
+      payments.map((payment) => [String(payment._id), payment.lastPaidAt]),
+    );
+    const merchantById = new Map(
+      merchants.map((merchant) => [String(merchant._id), merchant]),
+    );
+
+    return scans.flatMap((scan) => {
+      const merchant = merchantById.get(String(scan._id));
+      const paidAt = lastPaid.get(String(scan._id));
+      if (!merchant || (paidAt && paidAt >= scan.lastScannedAt)) return [];
+      return [
+        {
+          merchant: {
+            _id: merchant._id,
+            businessName: merchant.businessName,
+            merchantSlug: merchant.merchantSlug,
+            businessImageUrl:
+              merchant.businessImageUrl || merchant.profilePhotoUrl,
+            mainAddress: merchant.mainAddress,
+            // The badge shows only once the plan is verified.
+            verificationLevel:
+              merchant.planStatus === "verified"
+                ? (merchant.verificationLevel ?? null)
+                : null,
+          },
+          lastScannedAt: scan.lastScannedAt,
+        },
+      ];
+    });
+  }
+
   async recordAccountCopy(scanId: string) {
     return this.scanModel.findByIdAndUpdate(
       scanId,
       { accountCopied: true },
-      { returnDocument: 'after' },
+      { returnDocument: "after" },
     );
   }
 
@@ -374,7 +476,7 @@ export class ScansService {
     // 2. Aggregate Sales for Payment Methods Breakdown
     const salesMatchStage: Record<string, unknown> = {
       merchantId: new Types.ObjectId(merchantId),
-      status: 'CONFIRMED',
+      status: "CONFIRMED",
     };
 
     if (dateRange.startDate) {

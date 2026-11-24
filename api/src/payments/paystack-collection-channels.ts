@@ -27,13 +27,13 @@ const DEFAULT_COLLECTION_CHANNELS: PaystackCollectionChannel[] = [
   "qr",
 ];
 
-interface ChannelEnvironment {
+export interface ChannelEnvironment {
   NODE_ENV?: string;
   PAYSTACK_COLLECTION_CHANNELS?: string;
   PAYSTACK_LITE_CHANNEL?: string;
 }
 
-type CollectionMerchant = PlanStateLike & {
+export type CollectionMerchant = PlanStateLike & {
   paystackCollectionEnabled?: boolean;
   paystackCollectionChannels?: PaystackCollectionChannel[];
 };

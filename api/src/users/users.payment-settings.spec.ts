@@ -3,7 +3,12 @@ jest.mock('nanoid', () => ({
   customAlphabet: () => () => 'test-slug',
 }));
 
-import { ForbiddenException, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { Types } from 'mongoose';
 import { UsersService } from './users.service';
 
@@ -18,6 +23,7 @@ describe('UsersService - updatePaymentSettings', () => {
     jest.clearAllMocks();
     service = new UsersService(
       userModel as any,
+      {} as any,
       {} as any,
       {} as any,
       {} as any,
@@ -264,5 +270,59 @@ describe('UsersService - updatePaymentSettings', () => {
     expect(res.paystackCollectionChannels).toEqual(['card', 'ussd']);
     expect(user.paystackCollectionChannels).toEqual(['card', 'ussd']);
     expect(user.save).toHaveBeenCalled();
+  });
+  describe('keeping a way to get paid', () => {
+    const bankOnlyMerchant = () => ({
+      _id: new Types.ObjectId(),
+      planStatus: 'none',
+      bankTransferEnabled: true,
+      bankAccounts: [{ accountNumber: '0123456789', isEnabled: true }],
+      save: jest.fn().mockResolvedValue(undefined),
+    });
+
+    it('refuses to switch off bank transfer when it is the only way to get paid', async () => {
+      const user = bankOnlyMerchant();
+      userModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(user),
+      });
+
+      await expect(
+        service.updatePaymentSettings(String(user._id), {
+          bankTransferEnabled: false,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(user.save).not.toHaveBeenCalled();
+    });
+
+    it('allows switching off bank transfer while Paystack takes payment', async () => {
+      const user = {
+        ...bankOnlyMerchant(),
+        planTier: 'LITE',
+        planStatus: 'verified',
+        kycCompletedAt: new Date(),
+        paystackSubaccountCode: 'ACCT_x',
+        paystackCollectionEnabled: true,
+      };
+      userModel.findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue(user),
+      });
+
+      const res = await service.updatePaymentSettings(String(user._id), {
+        bankTransferEnabled: false,
+      });
+
+      expect(res.bankTransferEnabled).toBe(false);
+      expect(user.save).toHaveBeenCalled();
+    });
+
+    it('refuses to switch off the last enabled bank account', async () => {
+      const user = bankOnlyMerchant();
+      userModel.findById.mockResolvedValue(user);
+
+      await expect(
+        service.setBankAccountEnabled(String(user._id), '0123456789', false),
+      ).rejects.toThrow(BadRequestException);
+      expect(user.save).not.toHaveBeenCalled();
+    });
   });
 });

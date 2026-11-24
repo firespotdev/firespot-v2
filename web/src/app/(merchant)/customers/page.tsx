@@ -33,7 +33,7 @@ type CustomerWithStats = Customer & {
 export default function CustomersListPage() {
   const router = useRouter()
   const { data: customers = [], isLoading } = useCustomers()
-  const { openDrawer } = useDrawerStore()
+  const { openDrawer, closeDrawer } = useDrawerStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<CustomerSortOption>('spent_desc')
 
@@ -42,6 +42,7 @@ export default function CustomersListPage() {
       type: 'add-customer',
       props: {
         onSelect: (newCustomer: Customer) => {
+          closeDrawer('add-customer')
           router.push(`/customers/${newCustomer._id}`)
         },
       },

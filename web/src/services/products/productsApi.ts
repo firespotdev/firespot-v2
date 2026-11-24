@@ -22,6 +22,8 @@ export interface Product {
   name: string
   description?: string
   price: number
+  /** Original price before a discount; higher than `price` when set. */
+  compareAtPrice?: number | null
   imageUrl?: string
   categoryId?: string | ProductCategory
   isArchived: boolean
@@ -37,11 +39,27 @@ export interface CreateProductPayload {
   name: string
   description?: string
   price: number
+  /** null clears a discount. */
+  compareAtPrice?: number | null
   categoryId?: string
   options?: ProductOption[]
   variantPriceOverrides?: VariantPriceOverride[]
   excludedVariantKeys?: string[]
   imageUrl?: string
+}
+
+/** Buyers are named "First L." by the API; full names never reach the client. */
+export interface ProductBuyers {
+  buyerCount: number
+  recentBuyers: Array<{ name: string; photoUrl: string | null }>
+  reviews: Array<{
+    id: string
+    name: string
+    photoUrl: string | null
+    rating: number
+    comment: string
+    createdAt?: string
+  }>
 }
 
 export interface PublicCatalogue {
@@ -55,6 +73,7 @@ const productFormData = (payload: CreateProductPayload, image: File) => {
   formData.append('name', payload.name)
   formData.append('categoryId', payload.categoryId || '')
   formData.append('price', String(payload.price))
+  if (payload.compareAtPrice !== undefined) formData.append('compareAtPrice', payload.compareAtPrice === null ? '' : String(payload.compareAtPrice))
   if (payload.description) formData.append('description', payload.description)
   if (payload.options?.length) formData.append('options', JSON.stringify(payload.options))
   if (payload.variantPriceOverrides?.length) formData.append('variantPriceOverrides', JSON.stringify(payload.variantPriceOverrides))
@@ -67,6 +86,15 @@ export const ProductsApi = {
     (
       await publicApiClient.get(
         `/public/merchants/${encodeURIComponent(merchantId)}/catalogue`,
+      )
+    ).data,
+  getProductBuyers: async (
+    merchantId: string,
+    productId: string,
+  ): Promise<ProductBuyers> =>
+    (
+      await publicApiClient.get(
+        `/public/merchants/${encodeURIComponent(merchantId)}/products/${encodeURIComponent(productId)}/buyers`,
       )
     ).data,
   getProducts: async (params?: { search?: string; categoryId?: string; archived?: boolean }): Promise<Product[]> => {

@@ -20,11 +20,13 @@ import { useProducts } from '@/services/products/hooks'
 import type { Product } from '@/services/products/productsApi'
 import { useDrawerStore } from '@/services/drawer'
 import { AmountTab } from '@/components/sales/AmountTab'
+import { formatDisplayAmount } from '@/components/sales/amount-input'
 import { ItemsTab } from '@/components/sales/ItemsTab'
 import { useSaleCart } from '@/components/sales/use-sale-cart'
 import { useSaleCheckoutFlow } from '@/components/sales/use-sale-checkout-flow'
 import { DRAFT_ITEM_ID, type SaleMode } from '@/components/sales/types'
 import { BasketIcon } from '@phosphor-icons/react'
+import type { Customer } from '@/services/customers/customersApi'
 
 interface Props {
   /** Id of the sale being edited, with `isEditMode`. */
@@ -32,14 +34,11 @@ interface Props {
   isEditMode?: boolean
   /** Id of a customer-initiated pending sale being confirmed. */
   confirmId?: string
+  /** Started from a customer's page: records the sale for this customer. */
+  customer?: Customer
+  /** Started from "Record outstanding": opens the split step on paid in part. */
+  startPartPaid?: boolean
   closeDrawer: () => void
-}
-
-const formatDisplayAmount = (val: string) => {
-  if (!val) return '0'
-  const [int, dec] = val.split('.')
-  const formattedInt = new Intl.NumberFormat('en-NG').format(Number(int))
-  return dec !== undefined ? `${formattedInt}.${dec}` : formattedInt
 }
 
 const makeDraftClientId = () =>
@@ -51,6 +50,8 @@ export function RecordSaleDrawer({
   editId,
   isEditMode,
   confirmId,
+  customer,
+  startPartPaid = false,
   closeDrawer,
 }: Props) {
   const router = useRouter()
@@ -153,6 +154,8 @@ export function RecordSaleDrawer({
     saleMode,
     prefillSale,
     onSaleModeSettled: () => setSaleMode({ kind: 'create' }),
+    presetCustomer: customer,
+    presetInstallment: startPartPaid ? 'part' : 'full',
     canCollect,
     onCollectUnavailable: () => {
       useDrawerStore.getState().closeAllDrawers()

@@ -10,6 +10,7 @@ import {
   useVerifyOtp,
   useAuthStore,
   useAuthReady,
+  useWaitingForServer,
 } from '@/services/auth'
 import {
   getPostAuthDestination,
@@ -34,6 +35,7 @@ function LoginPageContent() {
   )
   const logout = useAuthStore((state) => state.logout)
   const authReady = useAuthReady()
+  const waitingForServer = useWaitingForServer()
   const requestOtp = useRequestOtp()
   const verifyOtp = useVerifyOtp()
 
@@ -59,7 +61,9 @@ function LoginPageContent() {
   useEffect(() => {
     if (!authReady) return
     if (isAuthenticated && token) {
-      if (isTokenExpired(token)) {
+      // While the server is down an expired login is kept, and the
+      // destination's guard waits for it to come back.
+      if (isTokenExpired(token) && !waitingForServer) {
         logout()
         return
       }
@@ -74,7 +78,7 @@ function LoginPageContent() {
         }),
       )
     }
-  }, [authReady, isAuthenticated, token, router, logout])
+  }, [authReady, waitingForServer, isAuthenticated, token, router, logout])
 
   const handlePhoneNumberChange = (value: string) => {
     setPhoneNumber(value)

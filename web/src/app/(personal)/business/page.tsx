@@ -152,6 +152,8 @@ function BusinessPageContent() {
   const location = [business.mainAddress?.city, business.mainAddress?.state]
     .filter(Boolean)
     .join(', ')
+  // A single location is already summarised by the city line above.
+  const hasOtherLocations = business.locations.length > 1
 
   return (
     <div className="min-h-dvh bg-white font-satoshi">
@@ -160,11 +162,11 @@ function BusinessPageContent() {
         className={cn(
           'fixed top-0 left-0 right-0 z-40 bg-white transition-all duration-200',
           isScrolled
-            ? 'translate-y-0 opacity-100 shadow-2xs'
+            ? 'translate-y-0 opacity-100'
             : '-translate-y-full opacity-0 pointer-events-none',
         )}
       >
-        <div className="relative mx-auto flex h-13 max-w-125 items-center justify-between border-b border-[#F1F3F5] px-4">
+        <div className="relative mx-auto flex h-13 max-w-125 items-center justify-between px-4">
           <button
             type="button"
             onClick={() => router.back()}
@@ -261,10 +263,10 @@ function BusinessPageContent() {
                 <VerifiedBadge level={business.verificationLevel} />
               </div>
 
-              {(location || business.locations.length > 0) && (
+              {(location || hasOtherLocations) && (
                 <div className="mt-2 flex items-center justify-center text-sm text-[#6B7280]">
                   {location && <span className="font-medium">{location}.</span>}
-                  {business.locations.length > 0 && (
+                  {hasOtherLocations && (
                     <button
                       type="button"
                       onClick={openLocations}

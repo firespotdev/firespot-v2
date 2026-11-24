@@ -16,8 +16,10 @@ import {
   Switch,
   showNotificationToast,
   BackButton,
+  LoaderCircle,
 } from '@/components/ui'
 import { useUserProfile } from '@/services/users'
+import type { UserProfile } from '@/services/users'
 import { useUpdateFulfillment } from '@/services/shop'
 import type { ShopFulfillment } from '@/services/auth/interface'
 import {
@@ -26,7 +28,7 @@ import {
   MapPinAreaIcon,
   TruckIcon,
 } from '@phosphor-icons/react'
-import { useSafeBack } from '@/hooks/use-safe-back'
+import { useSetupStepBack } from '@/hooks/use-setup-step-back'
 
 const OPTIONS: Array<{
   key: keyof ShopFulfillment
@@ -65,9 +67,8 @@ const OPTIONS: Array<{
   },
 ]
 
-export default function FulfillmentSettingsPage() {
-  const handleBack = useSafeBack('/profile')
-  const { data: profile } = useUserProfile()
+function FulfillmentSettingsForm({ profile }: { profile: UserProfile }) {
+  const handleBack = useSetupStepBack()
   const update = useUpdateFulfillment()
 
   const [flags, setFlags] = useState<ShopFulfillment>(
@@ -76,6 +77,8 @@ export default function FulfillmentSettingsPage() {
 
   const toggle = (key: keyof ShopFulfillment, value: boolean) =>
     setFlags((prev) => ({ ...prev, [key]: value }))
+
+  const hasOption = Object.values(flags).some(Boolean)
 
   const handleContinue = () => {
     update.mutate(flags, {
@@ -135,7 +138,7 @@ export default function FulfillmentSettingsPage() {
         <div className="sticky bottom-0 bg-white border-t border-[#F1F1F1] rounded-t-[12px] p-4 w-full">
           <Button
             onClick={handleContinue}
-            disabled={update.isPending}
+            disabled={!hasOption || update.isPending}
             className="w-full h-14 font-bold"
           >
             {update.isPending ? <Spinner /> : 'Continue'}
@@ -144,4 +147,20 @@ export default function FulfillmentSettingsPage() {
       </div>
     </div>
   )
+}
+
+// The form copies saved values into its fields once, so it waits for the
+// profile; otherwise a refresh or direct visit opens with empty fields.
+export default function FulfillmentSettingsPage() {
+  const { data: profile } = useUserProfile()
+
+  if (!profile) {
+    return (
+      <div className="flex h-dvh items-center justify-center bg-[#F5F6F8]">
+        <LoaderCircle innerBg="#F5F6F8" />
+      </div>
+    )
+  }
+
+  return <FulfillmentSettingsForm profile={profile} />
 }
