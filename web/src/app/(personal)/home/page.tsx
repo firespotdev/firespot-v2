@@ -325,6 +325,7 @@ function HomePageContent() {
                   key={post._id}
                   post={post}
                   interactive={false}
+                  href={`/post?postId=${post._id}`}
                   isSaved={savedPosts.isSaved(post._id)}
                   onToggleSave={() => savedPosts.toggle(post._id)}
                 />

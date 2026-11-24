@@ -569,4 +569,14 @@ export class PostsService {
       return post ? [this.serialize(post)] : [];
     });
   }
+
+  /** One published post for its public page; drafts read as not found. */
+  async findPublicById(postId: string) {
+    if (!Types.ObjectId.isValid(postId)) {
+      throw new NotFoundException("Post not found");
+    }
+    const [post] = await this.findPublishedByIds([new Types.ObjectId(postId)]);
+    if (!post) throw new NotFoundException("Post not found");
+    return post;
+  }
 }

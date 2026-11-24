@@ -27,6 +27,7 @@ export function SavedPosts({
         <PostCard
           key={post._id}
           post={post}
+          href={`/post?postId=${post._id}`}
           isSaved
           onToggleSave={() => toggle(post._id)}
         />

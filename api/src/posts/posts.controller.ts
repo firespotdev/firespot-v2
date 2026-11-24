@@ -82,4 +82,10 @@ export class PublicPostsController {
   listByMerchant(@Param("merchantId") merchantId: string) {
     return this.postsService.listPublicByMerchant(merchantId);
   }
+
+  // Declared after "feed" and "merchant/:merchantId" so it doesn't catch them.
+  @Get(":postId")
+  findOne(@Param("postId") postId: string) {
+    return this.postsService.findPublicById(postId);
+  }
 }

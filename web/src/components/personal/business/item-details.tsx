@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { useRouter } from '@bprogress/next/app'
-import { Minus, Package, Plus } from 'lucide-react'
+import { Bookmark, Minus, Package, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { showNotificationToast } from '@/components/ui'
 import { useAddToPurchase } from '@/hooks/use-add-to-purchase'
@@ -17,6 +17,7 @@ import type { Product } from '@/services/products/productsApi'
 import { ItemBuyers } from './item-buyers'
 import { ItemOptionPicker } from './item-option-picker'
 import { AboutSeller, MoreFromSeller } from './item-seller'
+import { useSavedItemToggle } from '@/components/saved/use-saved-toggles'
 
 function QuantityStepper({
   quantity,
@@ -69,6 +70,8 @@ export function ItemDetails({
   const { addSelection, addToPurchase } = useAddToPurchase(serialNumber)
   const selection = useVariantSelection(product)
   const [quantity, setQuantity] = useState(1)
+  const savedItems = useSavedItemToggle()
+  const isSaved = savedItems.isSaved(product._id)
 
   const hasOptions = product.options.length > 0 && product.variants.length > 0
   const price = hasOptions ? selection.price : product.price
@@ -116,20 +119,32 @@ export function ItemDetails({
         )}
       </div>
 
-      <div className="border-b border-[#F1F1F1] px-4 py-4">
-        <h1 className="text-[18px] font-bold leading-snug text-black">
-          {product.name}
-        </h1>
-        <p className="mt-1 flex items-baseline gap-2">
-          {strikePrice !== null && (
-            <span className="text-[16px] font-medium text-[#9CA3AF] line-through">
-              ₦ {formatProductPrice(strikePrice)}
+      <div className="flex items-center gap-3 border-b border-[#F1F1F1] px-4 py-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-[18px] font-bold leading-snug text-black">
+            {product.name}
+          </h1>
+          <p className="mt-1 flex items-baseline gap-2">
+            {strikePrice !== null && (
+              <span className="text-[16px] font-medium text-[#9CA3AF] line-through">
+                ₦ {formatProductPrice(strikePrice)}
+              </span>
+            )}
+            <span className="text-[18px] font-bold text-[#00BA55]">
+              ₦ {formatProductPrice(price)}
             </span>
-          )}
-          <span className="text-[18px] font-bold text-[#00BA55]">
-            ₦ {formatProductPrice(price)}
-          </span>
-        </p>
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => savedItems.toggle(product._id, product.name)}
+          disabled={savedItems.isPending}
+          aria-pressed={isSaved}
+          aria-label={isSaved ? 'Unsave item' : 'Save item'}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#F1F1F1] text-black disabled:opacity-40"
+        >
+          <Bookmark size={20} strokeWidth={1.75} fill={isSaved ? 'currentColor' : 'none'} />
+        </button>
       </div>
 
       <div className={serialNumber ? 'space-y-6 px-4 pt-4 pb-28' : 'space-y-6 p-4'}>

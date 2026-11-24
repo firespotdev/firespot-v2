@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from '@bprogress/next/app'
 import { useDrawerStore } from '@/services/drawer'
-import { Search } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
 import { Map1, Scan } from 'iconsax-reactjs'
 import { EmptyState, LoaderCircle } from '@/components/ui'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -173,8 +173,16 @@ export default function SavedPage() {
       >
         <PageHeader
           title="Saved"
-          logoSrc="/images/firespot_personal.png"
           className="bg-white"
+          leftSlot={
+            <Link
+              href="/home"
+              aria-label="Back to home"
+              className="grid h-9 w-9 place-items-center rounded-full active:bg-black/5"
+            >
+              <ArrowLeft size={22} />
+            </Link>
+          }
           rightSlot={
             <Link
               href="/search?type=shops"

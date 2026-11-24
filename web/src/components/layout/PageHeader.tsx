@@ -17,6 +17,8 @@ interface PageHeaderProps {
   onSubtitleClick?: () => void
   onShareClick?: () => void
   onLogoClick?: () => void
+  /** Custom left-side control; replaces the logo button */
+  leftSlot?: React.ReactNode
   /** Custom right-side control; takes precedence over the share button */
   rightSlot?: React.ReactNode
   /** Logo image; personal surfaces use /images/firespot_personal.png */
@@ -34,6 +36,7 @@ export function PageHeader({
   onSubtitleClick,
   onShareClick,
   onLogoClick,
+  leftSlot,
   rightSlot,
   logoSrc = '/images/firespot_alt.png',
   className,
@@ -88,21 +91,23 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border bg-white border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
-        {onLogoClick ? (
-          <button onClick={handleLeftButtonClick} type="button">
-            <Image src={logoSrc} alt="firespot logo" width={20} height={20} />
-          </button>
-        ) : isAuthenticated ? (
-          <button onClick={handleLeftButtonClick} type="button">
-            <Image src={logoSrc} alt="firespot logo" width={20} height={20} />
-          </button>
-        ) : (
-          <Link href="/">
-            <Image src={logoSrc} alt="firespot logo" width={20} height={20} />
-          </Link>
-        )}
-      </div>
+      {leftSlot ?? (
+        <div className="h-9 w-9 flex items-center justify-center rounded-[12px] border bg-white border-[#F1F1F1] shadow-[0px_4px_8px_0px_#0000000A]">
+          {onLogoClick ? (
+            <button onClick={handleLeftButtonClick} type="button">
+              <Image src={logoSrc} alt="firespot logo" width={20} height={20} />
+            </button>
+          ) : isAuthenticated ? (
+            <button onClick={handleLeftButtonClick} type="button">
+              <Image src={logoSrc} alt="firespot logo" width={20} height={20} />
+            </button>
+          ) : (
+            <Link href="/">
+              <Image src={logoSrc} alt="firespot logo" width={20} height={20} />
+            </Link>
+          )}
+        </div>
+      )}
 
       <div className="flex min-w-0 flex-col items-center px-2">
         <button

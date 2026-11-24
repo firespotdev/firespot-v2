@@ -108,6 +108,12 @@ export const PostsApi = {
     return data
   },
 
+  /** A published post for its public page. */
+  getPublic: async (postId: string): Promise<MerchantPost> => {
+    const { data } = await apiClient.get<MerchantPost>(`/public/posts/${postId}`)
+    return data
+  },
+
   listByMerchant: async (merchantId: string): Promise<MerchantPost[]> => {
     const { data } = await publicApiClient.get<MerchantPost[]>(
       `/public/posts/merchant/${encodeURIComponent(merchantId)}`,

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Bookmark, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MerchantPost, PostPlatform } from '@/services/posts'
@@ -26,6 +27,8 @@ interface PostCardProps {
   interactive?: boolean
   onEdit?: () => void
   onDelete?: () => void
+  /** Opens this page inside the app, e.g. the post's own page. */
+  href?: string
   /** Shows a bookmark on a published post that saves or unsaves it. */
   isSaved?: boolean
   onToggleSave?: () => void
@@ -48,6 +51,7 @@ export function PostCard({
   onDelete,
   isSaved = false,
   onToggleSave,
+  href,
 }: PostCardProps) {
   const [imageError, setImageError] = useState(false)
   const isDraft = post.status === 'DRAFT'
@@ -106,6 +110,14 @@ export function PostCard({
         >
           {cardContent}
         </button>
+      ) : href ? (
+        <Link
+          href={href}
+          className="block rounded-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2"
+          aria-label={`Open ${merchantName} post`}
+        >
+          {cardContent}
+        </Link>
       ) : interactive ? (
         <a
           href={post.sourceUrl}
