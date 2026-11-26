@@ -5,12 +5,14 @@ import { ReportsController } from "./reports.controller";
 import { ReportsService } from "./reports.service";
 import { UsersModule } from "../users/users.module";
 import { Sale, SaleSchema } from "../schemas/sale.schema";
+import { User, UserSchema } from "../schemas/user.schema";
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: Report.name, schema: ReportSchema },
       { name: Sale.name, schema: SaleSchema },
+      { name: User.name, schema: UserSchema },
     ]),
     UsersModule,
   ],

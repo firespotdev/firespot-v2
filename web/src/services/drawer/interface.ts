@@ -38,6 +38,7 @@ export type DrawerContentType =
   | 'sale-receipt'
   | 'activity-details'
   | 'activity-options'
+  | 'report-category'
   | 'customer-actions'
   | 'verify-identity'
   | 'plan-checkout'

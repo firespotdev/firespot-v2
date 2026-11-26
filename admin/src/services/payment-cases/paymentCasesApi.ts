@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApiClient } from '@/lib/utils/axios'
-import type { CustomerReport, DisputeCase, RefundCase } from './interface'
+import type {
+  CustomerReport,
+  DisputeCase,
+  RefundCase,
+  ReportUpdate,
+} from './interface'
 
 const root = '/admin/payment-cases'
 
@@ -21,17 +26,8 @@ export const paymentCasesApi = {
     (await adminApiClient.post(`${root}/disputes/${id}/accept`, { message })).data,
   addDisputeNote: async (id: string, note: string) =>
     (await adminApiClient.post(`${root}/disputes/${id}/notes`, { note })).data,
-  updateReport: async (
-    id: string,
-    status: CustomerReport['status'],
-    note?: string,
-  ) =>
-    (
-      await adminApiClient.post(`${root}/reports/${id}/status`, {
-        status,
-        note,
-      })
-    ).data,
+  updateReport: async (id: string, update: ReportUpdate) =>
+    (await adminApiClient.post(`${root}/reports/${id}/status`, update)).data,
 }
 
 export const usePaymentCases = () => ({

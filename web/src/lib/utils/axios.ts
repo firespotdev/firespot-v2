@@ -37,28 +37,39 @@ export type RefreshResult =
 
 const SESSION_REFUSED = [401, 403]
 
-// Single-flight refresh: concurrent 401s share one /auth/refresh call.
+// Single-flight within a tab; Web Locks serializes rotation across tabs.
 let refreshPromise: Promise<RefreshResult> | null = null
+
+function requestRefreshToken(): Promise<RefreshResult> {
+  return axios
+    .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+    .then((res): RefreshResult => {
+      const token: string | undefined = res.data?.accessToken
+      if (!token) return { status: 'expired' }
+      useAuthStore.getState().setAccessToken(token)
+      return { status: 'refreshed', token }
+    })
+    .catch((error): RefreshResult => {
+      const status: number | undefined = error?.response?.status
+      return status !== undefined && SESSION_REFUSED.includes(status)
+        ? { status: 'expired' }
+        : { status: 'unavailable' }
+    })
+}
 
 export function refreshAccessToken(): Promise<RefreshResult> {
   if (!refreshPromise) {
-    refreshPromise = axios
-      .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
-      .then((res): RefreshResult => {
-        const token: string | undefined = res.data?.accessToken
-        if (!token) return { status: 'expired' }
-        useAuthStore.getState().setAccessToken(token)
-        return { status: 'refreshed', token }
-      })
-      .catch((error): RefreshResult => {
-        const status: number | undefined = error?.response?.status
-        return status !== undefined && SESSION_REFUSED.includes(status)
-          ? { status: 'expired' }
-          : { status: 'unavailable' }
-      })
-      .finally(() => {
-        refreshPromise = null
-      })
+    refreshPromise = (async () => {
+      if (typeof navigator !== 'undefined' && navigator.locks) {
+        return navigator.locks.request(
+          'firespot-auth-refresh',
+          requestRefreshToken,
+        )
+      }
+      return requestRefreshToken()
+    })().finally(() => {
+      refreshPromise = null
+    })
   }
   return refreshPromise
 }

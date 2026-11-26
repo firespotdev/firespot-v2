@@ -9,6 +9,8 @@ import { isToday, isYesterday, format } from 'date-fns'
 import { EmptyState, LoaderCircle } from '@/components/ui'
 import { useCustomerHistory } from '@/services/sales/hooks'
 import { useMyRecentScans, type RecentScan } from '@/services/scans'
+import { useReportSaleContexts } from '@/services/reports'
+import { useFavorites } from '@/services/favorites'
 import { useDrawerStore } from '@/services/drawer'
 import type { CustomerSale } from '@/services/sales/interface'
 import {
@@ -77,6 +79,7 @@ function ActivityContent() {
   const { data: sales, isLoading, isError } = useCustomerHistory()
   // Scans only add to the feed; if they fail to load, payments still show.
   const { data: recentScans } = useMyRecentScans()
+  useFavorites()
   const openDrawer = useDrawerStore((state) => state.openDrawer)
   const [activeTab, setActiveTab] = useState<ActivityTab>('ALL')
   // A business profile can open this already filtered to that business.
@@ -91,6 +94,8 @@ function ActivityContent() {
   )
 
   const allSales = useMemo(() => sales || [], [sales])
+  useReportSaleContexts(allSales.map((sale) => sale._id))
+
   const scopedSales = useMemo(
     () =>
       merchantFilter
@@ -172,7 +177,7 @@ function ActivityContent() {
 
   return (
     <div className="min-h-dvh bg-white">
-      <div className="max-w-125 mx-auto min-h-dvh pb-12">
+      <div className="max-w-125 mx-auto flex min-h-dvh flex-col pb-12">
         <PageHeader
           title="Activity"
           logoSrc="/images/firespot_personal.png"
@@ -228,9 +233,12 @@ function ActivityContent() {
           </>
         )}
 
-        <div className="flex flex-col justify-center items-center">
+        {/* While loading, fill the space under the header so the loader sits in the middle. */}
+        <div
+          className={`flex flex-col justify-center items-center ${isLoading ? 'flex-1' : ''}`}
+        >
           {isLoading ? (
-            <div className="flex justify-center py-12">
+            <div className="flex justify-center">
               <LoaderCircle />
             </div>
           ) : isError ? (

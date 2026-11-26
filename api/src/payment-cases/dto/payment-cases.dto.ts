@@ -1,6 +1,7 @@
 import { Type } from "class-transformer";
 import {
   IsEnum,
+  IsIn,
   IsInt,
   IsMongoId,
   IsNotEmpty,
@@ -9,6 +10,10 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
+import {
+  REPORT_DECISIONS,
+  type ReportDecision,
+} from "../../reports/report-rules";
 
 export class CreateRefundDto {
   @IsMongoId()
@@ -115,8 +120,20 @@ export class UpdateReportStatusDto {
   @IsEnum(["pending", "in_review", "resolved"])
   status: "pending" | "in_review" | "resolved";
 
+  /** Internal note for the Firespot team; never shown to the customer. */
   @IsOptional()
   @IsString()
   @MaxLength(1000)
   note?: string;
+
+  /** Who the decision favours; required when resolving. */
+  @IsOptional()
+  @IsIn(REPORT_DECISIONS)
+  decision?: ReportDecision;
+
+  /** What the customer is told when the report is resolved. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  resolutionNote?: string;
 }

@@ -9,18 +9,18 @@ import {
   FileWarning,
   RefreshCcw,
   Scale,
-  ShieldCheck,
 } from 'lucide-react'
 import {
   paymentCasesApi,
   usePaymentCaseAction,
   usePaymentCases,
-  type CustomerReport,
   type DisputeCase,
   type RefundCase,
 } from '@/services/payment-cases'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { adminToast } from './AdminToast'
+import { ReportQueue } from './ReportQueue'
+import { EmptyQueue, Status, formatDate } from './payment-case-parts'
 
 type Queue = 'refunds' | 'disputes' | 'reports'
 type Decision =
@@ -35,31 +35,8 @@ const formatMoney = (kobo: number, currency = 'NGN') =>
     minimumFractionDigits: 2,
   }).format(kobo / 100)
 
-const formatDate = (value?: string) =>
-  value
-    ? new Intl.DateTimeFormat('en-NG', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      }).format(new Date(value))
-    : 'Not supplied'
 
-const statusClass = (status: string) => {
-  if (['processed', 'resolved'].includes(status))
-    return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-  if (['failed', 'rejected'].includes(status))
-    return 'bg-red-50 text-red-700 ring-red-200'
-  if (['pending_approval', 'needs_attention'].includes(status))
-    return 'bg-amber-50 text-amber-800 ring-amber-200'
-  return 'bg-slate-100 text-slate-700 ring-slate-200'
-}
 
-const Status = ({ value }: { value: string }) => (
-  <span
-    className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset ${statusClass(value)}`}
-  >
-    {value.replaceAll('_', ' ').replaceAll('-', ' ')}
-  </span>
-)
 
 export default function PaymentCases() {
   const [queue, setQueue] = useState<Queue>('refunds')
@@ -85,7 +62,8 @@ export default function PaymentCases() {
       refunds: refunds.data?.filter((item) => item.status === 'pending_approval').length || 0,
       disputes:
         disputes.data?.filter((item) => item.status !== 'resolved').length || 0,
-      reports: reports.data?.filter((item) => item.status !== 'resolved').length || 0,
+      reports:
+        reports.data?.filter((item) => ['pending', 'in_review'].includes(item.status)).length || 0,
     }),
     [refunds.data, disputes.data, reports.data],
   )
@@ -229,8 +207,18 @@ export default function PaymentCases() {
           busy={action.isPending}
           onStatus={(item, status) =>
             run(
-              () => paymentCasesApi.updateReport(item._id, status),
+              () => paymentCasesApi.updateReport(item._id, { status }),
               `Customer report marked ${status.replace('_', ' ')}`,
+            )
+          }
+          onResolve={(item, update) =>
+            run(
+              () =>
+                paymentCasesApi.updateReport(item._id, {
+                  status: 'resolved',
+                  ...update,
+                }),
+              'Customer report resolved and the customer notified',
             )
           }
         />
@@ -262,15 +250,6 @@ export default function PaymentCases() {
   )
 }
 
-function EmptyQueue({ message }: { message: string }) {
-  return (
-    <div className="rounded-xl border border-dashed border-gray-300 bg-white px-6 py-14 text-center">
-      <ShieldCheck className="mx-auto h-8 w-8 text-emerald-600" />
-      <p className="mt-3 font-semibold text-gray-900">{message}</p>
-      <p className="mt-1 text-sm text-gray-500">New cases will appear here automatically.</p>
-    </div>
-  )
-}
 
 function RefundQueue({
   items,
@@ -489,63 +468,6 @@ function DisputeQueue({
           </div>
         )}
       </aside>
-    </div>
-  )
-}
-
-function ReportQueue({
-  items,
-  busy,
-  onStatus,
-}: {
-  items: CustomerReport[]
-  busy: boolean
-  onStatus: (item: CustomerReport, status: CustomerReport['status']) => void
-}) {
-  if (!items.length) return <EmptyQueue message="No customer reports" />
-  return (
-    <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead className="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-          <tr><th className="px-4 py-3">Report</th><th className="px-4 py-3">Customer / merchant</th><th className="px-4 py-3">Evidence</th><th className="px-4 py-3">Review state</th></tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {items.map((item) => (
-            <tr key={item._id} className="align-top hover:bg-gray-50/70">
-              <td className="max-w-md px-4 py-4">
-                <p className="font-semibold text-gray-950">{item.category}</p>
-                <p className="mt-1 leading-5 text-gray-600">{item.description}</p>
-                <p className="mt-2 text-xs text-gray-500">Submitted {formatDate(item.createdAt)}</p>
-              </td>
-              <td className="px-4 py-4">
-                <p className="font-medium text-gray-900">
-                  {item.customerId?.fullName || item.customerId?.fullPhoneNumber || 'Customer'}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">to {item.merchantId?.businessName || 'merchant'}</p>
-              </td>
-              <td className="px-4 py-4">
-                {item.proofUrl ? (
-                  <a href={item.proofUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#B93408] hover:underline">
-                    Review file <ExternalLink className="h-4 w-4" />
-                  </a>
-                ) : <span className="text-gray-400">None supplied</span>}
-              </td>
-              <td className="px-4 py-4">
-                <select
-                  value={item.status}
-                  disabled={busy}
-                  onChange={(event) => onStatus(item, event.target.value as CustomerReport['status'])}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 outline-none focus:border-[#FB5012] focus:ring-2 focus:ring-orange-100 disabled:opacity-50"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in_review">In review</option>
-                  <option value="resolved">Resolved</option>
-                </select>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }

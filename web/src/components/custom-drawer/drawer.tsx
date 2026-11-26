@@ -52,6 +52,7 @@ import { AccountSwitchDrawer } from './account-switch-drawer'
 import { SaleReceiptDrawer } from './sale-receipt-drawer'
 import { ActivityDetailsDrawer } from './activity-details-drawer'
 import { ActivityOptionsDrawer } from './activity-options-drawer'
+import { ReportCategoryDrawer } from './report-category-drawer'
 import { CustomerActionsDrawer } from './customer-actions-drawer'
 import { VerifyIdentityDrawer } from './verify-identity-drawer'
 import { PlanCheckoutDrawer } from './plan-checkout-drawer'
@@ -281,6 +282,13 @@ const DRAWER_CONFIG: Record<
     Content: ActivityOptionsDrawer,
     noHeader: true,
     direction: 'bottom',
+  },
+  'report-category': {
+    title: '',
+    Content: ReportCategoryDrawer,
+    noHeader: true,
+    direction: 'bottom',
+    dismissible: true,
   },
   'customer-actions': {
     title: '',

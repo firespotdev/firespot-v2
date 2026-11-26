@@ -90,11 +90,11 @@ export class AdminPaymentCasesController {
     @Param("id") id: string,
     @Body() dto: UpdateReportStatusDto,
   ) {
-    return this.reportsService.updateByAdmin(
-      id,
-      req.user.adminId,
-      dto.status,
-      dto.note,
-    );
+    return this.reportsService.updateByAdmin(id, req.user.adminId, {
+      status: dto.status,
+      note: dto.note,
+      decision: dto.decision,
+      resolutionNote: dto.resolutionNote,
+    });
   }
 }

@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
+import { REPORT_DECISIONS, REPORT_STATUSES } from "../reports/report-rules";
 
 @Schema({ timestamps: true })
 export class Report extends Document {
@@ -24,8 +25,24 @@ export class Report extends Document {
   @Prop()
   proofPublicId?: string;
 
-  @Prop({ enum: ["pending", "in_review", "resolved"], default: "pending", index: true })
+  @Prop({ enum: [...REPORT_STATUSES], default: "pending", index: true })
   status: string;
+
+  /** Who the Firespot team ruled for, set when the report is resolved. */
+  @Prop({ enum: [...REPORT_DECISIONS] })
+  decision?: string;
+
+  /** What the customer is told when the report is resolved. */
+  @Prop()
+  resolutionNote?: string;
+
+  /** Each time the customer nudged the team about this report. */
+  @Prop({ type: [Date], default: [] })
+  followUps: Date[];
+
+  /** Set when the customer closes the report themselves. */
+  @Prop()
+  closedAt?: Date;
 
   @Prop({ type: Array, default: [] })
   internalNotes: Array<{ adminId: string; note: string; at: Date }>;

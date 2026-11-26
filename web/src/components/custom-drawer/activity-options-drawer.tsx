@@ -23,8 +23,10 @@ import {
   CubeIcon,
   DownloadSimpleIcon,
   ExportIcon,
+  FlagIcon,
   HeartIcon,
 } from '@phosphor-icons/react'
+import { useReportSaleContext } from '@/services/reports'
 
 interface ActivityOptionsDrawerProps {
   sale: CustomerSale
@@ -66,6 +68,19 @@ export function ActivityOptionsDrawer({
   )
 
   const close = () => storeCloseDrawer('activity-options')
+
+  // Only the payer can report; an open report is tracked instead of reported
+  // twice. Anything else (a guest payment) hides it.
+  const reportContext = useReportSaleContext(sale._id)
+  const openReport = reportContext.data?.openReport
+  const canReport = reportContext.data?.canReport
+
+  const handleReport = () => {
+    closeAllDrawers()
+    router.push(
+      openReport ? `/dispute?reportId=${openReport._id}` : `/report/${sale._id}`,
+    )
+  }
 
   const handleToggleFave = () => {
     if (!merchant.id) {
@@ -176,6 +191,13 @@ export function ActivityOptionsDrawer({
               }
               title="View past activity"
               onClick={handleViewPastActivity}
+            />
+          )}
+          {(openReport || canReport) && (
+            <ActionListItem
+              icon={<FlagIcon size={24} className="text-[#111827] " />}
+              title={openReport ? 'Track dispute' : 'Report issue'}
+              onClick={handleReport}
             />
           )}
         </ActionList>

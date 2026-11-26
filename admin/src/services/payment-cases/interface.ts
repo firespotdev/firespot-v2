@@ -67,7 +67,18 @@ export interface CustomerReport {
   category: string
   description: string
   proofUrl?: string
-  status: 'pending' | 'in_review' | 'resolved'
+  status: 'pending' | 'in_review' | 'resolved' | 'closed'
+  decision?: 'customer' | 'merchant'
+  resolutionNote?: string
+  followUps?: string[]
+  closedAt?: string
   createdAt: string
+}
+
+export interface ReportUpdate {
+  status: 'pending' | 'in_review' | 'resolved'
+  note?: string
+  decision?: 'customer' | 'merchant'
+  resolutionNote?: string
 }
 
